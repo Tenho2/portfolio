@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EV Multi-Tracker</title>
+<meta name="description" content="Track charging sessions, energy and cost for multiple electric vehicles.">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+--primary:#2563eb;--primary-d:#1e40af;--accent:#06b6d4;--success:#10b981;--warn:#f59e0b;--danger:#ef4444;
+--text:#0f172a;--text-muted:#475569;--surface:#fff;--surface-2:#f0f9ff;--surface-3:#e0f2fe;--line:#e2e8f0;
+--hero-a:#2563eb;--hero-b:#06b6d4;--page-a:#667eea;--page-b:#764ba2;
+--r:12px;--t:.18s cubic-bezier(.4,0,.2,1);--sh:0 4px 6px -1px rgb(0 0 0/.1);--sh-lg:0 10px 15px -3px rgb(0 0 0/.1)
+}
+body.dark{
+--primary:#60a5fa;--primary-d:#3b82f6;--accent:#67e8f9;
+--text:#f8fafc;--text-muted:#cbd5e1;--surface:#1e293b;--surface-2:#1e40af;--surface-3:#3b82f6;
+--line:#334155;--hero-a:#1d4ed8;--hero-b:#0e7490;--page-a:#0f172a;--page-b:#1e293b
+}
+body{
+font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+color:var(--text);background:linear-gradient(135deg,var(--page-a),var(--page-b));
+min-height:100vh;overflow-x:hidden;-webkit-text-size-adjust:100%
+}
+h1,h2,h3,h4{color:var(--text);line-height:1.25}
+a{color:var(--primary)}
+.side{position:fixed;inset:0 auto 0 0;width:250px;background:var(--surface);border-right:1px solid var(--line);padding:1.25rem 0;z-index:20;overflow-y:auto}
+.side-brand{display:flex;align-items:center;gap:.5rem;font-weight:700;font-size:1.15rem;padding:0 1.25rem 1rem;color:var(--text);text-decoration:none;border-bottom:1px solid var(--line);margin-bottom:.75rem}
+.side-nav{list-style:none}
+.side-nav button{display:flex;align-items:center;gap:.65rem;width:100%;padding:.7rem 1.25rem;border:0;border-left:3px solid transparent;background:none;color:var(--text-muted);font:inherit;font-weight:500;text-align:left;cursor:pointer;transition:var(--t)}
+.side-nav button:hover{color:var(--primary);background:var(--surface-2)}
+.side-nav button[aria-current="page"]{color:var(--primary);border-left-color:var(--primary);background:var(--surface-2);font-weight:600}
+.side-nav .ic{font-size:1.1rem;width:22px;text-align:center;flex:none}
+.side .badge{margin:.5rem 1.25rem 0;padding:.5rem .65rem;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);color:var(--text-muted);font-size:.8rem;line-height:1.4}
+.wrap{margin-left:250px;padding:1.25rem;min-width:0}
+.top{display:flex;align-items:center;justify-content:space-between;gap:1rem;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:.9rem 1.25rem;margin-bottom:1.25rem;box-shadow:var(--sh)}
+.top h1{font-size:1.3rem;display:flex;align-items:center;gap:.5rem;min-width:0}
+.top h1 span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tgl{flex:none;width:40px;height:40px;border:2px solid var(--primary);border-radius:50%;background:none;color:var(--primary);font-size:1.1rem;cursor:pointer;transition:var(--t)}
+.tgl:hover{background:var(--primary);color:#fff;transform:rotate(180deg)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:1.5rem;margin-bottom:1.25rem;box-shadow:var(--sh)}
+.panel>h2{font-size:1.35rem;display:flex;align-items:center;gap:.5rem;margin-bottom:.35rem}
+.panel>p.lead{color:var(--text-muted);margin-bottom:1.25rem}
+.view{display:none}
+.view.on{display:block;animation:in .25s ease}
+@keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1rem}
+.f{margin-bottom:1rem}
+.f label{display:block;font-weight:600;font-size:.9rem;margin-bottom:.35rem;color:var(--text)}
+.f input,.f textarea,.f select{
+width:100%;padding:.7rem .85rem;border:2px solid var(--line);border-radius:10px;
+background:var(--surface);color:var(--text);font:inherit;transition:var(--t)
+}
+body.dark .f input,body.dark .f textarea,body.dark .f select{background:#0f172a;border-color:#475569}
+.f input::placeholder,.f textarea::placeholder{color:var(--text-muted);opacity:.75}
+.f input:focus,.f textarea:focus,.f select:focus{outline:0;border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,.25)}
+body.dark .f input:focus,body.dark .f textarea:focus,body.dark .f select:focus{box-shadow:0 0 0 3px rgba(96,165,250,.3)}
+.f textarea{resize:vertical;min-height:88px}
+.hint{color:var(--text-muted);font-size:.8rem;margin-top:.3rem}
+.chk{display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem}
+.chk input{width:19px;height:19px;accent-color:var(--primary);flex:none;cursor:pointer}
+.chk label{margin:0;font-weight:500;color:var(--text);cursor:pointer}
+.btn{padding:.7rem 1.1rem;border:0;border-radius:10px;background:var(--primary);color:#fff;font:inherit;font-weight:600;cursor:pointer;transition:var(--t)}
+.btn:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.btn.sec{background:var(--success)}
+.btn.warn{background:var(--warn)}
+.btn.ghost{background:none;color:var(--primary);border:2px solid var(--primary)}
+.btn.dgr{background:var(--danger)}
+.btn.sm{padding:.4rem .7rem;font-size:.85rem}
+.btn.block{width:100%}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem;margin-top:1.25rem}
+.stat{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r);padding:1rem;text-align:center}
+body.dark .stat{border-color:#3b82f6}
+.stat .n{font-size:1.5rem;font-weight:700;color:var(--primary);word-break:break-word}
+body.dark .stat .n{color:#fff}
+.stat .l{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted)}
+body.dark .stat .l{color:#e2e8f0}
+.qa{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.75rem;margin-top:1rem}
+.qa button{display:flex;flex-direction:column;align-items:center;gap:.35rem;padding:.9rem .5rem;background:var(--surface);border:2px solid var(--line);border-radius:10px;color:var(--text);font:inherit;font-weight:500;cursor:pointer;transition:var(--t)}
+.qa button:hover{border-color:var(--primary);color:var(--primary);transform:translateY(-2px)}
+.qa .ic{font-size:1.4rem}
+.veh{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1rem;margin-top:1.25rem}
+.vcard{background:var(--surface);border:2px solid var(--line);border-radius:var(--r);padding:1rem;cursor:pointer;text-align:left;color:var(--text);font:inherit;transition:var(--t)}
+.vcard:hover{border-color:var(--primary);transform:translateY(-2px)}
+.vcard[aria-pressed="true"]{border-color:var(--primary);background:var(--surface-2)}
+body.dark .vcard[aria-pressed="true"]{background:linear-gradient(135deg,#1e40af,#3b82f6);border-color:#60a5fa}
+.vcard .ic{font-size:1.5rem}
+.vcard .n{font-weight:700;margin:.35rem 0 .15rem}
+.vcard .s{font-size:.85rem;color:var(--text-muted)}
+body.dark .vcard[aria-pressed="true"] .s{color:#e2e8f0}
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:.92rem;min-width:760px}
+th,td{padding:.65rem .7rem;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{background:var(--surface-2);color:var(--text);font-weight:600;position:sticky;top:0}
+body.dark th{background:#1e40af;color:#fff}
+tbody tr:hover{background:var(--surface-2)}
+td.wrapc{white-space:normal;min-width:180px;color:var(--text-muted)}
+.tag{display:inline-block;padding:.15rem .5rem;border-radius:20px;font-size:.75rem;font-weight:600;margin:0 .25rem .25rem 0}
+.t-fast{background:#fef3c7;color:#78350f}
+.t-home{background:#dcfce7;color:#14532d}
+.t-fav{background:#e0e7ff;color:#312e81}
+.t-est{background:#e0f2fe;color:#0c4a6e}
+.empty{text-align:center;padding:2.5rem 1rem;color:var(--text-muted)}
+.list{display:flex;flex-direction:column;gap:.6rem;margin-top:1rem}
+.item{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:.6rem .8rem}
+body.dark .item{border-color:#3b82f6}
+.item .nm{font-weight:600;flex:1;min-width:120px;color:var(--text);overflow-wrap:anywhere}
+.item .mt{font-size:.8rem;color:var(--text-muted)}
+.addrow{display:flex;gap:.6rem;flex-wrap:wrap;margin-top:1rem}
+.addrow input{flex:1;min-width:190px;padding:.7rem .85rem;border:2px solid var(--line);border-radius:10px;background:var(--surface);color:var(--text);font:inherit}
+body.dark .addrow input{background:#0f172a;border-color:#475569}
+.addrow input::placeholder{color:var(--text-muted);opacity:.75}
+.toast{position:fixed;left:50%;bottom:1.25rem;transform:translateX(-50%) translateY(150%);background:var(--text);color:var(--surface);padding:.7rem 1.1rem;border-radius:10px;font-weight:600;box-shadow:var(--sh-lg);transition:transform .25s ease;z-index:60;max-width:90vw;text-align:center}
+.toast.on{transform:translateX(-50%)}
+#mapBox{margin-bottom:1rem}
+#map{height:260px;border:2px solid var(--line);border-radius:10px;background:var(--surface-2);overflow:hidden}
+body.dark #map{border-color:#475569}
+.chips{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.4rem}
+.chips[hidden]{display:none}
+.chip{display:inline-flex;align-items:center;gap:.35rem;padding:.3rem .6rem;border:1px solid var(--line);border-radius:20px;background:var(--surface-2);color:var(--text);font:inherit;font-size:.8rem;font-weight:600;cursor:pointer;transition:var(--t)}
+.chip:hover{border-color:var(--primary);color:var(--primary)}
+body.dark .chip{border-color:#3b82f6;background:#1e293b;color:#e2e8f0}
+.leaflet-container{font:inherit;background:#dfe6e9}
+footer{margin-left:250px;background:var(--surface);border-top:1px solid var(--line);color:var(--text-muted);padding:1.1rem 1.25rem;text-align:center;font-size:.88rem}
+.mini{font-size:.85rem;color:var(--text-muted)}
+@media(max-width:820px){
+.side{position:sticky;top:0;width:auto;display:flex;align-items:center;gap:.5rem;overflow-x:auto;padding:.5rem;flex-wrap:nowrap}
+.side-brand{border:0;margin:0;padding:0 .5rem 0 .25rem;white-space:nowrap;font-size:1rem}
+.side-nav{display:flex;gap:.25rem}
+.side-nav button{white-space:nowrap;padding:.5rem .7rem;border-left:0;border-bottom:3px solid transparent;border-radius:8px}
+.side-nav button[aria-current="page"]{border-left:0;border-bottom-color:var(--primary)}
+.side-nav button span:not(.ic){display:none}
+.side .badge{display:none}
+.wrap,footer{margin-left:0}
+.wrap{padding:.9rem}
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<aside class="side">
+  <a class="side-brand" href="#dashboard"><span aria-hidden="true">🚗</span> EV Multi-Tracker</a>
+  <ul class="side-nav">
+    <li><button data-go="dashboard" aria-current="page"><span class="ic" aria-hidden="true">📊</span><span>Dashboard</span></button></li>
+    <li><button data-go="add-session"><span class="ic" aria-hidden="true">📝</span><span>Add Session</span></button></li>
+    <li><button data-go="view-data"><span class="ic" aria-hidden="true">📄</span><span>Charge Log</span></button></li>
+    <li><button data-go="favourites"><span class="ic" aria-hidden="true">⭐</span><span>Favourites</span></button></li>
+    <li><button data-go="export-data"><span class="ic" aria-hidden="true">💾</span><span>Export</span></button></li>
+    <li><button data-go="settings"><span class="ic" aria-hidden="true">⚙️</span><span>Settings</span></button></li>
+  </ul>
+  <div class="badge" id="dbInfo">Local storage · 0 sessions</div>
+</aside>
+
+<div class="wrap">
+  <header class="top">
+    <h1><span id="who">Dashboard</span></h1>
+    <button class="tgl" id="themeBtn" aria-label="Switch colour theme">☀️</button>
+  </header>
+
+  <section class="view on" id="dashboard">
+    <div class="panel">
+      <h2><span aria-hidden="true">📊</span> Dashboard</h2>
+      <p class="lead">Totals for the selected vehicle. All counters start at zero.</p>
+      <div id="vehWrap" hidden>
+        <div class="mini" style="margin-bottom:.5rem">Select vehicle</div>
+        <div class="veh" id="vehList"></div>
+      </div>
+      <div class="stats" id="stats">
+        <div class="stat"><div class="n" id="sEnergy">0 kWh</div><div class="l">Energy charged</div></div>
+        <div class="stat"><div class="n" id="sDist">0 km</div><div class="l">Distance covered</div></div>
+        <div class="stat"><div class="n" id="sCost">€0.00</div><div class="l">Total cost</div></div>
+        <div class="stat"><div class="n" id="sDur">0 h</div><div class="l">Charging time</div></div>
+        <div class="stat"><div class="n" id="sEff">–</div><div class="l">Avg kWh / 100 km</div></div>
+      </div>
+      <div class="qa">
+        <button data-go="add-session"><span class="ic" aria-hidden="true">📝</span>Log session</button>
+        <button data-go="view-data"><span class="ic" aria-hidden="true">📄</span>Charge log</button>
+        <button id="qaCsv"><span class="ic" aria-hidden="true">📄</span>CSV</button>
+        <button data-go="settings"><span class="ic" aria-hidden="true">➕</span>Add vehicle</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="add-session">
+    <div class="panel">
+      <h2><span aria-hidden="true">📝</span> Log charging session</h2>
+      <p class="lead" id="formVeh">Vehicle 1</p>
+      <form id="sForm" novalidate>
+        <div class="row">
+          <div class="f"><label for="date">Date</label><input type="date" id="date" name="date" required></div>
+          <div class="f"><label for="time">Time</label><input type="time" id="time" name="time" required></div>
+        </div>
+        <div class="row">
+          <div class="f"><label for="duration">Session duration</label><input type="time" id="duration" name="duration" step="300" value="00:30" required><div class="hint">Hours and minutes, 5-minute steps</div></div>
+          <div class="f"><label for="mileage">Mileage (km)</label><input type="number" id="mileage" name="mileage" min="0" step="0.1" placeholder="e.g. 45000" required></div>
+        </div>
+        <div class="f"><label for="location">Location / station</label><input type="text" id="location" name="location" placeholder="e.g. Supercharger Vaasa" required list="favOptions"><div class="chips" id="favQuick" hidden></div></div>
+        <div class="row">
+          <div class="f"><label for="energy">Energy charged (kWh)</label><input type="number" id="energy" name="energy" min="0" step="0.01" placeholder="e.g. 52.4" required></div>
+          <div class="f"><label for="cost">Cost (€)</label><input type="number" id="cost" name="cost" min="0" step="0.01" placeholder="auto"><div class="hint" id="priceHint">Leave empty to use the price per kWh from settings</div></div>
+        </div>
+        <div class="f"><label for="notes">Notes</label><textarea id="notes" name="notes" rows="3" placeholder="e.g. 150 kW, 24 °C, battery 20 → 80 %"></textarea></div>
+        <div class="chk"><input type="checkbox" id="fast" name="fast"><label for="fast">Fast charging session</label></div>
+        <div class="chk"><input type="checkbox" id="home" name="home"><label for="home">Home charging session</label></div>
+        <div class="chk"><input type="checkbox" id="fav" name="fav"><label for="fav">Save this location as a favourite</label></div>
+        <div class="f" id="favNameWrap" hidden><label for="favName">Favourite name</label><input type="text" id="favName" maxlength="40" placeholder="e.g. Home, Vaasa S1"><div class="hint">Leave empty to use the location text. You can add a map position later in Favourites.</div></div>
+        <button class="btn block" type="submit" id="saveBtn">Save session</button>
+      </form>
+    </div>
+  </section>
+
+  <section class="view" id="view-data">
+    <div class="panel">
+      <h2><span aria-hidden="true">📄</span> Charge log</h2>
+      <p class="lead" id="logLead">Stored sessions, newest first.</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th scope="col">Date</th><th scope="col">Time</th><th scope="col">Duration</th><th scope="col">Location</th><th scope="col">Energy</th><th scope="col">Mileage</th><th scope="col">Cost</th><th scope="col">Tags</th><th scope="col">Notes</th><th scope="col"><span class="mini">Del</span></th></tr></thead>
+          <tbody id="logBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="export-data">
+    <div class="panel">
+      <h2><span aria-hidden="true">💾</span> Export data</h2>
+      <p class="lead">Download everything stored in this browser. Scope applies to the selected vehicle.</p>
+      <div class="row">
+        <div class="f"><label for="scope">Scope</label><select id="scope"><option value="all">All vehicles</option></select></div>
+      </div>
+      <div class="qa" style="margin-top:.5rem">
+        <button id="exCsv"><span class="ic" aria-hidden="true">📄</span>CSV</button>
+        <button id="exJson"><span class="ic" aria-hidden="true">{ }</span>JSON</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="favourites">
+    <div class="panel">
+      <h2><span aria-hidden="true">⭐</span> Favourite locations</h2>
+      <p class="lead">Name your usual charging spots, look up the address and drop a pin on the map.</p>
+      <div class="f">
+        <label for="fName">Name</label>
+        <input type="text" id="fName" maxlength="40" placeholder="e.g. Home, Vaasa S1">
+      </div>
+      <div class="f">
+        <label for="fAddr">Address</label>
+        <div class="addrow" style="margin:0">
+          <input type="text" id="fAddr" placeholder="Street, city, country" aria-label="Address">
+          <button class="btn ghost" id="fFind">Find</button>
+        </div>
+        <div class="hint" id="geoStat" role="status" aria-live="polite">Type an address and press Find. Uses OpenStreetMap when you are online.</div>
+      </div>
+      <div class="row">
+        <div class="f"><label for="fLat">Latitude</label><input type="number" id="fLat" step="any" placeholder="63.0950"></div>
+        <div class="f"><label for="fLng">Longitude</label><input type="number" id="fLng" step="any" placeholder="21.6160"></div>
+      </div>
+      <div id="mapBox"><div id="map" aria-label="Map"></div><div id="mapMsg" class="mini" hidden>Map unavailable offline. You can still enter coordinates by hand.</div></div>
+      <div class="addrow">
+        <button class="btn sec" id="fSave">Save favourite</button>
+        <button class="btn ghost" id="fClear">Clear form</button>
+      </div>
+    </div>
+    <div class="panel">
+      <h2><span aria-hidden="true">📍</span> Saved</h2>
+      <div class="list" id="favList"></div>
+    </div>
+  </section>
+
+  <section class="view" id="settings">
+    <div class="panel">
+      <h2><span aria-hidden="true">🚗</span> Vehicles</h2>
+      <p class="lead">Vehicles are shown as a switcher only when you have more than one.</p>
+      <div class="list" id="vehSettings"></div>
+      <div class="addrow">
+        <input type="text" id="vName" placeholder="Vehicle name, e.g. Tesla Model 3" maxlength="40" aria-label="New vehicle name">
+        <button class="btn sec" id="vSave">Save vehicle</button>
+      </div>
+    </div>
+    <div class="panel">
+      <h2><span aria-hidden="true">💶</span> Energy price</h2>
+      <div class="f" style="max-width:260px"><label for="ppk">Price per kWh (€)</label><input type="number" id="ppk" min="0" step="0.01" value="0.20"></div>
+    </div>
+    <div class="panel">
+      <h2><span aria-hidden="true">🗄️</span> Data</h2>
+      <div class="qa" style="margin-top:0">
+        <button id="backup"><span class="ic" aria-hidden="true">⬇️</span>Backup JSON</button>
+        <button class="btn warn" id="restoreBtn"><span class="ic" aria-hidden="true">⬆️</span>Restore</button>
+        <button class="btn warn" id="clearBtn"><span class="ic" aria-hidden="true">🧹</span>Clear sessions</button>
+        <button class="btn dgr" id="wipeBtn"><span class="ic" aria-hidden="true">🗑️</span>Delete everything</button>
+      </div>
+      <input type="file" id="restoreFile" accept="application/json" hidden>
+    </div>
+  </section>
+</div>
+
+<footer>EV Multi-Tracker · data stays in this browser</footer>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+"use strict";
+var K={v:"ev.v1.vehicles",s:"ev.v1.sessions",p:"ev.v1.price",t:"theme",f:"ev.v1.favs"};
+var $=function(id){return document.getElementById(id)};
+var vehicles=[],sessions=[],favs=[],cur=0,view="dashboard",dirty=false,price=0.20,editFav=null;
+
+/* ---------- storage ---------- */
+function load(){
+  try{vehicles=JSON.parse(localStorage.getItem(K.v))||[]}catch(e){vehicles=[]}
+  try{sessions=JSON.parse(localStorage.getItem(K.s))||[]}catch(e){sessions=[]}
+  if(!Array.isArray(vehicles)||!vehicles.length)vehicles=[{id:uid(),name:"Vehicle 1",icon:"🚗"}];
+  if(!Array.isArray(sessions))sessions=[];
+  sessions=sessions.filter(function(s){return s&&s.vehicleId&&isFinite(+s.energy)});
+  var stored=localStorage.getItem(K.p);
+  price=stored!==null?parseFloat(stored):0.20;
+  if(!isFinite(price)||price<0)price=0.20;
+  $("ppk").value=price;
+  cur=0;
+}
+function save(){
+  if(dirty)return;
+  try{
+    localStorage.setItem(K.v,JSON.stringify(vehicles));
+    localStorage.setItem(K.s,JSON.stringify(sessions));
+  }catch(e){toast("Storage full — session not saved")}
+}
+function persist(){try{localStorage.setItem(K.p,String(price))}catch(e){}}
+function saveFavs(){try{localStorage.setItem(K.f,JSON.stringify(favs))}catch(e){toast("Could not save favourites")}}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function loadFavs(){
+  var raw=null;
+  try{raw=JSON.parse(localStorage.getItem(K.f)||"null")}catch(e){raw=null}
+  favs=[];
+  if(!Array.isArray(raw))return;
+  for(var i=0;i<raw.length;i++){
+    var f=raw[i];
+    if(typeof f==="string")favs.push({id:uid(),name:f,address:f,lat:null,lng:null});
+    else if(f&&typeof f==="object")favs.push({
+      id:f.id||uid(),
+      name:String(f.name||f.address||"Favourite"),
+      address:String(f.address||f.name||""),
+      lat:isNum(f.lat)?+f.lat:null,
+      lng:isNum(f.lng)?+f.lng:null
+    });
+  }
+}
+
+/* ---------- helpers ---------- */
+function pad(n){return n<10?"0"+n:""+n}
+function now(){var d=new Date();return{y:d.getFullYear(),m:pad(d.getMonth()+1),d:pad(d.getDate()),h:pad(d.getHours()),i:pad(d.getMinutes())}}
+function stampDefaults(){
+  var n=now();
+  $("date").value=n.y+"-"+n.m+"-"+n.d;
+  $("time").value=n.h+":"+n.i;
+}
+function hmToHours(v){
+  var p=(v||"").split(":");
+  if(p.length!==2)return 0;
+  var h=parseInt(p[0],10),m=parseInt(p[1],10);
+  if(!isFinite(h)||!isFinite(m))return 0;
+  return h+m/60;
+}
+function hoursToHM(h){
+  var t=Math.round((+h||0)*60);
+  return pad(Math.floor(t/60))+":"+pad(t%60);
+}
+function num(v){var n=parseFloat(v);return isFinite(n)?n:0}
+function isNum(v){return v!==null&&v!==undefined&&v!==""&&isFinite(v)}
+function hasCost(s){return s.cost!==null&&s.cost!==undefined&&s.cost!==""&&isFinite(s.cost)}
+function costOf(s){return hasCost(s)?s.cost:num(s.energy)*price}
+function veh(){return vehicles[cur]||vehicles[0]}
+function vehById(id){for(var i=0;i<vehicles.length;i++)if(vehicles[i].id===id)return vehicles[i];return null}
+function ofVehicle(id){return sessions.filter(function(s){return s.vehicleId===id})}
+function sorted(list){
+  return list.slice().sort(function(a,b){
+    var x=(a.date||"")+"T"+(a.time||"");var y=(b.date||"")+"T"+(b.time||"");
+    return x<y?1:x>y?-1:(b.id||0)-(a.id||0);
+  });
+}
+function totals(list){
+  var t={kwh:0,cost:0,h:0,km:0,est:0};
+  var s=sorted(list);
+  for(var i=0;i<s.length;i++){
+    t.kwh+=num(s[i].energy);
+    t.h+=num(s[i].hours);
+    t.cost+=costOf(s[i]);
+    if(!hasCost(s[i]))t.est++;
+  }
+  var asc=s.slice().reverse();
+  for(var j=1;j<asc.length;j++){
+    var d=num(asc[j].mileage)-num(asc[j-1].mileage);
+    if(d>0)t.km+=d;
+  }
+  return t;
+}
+function esc(s){
+  return String(s==null?"":s).replace(/[&<>"']/g,function(c){
+    return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+  });
+}
+var tmr;
+function toast(msg){
+  var el=$("toast");el.textContent=msg;el.classList.add("on");
+  clearTimeout(tmr);tmr=setTimeout(function(){el.classList.remove("on")},2600);
+}
+
+/* ---------- render ---------- */
+function render(){
+  var v=veh();
+  $("who").textContent=view==="dashboard"||view==="view-data"?v.name:({ "add-session":"Log charging session","export-data":"Export data","settings":"Settings"})[view]||"Dashboard";
+  $("formVeh").textContent=v.name;
+  $("dbInfo").textContent="Local storage · "+sessions.length+" session"+(sessions.length===1?"":"s")+" · "+vehicles.length+" vehicle"+(vehicles.length===1?"":"s");
+
+  var multi=vehicles.length>1;
+  $("vehWrap").hidden=!multi;
+  if(multi){
+    var h="";
+    for(var i=0;i<vehicles.length;i++){
+      var t=totals(ofVehicle(vehicles[i].id));
+      h+='<button class="vcard" type="button" data-v="'+esc(vehicles[i].id)+'" aria-pressed="'+(i===cur)+'">'+
+         '<span class="ic" aria-hidden="true">'+esc(vehicles[i].icon)+'</span>'+
+         '<div class="n">'+esc(vehicles[i].name)+'</div>'+
+         '<div class="s">'+t.kwh.toFixed(1)+' kWh · '+ofVehicle(vehicles[i].id).length+' session'+(ofVehicle(vehicles[i].id).length===1?"":"s")+'</div></button>';
+    }
+    $("vehList").innerHTML=h;
+  }
+
+  var T=totals(ofVehicle(v.id));
+  $("sEnergy").textContent=T.kwh.toFixed(1)+" kWh";
+  $("sDist").textContent=Math.round(T.km)+" km";
+  $("sCost").textContent="€"+T.cost.toFixed(2);
+  $("sDur").textContent=T.h.toFixed(1)+" h";
+  $("sEff").textContent=T.km>0?(T.kwh/T.km*100).toFixed(1):"—";
+
+  var list=sorted(ofVehicle(v.id));
+  $("logLead").textContent=list.length?list.length+" session"+(list.length===1?"":"s")+" stored for "+v.name+", newest first.":"No sessions stored for "+v.name+" yet.";
+  var tb="";
+  for(var j=0;j<list.length;j++){
+    var s=list[j];
+    var c="€"+costOf(s).toFixed(2);
+    var tags="";
+    if(s.fast)tags+='<span class="tag t-fast">Fast</span>';
+    if(s.home)tags+='<span class="tag t-home">Home</span>';
+    if(s.fav)tags+='<span class="tag t-fav">★ Favourite</span>';
+    if(!hasCost(s))tags+='<span class="tag t-est">Est. price</span>';
+    tb+='<tr><td>'+esc(s.date)+'</td><td>'+esc(s.time)+'</td><td>'+esc(hoursToHM(s.hours))+'</td>'+
+       '<td>'+esc(s.location)+'</td><td>'+num(s.energy).toFixed(2)+' kWh</td><td>'+num(s.mileage).toFixed(1)+' km</td>'+
+       '<td>'+c+'</td><td>'+tags+'</td><td class="wrapc">'+esc(s.notes||"—")+'</td>'+
+       '<td><button class="btn sm dgr" data-del="'+esc(s.id)+'" aria-label="Delete session">✕</button></td></tr>';
+  }
+  $("logBody").innerHTML=tb||'<tr><td colspan="10" class="empty">No sessions yet — add one from “Add Session”.</td></tr>';
+
+  var sl=$("scope"),keep=sl.value;
+  sl.innerHTML='<option value="all">All vehicles</option>'+vehicles.map(function(x){
+    return '<option value="'+esc(x.id)+'">'+esc(x.name)+'</option>';}).join("");
+  sl.value=vehicles.some(function(x){return x.id===keep})?keep:"all";
+
+  var vs="";
+  for(var k=0;k<vehicles.length;k++){
+    var c2=ofVehicle(vehicles[k].id).length;
+    vs+='<div class="item"><span aria-hidden="true" style="font-size:1.2rem">'+esc(vehicles[k].icon)+'</span>'+
+        '<span class="nm">'+esc(vehicles[k].name)+'</span>'+
+        '<span class="mt">'+c2+' session'+(c2===1?"":"s")+'</span>'+
+        '<button class="btn sm ghost" data-ren="'+esc(vehicles[k].id)+'">Rename</button>'+
+        (vehicles.length>1?'<button class="btn sm dgr" data-rm="'+esc(vehicles[k].id)+'">Remove</button>':'')+'</div>';
+  }
+  $("vehSettings").innerHTML=vs;
+  $("priceHint").textContent="Leave empty to use "+price.toFixed(2)+" €/kWh from settings";
+  renderFavs();
+}
+
+function renderFavs(){
+  var box=$("favList"),html="";
+  for(var i=0;i<favs.length;i++){
+    var f=favs[i];
+    var has=isNum(f.lat)&&isNum(f.lng);
+    var uses=sessions.filter(function(s){return s.location===f.address||s.location===f.name}).length;
+    html+='<div class="item">'+
+      '<span aria-hidden="true" style="font-size:1.2rem">📍</span>'+
+      '<span class="nm">'+esc(f.name)+'<br><span class="mt">'+esc(f.address)+
+        (has?" · "+f.lat.toFixed(4)+", "+f.lng.toFixed(4):" · no coordinates")+'</span></span>'+
+      '<span class="mt">'+uses+' use'+(uses===1?"":"s")+'</span>'+
+      '<button class="btn sm sec" data-use="'+esc(f.id)+'">Use</button>'+
+      '<button class="btn sm ghost" data-fedit="'+esc(f.id)+'">'+(has?"Map":"Edit")+'</button>'+
+      '<button class="btn sm dgr" data-fdel="'+esc(f.id)+'">Delete</button></div>';
+  }
+  box.innerHTML=html||'<div class="empty">No favourites yet — name one above, or tick “Save this location as a favourite” when logging a session.</div>';
+
+  var chips="";
+  for(var j=0;j<favs.length;j++){
+    chips+='<button type="button" class="chip" data-use="'+esc(favs[j].id)+'">📍 '+esc(favs[j].name)+'</button>';
+  }
+  $("favQuick").innerHTML=chips;
+  $("favQuick").hidden=favs.length===0;
+  refreshDatalist();
+}
+
+/* ---------- favourites ---------- */
+function favById(id){for(var i=0;i<favs.length;i++)if(favs[i].id===id)return favs[i];return null}
+function refreshDatalist(){
+  var dl=document.getElementById("favOptions");
+  if(!dl)return;
+  var seen={},out=[];
+  for(var i=0;i<favs.length;i++){
+    var vals=[favs[i].name,favs[i].address];
+    for(var j=0;j<vals.length;j++){
+      var v=vals[j];
+      if(v&&!seen[v]){seen[v]=1;out.push('<option value="'+esc(v)+'"></option>')}
+    }
+  }
+  dl.innerHTML=out.join("");
+}
+function readFavForm(){
+  var name=$("fName").value.trim(),addr=$("fAddr").value.trim();
+  var la=$("fLat").value.trim(),lo=$("fLng").value.trim();
+  return {
+    name:name||addr,
+    address:addr||name,
+    lat:la===""?null:(isNum(+la)?+la:null),
+    lng:lo===""?null:(isNum(+lo)?+lo:null)
+  };
+}
+function fillFavForm(f){
+  $("fName").value=f.name||"";
+  $("fAddr").value=f.address||"";
+  $("fLat").value=isNum(f.lat)?f.lat:"";
+  $("fLng").value=isNum(f.lng)?f.lng:"";
+  editFav=f.id||null;
+  $("fSave").textContent=f.id?"Update favourite":"Save favourite";
+  if(isNum(f.lat)&&isNum(f.lng))showPin(f.lat,f.lng,f.name);
+}
+function clearFavForm(){
+  $("fName").value="";$("fAddr").value="";$("fLat").value="";$("fLng").value="";
+  editFav=null;$("fSave").textContent="Save favourite";
+  $("geoStat").textContent="Type an address and press Find. Uses OpenStreetMap when you are online.";
+  if(map&&marker){map.removeLayer(marker);marker=null}
+}
+function saveFavourite(){
+  var f=readFavForm();
+  if(!f.name){toast("Add a name or an address");$("fName").focus();return}
+  if(isNum(f.lat)!==isNum(f.lng)){toast("Latitude and longitude must both be filled in");return}
+  if(editFav){
+    var old=favById(editFav);
+    if(old){f.id=old.id;favs[favs.indexOf(old)]=f}
+  }else{
+    var dup=null;
+    for(var i=0;i<favs.length;i++){
+      if(favs[i].name.toLowerCase()===f.name.toLowerCase()&&favs[i].address.toLowerCase()===f.address.toLowerCase())dup=favs[i];
+    }
+    if(dup){f.id=dup.id;favs[favs.indexOf(dup)]=f}
+    else{f.id=uid();favs.push(f)}
+  }
+  saveFavs();renderFavs();fillFavForm(f);
+  toast(f.name+(isNum(f.lat)?" saved with map position":" saved — add a map position later"));
+}
+function useFav(id){
+  var f=favById(id);if(!f)return;
+  $("location").value=f.address||f.name;
+  go("add-session");
+  $("location").focus();
+}
+function editFavById(id){
+  var f=favById(id);if(!f)return;
+  fillFavForm(f);
+  go("favourites");
+  $("fName").focus();
+}
+function delFav(id){
+  var f=favById(id);if(!f)return;
+  if(!confirm("Delete the favourite “"+f.name+"”?"))return;
+  favs=favs.filter(function(x){return x.id!==id});
+  if(editFav===id)clearFavForm();
+  saveFavs();renderFavs();toast("Favourite deleted");
+}
+function upsertFavFromSession(name,address,lat,lng){
+  var n=(name||address||"").trim();
+  for(var i=0;i<favs.length;i++){
+    if(favs[i].name.toLowerCase()===n.toLowerCase()){
+      if(address)favs[i].address=address;
+      if(isNum(lat)&&isNum(lng)){favs[i].lat=lat;favs[i].lng=lng}
+      saveFavs();renderFavs();return;
+    }
+  }
+  favs.push({id:uid(),name:n,address:address||n,lat:isNum(lat)?lat:null,lng:isNum(lng)?lng:null});
+  saveFavs();renderFavs();
+}
+
+/* ---------- geocoding + map ---------- */
+var map=null,marker=null,leafletState=0;
+function loadLeaflet(cb){
+  if(window.L){cb();return}
+  if(leafletState===1)return;
+  leafletState=1;
+  var css=document.createElement("link");
+  css.rel="stylesheet";
+  css.href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+  document.head.appendChild(css);
+  var s=document.createElement("script");
+  s.src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+  s.async=true;
+  s.onload=function(){leafletState=2;cb()};
+  s.onerror=function(){leafletState=0;$("mapMsg").hidden=false};
+  document.head.appendChild(s);
+}
+function ensureMap(){
+  loadLeaflet(function(){
+    if(map||!window.L)return;
+    var el=$("map");
+    if(!el)return;
+    try{
+      map=L.map(el,{scrollWheelZoom:false}).setView([63.1,21.6],11);
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{
+        maxZoom:19,
+        attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+      }).addTo(map);
+      map.on("click",function(e){placeMarker(e.latlng.lat,e.latlng.lng)});
+    }catch(e){$("mapMsg").hidden=false}
+  });
+}
+function placeMarker(lat,lng){
+  if(!map||!window.L)return;
+  if(!marker)marker=L.marker([lat,lng],{draggable:true}).addTo(map);
+  else marker.setLatLng([lat,lng]);
+  marker.on("dragend",function(){
+    var p=marker.getLatLng();
+    $("fLat").value=p.lat.toFixed(5);
+    $("fLng").value=p.lng.toFixed(5);
+  });
+}
+function showPin(lat,lng,label){
+  ensureMap();
+  if(!map||!window.L)return;
+  map.setView([lat,lng],16,{animate:false});
+  placeMarker(lat,lng);
+  if(label&&marker&&marker.bindPopup)marker.bindPopup(esc(label));
+}
+function geocode(){
+  var q=$("fAddr").value.trim();
+  if(!q){toast("Type an address first");$("fAddr").focus();return}
+  if(!navigator.onLine){
+    $("geoStat").textContent="You appear to be offline. Enter coordinates by hand or use the map.";
+    return;
+  }
+  $("geoStat").textContent="Looking up “"+q+"”…";
+  var url="https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q="+encodeURIComponent(q);
+  fetch(url)
+    .then(function(r){if(!r.ok)throw new Error("http "+r.status);return r.json()})
+    .then(function(res){
+      if(!res||!res.length){
+        $("geoStat").textContent="No match found for “"+q+"”. Try a fuller address.";
+        return;
+      }
+      var hit=res[0];
+      var lat=parseFloat(hit.lat),lng=parseFloat(hit.lon);
+      $("fLat").value=lat.toFixed(5);
+      $("fLng").value=lng.toFixed(5);
+      if(!$("fName").value.trim())$("fName").value=hit.name||q;
+      if(hit.display_name)$("fAddr").value=hit.display_name;
+      $("geoStat").textContent="Found: "+hit.display_name;
+      showPin(lat,lng,hit.name||q);
+    })
+    .catch(function(){
+      $("geoStat").textContent="Address lookup failed (offline or blocked). You can still drop a pin on the map or type coordinates.";
+    });
+}
+
+/* ---------- routing ---------- */
+function go(id){
+  view=id;
+  var views=document.querySelectorAll(".view");
+  for(var i=0;i<views.length;i++)views[i].classList.toggle("on",views[i].id===id);
+  var btns=document.querySelectorAll(".side-nav button");
+  for(var j=0;j<btns.length;j++){
+    if(btns[j].getAttribute("data-go")===id)btns[j].setAttribute("aria-current","page");
+    else btns[j].removeAttribute("aria-current");
+  }
+  if(location.hash.slice(1)!==id)history.replaceState(null,"","#"+id);
+  render();
+  if(id==="favourites"&&map)setTimeout(function(){try{map.invalidateSize()}catch(e){}},60);
+  window.scrollTo(0,0);
+}
+
+/* ---------- actions ---------- */
+function addVehicle(){
+  var name=$("vName").value.trim();
+  if(!name){toast("Give the vehicle a name");$("vName").focus();return}
+  vehicles.push({id:uid(),name:name,icon:"🚙"});
+  $("vName").value="";
+  save();go("dashboard");toast(name+" added");
+}
+function removeVehicle(id){
+  var v=vehById(id);if(!v)return;
+  if(!confirm("Remove "+v.name+" and its "+ofVehicle(id).length+" session(s)?"))return;
+  vehicles=vehicles.filter(function(x){return x.id!==id});
+  sessions=sessions.filter(function(s){return s.vehicleId!==id})
+  if(cur>=vehicles.length)cur=vehicles.length-1;
+  save();render();toast(v.name+" removed");
+}
+function renameVehicle(id){
+  var v=vehById(id);if(!v)return;
+  var n=prompt("New name for "+v.name,v.name);
+  if(n===null)return;
+  n=n.trim();if(!n)return;
+  v.name=n;save();render();
+}
+function delSession(id){
+  var s=sessions.filter(function(x){return x.id===id})[0];
+  if(!s||!confirm("Delete this session at "+s.location+"?"))return;
+  sessions=sessions.filter(function(x){return x.id!==id});
+  save();render();toast("Session deleted");
+}
+function download(name,text,type){
+  var b=new Blob([text],{type:type}),u=URL.createObjectURL(b);
+  var a=document.createElement("a");
+  a.href=u;a.download=name;document.body.appendChild(a);a.click();
+  setTimeout(function(){URL.revokeObjectURL(u);a.remove()},0);
+}
+function scopeList(){
+  var s=$("scope").value;
+  return s==="all"?sessions.slice():ofVehicle(s);
+}
+function toCSV(list){
+  var head=["Date","Time","Duration","Vehicle","Location","Energy (kWh)","Mileage (km)","Cost (EUR)","Cost basis","Fast","Home","Favourite","Notes"];
+  var q=function(v){v=v==null?"":String(v);return /[",\n;]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+  var rows=list.map(function(s){
+    var v=(vehById(s.vehicleId)||{}).name||"";
+    return [s.date,s.time,hoursToHM(s.hours),v,s.location,num(s.energy).toFixed(2),num(s.mileage).toFixed(1),
+      costOf(s).toFixed(2),
+      hasCost(s)?"entered":"estimated at "+price.toFixed(2)+" EUR/kWh",
+      s.fast?"yes":"no",s.home?"yes":"no",s.fav?"yes":"no",s.notes||""].map(q).join(",");
+  });
+  return head.join(",")+"\n"+rows.join("\n");
+}
+
+/* ---------- events ---------- */
+document.addEventListener("click",function(e){
+  var t=e.target.closest("[data-go],[data-v],[data-del],[data-ren],[data-rm],[data-use],[data-fedit],[data-fdel],#qaCsv");
+  if(!t)return;
+  if(t.hasAttribute("data-go")){go(t.getAttribute("data-go"));return}
+  if(t.hasAttribute("data-v")){
+    for(var i=0;i<vehicles.length;i++)if(vehicles[i].id===t.getAttribute("data-v")){cur=i;break}
+    save();render();return;
+  }
+  if(t.hasAttribute("data-use")){useFav(t.getAttribute("data-use"));return}
+  if(t.hasAttribute("data-fedit")){editFavById(t.getAttribute("data-fedit"));return}
+  if(t.hasAttribute("data-fdel")){delFav(t.getAttribute("data-fdel"));return}
+  if(t.id==="qaCsv"){doCSV();return}
+  if(t.hasAttribute("data-del")){delSession(t.getAttribute("data-del"));return}
+  if(t.hasAttribute("data-ren")){renameVehicle(t.getAttribute("data-ren"));return}
+  if(t.hasAttribute("data-rm")){removeVehicle(t.getAttribute("data-rm"))}
+});
+$("vSave").addEventListener("click",addVehicle);
+$("vName").addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();addVehicle()}});
+$("ppk").addEventListener("change",function(){price=Math.max(0,num(this.value));this.value=price;persist();render()});
+$("exCsv").addEventListener("click",doCSV);
+$("exJson").addEventListener("click",function(){
+  var list=sorted(scopeList());
+  download("ev-sessions-"+now().y+pad(now().m)+pad(now().d)+".json",
+    JSON.stringify({exported:new Date().toISOString(),pricePerKwh:price,vehicles:vehicles,sessions:list},null,2),
+    "application/json");
+  toast(list.length+" session(s) exported");
+});
+function doCSV(){
+  var list=sorted(scopeList());
+  if(!list.length){toast("Nothing to export yet");return}
+  download("ev-sessions-"+now().y+pad(now().m)+pad(now().d)+".csv","\ufeff"+toCSV(list),"text/csv;charset=utf-8");
+  toast(list.length+" session(s) exported as CSV");
+}
+$("backup").addEventListener("click",function(){
+  download("ev-backup-"+now().y+pad(now().m)+pad(now().d)+".json",
+    JSON.stringify({v:1,exported:new Date().toISOString(),pricePerKwh:price,vehicles:vehicles,sessions:sessions,favourites:favs},null,2),
+    "application/json");
+  toast("Backup downloaded");
+});
+$("restoreBtn").addEventListener("click",function(){$("restoreFile").click()});
+$("restoreFile").addEventListener("change",function(){
+  var f=this.files&&this.files[0];if(!f)return;
+  var r=new FileReader();
+  r.onload=function(){
+    try{
+      var d=JSON.parse(r.result);
+      if(!d||!Array.isArray(d.vehicles)||!Array.isArray(d.sessions))throw 0;
+      vehicles=d.vehicles;if(!vehicles.length)vehicles=[{id:uid(),name:"Vehicle 1",icon:"🚗"}];
+      sessions=d.sessions;cur=0;dirty=true;save();dirty=false;
+      if(isFinite(d.pricePerKwh)){price=Math.max(0,d.pricePerKwh);$("ppk").value=price;persist()}
+      try{localStorage.setItem(K.f,JSON.stringify(Array.isArray(d.favourites)?d.favourites:[]))}catch(e){}
+      loadFavs();
+      render();toast("Restored "+sessions.length+" session(s) and "+favs.length+" favourite(s)");
+    }catch(err){toast("That file is not a valid backup")}
+  };
+  r.readAsText(f);this.value="";
+});
+$("clearBtn").addEventListener("click",function(){
+  if(!confirm("Delete all "+sessions.length+" stored session(s)? Vehicles and favourites stay."))return;
+  sessions=[];save();render();toast("Sessions cleared");
+});
+$("wipeBtn").addEventListener("click",function(){
+  if(!confirm("Delete all vehicles, every stored session and all favourites? This cannot be undone."))return;
+  vehicles=[{id:uid(),name:"Vehicle 1",icon:"🚗"}];sessions=[];favs=[];cur=0;clearFavForm();save();saveFavs();render();toast("Everything deleted");
+});
+$("sForm").addEventListener("submit",function(e){
+  e.preventDefault();
+  var f=e.target,d=f.elements;
+  if(!f.reportValidity())return;
+  var v=veh();
+  var s={
+    id:uid(),vehicleId:v.id,date:d.date.value,time:d.time.value,
+    duration:d.duration.value,hours:hmToHours(d.duration.value),
+    location:d.location.value.trim(),energy:num(d.energy.value),mileage:num(d.mileage.value),
+    cost:d.cost.value===""?null:Math.max(0,num(d.cost.value)),
+    notes:d.notes.value.trim(),fast:d.fast.checked,home:d.home.checked,fav:d.fav.checked,
+    created:Date.now()
+  };
+  sessions.push(s);save();
+  if(s.fav){
+    var matched=null;
+    for(var fi=0;fi<favs.length;fi++){
+      if(favs[fi].address===s.location||favs[fi].name===s.location)matched=favs[fi];
+    }
+    upsertFavFromSession(d.favName.value.trim()||s.location,s.location,
+      matched?matched.lat:null,matched?matched.lng:null);
+  }
+  f.reset();$("duration").value="00:30";$("favNameWrap").hidden=true;stampDefaults();
+  render();
+  toast("Session saved to "+v.name+(s.fav?" · favourite updated":""));
+});
+$("fav").addEventListener("change",function(){
+  $("favNameWrap").hidden=!this.checked;
+  if(this.checked){
+    if(!$("favName").value.trim())$("favName").value=$("location").value.trim();
+    $("favName").focus();
+  }
+});
+$("fFind").addEventListener("click",geocode);
+$("fSave").addEventListener("click",saveFavourite);
+$("fClear").addEventListener("click",clearFavForm);
+$("fAddr").addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();geocode()}});
+$("fName").addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();$("fAddr").focus()}});
+$("fLat").addEventListener("change",function(){
+  var la=parseFloat(this.value),lo=parseFloat($("fLng").value);
+  if(isFinite(la)&&isFinite(lo))showPin(la,lo,$("fName").value.trim());
+});
+$("fLng").addEventListener("change",function(){
+  var lo=parseFloat(this.value),la=parseFloat($("fLat").value);
+  if(isFinite(la)&&isFinite(lo))showPin(la,lo,$("fName").value.trim());
+});
+$("themeBtn").addEventListener("click",function(){
+  var d=document.body.classList.toggle("dark");
+  $("themeBtn").textContent=d?"🌙":"☀️";
+  try{localStorage.setItem(K.t,d?"dark":"light")}catch(e){}
+});
+window.addEventListener("hashchange",function(){
+  var h=location.hash.slice(1);
+  if(h&&document.getElementById(h))go(h);
+});
+var rt;
+window.addEventListener("resize",function(){clearTimeout(rt);rt=setTimeout(render,150)});
+
+/* ---------- boot ---------- */
+if(localStorage.getItem(K.t)==="dark"){
+  document.body.classList.add("dark");$("themeBtn").textContent="🌙";
+}
+load();
+loadFavs();
+var dl=document.createElement("datalist");
+dl.id="favOptions";
+document.body.appendChild(dl);
+$("location").setAttribute("list","favOptions");
+renderFavs();
+stampDefaults();
+var start=location.hash.slice(1);
+go(document.getElementById(start)?start:"dashboard");
+if(view==="favourites")ensureMap();
+window.addEventListener("online",function(){if(view==="favourites"){leafletState=0;ensureMap()}});
+setInterval(function(){
+  var ae=document.activeElement;
+  if(ae!==$("date")&&ae!==$("time")&&!$("sForm").contains(ae))stampDefaults();
+},60000);
+})();
+</script>
+</body>
+</html>
