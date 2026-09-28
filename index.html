@@ -480,6 +480,47 @@
             gap: 0.75rem;
         }
 
+        /* Preview card */
+        .project-card-link {
+            display: block;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .project-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .project-icon span {
+            font-size: 4.5rem;
+            line-height: 1;
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.25));
+        }
+
+        .preview-card {
+            margin-top: 2.5rem;
+        }
+
+        .preview-frame {
+            position: relative;
+            width: 100%;
+            height: 520px;
+            border: 2px solid rgba(37, 99, 235, 0.15);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            background: #f8fafc;
+            box-shadow: var(--shadow-md);
+        }
+
+        .preview-frame iframe {
+            width: 100%;
+            height: 100%;
+            border: 0;
+            display: block;
+        }
+
         /* Contact Section */
         .contact {
             padding: 6rem 0;
@@ -680,6 +721,7 @@
                 <li><a href="#about">About</a></li>
                 <li><a href="#skills">Skills</a></li>
                 <li><a href="#projects">Projects</a></li>
+        <li><a href="ev-tracker.html">EV Tracker</a></li>
                 <li><a href="#contact">Contact</a></li>
             </ul>
             <button class="theme-toggle" onclick="toggleTheme()">☀️</button>
@@ -813,18 +855,39 @@
                             <a href="#" class="project-link">View Project →</a>
                         </div>
                     </div>
-                    <div class="project-card">
-                        <div class="project-image"></div>
+                    <a class="project-card project-card-link" href="ev-tracker.html" aria-label="Open the EV Multi-Tracker app">
+                        <div class="project-image project-icon">
+                            <span aria-hidden="true">🚗</span>
+                        </div>
                         <div class="project-content">
                             <h3 class="project-title">EV Multi-Tracker</h3>
-                            <p class="project-description">Web app for tracking electric vehicle charging: date, time, location, mileage, energy and duration per session, multiple vehicles, favourites and CSV/JSON export. Data stays in the browser.</p>
+                            <p class="project-description">A web app for logging electric vehicle charging sessions with date, time, location, mileage, energy, duration and notes, including multiple vehicles, a favourites map and CSV export. All data is stored in your own browser.</p>
                             <div class="project-tags">
                                 <span class="tag">HTML</span>
                                 <span class="tag">CSS</span>
                                 <span class="tag">JavaScript</span>
+                                <span class="tag">Leaflet</span>
                             </div>
-                            <a href="ev-tracker.html" class="project-link">Open Project →</a>
+                            <span class="project-link">Open Project →</span>
                         </div>
+                    </a>
+                </div>
+
+                <div class="project-card preview-card">
+                    <div class="project-content">
+                        <h3 class="project-title">Live preview · EV Multi-Tracker</h3>
+                        <p class="project-description">The app below is a working preview. Log a session, switch vehicles, edit rows in the charge log, use the favourites map and export to CSV — the data is stored in your own browser.</p>
+                        <div class="preview-frame">
+                            <iframe src="ev-tracker.html" title="EV Multi-Tracker preview" loading="lazy" referrerpolicy="no-referrer"></iframe>
+                        </div>
+                        <div class="project-tags" style="margin-top:1.25rem">
+                            <span class="tag">HTML</span>
+                            <span class="tag">CSS</span>
+                            <span class="tag">JavaScript</span>
+                            <span class="tag">Leaflet</span>
+                            <span class="tag">OpenStreetMap</span>
+                        </div>
+                        <a href="ev-tracker.html" class="project-link">Open the app in its own page →</a>
                     </div>
                 </div>
             </div>
@@ -862,6 +925,7 @@
                 <a href="#about">About</a>
                 <a href="#skills">Skills</a>
                 <a href="#projects">Projects</a>
+                <a href="ev-tracker.html">EV Tracker</a>
                 <a href="#contact">Contact</a>
             </div>
             <div class="social-links">
@@ -991,6 +1055,11 @@
             .dark-theme .project-card {
                 background: rgba(15, 23, 42, 0.8);
                 border-color: rgba(255, 255, 255, 0.1);
+            }
+            
+            .dark-theme .preview-frame {
+                background: #0f172a;
+                border-color: rgba(96, 165, 250, 0.25);
             }
             
             .dark-theme .stat-item {
