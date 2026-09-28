@@ -480,7 +480,7 @@
             gap: 0.75rem;
         }
 
-        /* Preview card */
+        /* Project icon + plain-text link */
         .project-icon {
             display: flex;
             align-items: center;
@@ -493,52 +493,16 @@
             filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.25));
         }
 
-        .btn-preview {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin-top: 0.5rem;
-            padding: 0.8rem 1.5rem;
-            border-radius: var(--border-radius);
-            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
-            color: #ffffff;
-            font-weight: 600;
-            font-size: 1rem;
-            text-decoration: none;
-            box-shadow: var(--shadow-md);
-            transition: var(--transition);
+        .project-note {
+            max-width: 720px;
+            margin: 1.25rem auto 0;
+            color: var(--secondary-color);
+            font-size: 1.05rem;
+            line-height: 1.7;
         }
 
-        .btn-preview:hover {
-            transform: translateY(-3px);
-            box-shadow: var(--shadow-xl);
-        }
-
-        .btn-preview:focus-visible {
-            outline: 3px solid var(--accent-color);
-            outline-offset: 3px;
-        }
-
-        .preview-card {
-            margin-top: 2.5rem;
-        }
-
-        .preview-frame {
-            position: relative;
-            width: 100%;
-            height: 520px;
-            border: 2px solid rgba(37, 99, 235, 0.15);
-            border-radius: var(--border-radius);
-            overflow: hidden;
-            background: #f8fafc;
-            box-shadow: var(--shadow-md);
-        }
-
-        .preview-frame iframe {
-            width: 100%;
-            height: 100%;
-            border: 0;
-            display: block;
+        .project-note .project-link {
+            font-size: 1.05rem;
         }
 
         /* Contact Section */
@@ -800,10 +764,6 @@
                 font-size: 1.8rem;
             }
 
-            .preview-frame {
-                height: 380px;
-            }
-
             .cta-button {
                 padding: 0.85rem 1.5rem;
                 font-size: 1rem;
@@ -823,10 +783,6 @@
             .nav-links a {
                 font-size: 0.78rem;
                 padding: 0.35rem 0.55rem;
-            }
-
-            .preview-frame {
-                height: 320px;
             }
         }
 
@@ -944,6 +900,12 @@
                 <div class="section-header">
                     <h2>Featured Projects</h2>
                     <p>Some of my recent work and personal projects</p>
+                    <p class="project-note">
+                        <a href="ev-tracker.html" class="project-link">EV-tracker</a>
+                        is a web app for logging electric vehicle charging sessions with date, time, location,
+                        mileage, energy, duration and notes. It keeps several vehicles, named favourite
+                        locations with a map, and exports everything to CSV.
+                    </p>
                 </div>
                 <div class="projects-grid">
                     <div class="project-card">
@@ -998,26 +960,8 @@
                                 <span class="tag">JavaScript</span>
                                 <span class="tag">Leaflet</span>
                             </div>
-                            <a href="ev-tracker.html" class="btn-preview">Open the EV Tracker →</a>
+                            <a href="ev-tracker.html" class="project-link">View Project →</a>
                         </div>
-                    </div>
-                </div>
-
-                <div class="project-card preview-card">
-                    <div class="project-content">
-                        <h3 class="project-title">Live preview · EV Multi-Tracker</h3>
-                        <p class="project-description">The app below is a working preview. Log a session, switch vehicles, edit rows in the charge log, use the favourites map and export to CSV — the data is stored in your own browser.</p>
-                        <div class="preview-frame">
-                            <iframe src="ev-tracker.html" title="EV Multi-Tracker preview" loading="lazy" referrerpolicy="no-referrer"></iframe>
-                        </div>
-                        <div class="project-tags" style="margin-top:1.25rem">
-                            <span class="tag">HTML</span>
-                            <span class="tag">CSS</span>
-                            <span class="tag">JavaScript</span>
-                            <span class="tag">Leaflet</span>
-                            <span class="tag">OpenStreetMap</span>
-                        </div>
-                        <a href="ev-tracker.html" class="btn-preview">Open the app in its own page →</a>
                     </div>
                 </div>
             </div>
@@ -1186,9 +1130,8 @@
                 border-color: rgba(255, 255, 255, 0.1);
             }
             
-            .dark-theme .preview-frame {
-                background: #0f172a;
-                border-color: rgba(96, 165, 250, 0.25);
+            .dark-theme .project-icon span {
+                filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
             }
             
             .dark-theme .stat-item {
