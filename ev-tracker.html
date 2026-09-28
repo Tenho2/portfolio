@@ -195,18 +195,19 @@ footer{margin-left:250px;background:var(--surface);border-top:1px solid var(--li
         <div class="mini" style="margin-bottom:.5rem">Select vehicle</div>
         <div class="veh" id="vehList"></div>
       </div>
+      <div class="qa">
+        <button data-go="add-session"><span class="ic" aria-hidden="true">📝</span>Log session</button>
+        <button data-go="view-data"><span class="ic" aria-hidden="true">📄</span>Charge log</button>
+        <button id="qaCsv"><span class="ic" aria-hidden="true">📄</span>CSV</button>
+        <button data-go="settings"><span class="ic" aria-hidden="true">➕</span>Add vehicle</button>
+      </div>
       <div class="stats" id="stats">
         <div class="stat"><div class="n" id="sEnergy">0 kWh</div><div class="l">Energy charged</div></div>
         <div class="stat"><div class="n" id="sDist">0 km</div><div class="l">Distance covered</div></div>
         <div class="stat"><div class="n" id="sCost">€0.00</div><div class="l">Total cost</div></div>
         <div class="stat"><div class="n" id="sDur">0 h</div><div class="l">Charging time</div></div>
         <div class="stat"><div class="n" id="sEff">–</div><div class="l">Avg kWh / 100 km</div></div>
-      </div>
-      <div class="qa">
-        <button data-go="add-session"><span class="ic" aria-hidden="true">📝</span>Log session</button>
-        <button data-go="view-data"><span class="ic" aria-hidden="true">📄</span>Charge log</button>
-        <button id="qaCsv"><span class="ic" aria-hidden="true">📄</span>CSV</button>
-        <button data-go="settings"><span class="ic" aria-hidden="true">➕</span>Add vehicle</button>
+        <div class="stat"><div class="n" id="sCost100">–</div><div class="l">Avg cost / 100 km</div></div>
       </div>
     </div>
   </section>
@@ -503,6 +504,7 @@ function render(){
   $("sCost").textContent="€"+T.cost.toFixed(2);
   $("sDur").textContent=T.h.toFixed(1)+" h";
   $("sEff").textContent=T.km>0?(T.kwh/T.km*100).toFixed(1):"—";
+  $("sCost100").textContent=T.km>0?"€"+(T.cost/T.km*100).toFixed(2):"—";
 
   var list=sorted(ofVehicle(v.id));
   $("logLead").textContent=list.length?list.length+" session"+(list.length===1?"":"s")+" stored for "+v.name+", newest first.":"No sessions stored for "+v.name+" yet.";
@@ -975,7 +977,7 @@ $("sForm").addEventListener("submit",function(e){
       matched?matched.lat:null,matched?matched.lng:null);
   }
   f.reset();$("duration").value="00:30";$("favNameWrap").hidden=true;stampDefaults();
-  render();
+  go("dashboard");
   toast("Session saved to "+v.name+(s.fav?" · favourite updated":""));
 });
 $("fav").addEventListener("change",function(){
