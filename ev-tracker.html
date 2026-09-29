@@ -66,8 +66,13 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator,
 input[type="month"]::-webkit-calendar-picker-indicator,
 input[type="week"]::-webkit-calendar-picker-indicator{
   width:22px;height:22px;padding:2px;margin:0 6px 0 0;cursor:pointer;
-  opacity:.45;filter:invert(1);transition:opacity var(--t)
+  opacity:.45;transition:opacity var(--t)
 }
+body.dark input[type="date"]::-webkit-calendar-picker-indicator,
+body.dark input[type="time"]::-webkit-calendar-picker-indicator,
+body.dark input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+body.dark input[type="month"]::-webkit-calendar-picker-indicator,
+body.dark input[type="week"]::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.6}
 input[type="date"]:hover::-webkit-calendar-picker-indicator,
 input[type="time"]:hover::-webkit-calendar-picker-indicator,
 input[type="datetime-local"]:hover::-webkit-calendar-picker-indicator,
@@ -145,7 +150,36 @@ body.dark #map{border-color:#475569}
 .chip{display:inline-flex;align-items:center;gap:.35rem;padding:.3rem .6rem;border:1px solid var(--line);border-radius:20px;background:var(--surface-2);color:var(--text);font:inherit;font-size:.8rem;font-weight:600;cursor:pointer;transition:var(--t)}
 .chip:hover{border-color:var(--primary);color:var(--primary)}
 body.dark .chip{border-color:#3b82f6;background:#1e293b;color:#e2e8f0}
+.loc-f{position:relative}
+.suggest{list-style:none;margin:.35rem 0 0;border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden;box-shadow:var(--sh-lg);max-height:260px;overflow-y:auto;z-index:5}
+.suggest[hidden]{display:none}
+.suggest li{padding:.55rem .75rem;font-size:.9rem;color:var(--text);cursor:pointer;border-bottom:1px solid var(--line);line-height:1.4}
+.suggest li:last-child{border-bottom:0}
+.suggest li:hover,.suggest li.on{background:var(--surface-2);color:var(--primary)}
+#sessMapBox{margin-bottom:1.5rem}
+#sessMap{height:240px;border:2px solid var(--line);border-radius:10px;background:var(--surface-2);overflow:hidden}
+body.dark #sessMap{border-color:#475569}
 .leaflet-container{font:inherit;background:#dfe6e9}
+.howto{margin-top:1.5rem;border:1px solid var(--line);border-radius:10px;padding:.85rem 1rem;background:var(--surface-2)}
+.howto summary{cursor:pointer;font-weight:600;color:var(--primary);list-style-position:inside}
+.howto h4{margin:1.25rem 0 .4rem;font-size:.95rem}
+.howto p{margin:.4rem 0;color:var(--text-muted);font-size:.9rem}
+.howto ul{margin:.5rem 0 0 1.1rem;color:var(--text-muted);font-size:.9rem}
+.howto li{margin-bottom:.3rem}
+.howto code{background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:0 .3rem;font-size:.85em}
+.howto pre.sample{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:.75rem;overflow-x:auto;font-size:.8rem;line-height:1.5;margin-top:.4rem}
+table.fmt{font-size:.85rem;min-width:0;margin-top:.5rem;display:table;width:100%}
+table.fmt th{position:static}
+.res{margin-top:1.25rem;border-radius:10px;padding:1rem;border:1px solid var(--line)}
+.res.ok{background:#dcfce7;border-color:#22c55e;color:#14532d}
+.res.warn{background:#fef3c7;border-color:#f59e0b;color:#78350f}
+.res.bad{background:#fee2e2;border-color:#ef4444;color:#7f1d1d}
+.res h4{color:inherit;margin-bottom:.4rem}
+.res ul{margin:.4rem 0 0 1.1rem;font-size:.88rem}
+body.dark .res.ok{background:#14532d;border-color:#22c55e;color:#dcfce7}
+body.dark .res.warn{background:#78350f;border-color:#f59e0b;color:#fef3c7}
+body.dark .res.bad{background:#7f1d1d;border-color:#ef4444;color:#fee2e2}
+body.dark .howto code,body.dark .howto pre.sample{background:#0f172a;border-color:#475569}
 .sheet{position:fixed;inset:0;background:rgba(2,6,23,.55);backdrop-filter:blur(2px);z-index:80;display:none;padding:1rem;overflow-y:auto}
 .sheet.on{display:flex;align-items:flex-start;justify-content:center}
 .sheet-box{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);width:100%;max-width:560px;margin:auto;box-shadow:var(--sh-lg);padding:1.5rem}
@@ -172,10 +206,10 @@ footer{margin-left:250px;background:var(--surface);border-top:1px solid var(--li
   <a class="side-brand" href="#dashboard"><span aria-hidden="true">🚗</span> EV Multi-Tracker</a>
   <ul class="side-nav">
     <li><button data-go="dashboard" aria-current="page"><span class="ic" aria-hidden="true">📊</span><span>Dashboard</span></button></li>
-    <li><button data-go="add-session"><span class="ic" aria-hidden="true">📝</span><span>Add Session</span></button></li>
-    <li><button data-go="view-data"><span class="ic" aria-hidden="true">📄</span><span>Charge Log</span></button></li>
+    <li><button data-go="add-session"><span class="ic" aria-hidden="true">📝</span><span>Add session</span></button></li>
+    <li><button data-go="view-data"><span class="ic" aria-hidden="true">📄</span><span>Charge log</span></button></li>
     <li><button data-go="favourites"><span class="ic" aria-hidden="true">⭐</span><span>Favourites</span></button></li>
-    <li><button data-go="export-data"><span class="ic" aria-hidden="true">💾</span><span>Export</span></button></li>
+    <li><button data-go="import"><span class="ic" aria-hidden="true">📥</span><span>Import</span></button></li>
     <li><button data-go="settings"><span class="ic" aria-hidden="true">⚙️</span><span>Settings</span></button></li>
   </ul>
   <div class="badge" id="dbInfo">Local storage · 0 sessions</div>
@@ -196,16 +230,16 @@ footer{margin-left:250px;background:var(--surface);border-top:1px solid var(--li
         <div class="veh" id="vehList"></div>
       </div>
       <div class="qa">
-        <button data-go="add-session"><span class="ic" aria-hidden="true">📝</span>Log session</button>
+        <button data-go="add-session"><span class="ic" aria-hidden="true">📝</span>Add session</button>
         <button data-go="view-data"><span class="ic" aria-hidden="true">📄</span>Charge log</button>
-        <button id="qaCsv"><span class="ic" aria-hidden="true">📄</span>CSV</button>
+        <button data-go="import"><span class="ic" aria-hidden="true">📥</span>Import data</button>
         <button data-go="settings"><span class="ic" aria-hidden="true">➕</span>Add vehicle</button>
       </div>
       <div class="stats" id="stats">
         <div class="stat"><div class="n" id="sEnergy">0 kWh</div><div class="l">Energy charged</div></div>
         <div class="stat"><div class="n" id="sDist">0 km</div><div class="l">Distance covered</div></div>
         <div class="stat"><div class="n" id="sCost">€0.00</div><div class="l">Total cost</div></div>
-        <div class="stat"><div class="n" id="sDur">0 h</div><div class="l">Charging time</div></div>
+        <div class="stat"><div class="n" id="sDur">0 h</div><div class="l">Total charging time</div></div>
         <div class="stat"><div class="n" id="sEff">–</div><div class="l">Avg kWh / 100 km</div></div>
         <div class="stat"><div class="n" id="sCost100">–</div><div class="l">Avg cost / 100 km</div></div>
       </div>
@@ -214,7 +248,7 @@ footer{margin-left:250px;background:var(--surface);border-top:1px solid var(--li
 
   <section class="view" id="add-session">
     <div class="panel">
-      <h2><span aria-hidden="true">📝</span> Log charging session</h2>
+      <h2><span aria-hidden="true">📝</span> Add charging session</h2>
       <p class="lead" id="formVeh">Vehicle 1</p>
       <form id="sForm" novalidate>
         <div class="row">
@@ -225,7 +259,21 @@ footer{margin-left:250px;background:var(--surface);border-top:1px solid var(--li
           <div class="f"><label for="duration">Session duration</label><input type="time" id="duration" name="duration" step="300" value="00:30" required><div class="hint">Hours and minutes, 5-minute steps</div></div>
           <div class="f"><label for="mileage">Mileage (km)</label><input type="number" id="mileage" name="mileage" min="0" step="0.1" placeholder="e.g. 45000" required></div>
         </div>
-        <div class="f"><label for="location">Location / station</label><input type="text" id="location" name="location" placeholder="e.g. Supercharger Vaasa" required list="favOptions"><div class="chips" id="favQuick" hidden></div></div>
+        <div class="f loc-f">
+          <label for="location">Location / station</label>
+          <div class="addrow" style="margin:0">
+            <input type="text" id="location" name="location" placeholder="Start typing an address…" required list="favOptions" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="locSuggest">
+            <button class="btn ghost" type="button" id="locFind">📍 Find</button>
+          </div>
+          <ul class="suggest" id="locSuggest" role="listbox" hidden></ul>
+          <div class="chips" id="favQuick" hidden></div>
+          <div class="hint" id="locStat" role="status" aria-live="polite"></div>
+        </div>
+        <div id="sessMapBox" hidden>
+          <div id="sessMap" aria-label="Map of the selected location"></div>
+          <div class="mini" style="margin-top:.4rem">Drag the pin to adjust the position, or click the map.</div>
+          <div class="mini" id="sessMapMsg" hidden>Map unavailable offline. The address is still saved with the session.</div>
+        </div>
         <div class="row">
           <div class="f"><label for="energy">Energy charged (kWh)</label><input type="number" id="energy" name="energy" min="0" step="0.01" placeholder="e.g. 52.4" required></div>
           <div class="f"><label for="cost">Cost (€)</label><input type="number" id="cost" name="cost" min="0" step="0.01" placeholder="auto"><div class="hint" id="priceHint">Leave empty to use the price per kWh from settings</div></div>
@@ -235,7 +283,7 @@ footer{margin-left:250px;background:var(--surface);border-top:1px solid var(--li
         <div class="chk"><input type="checkbox" id="home" name="home"><label for="home">Home charging session</label></div>
         <div class="chk"><input type="checkbox" id="fav" name="fav"><label for="fav">Save this location as a favourite</label></div>
         <div class="f" id="favNameWrap" hidden><label for="favName">Favourite name</label><input type="text" id="favName" maxlength="40" placeholder="e.g. Home, Vaasa S1"><div class="hint">Leave empty to use the location text. You can add a map position later in Favourites.</div></div>
-        <button class="btn block" type="submit" id="saveBtn">Save session</button>
+        <button class="btn block" type="submit" id="saveBtn">Add session</button>
       </form>
     </div>
   </section>
@@ -253,17 +301,78 @@ footer{margin-left:250px;background:var(--surface);border-top:1px solid var(--li
     </div>
   </section>
 
-  <section class="view" id="export-data">
+  <section class="view" id="import">
     <div class="panel">
-      <h2><span aria-hidden="true">💾</span> Export data</h2>
-      <p class="lead">Download everything stored in this browser. Scope applies to the selected vehicle.</p>
-      <div class="row">
-        <div class="f"><label for="scope">Scope</label><select id="scope"><option value="all">All vehicles</option></select></div>
+      <h2><span aria-hidden="true">📥</span> Import charge data</h2>
+      <p class="lead">Load sessions from a file. Supported: <strong>.csv</strong>, <strong>.tsv</strong> and <strong>.json</strong>. Existing sessions are kept; the imported ones are added to the vehicle in the <em>Vehicle</em> column, or to the currently selected vehicle when that column is missing or empty.</p>
+
+      <div class="f" style="max-width:420px">
+        <label for="impFile">Choose a file</label>
+        <input type="file" id="impFile" accept=".csv,.tsv,.txt,.json,text/csv,text/tab-separated-values,application/json">
       </div>
-      <div class="qa" style="margin-top:.5rem">
-        <button id="exCsv"><span class="ic" aria-hidden="true">📄</span>CSV</button>
-        <button id="exJson"><span class="ic" aria-hidden="true">{ }</span>JSON</button>
+      <div class="addrow" style="margin-top:0">
+        <button class="btn sec" id="impGo">Import file</button>
+        <button class="btn ghost" id="tplCsv">Download CSV template</button>
+        <button class="btn ghost" id="tplJson">Download JSON template</button>
       </div>
+
+      <div id="impResult" hidden></div>
+
+      <details class="howto">
+        <summary>How the file must be formatted</summary>
+
+        <h4>Column names (CSV / TSV)</h4>
+        <p>The first row must be a header row. Column names are matched case-insensitively and spaces, underscores and dashes are ignored, so <code>Energy (kWh)</code>, <code>energy_kwh</code> and <code>ENERGY</code> all work.</p>
+        <table class="fmt">
+          <thead><tr><th>Column</th><th>Required</th><th>Accepted values</th></tr></thead>
+          <tbody>
+            <tr><td><code>date</code></td><td>yes</td><td>YYYY-MM-DD, e.g. <code>2026-09-28</code></td></tr>
+            <tr><td><code>time</code></td><td>yes</td><td>HH:MM 24-hour, e.g. <code>08:15</code></td></tr>
+            <tr><td><code>location</code></td><td>yes</td><td>Any text, e.g. <code>Supercharger Vaasa</code></td></tr>
+            <tr><td><code>energy</code></td><td>yes</td><td>Number in kWh, e.g. <code>52.4</code></td></tr>
+            <tr><td><code>duration</code></td><td>no</td><td><code>HH:MM</code> or decimal hours, e.g. <code>00:45</code> or <code>0.75</code></td></tr>
+            <tr><td><code>mileage</code></td><td>no</td><td>Number in km, e.g. <code>45000</code></td></tr>
+            <tr><td><code>cost</code></td><td>no</td><td>Number in euros, e.g. <code>12.50</code>. Leave empty to use your price per kWh</td></tr>
+            <tr><td><code>vehicle</code></td><td>no</td><td>Vehicle name. A new vehicle is created for an unknown name</td></tr>
+            <tr><td><code>notes</code></td><td>no</td><td>Any text</td></tr>
+            <tr><td><code>fast</code>, <code>home</code>, <code>favourite</code></td><td>no</td><td><code>yes</code>/<code>no</code>, <code>true</code>/<code>false</code>, or <code>1</code>/<code>0</code></td></tr>
+          </tbody>
+        </table>
+
+        <h4>Example CSV</h4>
+        <pre class="sample">date,time,duration,location,energy,mileage,cost,vehicle,notes,fast,home,favourite
+2026-09-28,08:15,00:45,Supercharger Vaasa,52.4,45000,12.50,Vehicle 1,150 kW 20-80%,yes,no,yes
+2026-09-20,19:40,01:30,Home,30,44810,,Vehicle 1,,no,yes,no</pre>
+
+        <h4>TSV</h4>
+        <p>Identical to CSV but the columns are separated by a tab character. Saving a CSV as “Tab separated (.tsv)” from Excel or Google Sheets works.</p>
+
+        <h4>JSON</h4>
+        <p>Either a plain array of session objects, or a file previously produced by <em>Backup JSON</em> (which may also contain <code>vehicles</code>, <code>favourites</code> and <code>pricePerKwh</code>).</p>
+        <pre class="sample">[
+  {
+    "date": "2026-09-28",
+    "time": "08:15",
+    "duration": "00:45",
+    "location": "Supercharger Vaasa",
+    "energy": 52.4,
+    "mileage": 45000,
+    "cost": 12.5,
+    "vehicle": "Vehicle 1",
+    "notes": "150 kW",
+    "fast": true,
+    "home": false,
+    "favourite": true
+  }
+]</pre>
+
+        <h4>Notes</h4>
+        <ul>
+          <li>The first line of a UTF-8 file may include a byte order mark; it is ignored.</li>
+          <li>Text containing a comma, a semicolon or a quote must be wrapped in double quotes (<code>"Name, Inc."</code>).</li>
+          <li>Rows that are missing a date, time, location or a numeric energy value are skipped and listed with the reason, so nothing is imported silently.</li>
+        </ul>
+      </details>
     </div>
   </section>
 
@@ -314,10 +423,24 @@ footer{margin-left:250px;background:var(--surface);border-top:1px solid var(--li
       <div class="f" style="max-width:260px"><label for="ppk">Price per kWh (€)</label><input type="number" id="ppk" min="0" step="0.01" value="0.20"></div>
     </div>
     <div class="panel">
+      <h2><span aria-hidden="true">💾</span> Export data</h2>
+      <p class="lead">Download the charge log as a file. The scope decides which vehicle the file covers.</p>
+      <div class="row">
+        <div class="f" style="max-width:320px"><label for="scope">Scope</label><select id="scope"><option value="all">All vehicles</option></select></div>
+      </div>
+      <div class="qa" style="margin-top:.5rem">
+        <button id="exCsv"><span class="ic" aria-hidden="true">📄</span>Export CSV</button>
+        <button id="exJson"><span class="ic" aria-hidden="true">{ }</span>Export JSON</button>
+        <button class="btn ghost" id="tplCsv"><span class="ic" aria-hidden="true">📝</span>CSV template</button>
+        <button class="btn ghost" id="tplJson"><span class="ic" aria-hidden="true">{ }</span>JSON template</button>
+      </div>
+    </div>
+    <div class="panel">
       <h2><span aria-hidden="true">🗄️</span> Data</h2>
+      <p class="lead">Backup, restore and cleanup.</p>
       <div class="qa" style="margin-top:0">
         <button id="backup"><span class="ic" aria-hidden="true">⬇️</span>Backup JSON</button>
-        <button class="btn warn" id="restoreBtn"><span class="ic" aria-hidden="true">⬆️</span>Restore</button>
+        <button class="btn warn" id="restoreBtn"><span class="ic" aria-hidden="true">⬆️</span>Restore backup</button>
         <button class="btn warn" id="clearBtn"><span class="ic" aria-hidden="true">🧹</span>Clear sessions</button>
         <button class="btn dgr" id="wipeBtn"><span class="ic" aria-hidden="true">🗑️</span>Delete everything</button>
       </div>
@@ -480,7 +603,7 @@ function toast(msg){
 /* ---------- render ---------- */
 function render(){
   var v=veh();
-  $("who").textContent=view==="dashboard"||view==="view-data"?v.name:({ "add-session":"Log charging session","export-data":"Export data","settings":"Settings"})[view]||"Dashboard";
+  $("who").textContent=view==="dashboard"||view==="view-data"?v.name:({ "add-session":"Add charging session","import":"Import charge data","settings":"Settings"})[view]||"Dashboard";
   $("formVeh").textContent=v.name;
   $("dbInfo").textContent="Local storage · "+sessions.length+" session"+(sessions.length===1?"":"s")+" · "+vehicles.length+" vehicle"+(vehicles.length===1?"":"s");
 
@@ -570,6 +693,243 @@ function renderFavs(){
   $("favQuick").hidden=favs.length===0;
   refreshDatalist();
 }
+
+/* ---------- import ---------- */
+var IMPORT_COLS=[
+  {key:"date",     re:["date","day","chargingdate"]},
+  {key:"time",     re:["time","starttime","start"]},
+  {key:"duration", re:["duration","sessionduration","durationh","hours","chargingtime"]},
+  {key:"location", re:["location","station","place","site","address"]},
+  {key:"energy",   re:["energy","energykwh","kwh","energycharged","charge"]},
+  {key:"mileage",  re:["mileage","odometer","km","distance","kmreading"]},
+  {key:"cost",     re:["cost","price","totalcost","costEUR","amount"]},
+  {key:"vehicle",  re:["vehicle","car","vehicleName"]},
+  {key:"notes",    re:["notes","note","comment","comments"]},
+  {key:"fast",     re:["fast","fastcharging","dc","directcurrent"]},
+  {key:"home",     re:["home","homecharging","ac","alternatingcurrent"]},
+  {key:"favourite",re:["favourite","favorite","fav","favouriteLocation"]}
+];
+function normHeader(v){
+  return String(v==null?"":v).replace(/^\uFEFF/,"").toLowerCase().replace(/[^a-z0-9]/g,"");
+}
+function parseDelimited(text,delim){
+  var rows=[],row=[],cur="",quoted=false,i=0;
+  text=String(text==null?"":text).replace(/^\uFEFF/,"");
+  while(i<text.length){
+    var c=text.charAt(i);
+    if(quoted){
+      if(c==='"'){
+        if(text.charAt(i+1)==='"'){cur+='"';i+=2;continue}
+        quoted=false;i++;continue;
+      }
+      cur+=c;i++;continue;
+    }
+    if(c==='"'){quoted=true;i++;continue}
+    if(c===delim){row.push(cur);cur="";i++;continue}
+    if(c==="\r"){i++;continue}
+    if(c==="\n"){row.push(cur);rows.push(row);row=[];cur="";i++;continue}
+    cur+=c;i++;
+  }
+  if(cur!==""||row.length){row.push(cur);rows.push(row)}
+  return rows.filter(function(r){
+    for(var i=0;i<r.length;i++)if(String(r[i]).trim()!=="")return true;
+    return false;
+  });
+}
+function isYes(v){
+  var s=String(v==null?"":v).trim().toLowerCase();
+  return s==="yes"||s==="y"||s==="true"||s==="1"||s==="x";
+}
+function validDate(v){
+  var s=String(v||"").trim();
+  var m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if(!m)return null;
+  var y=+m[1],mo=+m[2],d=+m[3];
+  var dt=new Date(y,mo-1,d);
+  if(dt.getFullYear()!==y||dt.getMonth()!==mo-1||dt.getDate()!==d)return null;
+  return y+"-"+pad(mo)+"-"+pad(d);
+}
+function validTime(v){
+  var m=String(v==null?"":v).trim().match(/^(\d{1,2})[:.\-h]?(\d{2})$/);
+  if(!m)return null;
+  var h=+m[1],mi=+m[2];
+  if(h>23||mi>59)return null;
+  return pad(h)+":"+pad(mi);
+}
+function vehicleForImport(name){
+  var want=String(name||"").trim();
+  if(!want)return veh();
+  var low=want.toLowerCase();
+  for(var i=0;i<vehicles.length;i++){
+    if(vehicles[i].name.toLowerCase()===low)return vehicles[i];
+  }
+  var made={id:uid(),name:want,icon:"🚙"};
+  vehicles.push(made);
+  return made;
+}
+function sessionFromObject(o,idx,errors){
+  var get=function(k){return o[k]===undefined||o[k]===null?"":String(o[k]).trim()};
+  var d=validDate(get("date"));
+  if(!d){errors.push("row "+idx+": missing or invalid date (use YYYY-MM-DD)");return null}
+  var t=validTime(get("time"));
+  if(!t){errors.push("row "+idx+": missing or invalid time (use HH:MM, 00:00-23:59)");return null}
+  var loc=get("location");
+  if(!loc){errors.push("row "+idx+": missing location");return null}
+  var eRaw=get("energy");
+  if(eRaw===""||!isNum(eRaw)){errors.push("row "+idx+": energy must be a number in kWh");return null}
+  var e=+eRaw;
+  if(e<0){errors.push("row "+idx+": energy cannot be negative");return null}
+  var dur=get("duration");
+  var hours=dur===""?0:(dur.indexOf(":")>=0?hmToHours(dur):(isNum(dur)?Math.max(0,+dur):NaN));
+  if(isNaN(hours)){errors.push("row "+idx+": duration must be HH:MM or decimal hours");return null}
+  var mRaw=get("mileage");
+  if(mRaw!==""&&!isNum(mRaw)){errors.push("row "+idx+": mileage must be a number");return null}
+  var cRaw=get("cost");
+  if(cRaw!==""&&!isNum(cRaw)){errors.push("row "+idx+": cost must be a number");return null}
+  var v=vehicleForImport(get("vehicle"));
+  return {
+    id:uid(),vehicleId:v.id,date:d,time:t,
+    duration:dur,hours:hours,location:loc,energy:e,mileage:mRaw===""?0:+mRaw,
+    cost:cRaw===""?null:Math.max(0,+cRaw),
+    notes:get("notes"),
+    fast:isYes(get("fast")),home:isYes(get("home")),favourite:isYes(get("favourite")),
+    created:Date.now()
+  };
+}
+function importText(text,fileName){
+  var name=String(fileName||"").toLowerCase();
+  var errors=[],made=[],vehiclesAdded=0,before=vehicles.length;
+  if(/\.json$/.test(name)||/^\s*[[{]/.test(text)){
+    var data;
+    try{data=JSON.parse(text)}
+    catch(err){showImport("bad","Could not read the file as JSON.",["The file is not valid JSON: "+err.message]);return}
+    if(data&&!Array.isArray(data)&&Array.isArray(data.sessions)){
+      if(isNum(data.pricePerKwh)){price=Math.max(0,data.pricePerKwh);persist();$("ppk").value=price}
+      if(Array.isArray(data.vehicles)){
+        for(var vi=0;vi<data.vehicles.length;vi++){
+          var bv=data.vehicles[vi];
+          if(bv&&bv.id&&!vehById(bv.id))vehicles.push({id:bv.id,name:String(bv.name||"Vehicle"),icon:String(bv.icon||"🚗")});
+        }
+      }
+      if(Array.isArray(data.favourites)){
+        try{localStorage.setItem(K.f,JSON.stringify(data.favourites))}catch(err){}
+        loadFavs();
+      }
+      data=data.sessions;
+    }
+    if(!Array.isArray(data)){showImport("bad","Could not read the file as JSON.",["Expected an array of sessions, or a backup object with a sessions array."]);return}
+    for(var i=0;i<data.length;i++){
+      var o=data[i];
+      if(!o||typeof o!=="object"){errors.push("row "+(i+1)+": not an object");continue}
+      var norm={};
+      for(var k in o)norm[normHeader(k)]=o[k];
+      var s=sessionFromObject(norm,i+1,errors);
+      if(s)made.push(s);
+    }
+  }else{
+    var delim=/\.(tsv|tab)$|\.txt$/.test(name)||text.indexOf("\t")>-1?"\t":",";
+    var rows=parseDelimited(text,delim);
+    if(rows.length<2){showImport("bad","Nothing to import.",["The file needs a header row and at least one data row."]);return}
+    var head=rows[0].map(normHeader);
+    var idxMap={};
+    var unknown=[];
+    for(var c=0;c<head.length;c++){
+      var hit=null;
+      if(head[c]){
+        for(var q=0;q<IMPORT_COLS.length;q++){
+          if(IMPORT_COLS[q].re.indexOf(head[c])>=0){hit=IMPORT_COLS[q].key;break}
+        }
+        if(!hit){
+          for(var q2=0;q2<IMPORT_COLS.length;q2++){
+            for(var q3=0;q3<IMPORT_COLS[q2].re.length;q3++){
+              var alias=IMPORT_COLS[q2].re[q3];
+              if(head[c].indexOf(alias)<0)continue;
+              if(hit===null||IMPORT_COLS[q2].re[0].length>IMPORT_COLS[hit].re[0].length)hit=IMPORT_COLS[q2].key;
+              break;
+            }
+          }
+        }
+      }
+      if(hit){if(idxMap[hit]===undefined)idxMap[hit]=c}
+      else if(head[c])unknown.push(rows[0][c]);
+    }
+    if(idxMap.date===undefined||idxMap.time===undefined||idxMap.location===undefined||idxMap.energy===undefined){
+      showImport("bad","The header row is missing required columns.",
+        ["Required columns: date, time, location, energy.",
+         "Found: "+(rows[0].join(", ")||"(empty)")]);
+      return;
+    }
+    for(var r=1;r<rows.length;r++){
+      var line=rows[r];
+      var obj={};
+      for(var key in idxMap){
+        var col=idxMap[key];
+        if(key==="favourite")obj[key]=line[col];
+        else obj[key]=line[col];
+      }
+      var s2=sessionFromObject(obj,r+1,errors);
+      if(s2)made.push(s2);
+    }
+    if(unknown.length){
+      errors.push("ignored unrecognised column(s): "+unknown.join(", "));
+    }
+  }
+  vehiclesAdded=vehicles.length-before;
+  if(!made.length){
+    showImport("bad","Nothing was imported ("+errors.length+" problem"+(errors.length===1?"":"s")+" found).",errors);
+    return;
+  }
+  for(var m=0;m<made.length;m++)sessions.push(made[m]);
+  save();
+  render();
+  showImport(made.length&&errors.length?"warn":"ok",
+    "Imported "+made.length+" session"+(made.length===1?"":"s")+
+    (vehiclesAdded?" and created "+vehiclesAdded+" vehicle"+(vehiclesAdded===1?"":"s"):"")+".",
+    errors);
+  toast(made.length+" session"+(made.length===1?"":"s")+" imported");
+}
+function showImport(kind,headline,list){
+  var box=$("impResult");
+  box.hidden=false;
+  box.className="res "+kind;
+  var h="<h4>"+esc(headline)+"</h4>";
+  if(list&&list.length){
+    h+="<ul>";
+    var shown=0;
+    for(var i=0;i<list.length;i++){
+      if(shown>=12){h+="<li>… and "+(list.length-shown)+" more</li>";break}
+      h+="<li>"+esc(list[i])+"</li>";shown++;
+    }
+    h+="</ul>";
+  }
+  box.innerHTML=h;
+}
+$("impGo").addEventListener("click",function(){$("impFile").click()});
+$("impFile").addEventListener("change",function(){
+  var f=this.files&&this.files[0];
+  if(!f)return;
+  var r=new FileReader();
+  r.onload=function(){importText(String(r.result||""),f.name)};
+  r.onerror=function(){showImport("bad","Could not read the file.",["The file could not be opened."])};
+  r.readAsText(f);
+  this.value="";
+});
+$("tplCsv").addEventListener("click",function(){
+  download("ev-import-template.csv","\ufeff"+
+    "date,time,duration,location,energy,mileage,cost,vehicle,notes,fast,home,favourite\n"+
+    "2026-09-28,08:15,00:45,Supercharger Vaasa,52.4,45000,12.50,Vehicle 1,150 kW 20-80%,yes,no,yes\n"+
+    "2026-09-20,19:40,01:30,Home,30,44810,,Vehicle 1,,no,yes,no\n",
+    "text/csv;charset=utf-8");
+  toast("CSV template downloaded");
+});
+$("tplJson").addEventListener("click",function(){
+  download("ev-import-template.json",JSON.stringify([{
+    date:"2026-09-28",time:"08:15",duration:"00:45",location:"Supercharger Vaasa",
+    energy:52.4,mileage:45000,cost:12.5,vehicle:"Vehicle 1",notes:"150 kW",
+    fast:true,home:false,favourite:true
+  }],null,2),"application/json");
+  toast("JSON template downloaded");
+});
 
 /* ---------- edit session ---------- */
 var editId=null,lastFocus=null;
@@ -679,13 +1039,13 @@ function fillFavForm(f){
   $("fLng").value=isNum(f.lng)?f.lng:"";
   editFav=f.id||null;
   $("fSave").textContent=f.id?"Update favourite":"Save favourite";
-  if(isNum(f.lat)&&isNum(f.lng))showPin(f.lat,f.lng,f.name);
+  if(isNum(f.lat)&&isNum(f.lng))showPin("map",f.lat,f.lng,f.name,favPinDragged);
 }
 function clearFavForm(){
   $("fName").value="";$("fAddr").value="";$("fLat").value="";$("fLng").value="";
   editFav=null;$("fSave").textContent="Save favourite";
   $("geoStat").textContent="Type an address and press Find. Uses OpenStreetMap when you are online.";
-  if(map&&marker){map.removeLayer(marker);marker=null}
+  clearPin("map");
 }
 function saveFavourite(){
   var f=readFavForm();
@@ -738,10 +1098,10 @@ function upsertFavFromSession(name,address,lat,lng){
 }
 
 /* ---------- geocoding + map ---------- */
-var map=null,marker=null,leafletState=0;
+var maps={},leafletState=0,lastGeo=0;
 function loadLeaflet(cb){
   if(window.L){cb();return}
-  if(leafletState===1)return;
+  if(leafletState===1){setTimeout(function(){loadLeaflet(cb)},120);return}
   leafletState=1;
   var css=document.createElement("link");
   css.rel="stylesheet";
@@ -751,40 +1111,77 @@ function loadLeaflet(cb){
   s.src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
   s.async=true;
   s.onload=function(){leafletState=2;cb()};
-  s.onerror=function(){leafletState=0;$("mapMsg").hidden=false};
+  s.onerror=function(){
+    leafletState=0;
+    $("mapMsg").hidden=false;
+    $("sessMapMsg").hidden=false;
+  };
   document.head.appendChild(s);
 }
-function ensureMap(){
+function getMap(id,onDrag){
+  var slot=maps[id]||(maps[id]={});
+  if(slot.map)return slot;
+  var el=$(id);
+  if(!el||!window.L)return null;
+  try{
+    slot.map=L.map(el,{scrollWheelZoom:false}).setView([63.1,21.6],11);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{
+      maxZoom:19,
+      attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(slot.map);
+    slot.map.on("click",function(e){pinAt(id,e.latlng.lat,e.latlng.lng,null,onDrag)});
+    slot.marker=null;
+    slot.onDrag=onDrag||null;
+    return slot;
+  }catch(e){return null}
+}
+function pinAt(id,lat,lng,label,onDrag){
+  var o=getMap(id,onDrag);
+  if(!o)return false;
+  try{
+    if(!o.marker)o.marker=L.marker([lat,lng],{draggable:true}).addTo(o.map);
+    else o.marker.setLatLng([lat,lng]);
+    if(o.marker.off)o.marker.off("dragend");
+    o.marker.on("dragend",function(){
+      var p=o.marker.getLatLng();
+      if(o.onDrag)o.onDrag(p.lat,p.lng);
+    });
+    if(label&&o.marker.bindPopup)o.marker.bindPopup(esc(label));
+    o.map.setView([lat,lng],16,{animate:false});
+    o.map.invalidateSize();
+    return true;
+  }catch(e){return false}
+}
+/* showPin remembers the request, so a pin asked for before Leaflet has
+   finished loading is still drawn once the map exists */
+function showPin(id,lat,lng,label,onDrag){
+  if(!isNum(lat)||!isNum(lng))return;
+  maps[id]=(maps[id]||{});
+  maps[id].pending={lat:+lat,lng:+lng,label:label||"",onDrag:onDrag||null};
   loadLeaflet(function(){
-    if(map||!window.L)return;
-    var el=$("map");
-    if(!el)return;
-    try{
-      map=L.map(el,{scrollWheelZoom:false}).setView([63.1,21.6],11);
-      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{
-        maxZoom:19,
-        attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-      }).addTo(map);
-      map.on("click",function(e){placeMarker(e.latlng.lat,e.latlng.lng)});
-    }catch(e){$("mapMsg").hidden=false}
+    var o=getMap(id,maps[id].pending?maps[id].pending.onDrag:null);
+    if(!o)return;
+    var p=maps[id].pending;
+    if(p)pinAt(id,p.lat,p.lng,p.label,p.onDrag);
   });
 }
-function placeMarker(lat,lng){
-  if(!map||!window.L)return;
-  if(!marker)marker=L.marker([lat,lng],{draggable:true}).addTo(map);
-  else marker.setLatLng([lat,lng]);
-  marker.on("dragend",function(){
-    var p=marker.getLatLng();
-    $("fLat").value=p.lat.toFixed(5);
-    $("fLng").value=p.lng.toFixed(5);
-  });
+function clearPin(id){
+  var o=maps[id];
+  if(o&&o.marker&&o.map){try{o.map.removeLayer(o.marker)}catch(e){}}
+  if(o)o.marker=null;
+  if(maps[id])delete maps[id].pending;
 }
-function showPin(lat,lng,label){
-  ensureMap();
-  if(!map||!window.L)return;
-  map.setView([lat,lng],16,{animate:false});
-  placeMarker(lat,lng);
-  if(label&&marker&&marker.bindPopup)marker.bindPopup(esc(label));
+function suggest(q,cb){
+  if(!navigator.onLine)return;
+  var wait=lastGeo+1000-(new Date()).getTime();
+  var go=function(){
+    lastGeo=(new Date()).getTime();
+    fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&q="+encodeURIComponent(q))
+      .then(function(r){return r.ok?r.json():[]})
+      .then(function(res){cb(Array.isArray(res)?res:[])})
+      .catch(function(){cb([])});
+  };
+  if(wait>0)setTimeout(go,wait);else go();
 }
 function geocode(){
   var q=$("fAddr").value.trim();
@@ -794,8 +1191,7 @@ function geocode(){
     return;
   }
   $("geoStat").textContent="Looking up “"+q+"”…";
-  var url="https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q="+encodeURIComponent(q);
-  fetch(url)
+  fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q="+encodeURIComponent(q))
     .then(function(r){if(!r.ok)throw new Error("http "+r.status);return r.json()})
     .then(function(res){
       if(!res||!res.length){
@@ -809,11 +1205,78 @@ function geocode(){
       if(!$("fName").value.trim())$("fName").value=hit.name||q;
       if(hit.display_name)$("fAddr").value=hit.display_name;
       $("geoStat").textContent="Found: "+hit.display_name;
-      showPin(lat,lng,hit.name||q);
+      showPin("map",lat,lng,hit.name||q,favPinDragged);
     })
     .catch(function(){
       $("geoStat").textContent="Address lookup failed (offline or blocked). You can still drop a pin on the map or type coordinates.";
     });
+}
+function favPinDragged(lat,lng){
+  $("fLat").value=lat.toFixed(5);
+  $("fLng").value=lng.toFixed(5);
+}
+
+/* ---------- address suggestions on the session form ---------- */
+var locGeo={lat:null,lng:null,label:""},locTimer=0,sugIndex=-1,lastSuggest=[];
+function setLocStatus(t){$("locStat").textContent=t||""}
+function closeSuggest(){
+  var ul=$("locSuggest");
+  ul.hidden=true;ul.innerHTML="";
+  $("location").setAttribute("aria-expanded","false");
+  sugIndex=-1;
+}
+function showSuggest(list){
+  var ul=$("locSuggest");
+  lastSuggest=list||[];
+  if(!list||!list.length){closeSuggest();return}
+  var h="";
+  for(var i=0;i<list.length;i++){
+    h+='<li role="option" data-i="'+i+'" tabindex="-1">'+esc(list[i].display_name)+'</li>';
+  }
+  ul.innerHTML=h;
+  ul.hidden=false;
+  $("location").setAttribute("aria-expanded","true");
+  sugIndex=-1;
+}
+function pickSuggest(i,list){
+  var hit=list[i];
+  if(!hit)return;
+  $("location").value=hit.display_name;
+  closeSuggest();
+  locGeo={lat:parseFloat(hit.lat),lng:parseFloat(hit.lon),label:hit.display_name};
+  $("sessMapBox").hidden=false;
+  setLocStatus("Showing "+hit.display_name);
+  showPin("sessMap",locGeo.lat,locGeo.lng,hit.name||hit.display_name,sessPinDragged);
+}
+function sessPinDragged(lat,lng){
+  locGeo.lat=lat;locGeo.lng=lng;
+  setLocStatus("Pin moved to "+lat.toFixed(5)+", "+lng.toFixed(5));
+}
+function lookupLocation(){
+  var q=$("location").value.trim();
+  if(!q){setLocStatus("Type an address first.");return}
+  if(!navigator.onLine){setLocStatus("You are offline — the address is still saved with the session.");return}
+  setLocStatus("Looking up “"+q+"”…");
+  fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q="+encodeURIComponent(q))
+    .then(function(r){return r.ok?r.json():[]})
+    .then(function(res){
+      if(!res||!res.length){setLocStatus("No match found for “"+q+"”.");return}
+      var hit=res[0];
+      $("location").value=hit.display_name;
+      locGeo={lat:parseFloat(hit.lat),lng:parseFloat(hit.lon),label:hit.display_name};
+      $("sessMapBox").hidden=false;
+      setLocStatus("Found: "+hit.display_name);
+      showPin("sessMap",locGeo.lat,locGeo.lng,hit.name||hit.display_name,sessPinDragged);
+    })
+    .catch(function(){setLocStatus("Address lookup failed (offline or blocked).")});
+}
+function onLocInput(){
+  var q=$("location").value.trim();
+  if(q.length<3){closeSuggest();setLocStatus("");return}
+  clearTimeout(locTimer);
+  locTimer=setTimeout(function(){
+    suggest(q,function(list){showSuggest(list)});
+  },350);
 }
 
 /* ---------- routing ---------- */
@@ -829,8 +1292,9 @@ function go(id){
   if(location.hash.slice(1)!==id)history.replaceState(null,"","#"+id);
   render();
   if(id==="favourites"){
-    ensureMap();
-    if(map)setTimeout(function(){try{map.invalidateSize()}catch(e){}},80);
+    loadLeaflet(function(){
+      if(maps["map"]&&maps["map"].map)setTimeout(function(){try{maps["map"].map.invalidateSize()}catch(e){}},80);
+    });
   }
   window.scrollTo(0,0);
 }
@@ -889,7 +1353,7 @@ function toCSV(list){
 
 /* ---------- events ---------- */
 document.addEventListener("click",function(e){
-  var t=e.target.closest("[data-go],[data-v],[data-del],[data-edit],[data-ren],[data-rm],[data-use],[data-fedit],[data-fdel],#qaCsv");
+  var t=e.target.closest("[data-go],[data-v],[data-del],[data-edit],[data-ren],[data-rm],[data-use],[data-fedit],[data-fdel]");
   if(!t)return;
   if(t.hasAttribute("data-go")){go(t.getAttribute("data-go"));return}
   if(t.hasAttribute("data-v")){
@@ -900,7 +1364,6 @@ document.addEventListener("click",function(e){
   if(t.hasAttribute("data-use")){useFav(t.getAttribute("data-use"));return}
   if(t.hasAttribute("data-fedit")){editFavById(t.getAttribute("data-fedit"));return}
   if(t.hasAttribute("data-fdel")){delFav(t.getAttribute("data-fdel"));return}
-  if(t.id==="qaCsv"){doCSV();return}
   if(t.hasAttribute("data-del")){delSession(t.getAttribute("data-del"));return}
   if(t.hasAttribute("data-ren")){renameVehicle(t.getAttribute("data-ren"));return}
   if(t.hasAttribute("data-rm")){removeVehicle(t.getAttribute("data-rm"))}
@@ -965,6 +1428,7 @@ $("sForm").addEventListener("submit",function(e){
     location:d.location.value.trim(),energy:num(d.energy.value),mileage:num(d.mileage.value),
     cost:d.cost.value===""?null:Math.max(0,num(d.cost.value)),
     notes:d.notes.value.trim(),fast:d.fast.checked,home:d.home.checked,fav:d.fav.checked,
+    lat:isNum(locGeo.lat)?locGeo.lat:null,lng:isNum(locGeo.lng)?locGeo.lng:null,
     created:Date.now()
   };
   sessions.push(s);save();
@@ -977,8 +1441,13 @@ $("sForm").addEventListener("submit",function(e){
       matched?matched.lat:null,matched?matched.lng:null);
   }
   f.reset();$("duration").value="00:30";$("favNameWrap").hidden=true;stampDefaults();
+  locGeo={lat:null,lng:null,label:""};
+  closeSuggest();
+  clearPin("sessMap");
+  $("sessMapBox").hidden=true;
+  setLocStatus("");
   go("dashboard");
-  toast("Session saved to "+v.name+(s.fav?" · favourite updated":""));
+  toast("Session added to "+v.name+(s.fav?" · favourite updated":""));
 });
 $("fav").addEventListener("change",function(){
   $("favNameWrap").hidden=!this.checked;
@@ -994,12 +1463,39 @@ $("fAddr").addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventD
 $("fName").addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();$("fAddr").focus()}});
 $("fLat").addEventListener("change",function(){
   var la=parseFloat(this.value),lo=parseFloat($("fLng").value);
-  if(isFinite(la)&&isFinite(lo))showPin(la,lo,$("fName").value.trim());
+  if(isFinite(la)&&isFinite(lo))showPin("map",la,lo,$("fName").value.trim(),favPinDragged);
 });
 $("fLng").addEventListener("change",function(){
   var lo=parseFloat(this.value),la=parseFloat($("fLat").value);
-  if(isFinite(la)&&isFinite(lo))showPin(la,lo,$("fName").value.trim());
+  if(isFinite(la)&&isFinite(lo))showPin("map",la,lo,$("fName").value.trim(),favPinDragged);
 });
+$("locFind").addEventListener("click",function(){
+  closeSuggest();
+  lookupLocation();
+});
+$("location").addEventListener("input",onLocInput);
+$("location").addEventListener("keydown",function(e){
+  var ul=$("locSuggest");
+  var items=ul.querySelectorAll?ul.querySelectorAll("li"):[];
+  if(e.key==="Escape"){closeSuggest();return}
+  if(!items.length)return;
+  if(e.key==="ArrowDown"||e.key==="ArrowUp"){
+    e.preventDefault();
+    sugIndex+=(e.key==="ArrowDown"?1:-1);
+    if(sugIndex<0)sugIndex=items.length-1;
+    if(sugIndex>=items.length)sugIndex=0;
+    for(var i=0;i<items.length;i++)items[i].classList.toggle("on",i===sugIndex);
+  }else if(e.key==="Enter"&&sugIndex>=0){
+    e.preventDefault();
+    pickSuggest(sugIndex,lastSuggest);
+  }
+});
+document.addEventListener("click",function(e){
+  var li=e.target.closest?e.target.closest("#locSuggest li"):null;
+  if(li)pickSuggest(+li.getAttribute("data-i"),lastSuggest);
+  else if(!$("location").contains(e.target))closeSuggest();
+});
+
 $("themeBtn").addEventListener("click",function(){
   var d=document.body.classList.toggle("dark");
   $("themeBtn").textContent=d?"🌙":"☀️";
@@ -1035,8 +1531,7 @@ renderFavs();
 stampDefaults();
 var start=location.hash.slice(1);
 go(document.getElementById(start)?start:"dashboard");
-if(view==="favourites")ensureMap();
-window.addEventListener("online",function(){if(view==="favourites"){leafletState=0;ensureMap()}});
+window.addEventListener("online",function(){leafletState=0});
 setInterval(function(){
   var ae=document.activeElement;
   if(ae!==$("date")&&ae!==$("time")&&!$("sForm").contains(ae))stampDefaults();
