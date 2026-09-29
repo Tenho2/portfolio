@@ -797,6 +797,13 @@
             opacity: 1;
             transform: translateY(0);
         }
+
+        /* Safety net: if the reveal script never runs, never hide content */
+        .no-js .fade-in,
+        html:not(.js) .fade-in {
+            opacity: 1;
+            transform: none;
+        }
     </style>
 </head>
 <body>
@@ -1014,6 +1021,9 @@
     </footer>
 
     <script>
+        document.documentElement.classList.add('js');
+    </script>
+    <script>
         // Smooth scrolling for navigation links
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
@@ -1070,29 +1080,44 @@
             document.querySelector('.theme-toggle').textContent = '🌙';
         }
 
-        // Intersection Observer for fade-in animations
-        const observerOptions = {
-            threshold: 0.1,
-            rootMargin: '0px 0px -50px 0px'
-        };
+        // Scroll reveal: add the class first, then observe, and always
+        // guarantee the content ends up visible (never hide it for good).
+        (function () {
+            var targets = document.querySelectorAll('.about-text, .skill-card, .project-card, .stat-item');
+            if (!targets.length) return;
 
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('active');
+            function reveal(el) { el.classList.add('active'); }
+
+            if (!('IntersectionObserver' in window)) {
+                for (var n = 0; n < targets.length; n++) reveal(targets[n]);
+                return;
+            }
+
+            var observer = new IntersectionObserver(function (entries) {
+                entries.forEach(function (entry) {
+                    if (entry.isIntersecting) {
+                        reveal(entry.target);
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+
+            for (var i = 0; i < targets.length; i++) {
+                targets[i].classList.add('fade-in');
+                observer.observe(targets[i]);
+            }
+
+            // Safety net: reveal anything on or above the fold straight away,
+            // then everything else shortly after, so nothing can stay invisible.
+            window.addEventListener('load', function () {
+                for (var j = 0; j < targets.length; j++) {
+                    if (targets[j].getBoundingClientRect().top < window.innerHeight) reveal(targets[j]);
                 }
+                setTimeout(function () {
+                    for (var k = 0; k < targets.length; k++) reveal(targets[k]);
+                }, 1500);
             });
-        }, observerOptions);
-
-        // Observe all fade-in elements
-        document.querySelectorAll('.fade-in').forEach(element => {
-            observer.observe(element);
-        });
-
-        // Add fade-in class to appropriate elements
-        document.querySelectorAll('.about-text, .skill-card, .project-card, .stat-item').forEach(element => {
-            element.classList.add('fade-in');
-        });
+        })();
 
         // Add CSS for dark theme
         const style = document.createElement('style');
