@@ -151,6 +151,7 @@ body.dark #map{border-color:#475569}
 .chip:hover{border-color:var(--primary);color:var(--primary)}
 body.dark .chip{border-color:#3b82f6;background:#1e293b;color:#e2e8f0}
 .loc-f{position:relative}
+.unit{display:inline-flex;align-items:center;font-weight:600;color:var(--text-muted);white-space:nowrap}
 .suggest{list-style:none;margin:.35rem 0 0;border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden;box-shadow:var(--sh-lg);max-height:260px;overflow-y:auto;z-index:5}
 .suggest[hidden]{display:none}
 .suggest li{padding:.55rem .75rem;font-size:.9rem;color:var(--text);cursor:pointer;border-bottom:1px solid var(--line);line-height:1.4}
@@ -209,7 +210,6 @@ footer{margin-left:250px;background:var(--surface);border-top:1px solid var(--li
     <li><button data-go="add-session"><span class="ic" aria-hidden="true">📝</span><span>Add session</span></button></li>
     <li><button data-go="view-data"><span class="ic" aria-hidden="true">📄</span><span>Charge log</span></button></li>
     <li><button data-go="favourites"><span class="ic" aria-hidden="true">⭐</span><span>Favourites</span></button></li>
-    <li><button data-go="import"><span class="ic" aria-hidden="true">📥</span><span>Import</span></button></li>
     <li><button data-go="settings"><span class="ic" aria-hidden="true">⚙️</span><span>Settings</span></button></li>
   </ul>
   <div class="badge" id="dbInfo">Local storage · 0 sessions</div>
@@ -232,7 +232,7 @@ footer{margin-left:250px;background:var(--surface);border-top:1px solid var(--li
       <div class="qa">
         <button data-go="add-session"><span class="ic" aria-hidden="true">📝</span>Add session</button>
         <button data-go="view-data"><span class="ic" aria-hidden="true">📄</span>Charge log</button>
-        <button data-go="import"><span class="ic" aria-hidden="true">📥</span>Import data</button>
+        <button data-go="settings"><span class="ic" aria-hidden="true">📥</span>Import data</button>
         <button data-go="settings"><span class="ic" aria-hidden="true">➕</span>Add vehicle</button>
       </div>
       <div class="stats" id="stats">
@@ -242,6 +242,7 @@ footer{margin-left:250px;background:var(--surface);border-top:1px solid var(--li
         <div class="stat"><div class="n" id="sDur">0 h</div><div class="l">Total charging time</div></div>
         <div class="stat"><div class="n" id="sEff">–</div><div class="l">Avg kWh / 100 km</div></div>
         <div class="stat"><div class="n" id="sCost100">–</div><div class="l">Avg cost / 100 km</div></div>
+        <div class="stat"><div class="n" id="sSpeed">—</div><div class="l">Avg charge speed</div></div>
       </div>
     </div>
   </section>
@@ -264,6 +265,7 @@ footer{margin-left:250px;background:var(--surface);border-top:1px solid var(--li
           <div class="addrow" style="margin:0">
             <input type="text" id="location" name="location" placeholder="Start typing an address…" required list="favOptions" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="locSuggest">
             <button class="btn ghost" type="button" id="locFind">📍 Find</button>
+            <button class="btn ghost" type="button" id="locGeo">🧭 My location</button>
           </div>
           <ul class="suggest" id="locSuggest" role="listbox" hidden></ul>
           <div class="chips" id="favQuick" hidden></div>
@@ -276,7 +278,15 @@ footer{margin-left:250px;background:var(--surface);border-top:1px solid var(--li
         </div>
         <div class="row">
           <div class="f"><label for="energy">Energy charged (kWh)</label><input type="number" id="energy" name="energy" min="0" step="0.01" placeholder="e.g. 52.4" required></div>
-          <div class="f"><label for="cost">Cost (€)</label><input type="number" id="cost" name="cost" min="0" step="0.01" placeholder="auto"><div class="hint" id="priceHint">Leave empty to use the price per kWh from settings</div></div>
+          <div class="f"><label for="cost">Cost</label><input type="number" id="cost" name="cost" min="0" step="0.01" placeholder="auto"><div class="hint" id="priceHint"></div></div>
+        </div>
+        <div class="f">
+          <label for="ppkCents">Price per kWh</label>
+          <div class="addrow" style="margin:0;max-width:320px">
+            <input type="number" id="ppkCents" min="0" max="99" step="1" inputmode="numeric" aria-describedby="ppkCentsHint">
+            <span class="unit" aria-hidden="true">cents / kWh</span>
+          </div>
+          <div class="hint" id="ppkCentsHint">Whole euro cents, so 35 means 0,35 € per kWh. Applies to sessions where the cost is left empty.</div>
         </div>
         <div class="f"><label for="notes">Notes</label><textarea id="notes" name="notes" rows="3" placeholder="e.g. 150 kW, 24 °C, battery 20 → 80 %"></textarea></div>
         <div class="chk"><input type="checkbox" id="fast" name="fast"><label for="fast">Fast charging session</label></div>
@@ -294,14 +304,56 @@ footer{margin-left:250px;background:var(--surface);border-top:1px solid var(--li
       <p class="lead" id="logLead">Stored sessions, newest first.</p>
       <div class="tbl-wrap">
         <table>
-          <thead><tr><th scope="col">Date</th><th scope="col">Time</th><th scope="col">Duration</th><th scope="col">Location</th><th scope="col">Energy</th><th scope="col">Mileage</th><th scope="col">Cost</th><th scope="col">Tags</th><th scope="col">Notes</th><th scope="col"><span class="mini">Del</span></th></tr></thead>
+          <thead><tr><th scope="col">Date</th><th scope="col">Time</th><th scope="col">Duration</th><th scope="col">Location</th><th scope="col">Energy</th><th scope="col">Speed</th><th scope="col">Mileage</th><th scope="col">Cost</th><th scope="col">Tags</th><th scope="col">Notes</th><th scope="col"><span class="mini">Del</span></th></tr></thead>
           <tbody id="logBody"></tbody>
         </table>
       </div>
     </div>
   </section>
 
-  <section class="view" id="import">
+
+  <section class="view" id="settings">
+    <div class="panel">
+      <h2><span aria-hidden="true">🚗</span> Vehicles</h2>
+      <p class="lead">Vehicles are shown as a switcher only when you have more than one.</p>
+      <div class="list" id="vehSettings"></div>
+      <div class="addrow">
+        <input type="text" id="vName" placeholder="Vehicle name, e.g. Tesla Model 3" maxlength="40" aria-label="New vehicle name">
+        <button class="btn sec" id="vSave">Save vehicle</button>
+      </div>
+    </div>
+    <div class="panel">
+      <h2><span aria-hidden="true">💶</span> Energy price</h2>
+      <p class="lead">Used for any session where the cost is left empty. The same value is editable in whole euro cents on the Add session page.</p>
+      <div class="row">
+        <div class="f" style="max-width:220px"><label for="ppk">Price per kWh (€)</label><input type="number" id="ppk" min="0" step="0.01" value="0.20"></div>
+        <div class="f" style="max-width:220px"><label for="ppkHint">Same price in cents</label><input type="text" id="ppkHint" readonly aria-label="Price per kWh in euro cents"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h2><span aria-hidden="true">💾</span> Export data</h2>
+      <p class="lead">Download the charge log as a file. The scope decides which vehicle the file covers.</p>
+      <div class="row">
+        <div class="f" style="max-width:320px"><label for="scope">Scope</label><select id="scope"><option value="all">All vehicles</option></select></div>
+      </div>
+      <div class="qa" style="margin-top:.5rem">
+        <button id="exCsv"><span class="ic" aria-hidden="true">📄</span>Export CSV</button>
+        <button id="exJson"><span class="ic" aria-hidden="true">{ }</span>Export JSON</button>
+        <button class="btn ghost" id="tplCsv"><span class="ic" aria-hidden="true">📝</span>CSV template</button>
+        <button class="btn ghost" id="tplJson"><span class="ic" aria-hidden="true">{ }</span>JSON template</button>
+      </div>
+    </div>
+    <div class="panel">
+      <h2><span aria-hidden="true">🗄️</span> Data</h2>
+      <p class="lead">Backup, restore and cleanup.</p>
+      <div class="qa" style="margin-top:0">
+        <button id="backup"><span class="ic" aria-hidden="true">⬇️</span>Backup JSON</button>
+        <button class="btn warn" id="restoreBtn"><span class="ic" aria-hidden="true">⬆️</span>Restore backup</button>
+        <button class="btn warn" id="clearBtn"><span class="ic" aria-hidden="true">🧹</span>Clear sessions</button>
+        <button class="btn dgr" id="wipeBtn"><span class="ic" aria-hidden="true">🗑️</span>Delete everything</button>
+      </div>
+      <input type="file" id="restoreFile" accept="application/json" hidden>
+    </div>
     <div class="panel">
       <h2><span aria-hidden="true">📥</span> Import charge data</h2>
       <p class="lead">Load sessions from a file. Supported: <strong>.csv</strong>, <strong>.tsv</strong> and <strong>.json</strong>. Existing sessions are kept; the imported ones are added to the vehicle in the <em>Vehicle</em> column, or to the currently selected vehicle when that column is missing or empty.</p>
@@ -312,8 +364,7 @@ footer{margin-left:250px;background:var(--surface);border-top:1px solid var(--li
       </div>
       <div class="addrow" style="margin-top:0">
         <button class="btn sec" id="impGo">Import file</button>
-        <button class="btn ghost" id="tplCsv">Download CSV template</button>
-        <button class="btn ghost" id="tplJson">Download JSON template</button>
+        <span class="mini">Templates for a new file are in Export data, above.</span>
       </div>
 
       <div id="impResult" hidden></div>
@@ -405,46 +456,6 @@ footer{margin-left:250px;background:var(--surface);border-top:1px solid var(--li
     <div class="panel">
       <h2><span aria-hidden="true">📍</span> Saved</h2>
       <div class="list" id="favList"></div>
-    </div>
-  </section>
-
-  <section class="view" id="settings">
-    <div class="panel">
-      <h2><span aria-hidden="true">🚗</span> Vehicles</h2>
-      <p class="lead">Vehicles are shown as a switcher only when you have more than one.</p>
-      <div class="list" id="vehSettings"></div>
-      <div class="addrow">
-        <input type="text" id="vName" placeholder="Vehicle name, e.g. Tesla Model 3" maxlength="40" aria-label="New vehicle name">
-        <button class="btn sec" id="vSave">Save vehicle</button>
-      </div>
-    </div>
-    <div class="panel">
-      <h2><span aria-hidden="true">💶</span> Energy price</h2>
-      <div class="f" style="max-width:260px"><label for="ppk">Price per kWh (€)</label><input type="number" id="ppk" min="0" step="0.01" value="0.20"></div>
-    </div>
-    <div class="panel">
-      <h2><span aria-hidden="true">💾</span> Export data</h2>
-      <p class="lead">Download the charge log as a file. The scope decides which vehicle the file covers.</p>
-      <div class="row">
-        <div class="f" style="max-width:320px"><label for="scope">Scope</label><select id="scope"><option value="all">All vehicles</option></select></div>
-      </div>
-      <div class="qa" style="margin-top:.5rem">
-        <button id="exCsv"><span class="ic" aria-hidden="true">📄</span>Export CSV</button>
-        <button id="exJson"><span class="ic" aria-hidden="true">{ }</span>Export JSON</button>
-        <button class="btn ghost" id="tplCsv"><span class="ic" aria-hidden="true">📝</span>CSV template</button>
-        <button class="btn ghost" id="tplJson"><span class="ic" aria-hidden="true">{ }</span>JSON template</button>
-      </div>
-    </div>
-    <div class="panel">
-      <h2><span aria-hidden="true">🗄️</span> Data</h2>
-      <p class="lead">Backup, restore and cleanup.</p>
-      <div class="qa" style="margin-top:0">
-        <button id="backup"><span class="ic" aria-hidden="true">⬇️</span>Backup JSON</button>
-        <button class="btn warn" id="restoreBtn"><span class="ic" aria-hidden="true">⬆️</span>Restore backup</button>
-        <button class="btn warn" id="clearBtn"><span class="ic" aria-hidden="true">🧹</span>Clear sessions</button>
-        <button class="btn dgr" id="wipeBtn"><span class="ic" aria-hidden="true">🗑️</span>Delete everything</button>
-      </div>
-      <input type="file" id="restoreFile" accept="application/json" hidden>
     </div>
   </section>
 </div>
@@ -562,6 +573,79 @@ function fmtTime(v){
 }
 function num(v){var n=parseFloat(v);return isFinite(n)?n:0}
 function isNum(v){return v!==null&&v!==undefined&&v!==""&&isFinite(v)}
+
+/* ---------- locale ----------
+   Everything below uses the browser's own locale, so formats follow the
+   user's country. Intl is built into the browser: no requests, no slowdown.
+   If the locale cannot be read we fall back to Finnish formats. */
+var LOCALE=(function(){
+  try{
+    var l=(navigator.languages&&navigator.languages[0])||navigator.language||"fi-FI";
+    return l||"fi-FI";
+  }catch(e){return "fi-FI"}
+})();
+var REGION=(function(){
+  try{
+    var r=(new Intl.Locale(LOCALE)).region;
+    if(r)return r.toUpperCase();
+  }catch(e){}
+  var m=LOCALE.match(/[-_]([A-Za-z]{2})$/);
+  return m?m[1].toUpperCase():"FI";
+})();
+/* Countries that write the postcode before the city: "33100 Tampere" */
+var POSTCODE_FIRST={
+  FI:1,SE:1,NO:1,DK:1,IS:1,EE:1,LV:1,LT:1,DE:1,AT:1,CH:1,FR:1,ES:1,PT:1,IT:1,
+  NL:1,BE:1,CZ:1,SK:1,PL:1,SI:1,HR:1,HU:1,RO:1,BG:1,LU:1,IE:1
+};
+function postcodeFirst(){return !!POSTCODE_FIRST[REGION]}
+var moneyFmt=null;
+function fmtMoney(v){
+  var n=isNum(v)?+v:0;
+  try{
+    if(!moneyFmt)moneyFmt=new Intl.NumberFormat(LOCALE,{style:"currency",currency:"EUR",minimumFractionDigits:2,maximumFractionDigits:2});
+    return moneyFmt.format(n);
+  }catch(e){return n.toFixed(2)+" EUR"}
+}
+function fmtCents(c){
+  var n=isNum(c)?Math.round(+c):0;
+  return fmtMoney(n/100);
+}
+function cityLine(city,pc){
+  if(!city&&!pc)return "";
+  if(!pc)return city;
+  if(!city)return pc;
+  return postcodeFirst()?(pc+" "+city):(city+", "+pc);
+}
+var numFmtCache={};
+function fmtNum(v,digits){
+  var n=isNum(v)?+v:0;
+  var key=String(digits||0);
+  try{
+    if(!numFmtCache[key]){
+      numFmtCache[key]=new Intl.NumberFormat(LOCALE,{minimumFractionDigits:digits||0,maximumFractionDigits:digits||0});
+    }
+    return numFmtCache[key].format(n);
+  }catch(e){return n.toFixed(digits||0)}
+}
+function fmtKw(v){
+  if(!isNum(v))return "—";
+  return fmtNum(v,1)+" kW";
+}
+/* charge power of one session: kWh / h */
+function chargeSpeed(s){
+  var h=num(s&&s.hours);
+  if(!(h>0))return null;
+  return num(s.energy)/h;
+}
+/* overall average power: total kWh / total hours, ignoring zero-length rows */
+function speedTotal(list){
+  var kwh=0,h=0;
+  for(var i=0;i<list.length;i++){
+    var hrs=num(list[i].hours);
+    if(hrs>0){kwh+=num(list[i].energy);h+=hrs}
+  }
+  return h>0?kwh/h:null;
+}
 function hasCost(s){return s.cost!==null&&s.cost!==undefined&&s.cost!==""&&isFinite(s.cost)}
 function costOf(s){return hasCost(s)?s.cost:num(s.energy)*price}
 function veh(){return vehicles[cur]||vehicles[0]}
@@ -603,7 +687,7 @@ function toast(msg){
 /* ---------- render ---------- */
 function render(){
   var v=veh();
-  $("who").textContent=view==="dashboard"||view==="view-data"?v.name:({ "add-session":"Add charging session","import":"Import charge data","settings":"Settings"})[view]||"Dashboard";
+  $("who").textContent=view==="dashboard"||view==="view-data"?v.name:({ "add-session":"Add charging session","settings":"Settings"})[view]||"Dashboard";
   $("formVeh").textContent=v.name;
   $("dbInfo").textContent="Local storage · "+sessions.length+" session"+(sessions.length===1?"":"s")+" · "+vehicles.length+" vehicle"+(vehicles.length===1?"":"s");
 
@@ -624,30 +708,31 @@ function render(){
   var T=totals(ofVehicle(v.id));
   $("sEnergy").textContent=T.kwh.toFixed(1)+" kWh";
   $("sDist").textContent=Math.round(T.km)+" km";
-  $("sCost").textContent="€"+T.cost.toFixed(2);
+  $("sCost").textContent=fmtMoney(T.cost);
   $("sDur").textContent=T.h.toFixed(1)+" h";
   $("sEff").textContent=T.km>0?(T.kwh/T.km*100).toFixed(1):"—";
-  $("sCost100").textContent=T.km>0?"€"+(T.cost/T.km*100).toFixed(2):"—";
+  $("sCost100").textContent=T.km>0?fmtMoney(T.cost/T.km*100):"—";
+  $("sSpeed").textContent=fmtKw(speedTotal(ofVehicle(v.id)));
 
   var list=sorted(ofVehicle(v.id));
   $("logLead").textContent=list.length?list.length+" session"+(list.length===1?"":"s")+" stored for "+v.name+", newest first.":"No sessions stored for "+v.name+" yet.";
   var tb="";
   for(var j=0;j<list.length;j++){
     var s=list[j];
-    var c="€"+costOf(s).toFixed(2);
+    var c=fmtMoney(costOf(s));
     var tags="";
     if(s.fast)tags+='<span class="tag t-fast">Fast</span>';
     if(s.home)tags+='<span class="tag t-home">Home</span>';
     if(s.fav)tags+='<span class="tag t-fav">★ Favourite</span>';
     if(!hasCost(s))tags+='<span class="tag t-est">Est. price</span>';
     tb+='<tr><td>'+esc(s.date)+'</td><td>'+esc(fmtTime(s.time))+'</td><td>'+esc(hoursToHM(s.hours))+'</td>'+
-       '<td>'+esc(s.location)+'</td><td>'+num(s.energy).toFixed(2)+' kWh</td><td>'+num(s.mileage).toFixed(1)+' km</td>'+
+       '<td>'+esc(s.location)+'</td><td>'+num(s.energy).toFixed(2)+' kWh</td><td>'+fmtKw(chargeSpeed(s))+'</td>'+
+       '<td>'+num(s.mileage).toFixed(1)+' km</td>'+
        '<td>'+c+'</td><td>'+tags+'</td><td class="wrapc">'+esc(s.notes||"—")+'</td>'+
        '<td><button class="btn sm ghost" data-edit="'+esc(s.id)+'" aria-label="Edit session">✎</button> '+
-       '<button class="btn sm dgr" data-del="'+esc(s.id)+'" aria-label="Delete session">✕</button></td></tr>';+esc(s.notes||"—")+'</td>'+
-       '<td><button class="btn sm dgr" data-del="'+esc(s.id)+'" aria-label="Delete session">✕</button></td></tr>';
+       '<button class="btn sm dgr" data-del="'+esc(s.id)+'" aria-label="Delete session">✕</button></td></tr>';
   }
-  $("logBody").innerHTML=tb||'<tr><td colspan="10" class="empty">No sessions yet — add one from “Add Session”.</td></tr>';
+  $("logBody").innerHTML=tb||'<tr><td colspan="11" class="empty">No sessions yet — add one from “Add session”.</td></tr>';
 
   var sl=$("scope"),keep=sl.value;
   sl.innerHTML='<option value="all">All vehicles</option>'+vehicles.map(function(x){
@@ -664,7 +749,7 @@ function render(){
         (vehicles.length>1?'<button class="btn sm dgr" data-rm="'+esc(vehicles[k].id)+'">Remove</button>':'')+'</div>';
   }
   $("vehSettings").innerHTML=vs;
-  $("priceHint").textContent="Leave empty to use "+price.toFixed(2)+" €/kWh from settings";
+  syncCents();
   renderFavs();
 }
 
@@ -1099,6 +1184,43 @@ function upsertFavFromSession(name,address,lat,lng){
 
 /* ---------- geocoding + map ---------- */
 var maps={},leafletState=0,lastGeo=0;
+function nomUrl(q,limit){
+  return "https://nominatim.openstreetmap.org/search?format=jsonv2"
+    +"&addressdetails=1&namedetails=1"
+    +"&accept-language=fi"          /* always Finnish names, whatever the browser asks for */
+    +"&limit="+(limit||6)
+    +"&q="+encodeURIComponent(q);
+}
+function escapeRe(s){return String(s).replace(/[.*+?^${}()|[\]\\]/g,"\\$&")}
+function firstOf(o,keys){
+  for(var i=0;i<keys.length;i++){if(o&&o[keys[i]])return String(o[keys[i]])}
+  return "";
+}
+/* Builds "POI, Street 12, 33100 Tampere" from the structured address,
+   dropping the duplicates Nominatim leaves in display_name.
+   Postcode/city order follows the visitor's country. */
+function shortAddress(hit){
+  var a=(hit&&hit.address)||{};
+  var city=firstOf(a,["city","town","village","municipality","hamlet","borough","suburb"]);
+  var road=firstOf(a,["road","pedestrian","footway","path","residential","address"]);
+  var num=firstOf(a,["house_number"]);
+  var pc=firstOf(a,["postcode"]);
+  var name=String(hit&&hit.name?hit.name:"").trim();
+  if(!name)name=firstOf(a,["amenity","shop","tourism","leisure","office","public_transport"]);
+  name=name.trim();
+  if(name&&city&&name.toLowerCase()===city.toLowerCase())name="";
+  if(name&&city){
+    var dup=new RegExp("\\s+"+escapeRe(city)+"$","i");
+    if(dup.test(name))name=name.replace(dup,"").trim();
+  }
+  var parts=[];
+  if(name)parts.push(name);
+  if(road)parts.push(num?road+" "+num:road);
+  else if(num)parts.push(num);
+  var place=cityLine(city,pc);
+  if(place)parts.push(place);
+  return parts.join(", ");
+}
 function loadLeaflet(cb){
   if(window.L){cb();return}
   if(leafletState===1){setTimeout(function(){loadLeaflet(cb)},120);return}
@@ -1176,7 +1298,7 @@ function suggest(q,cb){
   var wait=lastGeo+1000-(new Date()).getTime();
   var go=function(){
     lastGeo=(new Date()).getTime();
-    fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&q="+encodeURIComponent(q))
+    fetch(nomUrl(q,6))
       .then(function(r){return r.ok?r.json():[]})
       .then(function(res){cb(Array.isArray(res)?res:[])})
       .catch(function(){cb([])});
@@ -1191,7 +1313,7 @@ function geocode(){
     return;
   }
   $("geoStat").textContent="Looking up “"+q+"”…";
-  fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q="+encodeURIComponent(q))
+  fetch(nomUrl(q,1))
     .then(function(r){if(!r.ok)throw new Error("http "+r.status);return r.json()})
     .then(function(res){
       if(!res||!res.length){
@@ -1199,13 +1321,14 @@ function geocode(){
         return;
       }
       var hit=res[0];
+      var short=shortAddress(hit);
       var lat=parseFloat(hit.lat),lng=parseFloat(hit.lon);
       $("fLat").value=lat.toFixed(5);
       $("fLng").value=lng.toFixed(5);
-      if(!$("fName").value.trim())$("fName").value=hit.name||q;
-      if(hit.display_name)$("fAddr").value=hit.display_name;
-      $("geoStat").textContent="Found: "+hit.display_name;
-      showPin("map",lat,lng,hit.name||q,favPinDragged);
+      if(!$("fName").value.trim())$("fName").value=hit.name||short||q;
+      if(short)$("fAddr").value=short;
+      $("geoStat").textContent="Found: "+short;
+      showPin("map",lat,lng,hit.name||short,favPinDragged);
     })
     .catch(function(){
       $("geoStat").textContent="Address lookup failed (offline or blocked). You can still drop a pin on the map or type coordinates.";
@@ -1231,7 +1354,7 @@ function showSuggest(list){
   if(!list||!list.length){closeSuggest();return}
   var h="";
   for(var i=0;i<list.length;i++){
-    h+='<li role="option" data-i="'+i+'" tabindex="-1">'+esc(list[i].display_name)+'</li>';
+    h+='<li role="option" data-i="'+i+'" tabindex="-1">'+esc(shortAddress(list[i])||list[i].display_name)+'</li>';
   }
   ul.innerHTML=h;
   ul.hidden=false;
@@ -1241,12 +1364,13 @@ function showSuggest(list){
 function pickSuggest(i,list){
   var hit=list[i];
   if(!hit)return;
-  $("location").value=hit.display_name;
+  var short=shortAddress(hit);
+  $("location").value=short||hit.display_name||"";
   closeSuggest();
-  locGeo={lat:parseFloat(hit.lat),lng:parseFloat(hit.lon),label:hit.display_name};
+  locGeo={lat:parseFloat(hit.lat),lng:parseFloat(hit.lon),label:short||hit.display_name};
   $("sessMapBox").hidden=false;
-  setLocStatus("Showing "+hit.display_name);
-  showPin("sessMap",locGeo.lat,locGeo.lng,hit.name||hit.display_name,sessPinDragged);
+  setLocStatus("Showing "+(short||hit.display_name));
+  showPin("sessMap",locGeo.lat,locGeo.lng,hit.name||short,sessPinDragged);
 }
 function sessPinDragged(lat,lng){
   locGeo.lat=lat;locGeo.lng=lng;
@@ -1257,16 +1381,17 @@ function lookupLocation(){
   if(!q){setLocStatus("Type an address first.");return}
   if(!navigator.onLine){setLocStatus("You are offline — the address is still saved with the session.");return}
   setLocStatus("Looking up “"+q+"”…");
-  fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q="+encodeURIComponent(q))
+  fetch(nomUrl(q,1))
     .then(function(r){return r.ok?r.json():[]})
     .then(function(res){
       if(!res||!res.length){setLocStatus("No match found for “"+q+"”.");return}
       var hit=res[0];
-      $("location").value=hit.display_name;
-      locGeo={lat:parseFloat(hit.lat),lng:parseFloat(hit.lon),label:hit.display_name};
+      var short=shortAddress(hit);
+      $("location").value=short||hit.display_name||"";
+      locGeo={lat:parseFloat(hit.lat),lng:parseFloat(hit.lon),label:short};
       $("sessMapBox").hidden=false;
-      setLocStatus("Found: "+hit.display_name);
-      showPin("sessMap",locGeo.lat,locGeo.lng,hit.name||hit.display_name,sessPinDragged);
+      setLocStatus("Found: "+short);
+      showPin("sessMap",locGeo.lat,locGeo.lng,hit.name||short,sessPinDragged);
     })
     .catch(function(){setLocStatus("Address lookup failed (offline or blocked).")});
 }
@@ -1277,6 +1402,82 @@ function onLocInput(){
   locTimer=setTimeout(function(){
     suggest(q,function(list){showSuggest(list)});
   },350);
+}
+
+/* ---------- use the device location ---------- */
+function haversine(a,b){
+  var R=6371000,toRad=Math.PI/180;
+  var dLat=(b.lat-a.lat)*toRad,dLon=(b.lng-a.lng)*toRad;
+  var s=Math.sin(dLat/2)*Math.sin(dLat/2)+
+        Math.cos(a.lat*toRad)*Math.cos(b.lat*toRad)*Math.sin(dLon/2)*Math.sin(dLon/2);
+  return 2*R*Math.asin(Math.min(1,Math.sqrt(s)));
+}
+function knownPlaces(){
+  var out=[],seen={};
+  for(var i=0;i<favs.length;i++){
+    var f=favs[i];
+    if(isNum(f.lat)&&isNum(f.lng)){
+      out.push({name:f.name,address:f.address,lat:+f.lat,lng:+f.lng,kind:"favourite"});
+    }
+  }
+  for(var j=0;j<sessions.length;j++){
+    var s=sessions[j];
+    if(isNum(s.lat)&&isNum(s.lng)&&!seen[s.location]){
+      seen[s.location]=1;
+      out.push({name:s.location,address:s.location,lat:+s.lat,lng:+s.lng,kind:"charging location"});
+    }
+  }
+  return out;
+}
+function nearestPlace(lat,lng){
+  var list=knownPlaces(),best=null;
+  for(var i=0;i<list.length;i++){
+    var d=haversine({lat:lat,lng:lng},{lat:list[i].lat,lng:list[i].lng});
+    if(!best||d<best.dist)best={p:list[i],dist:d};
+  }
+  return best;
+}
+function useMyLocation(){
+  if(!navigator.geolocation){
+    setLocStatus("This browser cannot share your location.");return;
+  }
+  setLocStatus("Waiting for location permission…");
+  $("locGeo").disabled=true;
+  navigator.geolocation.getCurrentPosition(
+    function(pos){
+      $("locGeo").disabled=false;
+      var lat=pos.coords.latitude,lng=pos.coords.longitude;
+      var near=nearestPlace(lat,lng);
+      var threshold=1000;
+      if(near&&near.dist<=threshold){
+        $("location").value=near.p.address||near.p.name;
+        locGeo={lat:near.p.lat,lng:near.p.lng,label:near.p.address||near.p.name};
+        $("sessMapBox").hidden=false;
+        setLocStatus("Near "+near.p.name+" — "+Math.round(near.dist)+" m away, used as the location.");
+        if($("fav").checked)$("favName").value=near.p.name;
+        showPin("sessMap",near.p.lat,near.p.lng,near.p.name,sessPinDragged);
+      }else if(near){
+        $("location").value=near.p.address||near.p.name;
+        locGeo={lat:lat,lng:lng,label:near.p.name};
+        $("sessMapBox").hidden=false;
+        setLocStatus("Nearest saved place is "+near.p.name+", "+Math.round(near.dist)+" m away. Pin set to your position — adjust if needed.");
+        showPin("sessMap",lat,lng,near.p.name,sessPinDragged);
+      }else{
+        locGeo={lat:lat,lng:lng,label:""};
+        $("sessMapBox").hidden=false;
+        setLocStatus("No saved charging location nearby. Pin set to your position — type the station name or drag the pin.");
+        showPin("sessMap",lat,lng,"",sessPinDragged);
+      }
+    },
+    function(err){
+      $("locGeo").disabled=false;
+      var msg=err&&err.code===1?"Location permission was denied."
+              :err&&err.code===2?"Your location is not available right now."
+              :"Could not read your location.";
+      setLocStatus(msg+" You can still search for the address.");
+    },
+    {enableHighAccuracy:false,timeout:10000,maximumAge:60000}
+  );
 }
 
 /* ---------- routing ---------- */
@@ -1370,7 +1571,31 @@ document.addEventListener("click",function(e){
 });
 $("vSave").addEventListener("click",addVehicle);
 $("vName").addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();addVehicle()}});
-$("ppk").addEventListener("change",function(){price=Math.max(0,num(this.value));this.value=price;persist();render()});
+$("ppk").addEventListener("change",function(){
+  price=Math.max(0,num(this.value));
+  this.value=price.toFixed(2);
+  persist();render();syncCents();
+});
+$("ppkCents").addEventListener("change",function(){
+  var c=Math.round(Math.min(99,Math.max(0,num(this.value))));
+  price=c/100;
+  this.value=c;
+  $("ppk").value=price.toFixed(2);
+  persist();
+  syncCents();
+  render();
+});
+function syncCents(){
+  var c=Math.round(price*100);
+  if($("ppkCents"))$("ppkCents").value=c;
+  if($("ppk"))$("ppk").value=price.toFixed(2);
+  if($("ppkHint"))$("ppkHint").value=c+" cents = "+fmtCents(c)+" / kWh";
+  if($("priceHint"))$("priceHint").textContent="Leave empty to use "+fmtCents(c)+" per kWh";
+}
+$("locGeo").addEventListener("click",function(){
+  closeSuggest();
+  useMyLocation();
+});
 $("exCsv").addEventListener("click",doCSV);
 $("exJson").addEventListener("click",function(){
   var list=sorted(scopeList());
