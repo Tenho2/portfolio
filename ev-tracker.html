@@ -243,6 +243,7 @@ footer{margin-left:250px;background:var(--surface);border-top:1px solid var(--li
         <div class="stat"><div class="n" id="sEff">–</div><div class="l">Avg kWh / 100 km</div></div>
         <div class="stat"><div class="n" id="sCost100">–</div><div class="l">Avg cost / 100 km</div></div>
         <div class="stat"><div class="n" id="sSpeed">—</div><div class="l">Avg charge speed</div></div>
+        <div class="stat"><div class="n" id="sDurAvg">—</div><div class="l">Avg session duration</div></div>
       </div>
     </div>
   </section>
@@ -257,7 +258,15 @@ footer{margin-left:250px;background:var(--surface);border-top:1px solid var(--li
           <div class="f"><label for="time">Time</label><input type="time" id="time" name="time" required></div>
         </div>
         <div class="row">
-          <div class="f"><label for="duration">Session duration</label><input type="time" id="duration" name="duration" step="300" value="00:30" required><div class="hint">Hours and minutes, 5-minute steps</div></div>
+          <div class="f">
+            <label for="duration">Session duration</label>
+            <input type="time" id="duration" name="duration" step="60" required>
+            <div class="hint" id="durHint">Defaults to your average session length. 1-minute steps.</div>
+            <div class="chk" style="margin:.5rem 0 0">
+              <input type="checkbox" id="durSec">
+              <label for="durSec">Show seconds (default 00)</label>
+            </div>
+          </div>
           <div class="f"><label for="mileage">Mileage (km)</label><input type="number" id="mileage" name="mileage" min="0" step="0.1" placeholder="e.g. 45000" required></div>
         </div>
         <div class="f loc-f">
@@ -278,7 +287,7 @@ footer{margin-left:250px;background:var(--surface);border-top:1px solid var(--li
         </div>
         <div class="row">
           <div class="f"><label for="energy">Energy charged (kWh)</label><input type="number" id="energy" name="energy" min="0" step="0.01" placeholder="e.g. 52.4" required></div>
-          <div class="f"><label for="cost">Cost</label><input type="number" id="cost" name="cost" min="0" step="0.01" placeholder="auto"><div class="hint" id="priceHint"></div></div>
+          <div class="f"><label for="cost">Total amount</label><input type="number" id="cost" name="cost" min="0" step="0.01" placeholder="auto"><div class="hint" id="priceHint"></div></div>
         </div>
         <div class="f">
           <label for="ppkCents">Price per kWh</label>
@@ -286,7 +295,7 @@ footer{margin-left:250px;background:var(--surface);border-top:1px solid var(--li
             <input type="number" id="ppkCents" min="0" max="99" step="1" inputmode="numeric" aria-describedby="ppkCentsHint">
             <span class="unit" aria-hidden="true">cents / kWh</span>
           </div>
-          <div class="hint" id="ppkCentsHint">Whole euro cents, so 35 means 0,35 € per kWh. Applies to sessions where the cost is left empty.</div>
+          <div class="hint" id="ppkCentsHint">Whole euro cents, so 35 means 0,35 € per kWh. Enter the total amount or the price and the other one is worked out for you.</div>
         </div>
         <div class="f"><label for="notes">Notes</label><textarea id="notes" name="notes" rows="3" placeholder="e.g. 150 kW, 24 °C, battery 20 → 80 %"></textarea></div>
         <div class="chk"><input type="checkbox" id="fast" name="fast"><label for="fast">Fast charging session</label></div>
@@ -304,7 +313,7 @@ footer{margin-left:250px;background:var(--surface);border-top:1px solid var(--li
       <p class="lead" id="logLead">Stored sessions, newest first.</p>
       <div class="tbl-wrap">
         <table>
-          <thead><tr><th scope="col">Date</th><th scope="col">Time</th><th scope="col">Duration</th><th scope="col">Location</th><th scope="col">Energy</th><th scope="col">Speed</th><th scope="col">Mileage</th><th scope="col">Cost</th><th scope="col">Tags</th><th scope="col">Notes</th><th scope="col"><span class="mini">Del</span></th></tr></thead>
+          <thead><tr><th scope="col">Date</th><th scope="col">Time</th><th scope="col">Duration</th><th scope="col">Location</th><th scope="col">Energy</th><th scope="col">Avg. speed</th><th scope="col">Mileage</th><th scope="col">Cost</th><th scope="col">Tags</th><th scope="col">Notes</th><th scope="col"><span class="mini">Del</span></th></tr></thead>
           <tbody id="logBody"></tbody>
         </table>
       </div>
@@ -472,7 +481,7 @@ footer{margin-left:250px;background:var(--surface);border-top:1px solid var(--li
         <div class="f"><label for="eTime">Time</label><input type="time" id="eTime" required></div>
       </div>
       <div class="row">
-        <div class="f"><label for="eDuration">Session duration</label><input type="time" id="eDuration" step="300" required></div>
+        <div class="f"><label for="eDuration">Session duration</label><input type="time" id="eDuration" step="60" required><div class="hint" id="eDurHint">1-minute steps</div></div>
         <div class="f"><label for="eMileage">Mileage (km)</label><input type="number" id="eMileage" min="0" step="0.1" required></div>
       </div>
       <div class="f"><label for="eLocation">Location / station</label><input type="text" id="eLocation" list="favOptions" required></div>
@@ -552,15 +561,29 @@ function stampDefaults(){
   $("time").value=n.h+":"+n.i;
 }
 function hmToHours(v){
-  var p=(v||"").split(":");
-  if(p.length!==2)return 0;
-  var h=parseInt(p[0],10),m=parseInt(p[1],10);
-  if(!isFinite(h)||!isFinite(m))return 0;
-  return h+m/60;
+  var p=String(v==null?"":v).trim().split(":");
+  if(p.length<2||p.length>3)return 0;
+  var h=parseInt(p[0],10),m=parseInt(p[1],10),s=p.length===3?parseInt(p[2],10):0;
+  if(!isFinite(h)||!isFinite(m)||!isFinite(s))return 0;
+  return h+m/60+s/3600;
 }
-function hoursToHM(h){
-  var t=Math.round((+h||0)*60);
-  return pad(Math.floor(t/60))+":"+pad(t%60);
+function hoursToHM(h,withSec){
+  var t=Math.round((+h||0)*3600);
+  var hh=Math.floor(t/3600),mm=Math.floor((t%3600)/60),ss=t%60;
+  var out=pad(hh)+":"+pad(mm);
+  if(withSec||ss>0)out+=":"+pad(ss);
+  return out;
+}
+/* mean length of the stored sessions, rounded to a whole minute */
+function avgDuration(list){
+  if(!list||!list.length)return null;
+  var sum=0,n=0;
+  for(var i=0;i<list.length;i++){
+    var h=num(list[i].hours);
+    if(h>0){sum+=h;n++}
+  }
+  if(!n)return null;
+  return Math.round(sum/n*60)/60;
 }
 function fmtTime(v){
   var s=String(v==null?"":v).trim();
@@ -713,6 +736,8 @@ function render(){
   $("sEff").textContent=T.km>0?(T.kwh/T.km*100).toFixed(1):"—";
   $("sCost100").textContent=T.km>0?fmtMoney(T.cost/T.km*100):"—";
   $("sSpeed").textContent=fmtKw(speedTotal(ofVehicle(v.id)));
+  var ad=avgDuration(ofVehicle(v.id));
+  $("sDurAvg").textContent=ad===null?"—":hoursToHM(ad);
 
   var list=sorted(ofVehicle(v.id));
   $("logLead").textContent=list.length?list.length+" session"+(list.length===1?"":"s")+" stored for "+v.name+", newest first.":"No sessions stored for "+v.name+" yet.";
@@ -1027,7 +1052,9 @@ function openEdit(id){
   $("editFor").textContent="Vehicle "+(vehicles.map(function(v){return v.id}).indexOf(s.vehicleId)+1)+" · created "+new Date(s.created||Date.now()).toLocaleString();
   $("eDate").value=s.date||"";
   $("eTime").value=fmtTime(s.time);
-  $("eDuration").value=hoursToHM(s.hours);
+  $("eDuration").value=hoursToHM(s.hours,durShowSec);
+  $("eDuration").step=durShowSec?"1":"60";
+  if($("eDurHint"))$("eDurHint").textContent=durShowSec?"Seconds shown":"1-minute steps";
   $("eLocation").value=s.location||"";
   $("eMileage").value=s.mileage;
   $("eEnergy").value=s.energy;
@@ -1576,14 +1603,26 @@ $("ppk").addEventListener("change",function(){
   this.value=price.toFixed(2);
   persist();render();syncCents();
 });
+$("ppkCents").addEventListener("input",function(){
+  if(this.value===""||!isNum(this.value))return;
+  price=Math.min(99,Math.max(0,num(this.value)))/100;
+  persist();
+  recalcFromPrice();
+});
 $("ppkCents").addEventListener("change",function(){
   var c=Math.round(Math.min(99,Math.max(0,num(this.value))));
-  price=c/100;
   this.value=c;
+  price=c/100;
   $("ppk").value=price.toFixed(2);
   persist();
   syncCents();
   render();
+});
+$("cost").addEventListener("input",recalcFromCost);
+$("energy").addEventListener("input",recalcFromEnergy);
+$("durSec").addEventListener("change",function(){
+  durShowSec=this.checked;
+  applyDurStep();
 });
 function syncCents(){
   var c=Math.round(price*100);
@@ -1591,6 +1630,95 @@ function syncCents(){
   if($("ppk"))$("ppk").value=price.toFixed(2);
   if($("ppkHint"))$("ppkHint").value=c+" cents = "+fmtCents(c)+" / kWh";
   if($("priceHint"))$("priceHint").textContent="Leave empty to use "+fmtCents(c)+" per kWh";
+}
+
+/* ---------- duration input ---------- */
+var durShowSec=false;
+function durSecondsOn(){return !!($("durSec")&&$("durSec").checked)}
+function applyDurStep(){
+  var el=$("duration");
+  if(!el)return;
+  el.step=durShowSec?"1":"60";
+  syncDurHint();
+  var v=el.value;
+  if(!v)return;
+  if(durShowSec){
+    if(v.length===5)el.value=v+":00";
+  }else if(v.length===8){
+    el.value=v.slice(0,5);
+  }
+}
+function syncDurHint(){
+  if($("durHint"))$("durHint").textContent=durShowSec
+    ?"Seconds shown, starting from 00. Defaults to your average session length."
+    :"1-minute steps. Defaults to your average session length.";
+}
+/* prefill the duration with the average of the stored sessions */
+function defaultDuration(){
+  var el=$("duration");
+  if(!el)return;
+  var ad=avgDuration(sessions);
+  var secs=durShowSec?1:60;
+  var h=ad===null?0.5:ad;
+  var snapped=Math.max(secs/3600,Math.round(h*3600/secs)*(secs/3600));
+  el.value=hoursToHM(snapped,durShowSec);
+}
+
+/* ---------- two-way price / total ---------- */
+var calcLock=false,costAuto=false,priceAuto=false;
+function setPriceCents(c){
+  price=Math.min(99,Math.max(0,c))/100;
+  if($("ppkCents"))$("ppkCents").value=Math.round(price*100);
+  if($("ppk"))$("ppk").value=price.toFixed(2);
+  persist();
+}
+function recalcFromCost(){
+  if(calcLock)return;
+  calcLock=true;
+  var e=num($("energy").value),raw=$("cost").value;
+  costAuto=false;
+  if(raw!==""&&isNum(raw)&&e>0){
+    setPriceCents(Math.round((+raw)/e*100));
+    priceAuto=true;
+  }
+  syncHints();
+  calcLock=false;
+}
+function recalcFromPrice(){
+  if(calcLock)return;
+  calcLock=true;
+  var e=num($("energy").value),raw=$("ppkCents").value;
+  costAuto=false;
+  if(raw!==""&&isNum(raw)&&e>0){
+    $("cost").value=(e*price).toFixed(2);
+    costAuto=true;
+  }
+  syncHints();
+  calcLock=false;
+}
+function recalcFromEnergy(){
+  if(calcLock)return;
+  calcLock=true;
+  var e=num($("energy").value);
+  if(costAuto){
+    $("cost").value=e>0?(e*price).toFixed(2):"";
+  }else if(priceAuto){
+    var raw=$("cost").value;
+    if(raw!==""&&isNum(raw)&&e>0)setPriceCents(Math.round((+raw)/e*100));
+  }
+  syncHints();
+  calcLock=false;
+}
+function syncHints(){
+  var e=num($("energy").value);
+  var bits=[];
+  if(e>0)bits.push(fmtNum(e,2)+" kWh");
+  else bits.push("energy needed");
+  if($("ppkCents"))$("ppkCentsHint").textContent=
+    "Whole euro cents, so 35 means 0,35 € per kWh. Currently "+fmtCents(Math.round(price*100))+
+    " per kWh"+(costAuto?" — total worked out from this.":priceAuto?" — price worked out from the total.":".");
+  if($("priceHint"))$("priceHint").textContent=
+    e>0?"Leave empty to use "+fmtCents(Math.round(price*100))+" per kWh":"Enter the charged energy to see the total.";
 }
 $("locGeo").addEventListener("click",function(){
   closeSuggest();
@@ -1665,7 +1793,11 @@ $("sForm").addEventListener("submit",function(e){
     upsertFavFromSession(d.favName.value.trim()||s.location,s.location,
       matched?matched.lat:null,matched?matched.lng:null);
   }
-  f.reset();$("duration").value="00:30";$("favNameWrap").hidden=true;stampDefaults();
+  f.reset();$("favNameWrap").hidden=true;stampDefaults();
+  costAuto=false;priceAuto=false;
+  defaultDuration();
+  syncCents();
+  syncHints();
   locGeo={lat:null,lng:null,label:""};
   closeSuggest();
   clearPin("sessMap");
@@ -1762,6 +1894,11 @@ setInterval(function(){
   if(ae!==$("date")&&ae!==$("time")&&!$("sForm").contains(ae))stampDefaults();
 },60000);
 enhancePickers();
+durShowSec=false;
+applyDurStep();
+defaultDuration();
+syncCents();
+syncHints();
 })();
 </script>
 </body>
