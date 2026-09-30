@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>EV Multi-Tracker</title>
 <meta name="description" content="Track charging sessions, energy and cost for multiple electric vehicles.">
+<!-- Monthly chart. Loaded with defer so it never blocks parsing; the dashboard
+     falls back to an explanatory note if the CDN is unavailable or offline. -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" referrerpolicy="no-referrer" defer id="chartjsLib"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -104,6 +107,10 @@ input[type="time"]::-webkit-inner-spin-button{opacity:.5}
 .btn.sm{padding:.4rem .7rem;font-size:.85rem}
 .btn.block{width:100%}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem;margin-top:1.25rem}
+.chart-panel{margin-top:1.25rem}
+.chart-panel h3{font-size:1rem;margin-bottom:.75rem}
+.chart-note{color:var(--text-muted);font-size:.9rem;margin:0}
+.chartbox{position:relative;height:300px}
 .stat{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r);padding:1rem;text-align:center}
 body.dark .stat{border-color:#3b82f6}
 .stat .n{font-size:1.5rem;font-weight:700;color:var(--primary);word-break:break-word}
@@ -253,6 +260,11 @@ footer{margin-left:250px;background:var(--surface);border-top:1px solid var(--li
         <div class="stat"><div class="n" id="sSpeed">—</div><div class="l" data-i18n="tile.speed"></div></div>
         <div class="stat"><div class="n" id="sDurAvg">—</div><div class="l" data-i18n="tile.duravg"></div></div>
       </div>
+      <div class="chart-panel" id="chartPanel">
+        <h3 data-i18n="chart.title"></h3>
+        <p class="chart-note" id="chartNote" hidden></p>
+        <div class="chartbox" id="chartBox" hidden><canvas id="monthChart"></canvas></div>
+      </div>
     </div>
   </section>
 
@@ -296,6 +308,8 @@ footer{margin-left:250px;background:var(--surface);border-top:1px solid var(--li
         <div class="row">
           <div class="f"><label for="energy" data-i18n="as.energy"></label><input type="number" id="energy" name="energy" min="0" step="0.01" data-i18n-ph="ph.energy" required></div>
           <div class="f"><label for="cost" data-i18n="as.total"></label><input type="number" id="cost" name="cost" min="0" step="0.01" data-i18n-ph="ph.auto"><div class="hint" id="priceHint"></div></div>
+          <div class="f"><label for="socStart" data-i18n="as.socStart"></label><input type="number" id="socStart" name="socStart" min="0" max="100" step="1" data-i18n-ph="ph.soc"></div>
+          <div class="f"><label for="socEnd" data-i18n="as.socEnd"></label><input type="number" id="socEnd" name="socEnd" min="0" max="100" step="1" data-i18n-ph="ph.soc"></div>
         </div>
         <div class="f">
           <label for="ppkCents" data-i18n="as.price"></label>
@@ -336,6 +350,7 @@ footer{margin-left:250px;background:var(--surface);border-top:1px solid var(--li
       <div class="list" id="vehSettings"></div>
       <div class="addrow">
         <input type="text" id="vName" data-i18n-ph="ph.vehname" maxlength="40" data-i18n-aria="aria.newveh">
+        <input type="number" id="vOdo" min="0" step="1" data-i18n-ph="ph.initialodo" data-i18n-aria="aria.initialodo">
         <button class="btn sec" id="vSave" data-i18n="set.saveVehicle"></button>
       </div>
     </div>
@@ -397,8 +412,9 @@ footer{margin-left:250px;background:var(--surface);border-top:1px solid var(--li
             <tr><td><code>date</code></td><td data-i18n="tag.yes"></td><td data-i18n-html="how.date"></td></tr>
             <tr><td><code>time</code></td><td data-i18n="tag.yes"></td><td data-i18n-html="how.time"></td></tr>
             <tr><td><code>location</code></td><td data-i18n="tag.yes"></td><td data-i18n-html="how.loc"></td></tr>
-            <tr><td><code>energy</code></td><td data-i18n="tag.yes"></td><td data-i18n-html="how.energy"></td></tr>
-            <tr><td><code>duration</code></td><td data-i18n="tag.no"></td><td data-i18n-html="how.dur"></td></tr>
+<tr><td><code>energy</code></td><td data-i18n="tag.yes"></td><td data-i18n-html="how.energy"></td></tr>
+<tr><td><code>duration</code></td><td data-i18n="tag.no"></td><td data-i18n-html="how.dur"></td></tr>
+<tr><td><code>Start SoC (%)</code>, <code>End SoC (%)</code></td><td data-i18n="tag.no"></td><td data-i18n-html="how.soc"></td></tr>
             <tr><td><code>mileage</code></td><td data-i18n="tag.no"></td><td data-i18n-html="how.mileage"></td></tr>
             <tr><td><code>cost</code></td><td data-i18n="tag.no"></td><td data-i18n-html="how.cost"></td></tr>
             <tr><td><code>vehicle</code></td><td data-i18n="tag.no"></td><td data-i18n="how.vehicle"></td></tr>
@@ -408,9 +424,9 @@ footer{margin-left:250px;background:var(--surface);border-top:1px solid var(--li
         </table>
 
         <h4 data-i18n="how.csv"></h4>
-        <pre class="sample">date,time,duration,location,energy,mileage,cost,vehicle,notes,fast,home,favourite
-2026-09-28,08:15,00:45,Supercharger Vaasa,52.4,45000,12.50,Vehicle 1,150 kW 20-80%,yes,no,yes
-2026-09-20,19:40,01:30,Home,30,44810,,Vehicle 1,,no,yes,no</pre>
+        <pre class="sample">date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fast,home,favourite
+2026-09-28,08:15,00:45,Supercharger Vaasa,52.4,20,80,45000,12.50,Vehicle 1,150 kW 20-80%,yes,no,yes
+2026-09-20,19:40,01:30,Home,30,35,80,44810,,Vehicle 1,,no,yes,no</pre>
 
         <h4 data-i18n="how.tsvTitle"></h4>
         <p data-i18n="how.tsv"></p>
@@ -423,8 +439,10 @@ footer{margin-left:250px;background:var(--surface);border-top:1px solid var(--li
     "time": "08:15",
     "duration": "00:45",
     "location": "Supercharger Vaasa",
-    "energy": 52.4,
-    "mileage": 45000,
+ "energy": 52.4,
+ "socStart": 20,
+ "socEnd": 80,
+ "mileage": 45000,
     "cost": 12.5,
     "vehicle": "Vehicle 1",
     "notes": "150 kW",
@@ -494,9 +512,11 @@ footer{margin-left:250px;background:var(--surface);border-top:1px solid var(--li
       </div>
       <div class="f"><label for="eLocation" data-i18n="as.location"></label><input type="text" id="eLocation" list="favOptions" required></div>
       <div class="row">
-        <div class="f"><label for="eEnergy" data-i18n="as.energy"></label><input type="number" id="eEnergy" min="0" step="0.01" required></div>
-        <div class="f"><label for="eCost" data-i18n="ed.cost"></label><input type="number" id="eCost" min="0" step="0.01" data-i18n-ph="ph.auto"></div>
-      </div>
+<div class="f"><label for="eEnergy" data-i18n="as.energy"></label><input type="number" id="eEnergy" min="0" step="0.01" required></div>
+          <div class="f"><label for="eCost" data-i18n="ed.cost"></label><input type="number" id="eCost" min="0" step="0.01" data-i18n-ph="ph.auto"></div>
+          <div class="f"><label for="eSocStart" data-i18n="as.socStart"></label><input type="number" id="eSocStart" min="0" max="100" step="1" data-i18n-ph="ph.soc"></div>
+          <div class="f"><label for="eSocEnd" data-i18n="as.socEnd"></label><input type="number" id="eSocEnd" min="0" max="100" step="1" data-i18n-ph="ph.soc"></div>
+        </div>
       <div class="f"><label for="eNotes" data-i18n="as.notes"></label><textarea id="eNotes" rows="3"></textarea></div>
       <div class="chk"><input type="checkbox" id="eFast"><label for="eFast" data-i18n="as.fast"></label></div>
       <div class="chk"><input type="checkbox" id="eHome"><label for="eHome" data-i18n="as.home"></label></div>
@@ -510,12 +530,35 @@ footer{margin-left:250px;background:var(--surface);border-top:1px solid var(--li
   </div>
 </div>
 
+<div class="sheet" id="vehSheet">
+  <div class="sheet-box" role="dialog" aria-modal="true" aria-labelledby="vehTitle">
+    <h3 id="vehTitle" data-i18n="set.editVehicle"></h3>
+    <p class="mini" data-i18n="set.initialOdoLead"></p>
+    <form id="vehForm" novalidate>
+      <div class="row">
+        <div class="f"><label for="vfName" data-i18n="as.vehicle"></label><input type="text" id="vfName" maxlength="40" required></div>
+        <div class="f"><label for="vfOdo" data-i18n="as.initialOdo"></label><input type="number" id="vfOdo" min="0" step="1" data-i18n-ph="ph.initialodo"></div>
+      </div>
+      <div class="addrow" style="margin-top:1.25rem">
+        <button class="btn" type="submit" data-i18n="ed.save"></button>
+        <button class="btn ghost" type="button" id="vfCancel" data-i18n="ed.cancel"></button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
 /* ---------- translations ----------
    Keys are shared by every language. If a key is missing from the chosen
-   language the English text is used, so the interface never breaks. */
+   language the English text is used, so the interface never breaks.
+
+   Northern Sami (se) is deliberately PARTIAL. An automatic draft was
+   rejected because it mixed Skolt Sami characters into a Northern Sami
+   slot and used invented morphology. Only terms that are unambiguously
+   Northern Sami are present; every other key falls back to English until
+   a native speaker completes i18n/se-translation-template.json. */
 (function(){
 "use strict";
 var D={
@@ -535,7 +578,9 @@ en:{
 "as.mileage":"Mileage (km)","as.location":"Location / station","as.find":"📍 Find","as.myloc":"🧭 My location",
 "as.mapDrag":"Drag the pin to adjust the position, or click the map.",
 "as.mapOff":"Map unavailable offline. The address is still saved with the session.",
-"as.energy":"Energy charged (kWh)","as.total":"Total amount","as.price":"Price per kWh","as.centsUnit":"cents / kWh",
+"as.energy":"Energy charged (kWh)",
+"as.socStart":"Start %","as.socEnd":"End %",
+"ph.soc":"e.g. 20","as.total":"Total amount","as.price":"Price per kWh","as.centsUnit":"cents / kWh",
 "as.priceHint1":"Whole euro cents, so 35 means 0,35 € per kWh. Enter the total amount or the price and the other one is worked out for you.",
 "as.notes":"Notes","as.fast":"Fast charging session","as.home":"Home charging session",
 "as.saveFav":"Save this location as a favourite","as.favName":"Favourite name",
@@ -652,7 +697,14 @@ en:{
 "veh.created":"{v} created","imp.note":"Imported {n} session(s).",
 "log.for":"{n} session(s) stored for {v}, newest first.","log.none":"No sessions stored for {v} yet.",
 "cands":{"date":"date","time":"time","duration":"duration","location":"location","energy":"energy","mileage":"mileage","cost":"cost","vehicle":"vehicle","notes":"notes","fast":"fast","home":"home","favourite":"favourite"},
-"yes":"yes","no":"no","lang":"Language"
+"yes":"yes","no":"no","lang":"Language",
+ "chart.title":"Energy and cost per month","chart.energy":"Energy (kWh)","chart.cost":"Cost (EUR)",
+ "chart.empty":"No sessions for this vehicle yet. Add one to see the monthly chart.","chart.offline":"The chart library could not be loaded (no internet connection?). Everything else works normally.",
+ "how.soc":"Battery charge level before and after the session, in percent (0-100). Leave empty if unknown.",
+ "err.soc":"Row {n}: battery percentage is not a number, left empty.",
+ "set.editVehicle":"Edit vehicle","set.initialOdoLead":"The initial odometer is the \"ground zero\" for the distance total: distance = highest logged reading − this value.",
+ "as.initialOdo":"Initial odometer (km)","ph.initialodo":"e.g. 45000","aria.initialodo":"initial odometer reading in kilometres",
+ "as.vehicle":"Vehicle name"
 },
 fi:{
 "ed.for":"Ajoneuvo {n} - luotu {d}","ed.durHintSec":"Sekunnit näkyvät","fav.update":"Päivitä suosikki","toast.looking":"Haetaan “{q}”…","toast.found":"Löytyi: {v}","brand":"Sähköautojen latausloki","nav.dashboard":"Kojelauta","nav.add":"Lisää sessio","nav.log":"Latausloki",
@@ -667,10 +719,12 @@ fi:{
 "as.durHint":"1 minuutin tarkkuudella. Oletuksena keskimääräinen sessioaika.",
 "as.durHintSec":"Sekunnit näkyvät, alkavat 00:sta. Oletuksena keskimääräinen sessioaika.",
 "as.durSec":"Näytä sekunnit (oletus 00)",
-"as.mileage":"Matkilukema (km)","as.location":"Paikka / laturi","as.find":"📍 Etsi","as.myloc":"🧭 Oma sijainti",
+"as.mileage":"Matkamittarilukema (km)","as.location":"Paikka / laturi","as.find":"📍 Etsi","as.myloc":"🧭 Oma sijainti",
 "as.mapDrag":"Vedä nappia säätääksesi sijaintia tai napsauta karttaa.",
 "as.mapOff":"Kartta ei ole käytettävissä offline-tilassa. Osoite tallennetaan silti sessioon.",
-"as.energy":"Ladattu energia (kWh)","as.total":"Summa","as.price":"Hinta per kWh","as.centsUnit":"senttiä / kWh",
+"as.energy":"Ladattu energia (kWh)",
+"as.socStart":"Aloitus %","as.socEnd":"Lopetus %",
+"ph.soc":"esim. 20","as.total":"Summa","as.price":"Hinta per kWh","as.centsUnit":"senttiä / kWh",
 "as.priceHint1":"Kokonaiset eurosentit, eli 35 tarkoittaa 0,35 €/kWh. Anna summa tai hinta, toinen lasketaan automaattisesti.",
 "as.notes":"Muistiinpanot","as.fast":"Pikalataus","as.home":"Kotilataus",
 "as.saveFav":"Tallenna tämä paikka suosikiksi","as.favName":"Suosikin nimi",
@@ -679,7 +733,7 @@ fi:{
 "ph.notes":"esim. 150 kW, 24 °C, akku 20 → 80 %","ph.favname":"esim. Koti, Vaasa S1",
 "cl.lead":"Tallennetut sessiot, uusin ensin.","cl.none":"Ei vielä sessioita — lisää yksi kohdasta “Lisää sessio”.",
 "th.date":"Päivä","th.time":"Aika","th.dur":"Kesto","th.loc":"Paikka","th.energy":"Energia","th.speed":"keskim. nopeus",
-"th.mileage":"Matka","th.cost":"Kustannus","th.tags":"Tunnisteet","th.notes":"Muistiinpanot","th.del":"Poista",
+"th.mileage":"Matkamittarilukema","th.cost":"Kustannus","th.tags":"Tunnisteet","th.notes":"Muistiinpanot","th.del":"Poista",
 "tag.fast":"Pika","tag.home":"Koti","tag.fav":"★ Suosikki","tag.est":"Arvioitu hinta",
 "fav.title":"Suosikkipaikat","fav.lead":"Nimeä tavalliset latauspaikkasi, hae osoite ja aseta nappi kartalle.",
 "fav.name":"Nimi","fav.address":"Osoite","fav.find":"Etsi",
@@ -780,14 +834,21 @@ fi:{
 "err.energy":"rivi {n}: energian on oltava numero kWh:ssa",
 "err.energyNeg":"rivi {n}: energia ei voi olla negatiivinen",
 "err.dur":"rivi {n}: keston on oltava TT:MM tai desimaalitunnit",
-"err.mileage":"rivi {n}: matkilukeman on oltava numero",
+"err.mileage":"rivi {n}: matkamittarilukeman on oltava numero",
 "err.cost":"rivi {n}: kustannuksen on oltava numero",
 "err.fileOpen":"Tiedostoa ei voitu lukea.","err.open":"Tiedostoa ei voitu avata.",
 "more":"… ja {n} muuta",
 "veh.created":"{v} luotu","imp.note":"Tuotiin {n} sessiota.",
 "log.for":"{n} sessiota tallennettu ajoneuvoon {v}, uusin ensin.","log.none":"Ajoneuvoon {v} ei ole vielä tallennettu sessioita.",
-"cands":{"date":"päivämäärä","time":"aika","duration":"kesto","location":"paikka","energy":"energia","mileage":"matkilukema","cost":"kustannus","vehicle":"ajoneuvo","notes":"muistiinpanot","fast":"pikalataus","home":"kotilataus","favourite":"suosikki"},
-"yes":"kyllä","no":"ei","lang":"Kieli"
+"cands":{"date":"päivämäärä","time":"aika","duration":"kesto","location":"paikka","energy":"energia","mileage":"matkamittarilukema","cost":"kustannus","vehicle":"ajoneuvo","notes":"muistiinpanot","fast":"pikalataus","home":"kotilataus","favourite":"suosikki"},
+"yes":"kyllä","no":"ei","lang":"Kieli",
+ "chart.title":"Energia ja kustannus kuukausittain","chart.energy":"Energia (kWh)","chart.cost":"Kustannus (€)",
+ "chart.empty":"Ei vielä sessioita tälle ajoneuvolle. Lisää sessio, niin näet kuukausikartan.","chart.offline":"Kaavakirjastoa ei voitu ladata (ei internetyhteyttä?). Muu toimii normaalisti.",
+ "how.soc":"Akun varaus ennen ja jälkeen istunnan, prosentteina (0-100). Jätä tyhjäksi, jos tuntematon.",
+ "err.soc":"Rivi {n}: akun prosenttiarvo ei ole numero, jätettiin tyhjäksi.",
+ "set.editVehicle":"Muokkaa ajoneuvoa","set.initialOdoLead":"Aloitusmatkamittari on matkan laskennan \"nolla\": matka = suurin kirjattu lukema − tämä arvo.",
+ "as.initialOdo":"Aloitusmatkamittari (km)","ph.initialodo":"esim. 45000","aria.initialodo":"aloitusmatkamittarin lukema kilometreinä",
+ "as.vehicle":"Ajoneuvon nimi"
 },
 sv:{
 "ed.for":"Fordon {n} - skapad {d}","ed.durHintSec":"Sekunder visas","fav.update":"Uppdatera favorit","toast.looking":"Söker ”{q}”…","toast.found":"Hittade: {v}","brand":"Laddningslogg för elbilar","nav.dashboard":"Översikt","nav.add":"Lägg till session","nav.log":"Laddningslogg",
@@ -805,7 +866,9 @@ sv:{
 "as.mileage":"Mätarställning (km)","as.location":"Plats / laddare","as.find":"📍 Sök","as.myloc":"🧭 Min plats",
 "as.mapDrag":"Dra nålen för att justera platsen, eller klicka på kartan.",
 "as.mapOff":"Kartan är inte tillgänglig offline. Adressen sparas ändå med sessionen.",
-"as.energy":"Laddad energi (kWh)","as.total":"Totalbelopp","as.price":"Pris per kWh","as.centsUnit":"öre / kWh",
+"as.energy":"Laddad energi (kWh)",
+"as.socStart":"Start %","as.socEnd":"Slut %",
+"ph.soc":"t.ex. 20","as.total":"Totalbelopp","as.price":"Pris per kWh","as.centsUnit":"öre / kWh",
 "as.priceHint1":"Hela eurocent, alltså 35 betyder 0,35 €/kWh. Ange totalbelopp eller pris, den andra räknas ut automatiskt.",
 "as.notes":"Anteckningar","as.fast":"Snabbladdning","as.home":"Hemmaladdning",
 "as.saveFav":"Spara den här platsen som favorit","as.favName":"Favoritens namn",
@@ -922,256 +985,32 @@ sv:{
 "veh.created":"{v} skapad","imp.note":"Importerade {n} session(er).",
 "log.for":"{n} session(er) sparade för {v}, nyast först.","log.none":"Inga sessioner sparade för {v} än.",
 "cands":{"date":"datum","time":"tid","duration":"tid","location":"plats","energy":"energi","mileage":"mätarställning","cost":"kostnad","vehicle":"fordon","notes":"anteckningar","fast":"snabbladdning","home":"hemmaladdning","favourite":"favorit"},
-"yes":"ja","no":"nej","lang":"Språk"
+"yes":"ja","no":"nej","lang":"Språk",
+ "chart.title":"Energi och kostnad per månad","chart.energy":"Energi (kWh)","chart.cost":"Kostnad (EUR)",
+ "chart.empty":"Inga sessioner för det här fordonet ännu. Lägg till en för att se månadskartan.","chart.offline":"Diagrambiblioteket kunde inte laddas (ingen internetanslutning?). Allt annat fungerar normalt.",
+ "how.soc":"Batteriets laddningsnivå före och efter sessionen, i procent (0-100). Lämna tomt om okänt.",
+ "err.soc":"Rad {n}: batteriprocent är inte ett tal, lämnades tomt.",
+ "set.editVehicle":"Redigera fordon","set.initialOdoLead":"Startodometern är distansens \"nollpunkt\": distans = högsta loggade mätarställning − detta värde.",
+ "as.initialOdo":"Startodometer (km)","ph.initialodo":"t.ex. 45000","aria.initialodo":"startodometerns mätarställning i kilometer",
+ "as.vehicle":"Bilnamn"
 },
 se:{
-"ed.for":"Gidno {n} - vuođáživahko {d}","ed.durHintSec":"Sekundat oiddut","fav.update":"Beaivvahit dakkarižiižiižgi","toast.looking":"Ođut “{q}”…","toast.found":"Gávdnat: {v}","brand":"Eleavovsa ládinlogihkka",
-"nav.dashboard":"Yleisnäkymä",
-"nav.add":"Lasit sessiiŋŋa",
-"nav.log":"Ládinlogihkka",
-"nav.fav":"Ovdalodoallobikit",
-"nav.set":"Láigostat",
-"db":"Lokála luhtte · {n} sessiiŋŋa · {v} gidno",
-"dash.lead":"Váldit vehkkil odivuotat. Buot boastut laskitit algat nollain.",
-"dash.pick":"Vállje gidno",
-"qa.import":"Importit oidnudata",
-"qa.addVehicle":"Lasit gidno",
-"tile.kwh":"Láhtán energiija",
-"tile.dist":"Vielgahkku",
-"tile.cost":"Odivuotá ášši",
-"tile.time":"Odivuotá ládin áigi",
-"tile.kwh100":"Mešen kWh / 100 km",
-"tile.cost100":"Mešen € / 100 km",
-"tile.speed":"Mešen ládin niekkis",
-"tile.duravg":"Mešen sessiiŋŋa áigi",
-"as.title":"Lasit ládin sessiiŋŋa",
-"as.date":"Beaivi",
-"as.time":"Aigi",
-"as.dur":"Sessiiŋŋa áigi",
-"as.durHint":"1 minuhta lágádusat. Vuolálbis leat mešen sessiiŋŋa áigi.",
-"as.durHintSec":"Sekundat oiddut, alká gáikká 00. Vuolálbis leat mešen sessiiŋŋa áigi.",
-"as.durSec":"Ođut sekundat (vuolálbis 00)",
-"as.mileage":"Mášenhuhtu (km)",
-"as.location":"Sipa / ládin",
-"as.find":"📍 Ođut",
-"as.myloc":"🧭 Mu áipa",
-"as.mapDrag":"Geahčat nuppe ođđu dan gáhtat, dego dan mátta mápas.",
-"as.mapOff":"Mátta ii leat ožžobasis differihdas. Jávdinčat vahkehuváldo dego dal geassái.",
-"as.energy":"Láhtán energiija (kWh)",
-"as.total":"Odivuotá",
-"as.price":"Datal lea kWh",
-"as.centsUnit":"senttá / kWh",
-"as.priceHint1":"Ollužat eurosenttit. 35 t Lean 0,35 €/kWh. Vuođat odivuotá dego datal lea, dego oktu olmmuhtá datal ja datal.",
-"as.notes":"Merkkimat",
-"as.fast":"Válgán ládin",
-"as.home":"Dálon ládin",
-"as.saveFav":"Girjjit dan sipa dakkarižiižiižgiin",
-"as.favName":"Dakkarižiižiižgi namma",
-"as.favHint":"Gáibidit, jus háldit sipa teavdu. Mátta positšoovnu ližžát dakkarižiižiižgiidda olymii.",
-"ph.loc":"Ráđe geavadat dán áirán",
-"ph.mileage":"d.s. 45000",
-"ph.energy":"d.s. 52,4",
-"ph.auto":"Dálkkálaččat",
-"ph.notes":"d.s. 150 kW, 24 °C, akku 20 → 80 %",
-"ph.favname":"d.s. Dálvis, Vaasa S1",
-"cl.lead":"Girjjit sessiiŋŋat, newest lea ovdabazes.",
-"cl.none":"Eai sessiiŋŋat veletti. Lasit ovdagi kohdas “Lasit sessiiŋŋa”.",
-"th.date":"Beaivi",
-"th.time":"Aigi",
-"th.dur":"Áigi",
-"th.loc":"Sipa",
-"th.energy":"Energiija",
-"th.speed":"Mešen niekki",
-"th.mileage":"Vielgahkku",
-"th.cost":"Ášši",
-"th.tags":"Merkehusat",
-"th.notes":"Merkehusat",
-"th.del":"Bahčit",
-"tag.fast":"Válgán",
-"tag.home":"Dálvis",
-"tag.fav":"★ Ovdal",
-"tag.est":"Árajatan datal",
-"fav.title":"Dakkarižiižiižgi giddi",
-"fav.lead":"Nammat bures doalla ládin giddiid, ođut áirana ja asat nuppe mátta.",
-"fav.name":"Namma",
-"fav.address":"Áirana",
-"fav.find":"Ođut",
-"fav.findHint":"Čállat áirana ja njuoskát Ođut. Dovdago OpenStreetMap, go leat nettis.",
-"fav.lat":"Viakkogámi",
-"fav.lng":"Guovagámi",
-"fav.mapOff":"Mátta ii leat ožžobasis differihdas. Vođe geassái koordináhtaid gáblađe.",
-"fav.save":"Girjjit dakkarižiižiižgiin",
-"fav.clear":"Gáđat neformsdala",
-"fav.saved":"Girjjit",
-"fav.use":"Geavnu",
-"fav.edit":"Rievdat",
-"fav.map":"Mátta",
-"fav.del":"Bahčit",
-"fav.noCoords":" · ii leat koordináhtat",
-"fav.uses":"{n} geavnuma",
-"fav.empty":"Eai dakkarižiižiižgit veletti. Nammat ovdagi, dego váldjet “Girjjit dan sipa dakkarižiižiižgiin” go girjjit sessiiŋŋa.",
-"set.vehicles":"Gidnoyhtat",
-"set.vehiclesLead":"Gidnoyhtat oiddut dakkarižiižiižgiin go leat ealla golbmma máná.",
-"set.saveVehicle":"Girjjit gidno",
-"set.rename":"Nannat nahas",
-"set.remove":"Bahčit",
-"set.price":"Energiija datal",
-"set.priceLead":"Geavvuvon sessiiŋŋaid goain lea kii. Seamma luodda soahkulahah ollužan eurosenttit leat siidás “Lasit sessiiŋŋa”.",
-"set.priceEur":"Datal lea kWh (€)",
-"set.priceCents":"Seamma datal senttit",
-"set.export":"Exportit oidnudata",
-"set.exportLead":"Geahčat ládinlogihkkaa fiilu. Vállit mierka oččimohtat mihkkii gidno háldá fiilu.",
-"set.scope":"Vállit",
-"set.allVehicles":"Buot gidnoyhtat",
-"set.exportCsv":"Exportit CSV",
-"set.exportJson":"Exportit JSON",
-"set.tplCsv":"CSV-málssi",
-"set.tplJson":"JSON-málssi",
-"set.data":"Oidnudata",
-"set.dataLead":"Várrehallu, márkkas ja váđet.",
-"set.backup":"Várrehallu JSON",
-"set.restore":"Márkka várrehallu",
-"set.clear":"Gáđat sessiiŋŋat",
-"set.wipe":"Bahčit buot",
-"im.title":"Importit ládin oidnudata",
-"im.lead":"Lađet sessiiŋŋat fiilusta. Dađđi: <strong>.csv</strong>, <strong>.tsv</strong> ja <strong>.json</strong>. Ovdalát sessiiŋŋat säihuvuvvhit, ja importtej sessiiŋŋat lasit <em>Gidno</em>-dassás oaivi gidnui, dego giddá oaivui go válljejuvvon gidnui go dassá dat ii leat deato dai.",
-"im.choose":"Vállje fiilu",
-"im.go":"Importit fiilu",
-"im.tplNote":"Málssat ođđa fiilu leat Exportit oidnudata aviin.",
-"how.title":"Dálágo fiilu vuođu árjet",
-"how.cols":"Dassana namat (CSV / TSV)",
-"how.p1":"Vuoddat rivat vuođe vuođađa. Dassana namat vuođet váldit oktiid ja gaskat, lullit ja gákkadat leat bálát, danne <code>Energy (kWh)</code>, <code>energy_kwh</code> ja <code>ENERGY</code> buot sámena duoddaštit.",
-"how.th1":"Dassa",
-"how.th2":"Pohkkagis",
-"how.th3":"Váldi gáldut",
-"how.date":"GGGG-MM-DD, d.s. <code>2026-09-28</code>",
-"how.time":"GG:MM 24-dimmaš, d.s. <code>08:15</code>",
-"how.loc":"Moarbit teavda, d.s. <code>Supercharger Vaasa</code>",
-"how.energy":"Lohku kWh:s, d.s. <code>52,4</code>",
-"how.dur":"<code>GG:MM</code> dego desimaallot, d.s. <code>00:45</code> dego <code>0,75</code>",
-"how.mileage":"Lohku kilomehterin, d.s. <code>45000</code>",
-"how.cost":"Lohku euroin, d.s. <code>12,50</code>. Gáibidit, jus háldat datal lea kWh.",
-"how.vehicle":"Gidno namma. Oiđat gidno vuođážii go namma ii leat seivvon.",
-"how.notes":"Moarbit teavda",
-"how.flags":"<code>deana</code>/<code>ei</code>, <code>true</code>/<code>false</code> dego <code>1</code>/<code>0</code>",
-"how.csv":"CSV-oktavuz",
-"how.tsvTitle":"TSV",
-"how.tsv":"Seamma CSV, muhto dassat oddjotje tabuvuhtain. Das fáren CSV “Sákiterduffo (.tsv)” Excelistru dego Google Sheetsist lea sámena.",
-"how.json":"JSON",
-"how.jsonP":"Buođat sessiiŋŋa siida, dego ovdali girjjimuddi “Várrehallu JSON” fiilu. Dat lea sámena <code>vehicles</code>, <code>favourites</code> ja <code>pricePerKwh</code>.",
-"how.notes2":"Mierkki",
-"how.n1":"UTF-8-fiilu vuoddat rivat sámás duođa bajáskeaddi, mii lea bahčuvvhit.",
-"how.n2":"Teavda go leat komma, semikonta dego navttá vuođe guovvit guovvidučáimihkki, <code>\"Oy, Ab\"</code>.",
-"how.n3":"Rivát go ii leat beaivi, aigi, sipa dego lohkosat energiija várre leat njirran, ja ovdageahčai dán giettat.",
-"ed.title":"Rievdat ládin sessiiŋŋa",
-"ed.durHint":"1 minuhta lágádusat",
-"ed.cost":"Ášši (€)",
-"ed.fav":"Girjjit dakkarižiižiižgiin",
-"ed.save":"Girjjit rievdanudat",
-"ed.cancel":"Bođit",
-"ed.del":"Bahčit",
-"aria.theme":"Bođe giđasdoalluččat",
-"aria.map":"Mátta",
-"aria.sessMap":"Váldit sipa mátta",
-"aria.edit":"Rievdat sessiiŋŋa",
-"aria.del":"Bahčit sessiiŋŋa",
-"aria.newveh":"Ođđa gidno namma",
-"aria.addr":"Áirana",
-"aria.cents":"Datal lea kWh eurosenttit",
-"foot":"Eleavovsa ládinlogihkka · oidnudata jiehtá dás personasándoris",
-"ph.vehname":"Gidno namma, d.s. Tesla Model 3",
-"ph.addr":"Gáhtu, gávpogot, riika",
-"tag.yes":"deana",
-"tag.no":"ei",
-"toast.storage":"Luhtta ollu. Sessiiŋŋa girdi ij rávdu",
-"toast.favSave":"Dakkarižiižiižgit ij rávdu",
-"toast.saved":"Sessiiŋŋa rávdu gidnui {v}",
-"toast.savedFav":"Sessiiŋŋa rávdu gidnui {v} · dakkarižiižiižgi beaivvahuvvhit",
-"toast.updated":"Sessiiŋŋa beaivvahuvvhit",
-"toast.deleted":"Sessiiŋŋa bahcejuvvhit",
-"toast.delFav":"Dakkarižiižiižgi bahcejuvvhit",
-"toast.vehAdd":"{v} lasojuvvhit",
-"toast.vehRem":"{v} bahcejuvvhit",
-"toast.vehName":"Nammat gidnui namma",
-"toast.csv":"{n} sessiiŋŋa exportkuvvhit CSV-hapmii",
-"toast.json":"{n} sessiiŋŋa exportkuvvhit",
-"toast.nothing":"Ii leat exporttahkii gidnu",
-"toast.backup":"Várrehallu luodduduvvhit",
-"toast.restore":"Márkkai {n} sessiiŋŋa ja {f} dakkarižiižiižgi",
-"toast.badRestore":"Dat fiila ii leat várrehallu",
-"toast.cleared":"Sessiiŋŋat gájejuvvhit",
-"toast.wiped":"Buot bahcejuvvhit",
-"toast.clearQ":"Buot {n} rávdu sessiiŋŋat bahčit? Gidnoyhtat ja dakkarižiižiižgit säihuvuvvhit.",
-"toast.wipeQ":"Buot gidnoyhtat, buot sessiiŋŋat ja buot dakkarižiižiižgit bahčit? Dan ii sáđá naaggin.",
-"toast.remQ":"{v} ja dan {n} sessiiŋŋa bahčit?",
-"toast.delQ":"Sessiiŋŋa sippas {loc} bahčit?",
-"toast.renQ":"Ođđa namma gidnui {v}",
-"toast.delFavQ":"Dakkarižiižiižgi “{n}” bahčit?",
-"toast.imported":"{n} sessiiŋŋa importkuvvhit",
-"toast.tplCsv":"CSV-málssi luodduduvvhit",
-"toast.tplJson":"JSON-málssi luodduduvvhit",
-"toast.locFirst":"Čállat áirana ovdabazes",
-"toast.offline":"Don ii leat differihdas. Geassái koordináhtaid gáblađe dego mátta geavpu.",
-"toast.noMatch":"Juoidimot ci leat sippas “{q}”. Geahčat ollužit áirana.",
-"toast.geoFail":"Áirana ohtatjou dajai áigi. Vođe dál geahčat nuppe mátta áippás dego čállat koordináhtaid.",
-"toast.locFirst2":"Čállat áirana ovdabazes.",
-"toast.offline2":"Don leat offline. Áirana rávdu sessiiŋŋain.",
-"toast.noMatch2":"Juoidimot ci leat sippas “{q}”.",
-"toast.geoFail2":"Áirana ohtatjou dajai áigi.",
-"toast.geoNone":"Dat muhtbrowser ij sámihin áipái.",
-"toast.geoWait":"Vuolátj áipavuođa.",
-"toast.geoDenied":"Áipavuođa binndanuvvhit. Vođe dál geahčat áirana teavdain.",
-"toast.geoUnavail":"Mu áipa ei leat seúda ožžobasis.",
-"toast.geoError":"Mu áivahdon ii sávdá lásse.",
-"toast.geoPerm":"Vođe dál geahčat áirana teavdain.",
-"toast.geoNear":"Girddán {v}. {d} m guoddi, geahčojuvvui sippin.",
-"toast.geoNearF":"Danimárkkámešen rávdu sipa lea {v}, {d} m guoddi. Nuppe asat mu áipái, rievdat lehket.",
-"toast.geoNoNear":"Dál binndanon lea rávdu ládin sipa. Nuppe asat mu áipái. Čállat luostta namma dego geahčat nuppe.",
-"toast.showing":"Ođut {v}",
-"toast.pinMoved":"Nuppe siidajuvvhit {a}, {b}",
-"toast.favName":"Lasit namma dego áirana",
-"toast.favCoords":"Viakkogámi ja guovagámi dát guovak beide guovahuvvat",
-"toast.favSavedMap":"{v} rávdu mátta positšoovnain",
-"toast.favSavedNo":"{v} rávdu. Lasit mátta positšoovnain olymii",
-"toast.priceNow":"Ollužat eurosenttit. 35 t Lean 0,35 €/kWh. Dál {v} kWh ovddu",
-"toast.priceFromTotal":" Datal ja duoddaš odivuotá.",
-"toast.priceFromPrice":" Odivuotá ja duoddaš dás.",
-"toast.priceEnergy":"kWh",
-"toast.priceNeed":"Energiija leahpat",
-"toast.priceHint":"Gáibidit, jus háldat {v} kWh ovddu",
-"toast.priceNeedE":"Čállat láhtán energiija ođđai ožadit odivuotá.",
-"toast.centsMirror":"{c} senttá = {v} / kWh",
-"err.json":"Fiila ii sávdá lásse JSON-hapmii.",
-"err.jsonBad":"Fiila ii leat galban JSON. {m}",
-"err.jsonShape":"Vuoddedi sessiiŋŋa siida, dego várrehallu-objektka sessiiŋŋa-siidu.",
-"err.rowObj":"Rivdat {n} ii leat objektta",
-"err.empty":"Ii leat importtahkii gidnu",
-"err.emptyMore":"Fiilii leat vuođagi rivat ja eanimustae okti beanaveaijsaját.",
-"err.cols":"Vuođađađa dassat leat pohkkaged",
-"err.colsReq":"Pohkkage dassat: date, time, location, energy.",
-"err.colsFound":"Gávdnat: {c}",
-"err.ignored":"Bajáskeahkaiido oiddahmeaddážat dassat: {c}",
-"err.noneImported":"Ni ii importtahkii. {n} dássejávdnat.",
-"err.date":"Rivdat {n} beaivi ii leat deato dego lea rievdan. Geavdat GGGG-MM-DD",
-"err.time":"Rivdat {n} aigi ii leat deato dego lea rievdan. Geavdat GG:MM, 00:00-23:59",
-"err.loc":"Rivdat {n} sipa ii leat deato",
-"err.energy":"Rivdat {n} energiija dahje leat lohku kWh:s",
-"err.energyNeg":"Rivdat {n} energiija ii sáđá negatiivis",
-"err.dur":"Rivdat {n} áigi dahje leat GG:MM dego desimaallot",
-"err.mileage":"Rivdat {n} mášenhuhtu dahje leat lohku",
-"err.cost":"Rivdat {n} ášši dahje leat lohku",
-"err.fileOpen":"Fiila ii sávdá lásse.",
-"err.open":"Fiila ii sávdá avahdit.",
-"more":"... ja {n} eai lean",
-"veh.created":"{v} vuođážii",
-"imp.note":"Importkuvvhit {n} sessiiŋŋa.",
-"log.for":"{n} sessiiŋŋa rávdu gidnui {v}, newest lea ovdabazes.",
-"log.none":"Gidnui {v} ii leat sesiiŋŋat rávdu veletti.",
-"cands":{"date":"beaivi","time":"aigi","duration":"áigi","location":"sipa","energy":"energiija","mileage":"mášenhuhtu","cost":"ášši","vehicle":"gidno","notes":"merkkimat","fast":"válgán","home":"dálvis","favourite":"dakkarižiižiižgi"},
-"yes":"deana",
-"no":"ei",
-"lang":"Giella"
-}
+  "fav.name":"Namma",
+  "fav.map":"Mátta",
+  "fav.save":"Girjjit",
+  "fav.use":"Váldit",
+  "fav.del":"Bahčit",
+  "fav.edit":"Rievdat",
+  "set.remove":"Bahčit",
+  "aria.map":"Mátta",
+  "aria.del":"Bahčit",
+  "aria.edit":"Rievdat",
+  "ed.save":"Girjjit",
+  "ed.del":"Bahčit",
+  "ed.edit":"Rievdat",
+  "as.date":"Beaivi",
+  "as.time":"Áigi",
+ }
 };
 var LANGS=[["fi","Suomi"],["sv","Svenska"],["se","Davvisámegiella"],["en","English"]];
 var ORDER={"fi":"fi","sv":"sv","se":"se","sme":"se","en":"en"};
@@ -1263,13 +1102,17 @@ window.renderI18n=function(){
     syncHints();
   }catch(e){}
 };
-var vehicles=[],sessions=[],favs=[],cur=0,view="dashboard",dirty=false,price=0.20,editFav=null;
+var vehicles=[],sessions=[],favs=[],cur=0,view="dashboard",dirty=false,price=0.20,editFav=null,editVehId=null;
 
 /* ---------- storage ---------- */
 function load(){
   try{vehicles=JSON.parse(localStorage.getItem(K.v))||[]}catch(e){vehicles=[]}
+/* backwards compatibility: vehicles saved before the initial odometer existed */
+if(Array.isArray(vehicles))for(var vi=0;vi<vehicles.length;vi++){
+if(vehicles[vi]&&!isFinite(+vehicles[vi].initialOdometer))vehicles[vi].initialOdometer=0;
+}
   try{sessions=JSON.parse(localStorage.getItem(K.s))||[]}catch(e){sessions=[]}
-  if(!Array.isArray(vehicles)||!vehicles.length)vehicles=[{id:uid(),name:"Vehicle 1",icon:"🚗"}];
+  if(!Array.isArray(vehicles)||!vehicles.length)vehicles=[{id:uid(),name:"Vehicle 1",icon:"🚗",initialOdometer:0}];
   if(!Array.isArray(sessions))sessions=[];
   sessions=sessions.filter(function(s){return s&&s.vehicleId&&isFinite(+s.energy)});
   var stored=localStorage.getItem(K.p);
@@ -1414,6 +1257,17 @@ function chargeSpeed(s){
   if(!(h>0))return null;
   return num(s.energy)/h;
 }
+/* battery state of charge, percent: empty -> null, otherwise clamped 0-100 */
+function soc(v){
+  if(!isNum(v))return null;
+  var n=Math.round(num(v));
+  return n<0?0:n>100?100:n;
+}
+function fmtSoc(s){
+  var a=soc(s&&s.socStart),b=soc(s&&s.socEnd);
+  if(a===null&&b===null)return "";
+  return " ("+(a===null?"":a+"%")+(a!==null&&b!==null?" \u2192 ":"")+(b===null?"":b+"%")+")";
+}
 /* overall average power: total kWh / total hours, ignoring zero-length rows */
 function speedTotal(list){
   var kwh=0,h=0;
@@ -1434,21 +1288,26 @@ function sorted(list){
     return x<y?1:x>y?-1:(b.id||0)-(a.id||0);
   });
 }
-function totals(list){
-  var t={kwh:0,cost:0,h:0,km:0,est:0};
-  var s=sorted(list);
-  for(var i=0;i<s.length;i++){
-    t.kwh+=num(s[i].energy);
-    t.h+=num(s[i].hours);
-    t.cost+=costOf(s[i]);
-    if(!hasCost(s[i]))t.est++;
-  }
-  var asc=s.slice().reverse();
-  for(var j=1;j<asc.length;j++){
-    var d=num(asc[j].mileage)-num(asc[j-1].mileage);
-    if(d>0)t.km+=d;
-  }
-  return t;
+/* distance driven = highest odometer reading logged, minus the vehicle's
+   initial odometer ("ground zero"). Adding up the gaps between consecutive
+   sessions would silently ignore everything driven before the first entry. */
+function totals(list,initialOdo){
+var t={kwh:0,cost:0,h:0,km:0,est:0};
+var s=sorted(list);
+var maxM=0,seen=false;
+for(var i=0;i<s.length;i++){
+t.kwh+=num(s[i].energy);
+t.h+=num(s[i].hours);
+t.cost+=costOf(s[i]);
+if(!hasCost(s[i]))t.est++;
+var m=num(s[i].mileage);
+if(m>0&&(!seen||m>maxM)){maxM=m;seen=true}
+}
+if(seen){
+var base=Math.max(0,num(initialOdo));
+t.km=Math.max(0,maxM-base);
+}
+return t;
 }
 function esc(s){
   return String(s==null?"":s).replace(/[&<>"']/g,function(c){
@@ -1462,6 +1321,107 @@ function toast(msg){
 }
 
 /* ---------- render ---------- */
+/* ---------- monthly dashboard chart ---------- */
+var monthChart=null;
+function chartColors(){
+  var cs=window.getComputedStyle?window.getComputedStyle(document.body):null;
+  var g=function(n,fb){var v=cs?cs.getPropertyValue(n):"";v=String(v).trim();return v||fb};
+  return {text:g("--text","#0f172a"),muted:g("--text-muted","#475569"),
+          line:g("--line","#e2e8f0"),kwh:g("--primary","#2563eb"),cost:g("--accent","#06b6d4")};
+}
+/* kWh and cost per month, for one vehicle; most recent 12 months that have data */
+function monthBuckets(id){
+  var list=ofVehicle(id),m={};
+  for(var i=0;i<list.length;i++){
+    var s=list[i],k=String(s.date||"").slice(0,7);
+    if(!/^\d{4}-\d{2}$/.test(k))continue;
+    if(!m[k])m[k]={kwh:0,cost:0};
+    m[k].kwh+=num(s.energy);
+    m[k].cost+=costOf(s);
+  }
+  var keys=Object.keys(m).sort();
+  if(keys.length>12)keys=keys.slice(keys.length-12);
+  var out=[];
+  for(var q=0;q<keys.length;q++)out.push({key:keys[q],
+    kwh:Math.round(m[keys[q]].kwh*100)/100,
+    cost:Math.round(m[keys[q]].cost*100)/100});
+  return out;
+}
+function monthLabel(k){
+  var d=new Date(+k.slice(0,4),+k.slice(5,7)-1,1);
+  if(!isFinite(d.getTime()))return k;
+  return d.toLocaleDateString(undefined,{month:"short",year:"2-digit"});
+}
+function renderChart(){
+  var note=$("chartNote"),box=$("chartBox");
+  if(!note||!box)return;
+  /* Chart.js cannot measure a hidden canvas, so only draw while the
+     dashboard is the visible view */
+  if(view!=="dashboard")return;
+  function say(msg){
+    monthChart=null;
+    note.textContent=msg;note.hidden=false;box.hidden=true;
+  }
+  if(!window.Chart)return say(TXT("chart.offline"));
+  var b=monthBuckets(veh().id);
+  if(!b.length)return say(TXT("chart.empty"));
+  note.hidden=true;box.hidden=false;
+  var C=chartColors();
+  var data={labels:[],datasets:[
+    {type:"bar",label:TXT("chart.energy"),yAxisID:"y",order:2,
+     backgroundColor:C.kwh,borderRadius:4,data:[]},
+    {type:"line",label:TXT("chart.cost"),yAxisID:"y1",order:1,
+     borderColor:C.cost,backgroundColor:C.cost,borderWidth:2,pointRadius:3,tension:.3,data:[]}
+  ]};
+  for(var i=0;i<b.length;i++){
+    data.labels.push(monthLabel(b[i].key));
+    data.datasets[0].data.push(b[i].kwh);
+    data.datasets[1].data.push(b[i].cost);
+  }
+  function restyle(ch){
+    if(!ch.options)return ch;
+    ch.options.scales.x.ticks.color=C.muted;
+    ch.options.scales.y.ticks.color=C.muted;
+    ch.options.scales.y1.ticks.color=C.muted;
+    ch.options.scales.x.grid.color=C.line;
+    ch.options.scales.y.grid.color=C.line;
+    ch.options.plugins.legend.labels.color=C.text;
+    ch.options.plugins.title.color=C.text;
+    return ch;
+  }
+  if(monthChart){
+    monthChart.data=data;
+    restyle(monthChart).update();
+    return;
+  }
+  monthChart=new window.Chart($("monthChart"),{type:"bar",data:data,options:{
+    responsive:true,maintainAspectRatio:false,
+    interaction:{mode:"index",intersect:false},
+    plugins:{
+      title:{display:true,text:TXT("chart.title"),color:C.text,font:{size:13,weight:"normal"},padding:{bottom:12}},
+      legend:{position:"bottom",labels:{color:C.text,boxWidth:12,usePointStyle:true}},
+      tooltip:{callbacks:{label:function(c){
+        return c.dataset.label+": "+(c.parsed.y===null?"":num(c.parsed.y).toFixed(2));
+      }}}
+    },
+    scales:{
+      x:{ticks:{color:C.muted,autoSkip:true,maxRotation:0},grid:{color:C.line}},
+      y:{beginAtZero:true,position:"left",title:{display:true,text:"kWh",color:C.muted},
+         ticks:{color:C.muted},grid:{color:C.line}},
+      y1:{beginAtZero:true,position:"right",title:{display:true,text:"EUR",color:C.muted},
+         ticks:{color:C.muted},grid:{drawOnChartArea:false}}
+    }
+  }});
+  restyle(monthChart);
+}
+/* the CDN script is deferred, so Chart may not exist on first paint */
+function watchChartLib(){
+  var lib=$("chartjsLib");
+  if(lib)lib.addEventListener("load",function(){renderChart()});
+  if(lib)lib.addEventListener("error",function(){renderChart()});
+  setTimeout(function(){if(view==="dashboard")renderChart()},2500);
+}
+
 function render(){
   var v=veh();
   $("who").textContent=view==="dashboard"||view==="view-data"?v.name:({ "add-session":"Add charging session","settings":"Settings"})[view]||"Dashboard";
@@ -1482,7 +1442,7 @@ function render(){
     $("vehList").innerHTML=h;
   }
 
-  var T=totals(ofVehicle(v.id));
+  var T=totals(ofVehicle(v.id),v.initialOdometer);
   $("sEnergy").textContent=T.kwh.toFixed(1)+" kWh";
   $("sDist").textContent=Math.round(T.km)+" km";
   $("sCost").textContent=fmtMoney(T.cost);
@@ -1505,7 +1465,7 @@ function render(){
     if(s.fav)tags+='<span class="tag t-fav">'+TXT("tag.fav")+"</span>";
     if(!hasCost(s))tags+='<span class="tag t-est">'+TXT("tag.est")+"</span>";
     tb+='<tr><td>'+esc(s.date)+'</td><td>'+esc(fmtTime(s.time))+'</td><td>'+esc(hoursToHM(s.hours))+'</td>'+
-       '<td>'+esc(s.location)+'</td><td>'+num(s.energy).toFixed(2)+' kWh</td><td>'+fmtKw(chargeSpeed(s))+'</td>'+
+       '<td>'+esc(s.location)+'</td><td>'+num(s.energy).toFixed(2)+' kWh'+fmtSoc(s)+'</td><td>'+fmtKw(chargeSpeed(s))+'</td>'+
        '<td>'+num(s.mileage).toFixed(1)+' km</td>'+
        '<td>'+c+'</td><td>'+tags+'</td><td class="wrapc">'+esc(s.notes||"—")+'</td>'+
        '<td><button class="btn sm ghost" data-edit="'+esc(s.id)+'" aria-label="'+TXT("aria.edit")+'">✎</button> '+
@@ -1527,9 +1487,10 @@ function render(){
         '<button class="btn sm ghost" data-ren="'+esc(vehicles[k].id)+'">'+TXT("set.rename")+"</button>"+
         (vehicles.length>1?'<button class="btn sm dgr" data-rm="'+esc(vehicles[k].id)+'">'+TXT("set.remove")+"</button>":'')+'</div>';
   }
-  $("vehSettings").innerHTML=vs;
-  syncCents();
-  renderFavs();
+$("vehSettings").innerHTML=vs;
+syncCents();
+renderFavs();
+renderChart();
 }
 
 function renderFavs(){
@@ -1567,6 +1528,8 @@ var IMPORT_COLS=[
   {key:"energy",   re:["energy","energykwh","kwh","energycharged","charge"]},
   {key:"mileage",  re:["mileage","odometer","km","distance","kmreading"]},
   {key:"cost",     re:["cost","price","totalcost","costEUR","amount"]},
+ {key:"socStart", re:["startsoc","socstart","startsocpct","startsocpercent","startbattery","startbatterypercent"]},
+ {key:"socEnd",   re:["endsoc","socend","endsocpct","endsocpercent","endbattery","endbatterypercent"]},
   {key:"vehicle",  re:["vehicle","car","vehicleName"]},
   {key:"notes",    re:["notes","note","comment","comments"]},
   {key:"fast",     re:["fast","fastcharging","dc","directcurrent"]},
@@ -1574,7 +1537,25 @@ var IMPORT_COLS=[
   {key:"favourite",re:["favourite","favorite","fav","favouriteLocation"]}
 ];
 function normHeader(v){
-  return String(v==null?"":v).replace(/^\uFEFF/,"").toLowerCase().replace(/[^a-z0-9]/g,"");
+return String(v==null?"":v).replace(/^\uFEFF/,"").toLowerCase().replace(/[^a-z0-9]/g,"");
+}
+/* map a normalized header back to its canonical key using IMPORT_COLS.
+   Needed because normHeader lowercases and strips, which breaks camelCase
+   keys such as socStart when a JSON file is imported. */
+function resolveHead(h){
+if(!h)return null;
+var i,q,best=null,bestLen=-1;
+for(i=0;i<IMPORT_COLS.length;i++){
+if(IMPORT_COLS[i].re.indexOf(h)>=0)return IMPORT_COLS[i].key;
+}
+for(i=0;i<IMPORT_COLS.length;i++){
+for(q=0;q<IMPORT_COLS[i].re.length;q++){
+var a=IMPORT_COLS[i].re[q];
+if(h.indexOf(a)<0)continue;
+if(a.length>bestLen){bestLen=a.length;best=IMPORT_COLS[i].key}
+}
+}
+return best;
 }
 function parseDelimited(text,delim){
   var rows=[],row=[],cur="",quoted=false,i=0;
@@ -1648,13 +1629,19 @@ function sessionFromObject(o,idx,errors){
   if(isNaN(hours)){errors.push(TXT("err.dur",{n:idx}));return null}
   var mRaw=get("mileage");
   if(mRaw!==""&&!isNum(mRaw)){errors.push(TXT("err.mileage",{n:idx}));return null}
-  var cRaw=get("cost");
-  if(cRaw!==""&&!isNum(cRaw)){errors.push(TXT("err.cost",{n:idx}));return null}
+var cRaw=get("cost");
+if(cRaw!==""&&!isNum(cRaw)){errors.push(TXT("err.cost",{n:idx}));return null}
+/* battery SoC is optional: an unusable value is dropped with a note rather than
+   rejecting the whole row, because the other columns may still be valid */
+var ssRaw=get("socStart"),seRaw=get("socEnd");
+if(ssRaw!==""&&!isNum(ssRaw)){errors.push(TXT("err.soc",{n:idx}));ssRaw=""}
+if(seRaw!==""&&!isNum(seRaw)){errors.push(TXT("err.soc",{n:idx}));seRaw=""}
   var v=vehicleForImport(get("vehicle"));
   return {
     id:uid(),vehicleId:v.id,date:d,time:t,
     duration:dur,hours:hours,location:loc,energy:e,mileage:mRaw===""?0:+mRaw,
     cost:cRaw===""?null:Math.max(0,+cRaw),
+ socStart:soc(ssRaw),socEnd:soc(seRaw),
     notes:get("notes"),
     fast:isYes(get("fast")),home:isYes(get("home")),favourite:isYes(get("favourite")),
     created:Date.now()
@@ -1685,9 +1672,12 @@ function importText(text,fileName){
     for(var i=0;i<data.length;i++){
       var o=data[i];
       if(!o||typeof o!=="object"){errors.push(TXT("err.rowObj",{n:i+1}));continue}
-      var norm={};
-      for(var k in o)norm[normHeader(k)]=o[k];
-      var s=sessionFromObject(norm,i+1,errors);
+var norm={};
+for(var k in o){
+var ck=resolveHead(normHeader(k));
+if(ck)norm[ck]=o[k];
+}
+var s=sessionFromObject(norm,i+1,errors);
       if(s)made.push(s);
     }
   }else{
@@ -1779,9 +1769,9 @@ $("impFile").addEventListener("change",function(){
 });
 $("tplCsv").addEventListener("click",function(){
   download("ev-import-template.csv","\ufeff"+
-    "date,time,duration,location,energy,mileage,cost,vehicle,notes,fast,home,favourite\n"+
-    "2026-09-28,08:15,00:45,Supercharger Vaasa,52.4,45000,12.50,Vehicle 1,150 kW 20-80%,yes,no,yes\n"+
-    "2026-09-20,19:40,01:30,Home,30,44810,,Vehicle 1,,no,yes,no\n",
+"date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fast,home,favourite\n"+
+"2026-09-28,08:15,00:45,Supercharger Vaasa,52.4,20,80,45000,12.50,Vehicle 1,150 kW 20-80%,yes,no,yes\n"+
+"2026-09-20,19:40,01:30,Home,30,35,80,44810,,Vehicle 1,,no,yes,no\n",
     "text/csv;charset=utf-8");
   toast(TXT("toast.tplCsv"));
 });
@@ -1812,6 +1802,8 @@ function openEdit(id){
   $("eMileage").value=s.mileage;
   $("eEnergy").value=s.energy;
   $("eCost").value=isNum(s.cost)?s.cost:"";
+if($("eSocStart"))$("eSocStart").value=soc(s.socStart)===null?"":s.socStart;
+if($("eSocEnd"))$("eSocEnd").value=soc(s.socEnd)===null?"":s.socEnd;
   $("eNotes").value=s.notes||"";
   $("eFast").checked=!!s.fast;
   $("eHome").checked=!!s.home;
@@ -1839,6 +1831,8 @@ function saveEdit(e){
   s.energy=num($("eEnergy").value);
   s.mileage=num($("eMileage").value);
   s.cost=$("eCost").value===""?null:Math.max(0,num($("eCost").value));
+s.socStart=soc($("eSocStart")?$("eSocStart").value:null);
+s.socEnd=soc($("eSocEnd")?$("eSocEnd").value:null);
   s.notes=$("eNotes").value.trim();
   s.fast=$("eFast").checked;
   s.home=$("eHome").checked;
@@ -2181,7 +2175,7 @@ function onLocInput(){
   clearTimeout(locTimer);
   locTimer=setTimeout(function(){
     suggest(q,function(list){showSuggest(list)});
-  },350);
+  },800);
 }
 
 /* ---------- use the device location ---------- */
@@ -2282,11 +2276,12 @@ function go(id){
 
 /* ---------- actions ---------- */
 function addVehicle(){
-  var name=$("vName").value.trim();
-  if(!name){toast(TXT("toast.vehName"));$("vName").focus();return}
-  vehicles.push({id:uid(),name:name,icon:"🚙"});
-  $("vName").value="";
-  save();go("dashboard");toast(TXT("toast.vehAdd",{v:name}));
+var name=$("vName").value.trim();
+if(!name){toast(TXT("toast.vehName"));$("vName").focus();return}
+var odo=$("vOdo").value===""?0:Math.max(0,num($("vOdo").value));
+vehicles.push({id:uid(),name:name,icon:"🚗",initialOdometer:odo});
+$("vName").value="";$("vOdo").value="";
+save();go("dashboard");toast(TXT("toast.vehAdd",{v:name}));
 }
 function removeVehicle(id){
   var v=vehById(id);if(!v)return;
@@ -2296,13 +2291,32 @@ function removeVehicle(id){
   if(cur>=vehicles.length)cur=vehicles.length-1;
   save();render();toast(TXT("toast.vehRem",{v:v.name}));
 }
-function renameVehicle(id){
-  var v=vehById(id);if(!v)return;
-  var n=prompt(TXT("toast.renQ",{v:v.name}),v.name);
-  if(n===null)return;
-  n=n.trim();if(!n)return;
-  v.name=n;save();render();
+function openVeh(id){
+var v=vehById(id);if(!v)return;
+editVehId=id;
+lastFocus=document.activeElement;
+$("vfName").value=v.name||"";
+$("vfOdo").value=soc0(v.initialOdometer);
+$("vehSheet").classList.add("on");
+$("vfName").focus();
 }
+function closeVeh(){
+$("vehSheet").classList.remove("on");
+editVehId=null;
+if(lastFocus&&lastFocus.focus)try{lastFocus.focus()}catch(e){}
+}
+function saveVeh(e){
+if(e)e.preventDefault();
+var v=vehById(editVehId);
+if(!v){closeVeh();return}
+var n=$("vfName").value.trim();
+if(!n){toast(TXT("toast.vehName"));$("vfName").focus();return}
+v.name=n;
+v.initialOdometer=$("vfOdo").value===""?0:Math.max(0,num($("vfOdo").value));
+save();closeVeh();render();
+}
+/* odometer values are whole kilometres; -1 means "not recorded yet" */
+function soc0(v){return isNum(v)&&v>0?String(v):""}
 function delSession(id){
   var s=sessions.filter(function(x){return x.id===id})[0];
   if(!s||!confirm(TXT("toast.delQ",{loc:s.location})))return;
@@ -2320,12 +2334,15 @@ function scopeList(){
   return s==="all"?sessions.slice():ofVehicle(s);
 }
 function toCSV(list){
-  var head=["Date","Time","Duration","Vehicle","Location","Energy (kWh)","Mileage (km)","Cost (EUR)","Cost basis","Fast","Home","Favourite","Notes"];
-  var q=function(v){v=v==null?"":String(v);return /[",\n;]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
-  var rows=list.map(function(s){
-    var v=(vehById(s.vehicleId)||{}).name||"";
-    return [s.date,fmtTime(s.time),hoursToHM(s.hours),v,s.location,num(s.energy).toFixed(2),num(s.mileage).toFixed(1),
-      costOf(s).toFixed(2),
+var head=["Date","Time","Duration","Vehicle","Location","Energy (kWh)","Start SoC (%)","End SoC (%)","Mileage (km)","Cost (EUR)","Cost basis","Fast","Home","Favourite","Notes"];
+var q=function(v){v=v==null?"":String(v);return /[",\n;]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+var rows=list.map(function(s){
+var v=(vehById(s.vehicleId)||{}).name||"";
+var a=soc(s.socStart),b=soc(s.socEnd);
+return [s.date,fmtTime(s.time),hoursToHM(s.hours),v,s.location,num(s.energy).toFixed(2),
+a===null?"":a,b===null?"":b,
+num(s.mileage).toFixed(1),
+costOf(s).toFixed(2),
       hasCost(s)?"entered":"estimated at "+price.toFixed(2)+" EUR/kWh",
       s.fast?"yes":"no",s.home?"yes":"no",s.fav?"yes":"no",s.notes||""].map(q).join(",");
   });
@@ -2346,11 +2363,12 @@ document.addEventListener("click",function(e){
   if(t.hasAttribute("data-fedit")){editFavById(t.getAttribute("data-fedit"));return}
   if(t.hasAttribute("data-fdel")){delFav(t.getAttribute("data-fdel"));return}
   if(t.hasAttribute("data-del")){delSession(t.getAttribute("data-del"));return}
-  if(t.hasAttribute("data-ren")){renameVehicle(t.getAttribute("data-ren"));return}
+  if(t.hasAttribute("data-ren")){openVeh(t.getAttribute("data-ren"));return}
   if(t.hasAttribute("data-rm")){removeVehicle(t.getAttribute("data-rm"))}
 });
 $("vSave").addEventListener("click",addVehicle);
 $("vName").addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();addVehicle()}});
+$("vOdo").addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();addVehicle()}});
 $("ppk").addEventListener("change",function(){
   price=Math.max(0,num(this.value));
   this.value=price.toFixed(2);
@@ -2533,6 +2551,7 @@ $("sForm").addEventListener("submit",function(e){
     duration:d.duration.value,hours:hmToHours(d.duration.value),
     location:d.location.value.trim(),energy:num(d.energy.value),mileage:num(d.mileage.value),
     cost:d.cost.value===""?null:Math.max(0,num(d.cost.value)),
+ socStart:soc(d.socStart?d.socStart.value:null),socEnd:soc(d.socEnd?d.socEnd.value:null),
     notes:d.notes.value.trim(),fast:d.fast.checked,home:d.home.checked,fav:d.fav.checked,
     lat:isNum(locGeo.lat)?locGeo.lat:null,lng:isNum(locGeo.lng)?locGeo.lng:null,
     created:Date.now()
@@ -2607,9 +2626,10 @@ document.addEventListener("click",function(e){
 });
 
 $("themeBtn").addEventListener("click",function(){
-  var d=document.body.classList.toggle("dark");
-  $("themeBtn").textContent=d?"🌙":"☀️";
-  try{localStorage.setItem(K.t,d?"dark":"light")}catch(e){}
+var d=document.body.classList.toggle("dark");
+$("themeBtn").textContent=d?"🌙":"☀️";
+try{localStorage.setItem(K.t,d?"dark":"light")}catch(e){}
+renderChart();
 });
 $("editForm").addEventListener("submit",saveEdit);
 $("eCancel").addEventListener("click",closeEdit);
@@ -2617,8 +2637,13 @@ $("eDelete").addEventListener("click",function(){
   if(editId){delSession(editId);closeEdit()}
 });
 $("editSheet").addEventListener("click",function(e){if(e.target===this)closeEdit()});
+$("vehForm").addEventListener("submit",saveVeh);
+$("vfCancel").addEventListener("click",closeVeh);
+$("vehSheet").addEventListener("click",function(e){if(e.target===this)closeVeh()});
 document.addEventListener("keydown",function(e){
-  if(e.key==="Escape"&&$("editSheet").classList.contains("on"))closeEdit();
+if(e.key!=="Escape")return;
+if($("editSheet").classList.contains("on"))closeEdit();
+else if($("vehSheet").classList.contains("on"))closeVeh();
 });
 window.addEventListener("hashchange",function(){
   var h=location.hash.slice(1);
@@ -2641,6 +2666,7 @@ renderFavs();
 stampDefaults();
 var start=location.hash.slice(1);
 go(document.getElementById(start)?start:"dashboard");
+watchChartLib();
 window.addEventListener("online",function(){leafletState=0});
 setInterval(function(){
   var ae=document.activeElement;

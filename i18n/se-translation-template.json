@@ -1,0 +1,1529 @@
+{
+  "_readme": [
+    "Northern Sami (Davvisamagiella) translation template for EV Multi-Tracker.",
+    "",
+    "HOW TO USE",
+    "  1. Fill in the \"se\" field for every key with natural Northern Sami.",
+    "  2. {n} = a number, {v} = a value/name, {q} = typed text, {d} = a date,",
+    "     {a} and {b} = coordinates, {c} = a count, {f} = a count.",
+    "  3. Keys whose text contains <strong>, <code> or <em> are inserted as HTML: keep the tags.",
+    "  4. Leave a value empty to fall back to English automatically.",
+    "",
+    "NOTES FOR THE TRANSLATOR",
+    "  - These strings are technical (charging, energy, postcode). Please prefer established",
+    "    Northern Sami terms and avoid inventing forms. If a term has no good equivalent,",
+    "    it is fine to borrow the Finnish/Swedish word, as is normal in this domain.",
+    "  - Do not translate 'kWh', 'kW', 'km', 'CSV', 'JSON', 'TSV' or 'OpenStreetMap'.",
+    "  - Address format: Finnish and most European languages write the postcode BEFORE the",
+    "    city (33100 Tampere); this is already handled automatically, so the address",
+    "    components must be given as separate parts (name, street, city, postcode).",
+    "",
+    "STATUS OF THE CURRENT MACHINE DRAFT",
+    "  A previous automatic draft was rejected as unreliable: it mixed Skolt Sami",
+    "  characters into a Northern Sami slot and used invented morphology. Those strings",
+    "  have been removed. The 'se' column is intentionally blank until a native speaker",
+    "  fills it in."
+  ],
+  "keys": {
+    "ed.for": {
+      "en": "Vehicle {n} - created {d}",
+      "fi": "Ajoneuvo {n} - luotu {d}",
+      "sv": "Fordon {n} - skapad {d}",
+      "se": ""
+    },
+    "ed.durHintSec": {
+      "en": "Seconds shown",
+      "fi": "Sekunnit näkyvät",
+      "sv": "Sekunder visas",
+      "se": ""
+    },
+    "fav.update": {
+      "en": "Update favourite",
+      "fi": "Päivitä suosikki",
+      "sv": "Uppdatera favorit",
+      "se": ""
+    },
+    "toast.looking": {
+      "en": "Looking up “{q}”…",
+      "fi": "Haetaan “{q}”…",
+      "sv": "Söker ”{q}”…",
+      "se": ""
+    },
+    "toast.found": {
+      "en": "Found: {v}",
+      "fi": "Löytyi: {v}",
+      "sv": "Hittade: {v}",
+      "se": ""
+    },
+    "brand": {
+      "en": "EV Multi-Tracker",
+      "fi": "Sähköautojen latausloki",
+      "sv": "Laddningslogg för elbilar",
+      "se": ""
+    },
+    "nav.dashboard": {
+      "en": "Dashboard",
+      "fi": "Kojelauta",
+      "sv": "Översikt",
+      "se": ""
+    },
+    "nav.add": {
+      "en": "Add session",
+      "fi": "Lisää sessio",
+      "sv": "Lägg till session",
+      "se": ""
+    },
+    "nav.log": {
+      "en": "Charge log",
+      "fi": "Latausloki",
+      "sv": "Laddningslogg",
+      "se": ""
+    },
+    "nav.fav": {
+      "en": "Favourites",
+      "fi": "Suosikit",
+      "sv": "Favoriter",
+      "se": ""
+    },
+    "nav.set": {
+      "en": "Settings",
+      "fi": "Asetukset",
+      "sv": "Inställningar",
+      "se": ""
+    },
+    "db": {
+      "en": "Local storage · {n} session(s) · {v} vehicle(s)",
+      "fi": "Selaintila · {n} sessiota · {v} ajoneuvoa",
+      "sv": "Lokalt lagring · {n} session(er) · {v} fordon",
+      "se": ""
+    },
+    "dash.lead": {
+      "en": "Totals for the selected vehicle. All counters start at zero.",
+      "fi": "Valitun ajoneuvon summat. Kaikki laskurit alkavat nollasta.",
+      "sv": "Summor för valt fordon. Alla räknare börjar på noll.",
+      "se": ""
+    },
+    "dash.pick": {
+      "en": "Select vehicle",
+      "fi": "Valitse ajoneuvo",
+      "sv": "Välj fordon",
+      "se": ""
+    },
+    "qa.import": {
+      "en": "Import data",
+      "fi": "Tuo dataa",
+      "sv": "Importera data",
+      "se": ""
+    },
+    "qa.addVehicle": {
+      "en": "Add vehicle",
+      "fi": "Lisää ajoneuvo",
+      "sv": "Lägg till fordon",
+      "se": ""
+    },
+    "tile.kwh": {
+      "en": "Energy charged",
+      "fi": "Ladattu energia",
+      "sv": "Laddad energi",
+      "se": ""
+    },
+    "tile.dist": {
+      "en": "Distance covered",
+      "fi": "Ajettu matka",
+      "sv": "Sträcka",
+      "se": ""
+    },
+    "tile.cost": {
+      "en": "Total cost",
+      "fi": "Kokonaiskustannus",
+      "sv": "Total kostnad",
+      "se": ""
+    },
+    "tile.time": {
+      "en": "Total charging time",
+      "fi": "Kokonaislatausaika",
+      "sv": "Total laddningstid",
+      "se": ""
+    },
+    "tile.kwh100": {
+      "en": "Avg kWh / 100 km",
+      "fi": "keskim. kWh / 100 km",
+      "sv": "medel kWh / 100 km",
+      "se": ""
+    },
+    "tile.cost100": {
+      "en": "Avg cost / 100 km",
+      "fi": "keskim. €/100 km",
+      "sv": "medel kr / 100 km",
+      "se": ""
+    },
+    "tile.speed": {
+      "en": "Avg charge speed",
+      "fi": "keskim. latausteho",
+      "sv": "medel laddningseffekt",
+      "se": ""
+    },
+    "tile.duravg": {
+      "en": "Avg session duration",
+      "fi": "keskim. sessioaika",
+      "sv": "medel sessionstid",
+      "se": ""
+    },
+    "as.title": {
+      "en": "Add charging session",
+      "fi": "Lisää lataussessio",
+      "sv": "Lägg till laddningssession",
+      "se": ""
+    },
+    "as.date": {
+      "en": "Date",
+      "fi": "Päivämäärä",
+      "sv": "Datum",
+      "se": ""
+    },
+    "as.time": {
+      "en": "Time",
+      "fi": "Aika",
+      "sv": "Tid",
+      "se": ""
+    },
+    "as.dur": {
+      "en": "Session duration",
+      "fi": "Sessioaika",
+      "sv": "Sessionstid",
+      "se": ""
+    },
+    "as.durHint": {
+      "en": "1-minute steps. Defaults to your average session length.",
+      "fi": "1 minuutin tarkkuudella. Oletuksena keskimääräinen sessioaika.",
+      "sv": "1 minuters steg. Förvalet är din genomsnittliga sessionstid.",
+      "se": ""
+    },
+    "as.durHintSec": {
+      "en": "Seconds shown, starting from 00. Defaults to your average session length.",
+      "fi": "Sekunnit näkyvät, alkavat 00:sta. Oletuksena keskimääräinen sessioaika.",
+      "sv": "Sekunder visas, börjar på 00. Förvalet är din genomsnittliga sessionstid.",
+      "se": ""
+    },
+    "as.durSec": {
+      "en": "Show seconds (default 00)",
+      "fi": "Näytä sekunnit (oletus 00)",
+      "sv": "Visa sekunder (förval 00)",
+      "se": ""
+    },
+    "as.mileage": {
+      "en": "Mileage (km)",
+      "fi": "Matkilukema (km)",
+      "sv": "Mätarställning (km)",
+      "se": ""
+    },
+    "as.location": {
+      "en": "Location / station",
+      "fi": "Paikka / laturi",
+      "sv": "Plats / laddare",
+      "se": ""
+    },
+    "as.find": {
+      "en": "📍 Find",
+      "fi": "📍 Etsi",
+      "sv": "📍 Sök",
+      "se": ""
+    },
+    "as.myloc": {
+      "en": "🧭 My location",
+      "fi": "🧭 Oma sijainti",
+      "sv": "🧭 Min plats",
+      "se": ""
+    },
+    "as.mapDrag": {
+      "en": "Drag the pin to adjust the position, or click the map.",
+      "fi": "Vedä nappia säätääksesi sijaintia tai napsauta karttaa.",
+      "sv": "Dra nålen för att justera platsen, eller klicka på kartan.",
+      "se": ""
+    },
+    "as.mapOff": {
+      "en": "Map unavailable offline. The address is still saved with the session.",
+      "fi": "Kartta ei ole käytettävissä offline-tilassa. Osoite tallennetaan silti sessioon.",
+      "sv": "Kartan är inte tillgänglig offline. Adressen sparas ändå med sessionen.",
+      "se": ""
+    },
+    "as.energy": {
+      "en": "Energy charged (kWh)",
+      "fi": "Ladattu energia (kWh)",
+      "sv": "Laddad energi (kWh)",
+      "se": ""
+    },
+    "as.total": {
+      "en": "Total amount",
+      "fi": "Summa",
+      "sv": "Totalbelopp",
+      "se": ""
+    },
+    "as.price": {
+      "en": "Price per kWh",
+      "fi": "Hinta per kWh",
+      "sv": "Pris per kWh",
+      "se": ""
+    },
+    "as.centsUnit": {
+      "en": "cents / kWh",
+      "fi": "senttiä / kWh",
+      "sv": "öre / kWh",
+      "se": ""
+    },
+    "as.priceHint1": {
+      "en": "Whole euro cents, so 35 means 0,35 € per kWh. Enter the total amount or the price and the other one is worked out for you.",
+      "fi": "Kokonaiset eurosentit, eli 35 tarkoittaa 0,35 €/kWh. Anna summa tai hinta, toinen lasketaan automaattisesti.",
+      "sv": "Hela eurocent, alltså 35 betyder 0,35 €/kWh. Ange totalbelopp eller pris, den andra räknas ut automatiskt.",
+      "se": ""
+    },
+    "as.notes": {
+      "en": "Notes",
+      "fi": "Muistiinpanot",
+      "sv": "Anteckningar",
+      "se": ""
+    },
+    "as.fast": {
+      "en": "Fast charging session",
+      "fi": "Pikalataus",
+      "sv": "Snabbladdning",
+      "se": ""
+    },
+    "as.home": {
+      "en": "Home charging session",
+      "fi": "Kotilataus",
+      "sv": "Hemmaladdning",
+      "se": ""
+    },
+    "as.saveFav": {
+      "en": "Save this location as a favourite",
+      "fi": "Tallenna tämä paikka suosikiksi",
+      "sv": "Spara den här platsen som favorit",
+      "se": ""
+    },
+    "as.favName": {
+      "en": "Favourite name",
+      "fi": "Suosikin nimi",
+      "sv": "Favoritens namn",
+      "se": ""
+    },
+    "as.favHint": {
+      "en": "Leave empty to use the location text. You can add a map position later in Favourites.",
+      "fi": "Jätä tyhjäksi, jos haluat käyttää paikan tekstiä. Karttakohteen voit lisätä myöhemmin Suosikissa.",
+      "sv": "Lämna tomt för att använda platsens text. Kartposition kan läggas till senare under Favoriter.",
+      "se": ""
+    },
+    "ph.loc": {
+      "en": "Start typing an address…",
+      "fi": "Aloita kirjoittamaan osoitetta…",
+      "sv": "Börja skriva en adress…",
+      "se": ""
+    },
+    "ph.mileage": {
+      "en": "e.g. 45000",
+      "fi": "esim. 45000",
+      "sv": "t.ex. 45000",
+      "se": ""
+    },
+    "ph.energy": {
+      "en": "e.g. 52.4",
+      "fi": "esim. 52,4",
+      "sv": "t.ex. 52,4",
+      "se": ""
+    },
+    "ph.auto": {
+      "en": "auto",
+      "fi": "automaattinen",
+      "sv": "automatiskt",
+      "se": ""
+    },
+    "ph.notes": {
+      "en": "e.g. 150 kW, 24 °C, battery 20 → 80 %",
+      "fi": "esim. 150 kW, 24 °C, akku 20 → 80 %",
+      "sv": "t.ex. 150 kW, 24 °C, batteri 20 → 80 %",
+      "se": ""
+    },
+    "ph.favname": {
+      "en": "e.g. Home, Vaasa S1",
+      "fi": "esim. Koti, Vaasa S1",
+      "sv": "t.ex. Hem, Vaasa S1",
+      "se": ""
+    },
+    "cl.lead": {
+      "en": "Stored sessions, newest first.",
+      "fi": "Tallennetut sessiot, uusin ensin.",
+      "sv": "Sparade sessioner, nyast först.",
+      "se": ""
+    },
+    "cl.none": {
+      "en": "No sessions yet — add one from “Add session”.",
+      "fi": "Ei vielä sessioita — lisää yksi kohdasta “Lisää sessio”.",
+      "sv": "Inga sessioner än — lägg till en under ”Lägg till session”.",
+      "se": ""
+    },
+    "th.date": {
+      "en": "Date",
+      "fi": "Päivä",
+      "sv": "Datum",
+      "se": ""
+    },
+    "th.time": {
+      "en": "Time",
+      "fi": "Aika",
+      "sv": "Tid",
+      "se": ""
+    },
+    "th.dur": {
+      "en": "Duration",
+      "fi": "Kesto",
+      "sv": "Tid",
+      "se": ""
+    },
+    "th.loc": {
+      "en": "Location",
+      "fi": "Paikka",
+      "sv": "Plats",
+      "se": ""
+    },
+    "th.energy": {
+      "en": "Energy",
+      "fi": "Energia",
+      "sv": "Energi",
+      "se": ""
+    },
+    "th.speed": {
+      "en": "Avg. speed",
+      "fi": "keskim. nopeus",
+      "sv": "medel effekt",
+      "se": ""
+    },
+    "th.mileage": {
+      "en": "Mileage",
+      "fi": "Matka",
+      "sv": "Sträcka",
+      "se": ""
+    },
+    "th.cost": {
+      "en": "Cost",
+      "fi": "Kustannus",
+      "sv": "Kostnad",
+      "se": ""
+    },
+    "th.tags": {
+      "en": "Tags",
+      "fi": "Tunnisteet",
+      "sv": "Etiketter",
+      "se": ""
+    },
+    "th.notes": {
+      "en": "Notes",
+      "fi": "Muistiinpanot",
+      "sv": "Anteckningar",
+      "se": ""
+    },
+    "th.del": {
+      "en": "Del",
+      "fi": "Poista",
+      "sv": "Ta bort",
+      "se": ""
+    },
+    "tag.fast": {
+      "en": "Fast",
+      "fi": "Pika",
+      "sv": "Snabb",
+      "se": ""
+    },
+    "tag.home": {
+      "en": "Home",
+      "fi": "Koti",
+      "sv": "Hem",
+      "se": ""
+    },
+    "tag.fav": {
+      "en": "★ Favourite",
+      "fi": "★ Suosikki",
+      "sv": "★ Favorit",
+      "se": ""
+    },
+    "tag.est": {
+      "en": "Est. price",
+      "fi": "Arvioitu hinta",
+      "sv": "Beräknad pris",
+      "se": ""
+    },
+    "fav.title": {
+      "en": "Favourite locations",
+      "fi": "Suosikkipaikat",
+      "sv": "Favoritplatser",
+      "se": ""
+    },
+    "fav.lead": {
+      "en": "Name your usual charging spots, look up the address and drop a pin on the map.",
+      "fi": "Nimeä tavalliset latauspaikkasi, hae osoite ja aseta nappi kartalle.",
+      "sv": "Namnge dina vanliga laddningsställen, slå upp adressen och placera nålen på kartan.",
+      "se": ""
+    },
+    "fav.name": {
+      "en": "Name",
+      "fi": "Nimi",
+      "sv": "Namn",
+      "se": ""
+    },
+    "fav.address": {
+      "en": "Address",
+      "fi": "Osoite",
+      "sv": "Adress",
+      "se": ""
+    },
+    "fav.find": {
+      "en": "Find",
+      "fi": "Etsi",
+      "sv": "Sök",
+      "se": ""
+    },
+    "fav.findHint": {
+      "en": "Type an address and press Find. Uses OpenStreetMap when you are online.",
+      "fi": "Kirjoita osoite ja paina Etsi. Käyttää OpenStreetMap-palvelua ollessasi verkossa.",
+      "sv": "Skriv en adress och tryck Sök. Använder OpenStreetMap när du är uppkopplad.",
+      "se": ""
+    },
+    "fav.lat": {
+      "en": "Latitude",
+      "fi": "Leveysaste",
+      "sv": "Latitud",
+      "se": ""
+    },
+    "fav.lng": {
+      "en": "Longitude",
+      "fi": "Pituusaste",
+      "sv": "Longitud",
+      "se": ""
+    },
+    "fav.mapOff": {
+      "en": "Map unavailable offline. You can still enter coordinates by hand.",
+      "fi": "Kartta ei ole käytettävissä offline-tilassa. Voit syöttää koordinaatit myös käsin.",
+      "sv": "Kartan är inte tillgänglig offline. Du kan ange koordinater manuellt.",
+      "se": ""
+    },
+    "fav.save": {
+      "en": "Save favourite",
+      "fi": "Tallenna suosikiksi",
+      "sv": "Spara favorit",
+      "se": ""
+    },
+    "fav.clear": {
+      "en": "Clear form",
+      "fi": "Tyhjennä lomake",
+      "sv": "Tyda formuläret",
+      "se": ""
+    },
+    "fav.saved": {
+      "en": "Saved",
+      "fi": "Tallennetut",
+      "sv": "Sparade",
+      "se": ""
+    },
+    "fav.use": {
+      "en": "Use",
+      "fi": "Käytä",
+      "sv": "Använd",
+      "se": ""
+    },
+    "fav.edit": {
+      "en": "Edit",
+      "fi": "Muokkaa",
+      "sv": "Redigera",
+      "se": ""
+    },
+    "fav.map": {
+      "en": "Map",
+      "fi": "Kartta",
+      "sv": "Karta",
+      "se": ""
+    },
+    "fav.del": {
+      "en": "Delete",
+      "fi": "Poista",
+      "sv": "Ta bort",
+      "se": ""
+    },
+    "fav.noCoords": {
+      "en": " · no coordinates",
+      "fi": " · ei koordinaatteja",
+      "sv": " · inga koordinater",
+      "se": ""
+    },
+    "fav.uses": {
+      "en": "{n} use(s)",
+      "fi": "{n} käyttökertaa",
+      "sv": "{n} användning(ar)",
+      "se": ""
+    },
+    "fav.empty": {
+      "en": "No favourites yet — name one above, or tick “Save this location as a favourite” when logging a session.",
+      "fi": "Ei vielä suosikkeja — nimeä yksi ylhäältä tai valitse “Tallenna tämä paikka suosikiksi” lisätessäsi sessiota.",
+      "sv": "Inga favoriter än — namnge en ovan, eller kryssa i ”Spara den här platsen som favorit” när du loggar en session.",
+      "se": ""
+    },
+    "set.vehicles": {
+      "en": "Vehicles",
+      "fi": "Ajoneuvot",
+      "sv": "Fordon",
+      "se": ""
+    },
+    "set.vehiclesLead": {
+      "en": "Vehicles are shown as a switcher only when you have more than one.",
+      "fi": "Ajoneuvovalikko näytetään vain, kun niitä on useampi kuin yksi.",
+      "sv": "Fordon visas i en växlare först när det finns fler än ett.",
+      "se": ""
+    },
+    "set.saveVehicle": {
+      "en": "Save vehicle",
+      "fi": "Tallenna ajoneuvo",
+      "sv": "Spara fordon",
+      "se": ""
+    },
+    "set.rename": {
+      "en": "Rename",
+      "fi": "Nimeä uudelleen",
+      "sv": "Byt namn",
+      "se": ""
+    },
+    "set.remove": {
+      "en": "Remove",
+      "fi": "Poista",
+      "sv": "Ta bort",
+      "se": ""
+    },
+    "set.price": {
+      "en": "Energy price",
+      "fi": "Energian hinta",
+      "sv": "Energipris",
+      "se": ""
+    },
+    "set.priceLead": {
+      "en": "Used for any session where the cost is left empty. The same value is editable in whole euro cents on the Add session page.",
+      "fi": "Käytetään sessioihin, joissa kustannus jätetään tyhjäksi. Sama arvo on muokattavissa kokonaisina eurosentteinä Lisää sessio -näkymässä.",
+      "sv": "Används för sessioner där kostnaden lämnas tom. Samma värde går att ändra i hela eurocent på sidan Lägg till session.",
+      "se": ""
+    },
+    "set.priceEur": {
+      "en": "Price per kWh (€)",
+      "fi": "Hinta per kWh (€)",
+      "sv": "Pris per kWh (€)",
+      "se": ""
+    },
+    "set.priceCents": {
+      "en": "Same price in cents",
+      "fi": "Sama hinta sentteinä",
+      "sv": "Samma pris i öre",
+      "se": ""
+    },
+    "set.export": {
+      "en": "Export data",
+      "fi": "Vie data",
+      "sv": "Exportera data",
+      "se": ""
+    },
+    "set.exportLead": {
+      "en": "Download the charge log as a file. The scope decides which vehicle the file covers.",
+      "fi": "Lataa latausloki tiedostoksi. Rajaus määrää, minkä ajoneuvon tiedot viedään.",
+      "sv": "Ladda ner laddningsloggen som en fil. Omfattningen avgör vilket fordon filen gäller.",
+      "se": ""
+    },
+    "set.scope": {
+      "en": "Scope",
+      "fi": "Rajaus",
+      "sv": "Omfattning",
+      "se": ""
+    },
+    "set.allVehicles": {
+      "en": "All vehicles",
+      "fi": "Kaikki ajoneuvot",
+      "sv": "Alla fordon",
+      "se": ""
+    },
+    "set.exportCsv": {
+      "en": "Export CSV",
+      "fi": "Vie CSV",
+      "sv": "Exportera CSV",
+      "se": ""
+    },
+    "set.exportJson": {
+      "en": "Export JSON",
+      "fi": "Vie JSON",
+      "sv": "Exportera JSON",
+      "se": ""
+    },
+    "set.tplCsv": {
+      "en": "CSV template",
+      "fi": "CSV-malli",
+      "sv": "CSV-mall",
+      "se": ""
+    },
+    "set.tplJson": {
+      "en": "JSON template",
+      "fi": "JSON-malli",
+      "sv": "JSON-mall",
+      "se": ""
+    },
+    "set.data": {
+      "en": "Data",
+      "fi": "Data",
+      "sv": "Data",
+      "se": ""
+    },
+    "set.dataLead": {
+      "en": "Backup, restore and cleanup.",
+      "fi": "Varmuuskopioi, palauta ja siivoa.",
+      "sv": "Säkerhetskopiera, återställ och städa.",
+      "se": ""
+    },
+    "set.backup": {
+      "en": "Backup JSON",
+      "fi": "Varmuuskopioi JSON",
+      "sv": "Säkerhetskopiera JSON",
+      "se": ""
+    },
+    "set.restore": {
+      "en": "Restore backup",
+      "fi": "Palauta varmuuskopio",
+      "sv": "Återställ säkerhetskopia",
+      "se": ""
+    },
+    "set.clear": {
+      "en": "Clear sessions",
+      "fi": "Tyhjennä sessiot",
+      "sv": "Rensa sessioner",
+      "se": ""
+    },
+    "set.wipe": {
+      "en": "Delete everything",
+      "fi": "Poista kaikki",
+      "sv": "Ta bort allt",
+      "se": ""
+    },
+    "im.title": {
+      "en": "Import charge data",
+      "fi": "Tuo latausdataa",
+      "sv": "Importera laddningsdata",
+      "se": ""
+    },
+    "im.lead": {
+      "en": "Load sessions from a file. Supported: <strong>.csv</strong>, <strong>.tsv</strong> and <strong>.json</strong>. Existing sessions are kept; the imported ones are added to the vehicle in the <em>Vehicle</em> column, or to the currently selected vehicle when that column is missing or empty.",
+      "fi": "Lataa sessiot tiedostosta. Tuetut: <strong>.csv</strong>, <strong>.tsv</strong> ja <strong>.json</strong>. Nykyiset sessiot säilytetään, ja tuodut sessiot lisätään <em>Ajoneuvo</em>-sarakkeen mukaiseen ajoneuvoon, tai nykyisesti valittuun ajoneuvoon, jos sarake puuttuu tai on tyhjä.",
+      "sv": "Ladda sessioner från en fil. Stöds: <strong>.csv</strong>, <strong>.tsv</strong> och <strong>.json</strong>. Befintliga sessioner behålls, och importerade sessioner läggs till fordonet i kolumnen <em>Fordon</em>, eller till det fordon som är valt när kolumnen saknas eller är tom.",
+      "se": ""
+    },
+    "im.choose": {
+      "en": "Choose a file",
+      "fi": "Valitse tiedosto",
+      "sv": "Välj en fil",
+      "se": ""
+    },
+    "im.go": {
+      "en": "Import file",
+      "fi": "Tuo tiedosto",
+      "sv": "Importera fil",
+      "se": ""
+    },
+    "im.tplNote": {
+      "en": "Templates for a new file are in Export data, above.",
+      "fi": "Mallit uuteen tiedostoon ovat yllä kohdassa Vie data.",
+      "sv": "Mallar för en ny fil finns under Exportera data ovan.",
+      "se": ""
+    },
+    "how.title": {
+      "en": "How the file must be formatted",
+      "fi": "Miten tiedoston on oltava muotoiltu",
+      "sv": "Så måste filen vara formaterad",
+      "se": ""
+    },
+    "how.cols": {
+      "en": "Column names (CSV / TSV)",
+      "fi": "Sarakkeiden nimet (CSV / TSV)",
+      "sv": "Kolumnnamn (CSV / TSV)",
+      "se": ""
+    },
+    "how.p1": {
+      "en": "The first row must be a header row. Column names are matched case-insensitively and spaces, underscores and dashes are ignored, so <code>Energy (kWh)</code>, <code>energy_kwh</code> and <code>ENERGY</code> all work.",
+      "fi": "Ensimmäisen rivin on oltava otsakkorivi. Sarakenimet tunnistetaan kirjainkoon riippumatta, ja välit, alaviivat ja viivat jätetään huomiotta, joten <code>Energy (kWh)</code>, <code>energy_kwh</code> ja <code>ENERGY</code> toimivat.",
+      "sv": "Första raden måste vara en rubrikrad. Kolumnnamn matchas oberoende av skiftläge, och mellanslag, understreck och bindestreck ignoreras, så <code>Energy (kWh)</code>, <code>energy_kwh</code> och <code>ENERGY</code> alla fungerar.",
+      "se": ""
+    },
+    "how.th1": {
+      "en": "Column",
+      "fi": "Sarake",
+      "sv": "Kolumn",
+      "se": ""
+    },
+    "how.th2": {
+      "en": "Required",
+      "fi": "Pakollinen",
+      "sv": "Obligatorisk",
+      "se": ""
+    },
+    "how.th3": {
+      "en": "Accepted values",
+      "fi": "Hyväksytyt arvot",
+      "sv": "Godkända värden",
+      "se": ""
+    },
+    "how.date": {
+      "en": "YYYY-MM-DD, e.g. <code>2026-09-28</code>",
+      "fi": "VVVV-KK-PP, esim. <code>2026-09-28</code>",
+      "sv": "ÅÅÅÅ-MM-DD, t.ex. <code>2026-09-28</code>",
+      "se": ""
+    },
+    "how.time": {
+      "en": "HH:MM 24-hour, e.g. <code>08:15</code>",
+      "fi": "TT:MM 24 tuntia, esim. <code>08:15</code>",
+      "sv": "HH:MM 24-timmars, t.ex. <code>08:15</code>",
+      "se": ""
+    },
+    "how.loc": {
+      "en": "Any text, e.g. <code>Supercharger Vaasa</code>",
+      "fi": "Vapaa teksti, esim. <code>Supercharger Vaasa</code>",
+      "sv": "Valfri text, t.ex. <code>Supercharger Vaasa</code>",
+      "se": ""
+    },
+    "how.energy": {
+      "en": "Number in kWh, e.g. <code>52.4</code>",
+      "fi": "Luku kWh:ssa, esim. <code>52,4</code>",
+      "sv": "Tal i kWh, t.ex. <code>52,4</code>",
+      "se": ""
+    },
+    "how.dur": {
+      "en": "<code>HH:MM</code> or decimal hours, e.g. <code>00:45</code> or <code>0.75</code>",
+      "fi": "<code>TT:MM</code> tai desimaalitunnit, esim. <code>00:45</code> tai <code>0,75</code>",
+      "sv": "<code>HH:MM</code> eller decimaltimmar, t.ex. <code>00:45</code> eller <code>0,75</code>",
+      "se": ""
+    },
+    "how.mileage": {
+      "en": "Number in km, e.g. <code>45000</code>",
+      "fi": "Luku kilometreinä, esim. <code>45000</code>",
+      "sv": "Tal i kilometer, t.ex. <code>45000</code>",
+      "se": ""
+    },
+    "how.cost": {
+      "en": "Number in euros, e.g. <code>12.50</code>. Leave empty to use your price per kWh",
+      "fi": "Luku euroina, esim. <code>12,50</code>. Jätä tyhjäksi, jos haluat käyttää hintaa per kWh",
+      "sv": "Tal i euro, t.ex. <code>12,50</code>. Lämna tomt för att använda ditt pris per kWh",
+      "se": ""
+    },
+    "how.vehicle": {
+      "en": "Vehicle name. A new vehicle is created for an unknown name",
+      "fi": "Ajoneuvon nimi. Tuntemattomalle nimelle luodaan uusi ajoneuvo",
+      "sv": "Fordonets namn. Ett nytt fordon skapas för ett okänt namn",
+      "se": ""
+    },
+    "how.notes": {
+      "en": "Any text",
+      "fi": "Vapaa teksti",
+      "sv": "Valfri text",
+      "se": ""
+    },
+    "how.flags": {
+      "en": "<code>yes</code>/<code>no</code>, <code>true</code>/<code>false</code>, or <code>1</code>/<code>0</code>",
+      "fi": "<code>kyllä</code>/<code>ei</code>, <code>true</code>/<code>false</code> tai <code>1</code>/<code>0</code>",
+      "sv": "<code>ja</code>/<code>nej</code>, <code>true</code>/<code>false</code> eller <code>1</code>/<code>0</code>",
+      "se": ""
+    },
+    "how.csv": {
+      "en": "Example CSV",
+      "fi": "CSV-esimerkki",
+      "sv": "CSV-exempel",
+      "se": ""
+    },
+    "how.tsvTitle": {
+      "en": "TSV",
+      "fi": "TSV",
+      "sv": "TSV",
+      "se": ""
+    },
+    "how.tsv": {
+      "en": "Identical to CSV but the columns are separated by a tab character. Saving a CSV as “Tab separated (.tsv)” from Excel or Google Sheets works.",
+      "fi": "Sama kuin CSV, mutta sarakkeet erotetaan sarkausmerkillä. Tallentamalla CSV:n Excelistä tai Google Sheetsistä muodossa “Taulukkoerotettu (.tsv)” toimii.",
+      "sv": "Samma som CSV men kolumnerna skiljs med ett tabbtecken. Att spara en CSV som ”Tab-separated (.tsv)” från Excel eller Google Sheets fungerar.",
+      "se": ""
+    },
+    "how.json": {
+      "en": "JSON",
+      "fi": "JSON",
+      "sv": "JSON",
+      "se": ""
+    },
+    "how.jsonP": {
+      "en": "Either a plain array of session objects, or a file previously produced by <em>Backup JSON</em> (which may also contain <code>vehicles</code>, <code>favourites</code> and <code>pricePerKwh</code>).",
+      "fi": "Joko tavallinen sessioiden taulukko, tai aiemmin Varmuuskopioi JSON -toiminnolla tehty tiedosto (joka voi sisältää myös <code>vehicles</code>, <code>favourites</code> ja <code>pricePerKwh</code>).",
+      "sv": "Antingen en enkel array med sessioner, eller en fil från <em>Säkerhetskopiera JSON</em> (som kan innehålla <code>vehicles</code>, <code>favourites</code> och <code>pricePerKwh</code>).",
+      "se": ""
+    },
+    "how.notes2": {
+      "en": "Notes",
+      "fi": "Huomioita",
+      "sv": "Observera",
+      "se": ""
+    },
+    "how.n1": {
+      "en": "The first line of a UTF-8 file may include a byte order mark; it is ignored.",
+      "fi": "UTF-8-tiedoston ensimmäinen rivi voi sisältää tavumerkintä; se ohitetaan.",
+      "sv": "Första raden i en UTF-8-fil kan innehålla en byte order mark; den hoppas över.",
+      "se": ""
+    },
+    "how.n2": {
+      "en": "Text containing a comma, a semicolon or a quote must be wrapped in double quotes (<code>\"Name, Inc.\"</code>).",
+      "fi": "Teksti, jossa on pilkku, puolipiste tai lainausmerkki, on kuitattava kahdella lainausmerkillä (<code>\"Oy, Ab\"</code>).",
+      "sv": "Text med komma, semikolon eller citattecken måste omslutas av dubbla citattecken (<code>\"Ab, Inc.\"</code>).",
+      "se": ""
+    },
+    "how.n3": {
+      "en": "Rows that are missing a date, time, location or a numeric energy value are skipped and listed with the reason, so nothing is imported silently.",
+      "fi": "Rivit, joista puuttuu päivämäärä, aika, paikka tai numeerinen energia-arvo, ohitetaan ja luetellaan syineen, joten mitään ei tuoda huomaamatta.",
+      "sv": "Rader som saknar datum, tid, plats eller ett numeriskt energivärde hoppas över och listas med skälet, så ingenting importeras i smyg.",
+      "se": ""
+    },
+    "ed.title": {
+      "en": "Edit charging session",
+      "fi": "Muokkaa lataussessiota",
+      "sv": "Redigera laddningssession",
+      "se": ""
+    },
+    "ed.durHint": {
+      "en": "1-minute steps",
+      "fi": "1 minuutin tarkkuudella",
+      "sv": "1 minuters steg",
+      "se": ""
+    },
+    "ed.cost": {
+      "en": "Cost (€)",
+      "fi": "Kustannus (€)",
+      "sv": "Kostnad (€)",
+      "se": ""
+    },
+    "ed.fav": {
+      "en": "Saved as favourite location",
+      "fi": "Tallennettu suosikkipaikaksi",
+      "sv": "Sparad som favoritplats",
+      "se": ""
+    },
+    "ed.save": {
+      "en": "Save changes",
+      "fi": "Tallenna muutokset",
+      "sv": "Spara ändringar",
+      "se": ""
+    },
+    "ed.cancel": {
+      "en": "Cancel",
+      "fi": "Peruuta",
+      "sv": "Avbryt",
+      "se": ""
+    },
+    "ed.del": {
+      "en": "Delete",
+      "fi": "Poista",
+      "sv": "Ta bort",
+      "se": ""
+    },
+    "aria.theme": {
+      "en": "Switch colour theme",
+      "fi": "Vaihda väriteema",
+      "sv": "Byt färgtema",
+      "se": ""
+    },
+    "aria.map": {
+      "en": "Map",
+      "fi": "Kartta",
+      "sv": "Karta",
+      "se": ""
+    },
+    "aria.sessMap": {
+      "en": "Map of the selected location",
+      "fi": "Valitun paikan kartta",
+      "sv": "Karta över vald plats",
+      "se": ""
+    },
+    "aria.edit": {
+      "en": "Edit session",
+      "fi": "Muokkaa sessiota",
+      "sv": "Redigera session",
+      "se": ""
+    },
+    "aria.del": {
+      "en": "Delete session",
+      "fi": "Poista sessio",
+      "sv": "Ta bort session",
+      "se": ""
+    },
+    "aria.newveh": {
+      "en": "New vehicle name",
+      "fi": "Uuden ajoneuvon nimi",
+      "sv": "Nytt fordonnamn",
+      "se": ""
+    },
+    "aria.addr": {
+      "en": "Address",
+      "fi": "Osoite",
+      "sv": "Adress",
+      "se": ""
+    },
+    "aria.cents": {
+      "en": "Price per kWh in euro cents",
+      "fi": "Hinta per kWh eurosentteinä",
+      "sv": "Pris per kWh i eurocent",
+      "se": ""
+    },
+    "foot": {
+      "en": "EV Multi-Tracker · data stays in this browser",
+      "fi": "Sähköautojen latausloki · tiedot pysyvät tässä selaimessa",
+      "sv": "Laddningslogg för elbilar · data stannar i den här webbläsaren",
+      "se": ""
+    },
+    "ph.vehname": {
+      "en": "Vehicle name, e.g. Tesla Model 3",
+      "fi": "Ajoneuvon nimi, esim. Tesla Model 3",
+      "sv": "Fordonets namn, t.ex. Tesla Model 3",
+      "se": ""
+    },
+    "ph.addr": {
+      "en": "Street, city, country",
+      "fi": "Katu, kaupunki, maa",
+      "sv": "Gata, stad, land",
+      "se": ""
+    },
+    "tag.yes": {
+      "en": "yes",
+      "fi": "kyllä",
+      "sv": "ja",
+      "se": ""
+    },
+    "tag.no": {
+      "en": "no",
+      "fi": "ei",
+      "sv": "nej",
+      "se": ""
+    },
+    "toast.storage": {
+      "en": "Storage full — session not saved",
+      "fi": "Tallennustila täynnä — sessiota ei tallennettu",
+      "sv": "Lagringsutrymmet är fullt — sessionen sparades inte",
+      "se": ""
+    },
+    "toast.favSave": {
+      "en": "Could not save favourites",
+      "fi": "Suosikkeja ei voitu tallentaa",
+      "sv": "Favoriter kunde inte sparas",
+      "se": ""
+    },
+    "toast.saved": {
+      "en": "Session saved to {v}",
+      "fi": "Sessio tallennettiin ajoneuvoon {v}",
+      "sv": "Sessionen sparades för {v}",
+      "se": ""
+    },
+    "toast.savedFav": {
+      "en": "Session saved to {v} · favourite updated",
+      "fi": "Sessio tallennettiin ajoneuvoon {v} · suosikki päivitetty",
+      "sv": "Sessionen sparades för {v} · favoriten uppdaterad",
+      "se": ""
+    },
+    "toast.updated": {
+      "en": "Session updated",
+      "fi": "Sessio päivitetty",
+      "sv": "Sessionen uppdaterad",
+      "se": ""
+    },
+    "toast.deleted": {
+      "en": "Session deleted",
+      "fi": "Sessio poistettu",
+      "sv": "Sessionen borttagen",
+      "se": ""
+    },
+    "toast.delFav": {
+      "en": "Favourite deleted",
+      "fi": "Suosikki poistettu",
+      "sv": "Favoriten borttagen",
+      "se": ""
+    },
+    "toast.vehAdd": {
+      "en": "{v} added",
+      "fi": "{v} lisätty",
+      "sv": "{v} tillagt",
+      "se": ""
+    },
+    "toast.vehRem": {
+      "en": "{v} removed",
+      "fi": "{v} poistettu",
+      "sv": "{v} borttaget",
+      "se": ""
+    },
+    "toast.vehName": {
+      "en": "Give the vehicle a name",
+      "fi": "Anna ajoneuvolle nimi",
+      "sv": "Ge fordonet ett namn",
+      "se": ""
+    },
+    "toast.csv": {
+      "en": "{n} session(s) exported as CSV",
+      "fi": "{n} sessiota vietty CSV-muodossa",
+      "sv": "{n} session(er) exporterade som CSV",
+      "se": ""
+    },
+    "toast.json": {
+      "en": "{n} session(s) exported",
+      "fi": "{n} sessiota vietty",
+      "sv": "{n} session(er) exporterade",
+      "se": ""
+    },
+    "toast.nothing": {
+      "en": "Nothing to export yet",
+      "fi": "Ei vielä vietävää",
+      "sv": "Inget att exportera än",
+      "se": ""
+    },
+    "toast.backup": {
+      "en": "Backup downloaded",
+      "fi": "Varmuuskopio ladattu",
+      "sv": "Säkerhetskopia nedladdad",
+      "se": ""
+    },
+    "toast.restore": {
+      "en": "Restored {n} session(s) and {f} favourite(s)",
+      "fi": "Palautettiin {n} sessiota ja {f} suosikkia",
+      "sv": "Återställde {n} session(er) och {f} favorit(er)",
+      "se": ""
+    },
+    "toast.badRestore": {
+      "en": "That file is not a valid backup",
+      "fi": "Tiedosto ei ole kelvollinen varmuuskopio",
+      "sv": "Filen är inte en giltig säkerhetskopia",
+      "se": ""
+    },
+    "toast.cleared": {
+      "en": "Sessions cleared",
+      "fi": "Sessiot tyhjennetty",
+      "sv": "Sessionerna rensade",
+      "se": ""
+    },
+    "toast.wiped": {
+      "en": "Everything deleted",
+      "fi": "Kaikki poistettu",
+      "sv": "Allt borttaget",
+      "se": ""
+    },
+    "toast.clearQ": {
+      "en": "Delete all {n} stored session(s)? Vehicles and favourites stay.",
+      "fi": "Poistetaanko kaikki {n} tallennettua sessiota? Ajoneuvot ja suosikit säilyvät.",
+      "sv": "Ta bort alla {n} sparade session(er)? Fordon och favoriter behålls.",
+      "se": ""
+    },
+    "toast.wipeQ": {
+      "en": "Delete all vehicles, every stored session and all favourites? This cannot be undone.",
+      "fi": "Poistetaanko kaikki ajoneuvot, kaikki sessiot ja kaikki suosikit? Tätä ei voi perua.",
+      "sv": "Ta bort alla fordon, alla sessioner och alla favoriter? Det går inte att ångra.",
+      "se": ""
+    },
+    "toast.remQ": {
+      "en": "Remove {v} and its {n} session(s)?",
+      "fi": "Poistetaanko {v} ja sen {n} sessiota?",
+      "sv": "Ta bort {v} och dess {n} session(er)?",
+      "se": ""
+    },
+    "toast.delQ": {
+      "en": "Delete this session at {loc}?",
+      "fi": "Poistetaanko sessio paikassa {loc}?",
+      "sv": "Ta bort sessionen på {loc}?",
+      "se": ""
+    },
+    "toast.renQ": {
+      "en": "New name for {v}",
+      "fi": "Uusi nimi ajoneuvulle {v}",
+      "sv": "Nytt namn för {v}",
+      "se": ""
+    },
+    "toast.delFavQ": {
+      "en": "Delete the favourite “{n}”?",
+      "fi": "Poistetaanko suosikki “{n}”?",
+      "sv": "Ta bort favoriten ”{n}”?",
+      "se": ""
+    },
+    "toast.imported": {
+      "en": "{n} session(s) imported",
+      "fi": "{n} sessiota tuotu",
+      "sv": "{n} session(er) importerade",
+      "se": ""
+    },
+    "toast.tplCsv": {
+      "en": "CSV template downloaded",
+      "fi": "CSV-malli ladattu",
+      "sv": "CSV-mall nedladdad",
+      "se": ""
+    },
+    "toast.tplJson": {
+      "en": "JSON template downloaded",
+      "fi": "JSON-malli ladattu",
+      "sv": "JSON-mall nedladdad",
+      "se": ""
+    },
+    "toast.locFirst": {
+      "en": "Type an address first",
+      "fi": "Kirjoita ensin osoite",
+      "sv": "Skriv en adress först",
+      "se": ""
+    },
+    "toast.offline": {
+      "en": "You appear to be offline. Enter coordinates by hand or use the map.",
+      "fi": "Olet näyttävissä offline-tilassa. Syötä koordinaatit käsin tai käytä karttaa.",
+      "sv": "Du ser ut att vara offline. Ange koordinater manuellt eller använd kartan.",
+      "se": ""
+    },
+    "toast.noMatch": {
+      "en": "No match found for “{q}”. Try a fuller address.",
+      "fi": "Ei osumaa hakusanalle “{q}”. Kokeile tarkempaa osoitetta.",
+      "sv": "Ingen träff för ”{q}”. Prova en mer fullständig adress.",
+      "se": ""
+    },
+    "toast.geoFail": {
+      "en": "Address lookup failed (offline or blocked). You can still drop a pin on the map or type coordinates.",
+      "fi": "Osoitehaku epäonnistui (offline tai estetty). Voit silti asettaa napin kartalle tai syöttää koordinaatit.",
+      "sv": "Adresssökningen misslyckades (offline eller blockerad). Du kan fortfarande placera nålen eller skriva koordinater.",
+      "se": ""
+    },
+    "toast.locFirst2": {
+      "en": "Type an address first.",
+      "fi": "Kirjoita ensin osoite.",
+      "sv": "Skriv en adress först.",
+      "se": ""
+    },
+    "toast.offline2": {
+      "en": "You are offline — the address is still saved with the session.",
+      "fi": "Olet offline-tilassa — osoite tallennetaan silti sessioon.",
+      "sv": "Du är offline — adressen sparas ändå med sessionen.",
+      "se": ""
+    },
+    "toast.noMatch2": {
+      "en": "No match found for “{q}”.",
+      "fi": "Ei osumaa hakusanalle “{q}”.",
+      "sv": "Ingen träff för ”{q}”.",
+      "se": ""
+    },
+    "toast.geoFail2": {
+      "en": "Address lookup failed (offline or blocked).",
+      "fi": "Osoitehaku epäonnistui (offline tai estetty).",
+      "sv": "Adresssökningen misslyckades (offline eller blockerad).",
+      "se": ""
+    },
+    "toast.geoNone": {
+      "en": "This browser cannot share your location.",
+      "fi": "Tämä selain ei voi jakaa sijaintiasi.",
+      "sv": "Den här webbläsaren kan inte dela din plats.",
+      "se": ""
+    },
+    "toast.geoWait": {
+      "en": "Waiting for location permission…",
+      "fi": "Odotetaan sijaintilupaa…",
+      "sv": "Väntar på platsbehörighet…",
+      "se": ""
+    },
+    "toast.geoDenied": {
+      "en": "Location permission was denied. You can still search for the address.",
+      "fi": "Sijaintilupa evättiin. Voit silti hakea osoitteen haulla.",
+      "sv": "Platsbehörighet nekades. Du kan fortfarande söka adressen.",
+      "se": ""
+    },
+    "toast.geoUnavail": {
+      "en": "Your location is not available right now.",
+      "fi": "Sijaintiasi ei ole juuri nyt käytettävissä.",
+      "sv": "Din plats är inte tillgänglig just nu.",
+      "se": ""
+    },
+    "toast.geoError": {
+      "en": "Could not read your location.",
+      "fi": "Sijaintia ei voitu lukea.",
+      "sv": "Kunde inte läsa din plats.",
+      "se": ""
+    },
+    "toast.geoPerm": {
+      "en": "You can still search for the address.",
+      "fi": "Voit silti hakea osoitteen haulla.",
+      "sv": "Du kan fortfarande söka adressen.",
+      "se": ""
+    },
+    "toast.geoNear": {
+      "en": "Near {v} — {d} m away, used as the location.",
+      "fi": "Lähellä paikkaa {v} — {d} m päässä, käytetty paikkana.",
+      "sv": "Near {v} — {d} m bort, användes som plats.",
+      "se": ""
+    },
+    "toast.geoNearF": {
+      "en": "Nearest saved place is {v}, {d} m away. Pin set to your position — adjust if needed.",
+      "fi": "Lähin tallennettu paikka on {v}, {d} m päässä. Nappi asetettu sijaintiisi — muokkaa tarvittaessa.",
+      "sv": "Närmaste sparade plats är {v}, {d} m bort. Nålen satt på din position — justera vid behov.",
+      "se": ""
+    },
+    "toast.geoNoNear": {
+      "en": "No saved charging location nearby. Pin set to your position — type the station name or drag the pin.",
+      "fi": "Lähellä ei ole tallennettua latauspaikkaa. Nappi asetettu sijaintiisi — kirjoita aseman nimi tai vedä nappia.",
+      "sv": "Ingen sparad laddningsplats i närheten. Nålen satt på din position — skriv stationens namn eller dra nålen.",
+      "se": ""
+    },
+    "toast.showing": {
+      "en": "Showing {v}",
+      "fi": "Näytetään {v}",
+      "sv": "Visar {v}",
+      "se": ""
+    },
+    "toast.pinMoved": {
+      "en": "Pin moved to {a}, {b}",
+      "fi": "Nappi siirretty kohtaan {a}, {b}",
+      "sv": "Nålen flyttad till {a}, {b}",
+      "se": ""
+    },
+    "toast.favName": {
+      "en": "Add a name or an address",
+      "fi": "Anna nimi tai osoite",
+      "sv": "Lägg till ett namn eller en adress",
+      "se": ""
+    },
+    "toast.favCoords": {
+      "en": "Latitude and longitude must both be filled in",
+      "fi": "Leveys- ja pituusaste on annettava molemmat",
+      "sv": "Både latitud och longitud måste fyllas i",
+      "se": ""
+    },
+    "toast.favSavedMap": {
+      "en": "{v} saved with map position",
+      "fi": "{v} tallennettiin karttakohteen kanssa",
+      "sv": "{v} sparad med kartposition",
+      "se": ""
+    },
+    "toast.favSavedNo": {
+      "en": "{v} saved — add a map position later",
+      "fi": "{v} tallennettiin — lisää karttakohta myöhemmin",
+      "sv": "{v} sparad — lägg till kartposition senare",
+      "se": ""
+    },
+    "toast.priceNow": {
+      "en": "Whole euro cents, so 35 means 0,35 € per kWh. Currently {v} per kWh",
+      "fi": "Kokonaiset eurosentit, eli 35 tarkoittaa 0,35 €/kWh. Nyt {v} per kWh",
+      "sv": "Hela eurocent, alltså 35 betyder 0,35 €/kWh. Nu {v} per kWh",
+      "se": ""
+    },
+    "toast.priceFromTotal": {
+      "en": " — price worked out from the total.",
+      "fi": " — hinta laskettu summasta.",
+      "sv": " — priset räknat ut från totalen.",
+      "se": ""
+    },
+    "toast.priceFromPrice": {
+      "en": " — total worked out from this.",
+      "fi": " — summa laskettu tästä.",
+      "sv": " — totalen räknad ut från detta.",
+      "se": ""
+    },
+    "toast.priceEnergy": {
+      "en": "kWh",
+      "fi": "kWh",
+      "sv": "kWh",
+      "se": ""
+    },
+    "toast.priceNeed": {
+      "en": "energy needed",
+      "fi": "energia tarvitaan",
+      "sv": "energi behövs",
+      "se": ""
+    },
+    "toast.priceHint": {
+      "en": "Leave empty to use {v} per kWh",
+      "fi": "Jätä tyhjäksi, jos haluat käyttää {v} per kWh",
+      "sv": "Lämna tomt för att använda {v} per kWh",
+      "se": ""
+    },
+    "toast.priceNeedE": {
+      "en": "Enter the charged energy to see the total.",
+      "fi": "Anna ladattu energia nähdäksesi summan.",
+      "sv": "Ange den laddade energin för att se totalen.",
+      "se": ""
+    },
+    "toast.centsMirror": {
+      "en": "{c} cents = {v} / kWh",
+      "fi": "{c} senttiä = {v} / kWh",
+      "sv": "{c} öre = {v} / kWh",
+      "se": ""
+    },
+    "err.json": {
+      "en": "Could not read the file as JSON.",
+      "fi": "Tiedostoa ei voitu lukea JSON-muodossa.",
+      "sv": "Kunde inte läsa filen som JSON.",
+      "se": ""
+    },
+    "err.jsonBad": {
+      "en": "The file is not valid JSON: {m}",
+      "fi": "Tiedosto ei ole kelvollinen JSON: {m}",
+      "sv": "Filen är inte giltig JSON: {m}",
+      "se": ""
+    },
+    "err.jsonShape": {
+      "en": "Expected an array of sessions, or a backup object with a sessions array.",
+      "fi": "Odotettiin sessioiden taulukkoa tai varmuuskopio-objektia, jossa on sessions-taulukko.",
+      "sv": "Förväntade en array med sessioner, eller ett säkerhetskopieobjekt med en sessions-array.",
+      "se": ""
+    },
+    "err.rowObj": {
+      "en": "row {n}: not an object",
+      "fi": "rivi {n}: ei ole objekti",
+      "sv": "rad {n}: är inte ett objekt",
+      "se": ""
+    },
+    "err.empty": {
+      "en": "Nothing to import.",
+      "fi": "Ei tuotavaa.",
+      "sv": "Inget att importera.",
+      "se": ""
+    },
+    "err.emptyMore": {
+      "en": "The file needs a header row and at least one data row.",
+      "fi": "Tiedostossa on oltava otsakkorivi ja vähintään yksi datarivi.",
+      "sv": "Filen behöver en rubrikrad och minst en datarad.",
+      "se": ""
+    },
+    "err.cols": {
+      "en": "The header row is missing required columns.",
+      "fi": "Otsakkorivistä puuttuu pakollisia sarakkeita.",
+      "sv": "Rubrikraden saknar obligatoriska kolumner.",
+      "se": ""
+    },
+    "err.colsReq": {
+      "en": "Required columns: date, time, location, energy.",
+      "fi": "Pakolliset sarakkeet: date, time, location, energy.",
+      "sv": "Obligatoriska kolumner: date, time, location, energy.",
+      "se": ""
+    },
+    "err.colsFound": {
+      "en": "Found: {c}",
+      "fi": "Löytyi: {c}",
+      "sv": "Hittade: {c}",
+      "se": ""
+    },
+    "err.ignored": {
+      "en": "ignored unrecognised column(s): {c}",
+      "fi": "ohitettiin tuntemattomat sarakkeet: {c}",
+      "sv": "ignorerade okända kolumner: {c}",
+      "se": ""
+    },
+    "err.noneImported": {
+      "en": "Nothing was imported ({n} problem(s) found).",
+      "fi": "Yhtään ei tuotu ({n} ongelmaa löytyi).",
+      "sv": "Inget importerades ({n} problem hittades).",
+      "se": ""
+    },
+    "err.date": {
+      "en": "row {n}: missing or invalid date (use YYYY-MM-DD)",
+      "fi": "rivi {n}: puuttuu tai virheellinen päivämäärä (käytä VVVV-KK-PP)",
+      "sv": "rad {n}: datum saknas eller är fel (använd ÅÅÅÅ-MM-DD)",
+      "se": ""
+    },
+    "err.time": {
+      "en": "row {n}: missing or invalid time (use HH:MM, 00:00-23:59)",
+      "fi": "rivi {n}: puuttuu tai virheellinen aika (käytä TT:MM, 00:00-23:59)",
+      "sv": "rad {n}: tid saknas eller är fel (använd HH:MM, 00:00-23:59)",
+      "se": ""
+    },
+    "err.loc": {
+      "en": "row {n}: missing location",
+      "fi": "rivi {n}: paikka puuttuu",
+      "sv": "rad {n}: plats saknas",
+      "se": ""
+    },
+    "err.energy": {
+      "en": "row {n}: energy must be a number in kWh",
+      "fi": "rivi {n}: energian on oltava numero kWh:ssa",
+      "sv": "rad {n}: energi måste vara ett tal i kWh",
+      "se": ""
+    },
+    "err.energyNeg": {
+      "en": "row {n}: energy cannot be negative",
+      "fi": "rivi {n}: energia ei voi olla negatiivinen",
+      "sv": "rad {n}: energi kan inte vara negativ",
+      "se": ""
+    },
+    "err.dur": {
+      "en": "row {n}: duration must be HH:MM or decimal hours",
+      "fi": "rivi {n}: keston on oltava TT:MM tai desimaalitunnit",
+      "sv": "rad {n}: tid måste vara HH:MM eller decimaltimmar",
+      "se": ""
+    },
+    "err.mileage": {
+      "en": "row {n}: mileage must be a number",
+      "fi": "rivi {n}: matkilukeman on oltava numero",
+      "sv": "rad {n}: mätarställning måste vara ett tal",
+      "se": ""
+    },
+    "err.cost": {
+      "en": "row {n}: cost must be a number",
+      "fi": "rivi {n}: kustannuksen on oltava numero",
+      "sv": "rad {n}: kostnad måste vara ett tal",
+      "se": ""
+    },
+    "err.fileOpen": {
+      "en": "Could not read the file.",
+      "fi": "Tiedostoa ei voitu lukea.",
+      "sv": "Kunde inte läsa filen.",
+      "se": ""
+    },
+    "err.open": {
+      "en": "The file could not be opened.",
+      "fi": "Tiedostoa ei voitu avata.",
+      "sv": "Filen kunde inte öppnas.",
+      "se": ""
+    },
+    "more": {
+      "en": "… and {n} more",
+      "fi": "… ja {n} muuta",
+      "sv": "… och {n} till",
+      "se": ""
+    },
+    "veh.created": {
+      "en": "{v} created",
+      "fi": "{v} luotu",
+      "sv": "{v} skapad",
+      "se": ""
+    },
+    "imp.note": {
+      "en": "Imported {n} session(s).",
+      "fi": "Tuotiin {n} sessiota.",
+      "sv": "Importerade {n} session(er).",
+      "se": ""
+    },
+    "log.for": {
+      "en": "{n} session(s) stored for {v}, newest first.",
+      "fi": "{n} sessiota tallennettu ajoneuvoon {v}, uusin ensin.",
+      "sv": "{n} session(er) sparade för {v}, nyast först.",
+      "se": ""
+    },
+    "log.none": {
+      "en": "No sessions stored for {v} yet.",
+      "fi": "Ajoneuvoon {v} ei ole vielä tallennettu sessioita.",
+      "sv": "Inga sessioner sparade för {v} än.",
+      "se": ""
+    },
+    "yes": {
+      "en": "yes",
+      "fi": "kyllä",
+      "sv": "ja",
+      "se": ""
+    },
+    "no": {
+      "en": "no",
+      "fi": "ei",
+      "sv": "nej",
+      "se": ""
+    },
+    "lang": {
+      "en": "Language",
+      "fi": "Kieli",
+      "sv": "Språk",
+      "se": ""
+    }
+  }
+}
