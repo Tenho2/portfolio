@@ -18,11 +18,22 @@
     "    city (33100 Tampere); this is already handled automatically, so the address",
     "    components must be given as separate parts (name, street, city, postcode).",
     "",
-    "STATUS OF THE CURRENT MACHINE DRAFT",
-    "  A previous automatic draft was rejected as unreliable: it mixed Skolt Sami",
+    "  All 318 application keys are listed here, each with en / fi / sv filled from the app",
+    "  Keys under a11y.* and grp.* exist for screen reader users only. They are read out",
+    "  instead of being shown: a11y.* name icon-only buttons and landmarks, grp.* label",
+    "  fieldset groups (the fieldset legends themselves are visually hidden).",
+    "",
+    "  All 301 application keys are listed here, each with en / fi / sv filled from the app",
+    "  and se blank. The 15 keys that already carry a hand-checked se value in the app",
+    "  (fav.name, fav.map, fav.save, fav.use, fav.del, fav.edit, set.remove, aria.map,",
+    "  aria.del, aria.edit, ed.save, ed.del, as.date, as.time) are also left blank here so",
+    "  the translator reviews them rather than trusting them.",
+    "",
+    "STATUS",
+    "  An earlier automatic draft was rejected as unreliable: it mixed Skolt Sami",
     "  characters into a Northern Sami slot and used invented morphology. Those strings",
-    "  have been removed. The 'se' column is intentionally blank until a native speaker",
-    "  fills it in."
+    "  were removed and no automatic Sami is generated. The se column stays blank until a",
+    "  native speaker fills it in. An empty value falls back to English at runtime."
   ],
   "keys": {
     "ed.for": {
@@ -213,7 +224,7 @@
     },
     "as.mileage": {
       "en": "Mileage (km)",
-      "fi": "Matkilukema (km)",
+      "fi": "Matkamittarilukema (km)",
       "sv": "Mätarställning (km)",
       "se": ""
     },
@@ -399,7 +410,7 @@
     },
     "th.mileage": {
       "en": "Mileage",
-      "fi": "Matka",
+      "fi": "Matkamittarilukema",
       "sv": "Sträcka",
       "se": ""
     },
@@ -1455,7 +1466,7 @@
     },
     "err.mileage": {
       "en": "row {n}: mileage must be a number",
-      "fi": "rivi {n}: matkilukeman on oltava numero",
+      "fi": "rivi {n}: matkamittarilukeman on oltava numero",
       "sv": "rad {n}: mätarställning måste vara ett tal",
       "se": ""
     },
@@ -1523,6 +1534,342 @@
       "en": "Language",
       "fi": "Kieli",
       "sv": "Språk",
+      "se": ""
+    },
+    "as.socStart": {
+      "en": "Start %",
+      "fi": "Aloitus %",
+      "sv": "Start %",
+      "se": ""
+    },
+    "as.socEnd": {
+      "en": "End %",
+      "fi": "Lopetus %",
+      "sv": "Slut %",
+      "se": ""
+    },
+    "ph.soc": {
+      "en": "e.g. 20",
+      "fi": "esim. 20",
+      "sv": "t.ex. 20",
+      "se": ""
+    },
+    "chart.title": {
+      "en": "Energy and cost per month",
+      "fi": "Energia ja kustannus kuukausittain",
+      "sv": "Energi och kostnad per månad",
+      "se": ""
+    },
+    "chart.energy": {
+      "en": "Energy (kWh)",
+      "fi": "Energia (kWh)",
+      "sv": "Energi (kWh)",
+      "se": ""
+    },
+    "chart.cost": {
+      "en": "Cost (EUR)",
+      "fi": "Kustannus (€)",
+      "sv": "Kostnad (EUR)",
+      "se": ""
+    },
+    "chart.empty": {
+      "en": "No sessions for this vehicle yet. Add one to see the monthly chart.",
+      "fi": "Ei vielä sessioita tälle ajoneuvolle. Lisää sessio, niin näet kuukausikartan.",
+      "sv": "Inga sessioner för det här fordonet ännu. Lägg till en för att se månadskartan.",
+      "se": ""
+    },
+    "chart.offline": {
+      "en": "The chart library could not be loaded (no internet connection?). Everything else works normally.",
+      "fi": "Kaavakirjastoa ei voitu ladata (ei internetyhteyttä?). Muu toimii normaalisti.",
+      "sv": "Diagrambiblioteket kunde inte laddas (ingen internetanslutning?). Allt annat fungerar normalt.",
+      "se": ""
+    },
+    "how.soc": {
+      "en": "Battery charge level before and after the session, in percent (0-100). Leave empty if unknown.",
+      "fi": "Akun varaus ennen ja jälkeen istunnan, prosentteina (0-100). Jätä tyhjäksi, jos tuntematon.",
+      "sv": "Batteriets laddningsnivå före och efter sessionen, i procent (0-100). Lämna tomt om okänt.",
+      "se": ""
+    },
+    "err.soc": {
+      "en": "Row {n}: battery percentage is not a number, left empty.",
+      "fi": "Rivi {n}: akun prosenttiarvo ei ole numero, jätettiin tyhjäksi.",
+      "sv": "Rad {n}: batteriprocent är inte ett tal, lämnades tomt.",
+      "se": ""
+    },
+    "set.editVehicle": {
+      "en": "Edit vehicle",
+      "fi": "Muokkaa ajoneuvoa",
+      "sv": "Redigera fordon",
+      "se": ""
+    },
+    "set.initialOdoLead": {
+      "en": "The initial odometer is the \"ground zero\" for the distance total: distance = highest logged reading − this value.",
+      "fi": "Aloitusmatkamittari on matkan laskennan \"nolla\": matka = suurin kirjattu lukema − tämä arvo.",
+      "sv": "Startodometern är distansens \"nollpunkt\": distans = högsta loggade mätarställning − detta värde.",
+      "se": ""
+    },
+    "as.initialOdo": {
+      "en": "Initial odometer (km)",
+      "fi": "Aloitusmatkamittari (km)",
+      "sv": "Startodometer (km)",
+      "se": ""
+    },
+    "ph.initialodo": {
+      "en": "e.g. 45000",
+      "fi": "esim. 45000",
+      "sv": "t.ex. 45000",
+      "se": ""
+    },
+    "aria.initialodo": {
+      "en": "initial odometer reading in kilometres",
+      "fi": "aloitusmatkamittarin lukema kilometreinä",
+      "sv": "startodometerns mätarställning i kilometer",
+      "se": ""
+    },
+    "as.vehicle": {
+      "en": "Vehicle name",
+      "fi": "Ajoneuvon nimi",
+      "sv": "Bilnamn",
+      "se": ""
+    },
+    "auth.lead": {
+      "en": "Sign in to sync your vehicles and sessions.",
+      "fi": "Kirjaudu sisään synkronoidaksesi ajoneuvot ja sessiot.",
+      "sv": "Logga in för att synka dina fordon och sessioner.",
+      "se": ""
+    },
+    "auth.username": {
+      "en": "Username",
+      "fi": "Käyttäjätunnus",
+      "sv": "Användarnamn",
+      "se": ""
+    },
+    "auth.usernameHint": {
+      "en": "No email address needed.",
+      "fi": "Sähköpostiosoitetta ei tarvita.",
+      "sv": "Ingen e-postadress behövs.",
+      "se": ""
+    },
+    "auth.password": {
+      "en": "Password",
+      "fi": "Salasana",
+      "sv": "Lösenord",
+      "se": ""
+    },
+    "auth.signIn": {
+      "en": "Sign in",
+      "fi": "Kirjaudu",
+      "sv": "Logga in",
+      "se": ""
+    },
+    "auth.createAccount": {
+      "en": "Create account",
+      "fi": "Luo tili",
+      "sv": "Skapa konto",
+      "se": ""
+    },
+    "auth.logout": {
+      "en": "Log out",
+      "fi": "Kirjaudu ulos",
+      "sv": "Logga ut",
+      "se": ""
+    },
+    "auth.needAccount": {
+      "en": "Need an account? Register",
+      "fi": "Tarvitseko tilin? Rekisteröidy",
+      "sv": "Behöver du ett konto? Registrera dig",
+      "se": ""
+    },
+    "auth.haveAccount": {
+      "en": "Already registered? Sign in",
+      "fi": "Onko tili jo? Kirjaudu",
+      "sv": "Redan registrerad? Logga in",
+      "se": ""
+    },
+    "auth.working": {
+      "en": "Please wait…",
+      "fi": "Odota…",
+      "sv": "Vänta…",
+      "se": ""
+    },
+    "auth.privacy": {
+      "en": "Your username is stored with a non-deliverable domain appended, so no real email address is ever sent or stored.",
+      "fi": "Käyttäjätunnukseen liitetään ei-toimitettava verkkotunnus, joten oikeaa sähköpostiosoitetta ei koskaan lähetetä tai tallenneta.",
+      "sv": "Ditt användarnamn lagras med en icke-levererbar domän, så ingen riktig e-postadress skickas eller lagras.",
+      "se": ""
+    },
+    "auth.ok": {
+      "en": "Signed in.",
+      "fi": "Kirjauduit sisään.",
+      "sv": "Inloggad.",
+      "se": ""
+    },
+    "auth.checkMail": {
+      "en": "Account created. Confirm it in Supabase, then sign in.",
+      "fi": "Tili luotu. Vahvista se Supabasessa ja kirjaudu sisään.",
+      "sv": "Kontot skapat. Bekräfta det i Supabase och logga sedan in.",
+      "se": ""
+    },
+    "auth.notConfigured": {
+      "en": "Supabase is not configured yet. Set SUPABASE_URL and SUPABASE_ANON_KEY.",
+      "fi": "Supabasea ei ole vielä määritetty. Aseta SUPABASE_URL ja SUPABASE_ANON_KEY.",
+      "sv": "Supabase är inte konfigurerat än. Ange SUPABASE_URL och SUPABASE_ANON_KEY.",
+      "se": ""
+    },
+    "auth.noLib": {
+      "en": "Could not load the Supabase library. Check your connection and reload.",
+      "fi": "Supabase-kirjastoa ei voitu ladata. Tarkista yhteys ja lataa sivu uudelleen.",
+      "sv": "Kunde inte läsa in Supabase-biblioteket. Kontrollera anslutningen och ladda om.",
+      "se": ""
+    },
+    "auth.missing": {
+      "en": "Enter a username and a password.",
+      "fi": "Anna käyttäjätunnus ja salasana.",
+      "sv": "Ange användarnamn och lösenord.",
+      "se": ""
+    },
+    "auth.shortPw": {
+      "en": "Choose a password of at least 8 characters.",
+      "fi": "Valitse salasana, jossa on vähintään 8 merkkiä.",
+      "sv": "Välj ett lösenord med minst 8 tecken.",
+      "se": ""
+    },
+    "auth.badLogin": {
+      "en": "Wrong username or password.",
+      "fi": "Väärä käyttäjätunnus tai salasana.",
+      "sv": "Fel användarnamn eller lösenord.",
+      "se": ""
+    },
+    "auth.failed": {
+      "en": "Something went wrong. Please try again.",
+      "fi": "Jokin meni pieleen. Yritä uudelleen.",
+      "sv": "Något gick fel. Försök igen.",
+      "se": ""
+    },
+    "veh.default": {
+      "en": "Vehicle 1",
+      "fi": "Ajoneuvo 1",
+      "sv": "Fordon 1",
+      "se": ""
+    },
+    "sync.pending": {
+      "en": "Saved locally · {n} change(s) waiting to sync",
+      "fi": "Tallennettu laitteelle · {n} muutosta odottaa synkronointia",
+      "sv": "Sparad lokalt · {n} ändring(ar) väntar på synkning",
+      "se": ""
+    },
+    "sync.loading": {
+      "en": "Syncing…",
+      "fi": "Synkronoidaan…",
+      "sv": "Synkar…",
+      "se": ""
+    },
+    "sync.offline": {
+      "en": "Offline · changes stay on this device",
+      "fi": "Ei verkkoyhteyttä · muutokset säilyvät tälle laitteelle",
+      "sv": "Ingen anslutning · ändringar stannar på den här enheten",
+      "se": ""
+    },
+    "a11y.skip": {
+      "en": "Skip to main content",
+      "fi": "Siirry pääsisältöön",
+      "sv": "Hoppa till huvudinnehållet",
+      "se": ""
+    },
+    "a11y.nav": {
+      "en": "Main navigation",
+      "fi": "Päävalikko",
+      "sv": "Huvudmeny",
+      "se": ""
+    },
+    "a11y.stats": {
+      "en": "Totals for the selected vehicle",
+      "fi": "Valitun ajoneuvon summat",
+      "sv": "Summor för valt fordon",
+      "se": ""
+    },
+    "a11y.vehList": {
+      "en": "Vehicle selection",
+      "fi": "Ajoneuvon valinta",
+      "sv": "Fordonsval",
+      "se": ""
+    },
+    "a11y.picked": {
+      "en": "Selected: {v}",
+      "fi": "Valittu: {v}",
+      "sv": "Valt: {v}",
+      "se": ""
+    },
+    "a11y.editSession": {
+      "en": "Edit session: {v}, {d}",
+      "fi": "Muokkaa sessiota: {v}, {d}",
+      "sv": "Redigera session: {v}, {d}",
+      "se": ""
+    },
+    "a11y.deleteSession": {
+      "en": "Delete session: {v}, {d}",
+      "fi": "Poista sessio: {v}, {d}",
+      "sv": "Ta bort session: {v}, {d}",
+      "se": ""
+    },
+    "a11y.useFav": {
+      "en": "Use favourite location: {v}",
+      "fi": "Käytä suosikkia: {v}",
+      "sv": "Använd favoritplats: {v}",
+      "se": ""
+    },
+    "a11y.editFav": {
+      "en": "Edit favourite: {v}",
+      "fi": "Muokkaa suosikkia: {v}",
+      "sv": "Redigera favorit: {v}",
+      "se": ""
+    },
+    "a11y.deleteFav": {
+      "en": "Delete favourite: {v}",
+      "fi": "Poista suosikki: {v}",
+      "sv": "Ta bort favorit: {v}",
+      "se": ""
+    },
+    "a11y.renameVeh": {
+      "en": "Rename vehicle: {v}",
+      "fi": "Nimeä ajoneuvo uudelleen: {v}",
+      "sv": "Byt namn på fordon: {v}",
+      "se": ""
+    },
+    "a11y.removeVeh": {
+      "en": "Remove vehicle: {v}",
+      "fi": "Poista ajoneuvo: {v}",
+      "sv": "Ta bort fordon: {v}",
+      "se": ""
+    },
+    "grp.when": {
+      "en": "When the session happened",
+      "fi": "Milloin sessio tapahtui",
+      "sv": "När sessionen skedde",
+      "se": ""
+    },
+    "grp.duration": {
+      "en": "How long and how far",
+      "fi": "Kesto ja matka",
+      "sv": "Längd och sträcka",
+      "se": ""
+    },
+    "grp.soc": {
+      "en": "State of charge, start and end",
+      "fi": "Akun varaus, alku ja loppu",
+      "sv": "Batterinivå, start och slut",
+      "se": ""
+    },
+    "grp.coords": {
+      "en": "Map coordinates",
+      "fi": "Kartan koordinaatit",
+      "sv": "Kartkoordinater",
+      "se": ""
+    },
+    "grp.vehicle": {
+      "en": "Vehicle details",
+      "fi": "Ajoneuvon tiedot",
+      "sv": "Fordonsuppgifter",
       "se": ""
     }
   }
