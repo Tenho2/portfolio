@@ -1895,6 +1895,12 @@
       "fi": "Palvelimeen ei saa yhteyttä · muutokset säilyvät tälle laitteelle",
       "sv": "Kunde inte nå servern · ändringar stannar på den här enheten",
       "se": ""
+    },
+    "toast.restoreOrphans": {
+      "en": "Restored {n} session(s) and {f} favourite(s) · {o} session(s) skipped because their vehicle was missing",
+      "fi": "Palautettiin {n} sessiota ja {f} suosikkia · {o} sessiota ohitettiin, koska niiden ajoneuvo puuttui",
+      "sv": "Återställde {n} session(er) och {f} favorit(er) · {o} session(er) hoppades över eftersom deras fordon saknades",
+      "se": ""
     }
   }
 }

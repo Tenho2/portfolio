@@ -2528,6 +2528,8 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "toast.nothing": "Nothing to export yet",
             "toast.backup": "Backup downloaded",
             "toast.restore": "Restored {n} session(s) and {f} favourite(s)",
+            "toast.restoreOrphans":
+              "Restored {n} session(s) and {f} favourite(s) · {o} session(s) skipped because their vehicle was missing",
             "toast.badRestore": "That file is not a valid backup",
             "toast.cleared": "Sessions cleared",
             "toast.wiped": "Everything deleted",
@@ -2892,6 +2894,8 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "toast.nothing": "Ei vielä vietävää",
             "toast.backup": "Varmuuskopio ladattu",
             "toast.restore": "Palautettiin {n} sessiota ja {f} suosikkia",
+            "toast.restoreOrphans":
+              "Palautettiin {n} sessiota ja {f} suosikkia · {o} sessiota ohitettiin, koska niiden ajoneuvo puuttui",
             "toast.badRestore": "Tiedosto ei ole kelvollinen varmuuskopio",
             "toast.cleared": "Sessiot tyhjennetty",
             "toast.wiped": "Kaikki poistettu",
@@ -3264,6 +3268,8 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "toast.nothing": "Inget att exportera än",
             "toast.backup": "Säkerhetskopia nedladdad",
             "toast.restore": "Återställde {n} session(er) och {f} favorit(er)",
+            "toast.restoreOrphans":
+              "Återställde {n} session(er) och {f} favorit(er) · {o} session(er) hoppades över eftersom deras fordon saknades",
             "toast.badRestore": "Filen är inte en giltig säkerhetskopia",
             "toast.cleared": "Sessionerna rensade",
             "toast.wiped": "Allt borttaget",
@@ -4009,14 +4015,73 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             for (var i = 0; i < ids.length; i++) syncDelete(t, ids[i]);
           }
         }
-        /* Replaces every server row for this account with the current local arrays.
-   Used by "clear sessions" and "delete everything", which must also clear the
-   cloud copy, not just this browser. */
+        /**
+         * Run a worker over a list with a bounded number in flight.
+         * PostgREST rejects very large single requests, so bulk writes are sent
+         * in slices and at most CONCURRENCY of them are open at any moment.
+         * Failures are returned rather than thrown so one bad slice cannot
+         * silently abandon the rest.
+         * @param {Array}    list          items to process
+         * @param {number}   size          items per request
+         * @param {Function} worker        (slice) => Promise, resolves to false on error
+         * @param {number}   [concurrency] requests in flight at once
+         * @returns {Promise<{ok:number, failed:number}>}
+         */
+        function runBatched(list, size, worker, concurrency) {
+          var slices = [];
+          for (var i = 0; i < list.length; i += size)
+            slices.push(list.slice(i, i + size));
+          if (!slices.length) return Promise.resolve({ ok: 0, failed: 0 });
+          var limit = Math.max(1, concurrency || 3);
+          var next = 0,
+            ok = 0,
+            failed = 0;
+          function workerLoop() {
+            if (next >= slices.length) return Promise.resolve();
+            var slice = slices[next++];
+            return Promise.resolve()
+              .then(function () {
+                return worker(slice);
+              })
+              .then(function (res) {
+                if (res === false) failed++;
+                else ok++;
+              })
+              .catch(function () {
+                failed++;
+              })
+              .then(workerLoop);
+          }
+          var lanes = [];
+          for (var k = 0; k < Math.min(limit, slices.length); k++)
+            lanes.push(workerLoop());
+          return Promise.all(lanes).then(function () {
+            return { ok: ok, failed: failed };
+          });
+        }
+        /**
+         * Replace every server row for this account with the current local
+         * arrays. Used by "clear sessions", "delete everything" and a restored
+         * backup, all of which must also clear the cloud copy rather than just
+         * this browser.
+         *
+         * Order matters: sessions are deleted first so the ownership trigger
+         * never sees an orphaned reference, and vehicles are inserted before
+         * sessions so every session points at a row that already exists.
+         * Both tables are written in slices, so a large backup cannot exceed
+         * the request size limit.
+         * @returns {Promise<boolean>} true only when every slice succeeded
+         */
         function syncReplaceAll() {
           if (!syncOn()) return Promise.resolve(false);
           if (!syncOnline()) return Promise.resolve(false);
           syncQueue.pending++;
           var uid = ownerId();
+          var BATCH = 500;
+          var sessionsToWrite = sessions.filter(function (s) {
+            return s && vehById(s.vehicleId);
+          });
+          var failed = 0;
           return authClient
             .from("sessions")
             .delete()
@@ -4030,22 +4095,47 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               var e2 = r2 && r2.error;
               if (e2) throw e2;
               syncDeleted = { vehicles: {}, sessions: {} };
-              var vs = vehicles.map(vehicleRow);
-              return authClient
-                .from("vehicles")
-                .upsert(vs, { onConflict: "id" });
+              return runBatched(
+                vehicles.slice(),
+                BATCH,
+                function (slice) {
+                  return authClient
+                    .from("vehicles")
+                    .upsert(slice.map(vehicleRow), { onConflict: "id" })
+                    .then(function (r) {
+                      return !(r && r.error);
+                    });
+                },
+                3,
+              );
             })
-            .then(function (r3) {
-              var e3 = r3 && r3.error;
-              if (e3) throw e3;
-              if (!sessions.length) return null;
-              return authClient
-                .from("sessions")
-                .upsert(sessions.map(sessionRow), {
-                  onConflict: "id",
-                });
+            .then(function (vres) {
+              failed += vres.failed;
+              return runBatched(
+                sessionsToWrite,
+                BATCH,
+                function (slice) {
+                  return authClient
+                    .from("sessions")
+                    .upsert(slice.map(sessionRow), { onConflict: "id" })
+                    .then(function (r) {
+                      return !(r && r.error);
+                    });
+                },
+                3,
+              );
             })
-            .then(function () {
+            .then(function (sres) {
+              failed += sres.failed;
+              if (failed) {
+                syncQueue.pending--;
+                if (window.console && window.console.warn)
+                  window.console.warn(
+                    "[sync] replace all: " + failed + " slice(s) failed",
+                  );
+                syncFail("replace all");
+                return false;
+              }
               syncQueue.pending--;
               syncQueue.fail = 0;
               syncDirty = { vehicles: {}, sessions: {} };
@@ -4060,7 +4150,13 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               return false;
             });
         }
-        /* several sessions at once, e.g. after an import */
+        /**
+         * Push several sessions at once, e.g. after a file import.
+         * Written in slices so a large file cannot exceed the request limit,
+         * and any slice that fails marks its rows dirty for the next retry.
+         * @param {Array} list  local session objects
+         * @returns {Promise<boolean>}
+         */
         function syncSessions(list) {
           if (!syncOn() || !list || !list.length) return Promise.resolve(false);
           var rows = [];
@@ -4068,13 +4164,30 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             if (list[i]) rows.push(sessionRow(list[i]));
           if (!rows.length) return Promise.resolve(false);
           syncQueue.pending++;
-          return authClient
-            .from("sessions")
-            .upsert(rows, { onConflict: "id" })
-            .then(function (res) {
+          return runBatched(
+            rows,
+            500,
+            function (slice) {
+              return authClient
+                .from("sessions")
+                .upsert(slice, { onConflict: "id" })
+                .then(function (res) {
+                  var e = res && res.error;
+                  if (e) {
+                    for (var k = 0; k < slice.length; k++)
+                      markDirty("sessions", slice[k].id);
+                    return false;
+                  }
+                  for (var j = 0; j < slice.length; j++)
+                    clearDirty("sessions", slice[j].id);
+                  return true;
+                });
+            },
+            3,
+          )
+            .then(function (out) {
               syncQueue.pending--;
-              var e = res && res.error;
-              if (e) {
+              if (out.failed) {
                 syncFail("session bulk upsert");
                 return false;
               }
@@ -7328,26 +7441,58 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                     initialOdometer: 0,
                   },
                 ];
-              /* a restored backup may carry legacy non-uuid ids, which Postgres would reject */
-              for (var rv = 0; rv < vehicles.length; rv++)
-                if (vehicles[rv] && !isUuid(vehicles[rv].id))
-                  vehicles[rv].id = uuid();
               sessions = d.sessions;
               cur = 0;
-              dirty = true;
-              save();
-              dirty = false;
+              /* A restored backup may carry legacy non-uuid ids, which Postgres
+                 would reject on the id column. Replace each one and remember the
+                 mapping, because the sessions in the same file still point at
+                 the OLD id: without this the reference dangles, the ownership
+                 trigger rejects the insert, and the whole restore fails to sync. */
+              var idMap = {};
+              for (var rv = 0; rv < vehicles.length; rv++) {
+                if (!vehicles[rv]) continue;
+                var oldId = vehicles[rv].id;
+                if (!isUuid(oldId)) {
+                  var newId = uuid();
+                  idMap[oldId] = newId;
+                  vehicles[rv].id = newId;
+                }
+              }
               for (var rs = 0; rs < sessions.length; rs++)
                 if (sessions[rs] && !isUuid(sessions[rs].id))
                   sessions[rs].id = uuid();
-              for (var rm = 0; rm < sessions.length; rm++)
-                if (sessions[rm])
-                  for (var rvx = 0; rvx < vehicles.length; rvx++)
-                    if (vehicles[rvx].name === sessions[rm].vehicleId)
+              /* Re-point sessions at the new uuids: by the id map first, then by
+                 vehicle name, which is how exported CSV/JSON files refer to a
+                 vehicle when no id was stored. */
+              for (var rm = 0; rm < sessions.length; rm++) {
+                if (!sessions[rm]) continue;
+                var ref = sessions[rm].vehicleId;
+                if (idMap[ref]) {
+                  sessions[rm].vehicleId = idMap[ref];
+                } else if (!isUuid(ref)) {
+                  for (var rvx = 0; rvx < vehicles.length; rvx++) {
+                    if (vehicles[rvx] && vehicles[rvx].name === ref) {
                       sessions[rm].vehicleId = vehicles[rvx].id;
-              dirty = true;
+                      break;
+                    }
+                  }
+                }
+              }
+              /* Drop sessions that still point at a vehicle that is not in the
+                 file. They cannot be synced and would fail the whole batch, so
+                 they are removed here and counted for the user. */
+              var orphans = 0;
+              for (var ro = 0; ro < sessions.length; ro++) {
+                if (!sessions[ro] || !vehById(sessions[ro].vehicleId)) {
+                  if (sessions[ro]) orphans++;
+                }
+              }
+              sessions = sessions.filter(function (s) {
+                return s && vehById(s.vehicleId);
+              });
+              /* Keep the selected vehicle pointing at something real. */
+              if (cur >= vehicles.length) cur = 0;
               save();
-              dirty = false;
               if (isFinite(d.pricePerKwh)) {
                 price = Math.max(0, d.pricePerKwh);
                 $("ppk").value = price;
@@ -7365,11 +7510,19 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               }
               loadFavs();
               render();
+              /* Report what was restored, including any session that referenced a
+                 vehicle the file did not contain and had to be dropped. */
               toast(
-                TXT("toast.restore", {
-                  n: sessions.length,
-                  f: favs.length,
-                }),
+                orphans
+                  ? TXT("toast.restoreOrphans", {
+                      n: sessions.length,
+                      f: favs.length,
+                      o: orphans,
+                    })
+                  : TXT("toast.restore", {
+                      n: sessions.length,
+                      f: favs.length,
+                    }),
               );
               /* a restored backup replaces the account, so the server copy is reset too */
               syncReplaceAll();
