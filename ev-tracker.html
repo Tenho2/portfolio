@@ -8,6 +8,26 @@
       name="description"
       content="Track charging sessions, energy and cost for multiple electric vehicles."
     />
+    <!-- Installable PWA. The service worker caches only this app shell;
+         Supabase and the map/CDN hosts are deliberately network-only. -->
+    <link rel="manifest" href="manifest.json" />
+    <meta name="theme-color" content="#2563eb" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="apple-mobile-web-app-title" content="EV Tracker" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <link rel="icon" href="icons/favicon.svg" type="image/svg+xml" />
+    <link
+      rel="icon"
+      href="icons/icon-192.png"
+      sizes="192x192"
+      type="image/png"
+    />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" href="icons/icon-192.png" />
     <!-- Monthly chart. Loaded with defer so it never blocks parsing; the dashboard
      falls back to an explanatory note if the CDN is unavailable or offline. -->
     <script
@@ -171,6 +191,92 @@
       }
       .sheet-box > fieldset.row {
         display: grid;
+      }
+      /* confirmation dialog */
+      .confirm-box {
+        max-width: 440px;
+        text-align: left;
+      }
+      .confirm-box h3 {
+        display: flex;
+        align-items: center;
+        gap: 5rem;
+        margin-bottom: 0.6rem;
+      }
+      .confirm-box h3 span[aria-hidden] {
+        font-size: 1.4rem;
+        line-height: 1;
+      }
+      #confirmBody {
+        color: var(--text-muted);
+        font-size: 0.95rem;
+        margin-bottom: 1.4rem;
+        overflow-wrap: anywhere;
+      }
+      .confirm-actions {
+        margin-top: 0;
+      }
+      .confirm-actions .btn {
+        flex: 1 1 auto;
+        min-width: 8rem;
+      }
+      /* the logout control was a 40px circle holding a whole word */
+      .tgl-wide {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        width: auto;
+        height: 40px;
+        min-width: 40px;
+        padding: 0 0.85rem;
+        border: 2px solid var(--primary);
+        border-radius: 20px;
+        background: none;
+        color: var(--primary);
+        font: inherit;
+        font-size: 0.85rem;
+        font-weight: 600;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: var(--t);
+      }
+      .tgl-wide:hover {
+        background: var(--primary);
+        color: #fff;
+      }
+      .tgl-wide .ic {
+        font-size: 1rem;
+        line-height: 1;
+      }
+      /* labelled fields for the add-vehicle row */
+      .addrow-fields {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        margin-top: 1rem;
+        align-items: flex-end;
+      }
+      .addrow-fields .f {
+        margin-bottom: 0;
+        flex: 1 1 190px;
+        min-width: 0;
+      }
+      .addrow-fields input {
+        width: 100%;
+        padding: 0.7rem 0.85rem;
+        border: 2px solid var(--line);
+        border-radius: 10px;
+        background: var(--surface);
+        color: var(--text);
+        font: inherit;
+      }
+      body.dark .addrow-fields input {
+        background: #0f172a;
+        border-color: #475569;
+      }
+      .addrow-fields input::placeholder {
+        color: var(--text-muted);
+        opacity: 0.75;
       }
 
       /* ---------- auth gate ---------- */
@@ -1340,14 +1446,9 @@
           <span class="user-chip" id="userChip" hidden
             ><span class="nm" id="userName"></span
           ></span>
-          <button
-            class="tgl"
-            id="logoutBtn"
-            type="button"
-            data-i18n="auth.logout"
-            hidden
-          >
-            ⎋
+          <button class="tgl-wide" id="logoutBtn" type="button" hidden>
+            <span class="ic" aria-hidden="true">⎋</span>
+            <span id="logoutLabel" data-i18n="auth.logout">Log out</span>
           </button>
           <button
             class="tgl"
@@ -1416,9 +1517,9 @@
               <div class="n" id="sEnergy">0 kWh</div>
               <div class="l" data-i18n="tile.kwh"></div>
             </div>
-            <div class="stat">
+            <div class="stat" data-tile="dist">
               <div class="n" id="sDist">0 km</div>
-              <div class="l" data-i18n="tile.dist"></div>
+              <div class="l" id="sDistLabel" data-i18n="tile.dist"></div>
             </div>
             <div class="stat">
               <div class="n" id="sCost">€0.00</div>
@@ -1745,35 +1846,41 @@
           </h2>
           <p class="lead" data-i18n="set.vehiclesLead"></p>
           <div class="list" id="vehSettings"></div>
-          <div class="addrow">
-            <input
-              type="text"
-              id="vName"
-              data-i18n-ph="ph.vehname"
-              maxlength="40"
-              data-i18n-aria="aria.newveh"
-            />
-            <input
-              type="number"
-              id="vOdo"
-              min="0"
-              step="1"
-              data-i18n-ph="ph.initialodo"
-              data-i18n-aria="aria.initialodo"
-              aria-describedby="vOdoHint"
-            />
+          <!-- Labelled fields: without labels these two inputs read as blank boxes.
+               vName is the vehicle name, vOdo the starting odometer. -->
+          <div class="addrow-fields">
+            <div class="f">
+              <label for="vName" data-i18n="as.vehicle"></label>
+              <input
+                type="text"
+                id="vName"
+                data-i18n-ph="ph.vehname"
+                maxlength="40"
+                data-i18n-aria="aria.newveh"
+              />
+            </div>
+            <div class="f">
+              <label for="vOdo" data-i18n="as.initialOdo"></label>
+              <input
+                type="number"
+                id="vOdo"
+                min="0"
+                step="1"
+                data-i18n-ph="ph.initialodo"
+                data-i18n-aria="aria.initialodo"
+                aria-describedby="vOdoHint"
+              />
+            </div>
             <button
               class="btn sec"
               type="button"
               id="vSave"
               data-i18n="set.saveVehicle"
-            ></button>
+            >
+              Save vehicle
+            </button>
           </div>
-          <div
-            class="hint sr-only"
-            id="vOdoHint"
-            data-i18n="set.initialOdoLead"
-          ></div>
+          <div class="hint" id="vOdoHint" data-i18n="set.initialOdoLead"></div>
         </div>
         <div class="panel">
           <h2>
@@ -2306,6 +2413,40 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
       </div>
     </div>
 
+    <div class="sheet" id="confirmSheet">
+      <div
+        class="sheet-box confirm-box"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="confirmTitle"
+        aria-describedby="confirmBody"
+      >
+        <h3 id="confirmTitle">
+          <span aria-hidden="true" id="confirmIcon">⚠️</span>
+          <span id="confirmHeading" data-i18n="confirm.title"></span>
+        </h3>
+        <p id="confirmBody" data-i18n="confirm.body"></p>
+        <div class="addrow confirm-actions">
+          <button
+            class="btn dgr"
+            type="button"
+            id="confirmOk"
+            data-i18n="confirm.ok"
+          >
+            Confirm
+          </button>
+          <button
+            class="btn ghost"
+            type="button"
+            id="confirmCancel"
+            data-i18n="confirm.cancel"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <script>
@@ -2341,6 +2482,11 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "qa.addVehicle": "Add vehicle",
             "tile.kwh": "Energy charged",
             "tile.dist": "Distance covered",
+            "tile.distEst": "Distance (since first reading)",
+            "tile.distEstHelp":
+              "No starting odometer was given for this vehicle, so distance is measured from the first logged reading.",
+            "tile.distHelp":
+              "Distance from the starting odometer you set for this vehicle.",
             "tile.cost": "Total cost",
             "tile.time": "Total charging time",
             "tile.kwh100": "Avg kWh / 100 km",
@@ -2656,6 +2802,18 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "auth.signIn": "Sign in",
             "auth.createAccount": "Create account",
             "auth.logout": "Log out",
+            "confirm.title": "Please confirm",
+            "confirm.body": "Are you sure?",
+            "confirm.ok": "Yes, continue",
+            "confirm.cancel": "Cancel",
+            "confirm.delete": "Delete",
+            "confirm.remove": "Remove vehicle",
+            "confirm.deleteEverything": "Delete everything",
+            "confirm.removeVehicle": "Remove this vehicle?",
+            "confirm.deleteSession": "Delete this session?",
+            "confirm.deleteFav": "Delete this favourite?",
+            "confirm.clearSessions": "Clear all sessions?",
+            "confirm.wipe": "Delete everything?",
             "auth.needAccount": "Need an account? Register",
             "auth.haveAccount": "Already registered? Sign in",
             "auth.working": "Please wait…",
@@ -2704,6 +2862,11 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "qa.addVehicle": "Lisää ajoneuvo",
             "tile.kwh": "Ladattu energia",
             "tile.dist": "Ajettu matka",
+            "tile.distEst": "Matka (ensimmäisestä lukemasta)",
+            "tile.distEstHelp":
+              "Ajoneuvolle ei ole asetettu aloitusmatkamittaria, joten matka lasketaan ensimmäisestä kirjatusta lukemasta.",
+            "tile.distHelp":
+              "Matka ajoneuvulle asettamastasi aloitusmatkamittarista.",
             "tile.cost": "Kokonaiskustannus",
             "tile.time": "Kokonaislatausaika",
             "tile.kwh100": "keskim. kWh / 100 km",
@@ -3028,6 +3191,18 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "auth.signIn": "Kirjaudu",
             "auth.createAccount": "Luo tili",
             "auth.logout": "Kirjaudu ulos",
+            "confirm.title": "Vahvista",
+            "confirm.body": "Haluatko varmasti?",
+            "confirm.ok": "Kyllä, jatka",
+            "confirm.cancel": "Peruuta",
+            "confirm.delete": "Poista",
+            "confirm.remove": "Poista ajoneuvo",
+            "confirm.deleteEverything": "Poista kaikki",
+            "confirm.removeVehicle": "Poistetaanko ajoneuvo?",
+            "confirm.deleteSession": "Poistetaanko sessio?",
+            "confirm.deleteFav": "Poistetaanko suosikki?",
+            "confirm.clearSessions": "Tyhjennetäänkö kaikki sessiot?",
+            "confirm.wipe": "Poistetaanko kaikki?",
             "auth.needAccount": "Tarvitseko tilin? Rekisteröidy",
             "auth.haveAccount": "Onko tili jo? Kirjaudu",
             "auth.working": "Odota…",
@@ -3077,6 +3252,11 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "qa.addVehicle": "Lägg till fordon",
             "tile.kwh": "Laddad energi",
             "tile.dist": "Sträcka",
+            "tile.distEst": "Sträcka (sedan första mätning)",
+            "tile.distEstHelp":
+              "Ingen startodometer har angetts för det här fordonet, så sträckan mäts från första loggade mätningen.",
+            "tile.distHelp":
+              "Sträcka från startodometern du angett för det här fordonet.",
             "tile.cost": "Total kostnad",
             "tile.time": "Total laddningstid",
             "tile.kwh100": "medel kWh / 100 km",
@@ -3399,6 +3579,18 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "auth.signIn": "Logga in",
             "auth.createAccount": "Skapa konto",
             "auth.logout": "Logga ut",
+            "confirm.title": "Bekräfta",
+            "confirm.body": "Är du säker?",
+            "confirm.ok": "Ja, fortsätt",
+            "confirm.cancel": "Avbryt",
+            "confirm.delete": "Ta bort",
+            "confirm.remove": "Ta bort fordon",
+            "confirm.deleteEverything": "Ta bort allt",
+            "confirm.removeVehicle": "Ta bort det här fordonet?",
+            "confirm.deleteSession": "Ta bort den här sessionen?",
+            "confirm.deleteFav": "Ta bort den här favoriten?",
+            "confirm.clearSessions": "Rensa alla sessioner?",
+            "confirm.wipe": "Ta bort allt?",
             "auth.needAccount": "Behöver du ett konto? Registrera dig",
             "auth.haveAccount": "Redan registrerad? Logga in",
             "auth.working": "Vänta…",
@@ -3673,6 +3865,12 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           } catch (e) {
             /* button labels are cosmetic; never block the language switch over them */
           }
+          /* Re-translate the confirmation dialog too: it is built once, so its
+             static labels would otherwise stay in the previous language. */
+          try {
+            var cs = $("confirmSheet");
+            if (window.EV_I18N && cs) window.EV_I18N.applyI18n(cs);
+          } catch (e) {}
         };
         var vehicles = [],
           sessions = [],
@@ -3814,9 +4012,12 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
          * @returns {Object} snake_case row, including user_id from the session
          */
         function vehicleRow(v) {
+          /* Keep the ORIGINAL owner. A shared driver who renames the car or
+             edits its odometer must not take ownership away from the user who
+             created it, so v.userId wins over the signed-in user. */
           return {
             id: v.id,
-            user_id: ownerId(),
+            user_id: v.userId || ownerId(),
             name: String(v.name || ""),
             icon: String(v.icon || "\u{1F697}"),
             initial_odometer: isNum(v.initialOdometer)
@@ -3855,6 +4056,8 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
         }
         /* snake_case -> camelCase */
         function rowVehicle(r) {
+          /* userId is the owner, which is not necessarily the signed-in user
+             once a vehicle is shared. */
           return {
             id: r.id,
             name: String(r.name || "Vehicle"),
@@ -3862,6 +4065,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             initialOdometer: isNum(r.initial_odometer)
               ? num(r.initial_odometer)
               : 0,
+            userId: r.user_id || null,
           };
         }
         /**
@@ -4014,6 +4218,121 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             var ids = Object.keys(syncDeleted[t]);
             for (var i = 0; i < ids.length; i++) syncDelete(t, ids[i]);
           }
+        }
+        /* ---------- shared vehicles ----------
+   Several people can log charging for the same car. Ownership stays with the
+   user who created the vehicle; anyone listed in vehicle_shares may read and
+   add sessions for it. Every helper returns false or an empty array when the
+   table is not installed yet, so a single-user install is unaffected. */
+        var shares = {};
+        var sharesChecked = false;
+        function shareTableReady() {
+          return (
+            sharesChecked && Object.keys(shares).length >= 0 && sharesAvailable
+          );
+        }
+        var sharesAvailable = false;
+        /**
+         * Load who may drive each vehicle.
+         * @returns {Promise<boolean>} true when the table answered
+         */
+        function loadShares() {
+          if (!syncOn()) return Promise.resolve(false);
+          return authClient
+            .from("vehicle_shares")
+            .select("vehicle_id,user_id,role")
+            .then(function (res) {
+              var e = res && res.error;
+              if (e) {
+                /* 404 simply means the SQL has not been run yet */
+                sharesAvailable = false;
+                sharesChecked = true;
+                return false;
+              }
+              shares = {};
+              var rows = (res && res.data) || [];
+              for (var i = 0; i < rows.length; i++) {
+                var vid = rows[i].vehicle_id;
+                if (!shares[vid]) shares[vid] = [];
+                shares[vid].push({
+                  user_id: rows[i].user_id,
+                  role: rows[i].role || "driver",
+                });
+              }
+              sharesAvailable = true;
+              sharesChecked = true;
+              return true;
+            })
+            .catch(function () {
+              sharesAvailable = false;
+              sharesChecked = true;
+              return false;
+            });
+        }
+        /** How many extra drivers a vehicle has, for the settings list. */
+        function shareCount(vehicleId) {
+          return shares[vehicleId] ? shares[vehicleId].length : 0;
+        }
+        /**
+         * Invite a driver by username.
+         * The database resolves the name to an account, so no email address is
+         * ever sent to this device.
+         * @param {string} vehicleId  vehicle to share
+         * @param {string} username   the other user's name, without the domain
+         * @returns {Promise<boolean>} true when the invite was stored
+         */
+        function shareAdd(vehicleId, username) {
+          if (!syncOn() || !vehicleId) return Promise.resolve(false);
+          var name = String(username || "").trim();
+          if (!name) return Promise.resolve(false);
+          return authClient
+            .rpc("invite_driver", { p_vehicle: vehicleId, p_username: name })
+            .then(function (res) {
+              var err = res && res.error;
+              if (err) throw err;
+              var status = (res && res.data) || "no-such-user";
+              if (status !== "ok") return false;
+              return loadShares().then(function () {
+                return true;
+              });
+            })
+            .catch(function (e) {
+              if (window.console && window.console.warn)
+                window.console.warn("[share] invite failed", e);
+              return false;
+            });
+        }
+        /**
+         * Stop sharing a vehicle with someone.
+         * @param {string} vehicleId
+         * @param {string} userId  the other user
+         * @returns {Promise<boolean>}
+         */
+        function shareRemove(vehicleId, userId) {
+          if (!syncOn() || !vehicleId || !userId) return Promise.resolve(false);
+          return authClient
+            .from("vehicle_shares")
+            .delete()
+            .eq("vehicle_id", vehicleId)
+            .eq("user_id", userId)
+            .then(function (res) {
+              if (res && res.error) return false;
+              delete shares[vehicleId];
+              return true;
+            })
+            .catch(function () {
+              return false;
+            });
+        }
+        /**
+         * True when this user owns the vehicle outright, which is what the
+         * UI uses to decide whether to offer the sharing controls.
+         * @param {string} vehicleId
+         * @returns {boolean}
+         */
+        function ownsVehicle(vehicleId) {
+          var v = vehById(vehicleId);
+          return !!(v && ownerId() && v.userId === ownerId());
         }
         /**
          * Run a worker over a list with a bounded number in flight.
@@ -4224,16 +4543,40 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               if (sres && sres.error) throw sres.error;
               var vrows = (vres && vres.data) || [],
                 srows = (sres && sres.data) || [];
-              vehicles = [];
-              for (var i = 0; i < vrows.length; i++)
-                vehicles.push(rowVehicle(vrows[i]));
-              sessions = [];
+              /* Merge rather than replace. A row that only exists on this
+                 device, because its write failed or it was made offline, must
+                 survive the pull; replacing the arrays wholesale destroyed it
+                 and the data was lost on the next refresh. */
+              var pulledVehicles = [];
+              var known = {};
+              for (var i = 0; i < vrows.length; i++) {
+                var pv = rowVehicle(vrows[i]);
+                pulledVehicles.push(pv);
+                known[pv.id] = 1;
+              }
+              var pulledSessions = [];
+              var knownS = {};
               for (var j = 0; j < srows.length; j++) {
                 /* drop sessions whose vehicle was deleted server-side */
-                var sv = srows[j];
-                if (!vehById(sv.vehicle_id)) continue;
-                sessions.push(rowSession(sv));
+                if (!vehById(srows[j].vehicle_id, pulledVehicles)) continue;
+                var ps = rowSession(srows[j]);
+                pulledSessions.push(ps);
+                knownS[ps.id] = 1;
               }
+              /* Keep local rows the server does not have, and re-push them
+                 below so the two sides converge. */
+              var localOnlyVehicles = [];
+              for (var lv = 0; lv < vehicles.length; lv++) {
+                var lvr = vehicles[lv];
+                if (lvr && !known[lvr.id]) localOnlyVehicles.push(lvr);
+              }
+              var localOnlySessions = [];
+              for (var ls = 0; ls < sessions.length; ls++) {
+                var lsr = sessions[ls];
+                if (lsr && !knownS[lsr.id]) localOnlySessions.push(lsr);
+              }
+              vehicles = pulledVehicles.concat(localOnlyVehicles);
+              sessions = pulledSessions.concat(localOnlySessions);
               if (!vehicles.length) {
                 /* brand new account: give them a baseline vehicle straight away */
                 var first = {
@@ -4251,8 +4594,14 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               syncNote("");
               /* Push anything that failed while offline. Records deleted in the meantime
      are re-applied after the rows land, so a local delete always wins. */
+              loadShares();
               retryDirty();
               retryDeleted();
+              /* Anything the server had never seen goes up now, so a row created
+                 on this device is not lost on the next refresh. */
+              for (var pv2 = 0; pv2 < localOnlyVehicles.length; pv2++)
+                syncVehicle(localOnlyVehicles[pv2]);
+              if (localOnlySessions.length) syncSessions(localOnlySessions);
               return true;
             })
             .catch(function (e) {
@@ -4583,9 +4932,10 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
         function veh() {
           return vehicles[cur] || vehicles[0];
         }
-        function vehById(id) {
-          for (var i = 0; i < vehicles.length; i++)
-            if (vehicles[i].id === id) return vehicles[i];
+        function vehById(id, list) {
+          var src = list || vehicles;
+          for (var i = 0; i < src.length; i++)
+            if (src[i] && src[i].id === id) return src[i];
           return null;
         }
         function ofVehicle(id) {
@@ -4607,6 +4957,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           var t = { kwh: 0, cost: 0, h: 0, km: 0, est: 0 };
           var s = sorted(list);
           var maxM = 0,
+            minM = 0,
             seen = false;
           for (var i = 0; i < s.length; i++) {
             t.kwh += num(s[i].energy);
@@ -4614,14 +4965,29 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             t.cost += costOf(s[i]);
             if (!hasCost(s[i])) t.est++;
             var m = num(s[i].mileage);
-            if (m > 0 && (!seen || m > maxM)) {
-              maxM = m;
-              seen = true;
+            if (m > 0) {
+              if (!seen) {
+                maxM = m;
+                minM = m;
+                seen = true;
+              } else {
+                if (m > maxM) maxM = m;
+                if (m < minM) minM = m;
+              }
             }
           }
           if (seen) {
-            var base = Math.max(0, num(initialOdo));
+            /* Distance is measured from a baseline. An explicit initial odometer
+               wins, because the user knows the real starting point. Without one
+               the earliest logged reading is the baseline: subtracting from zero
+               would report the whole odometer as distance covered. */
+            var start = num(initialOdo);
+            var base = start > 0 ? start : minM;
             t.km = Math.max(0, maxM - base);
+            t.odo = maxM;
+            /* true when the distance is measured between logged readings only,
+               because no initial odometer was supplied */
+            t.kmEstimated = !(start > 0);
           }
           return t;
         }
@@ -5319,6 +5685,17 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           var T = totals(ofVehicle(v.id), v.initialOdometer);
           $("sEnergy").textContent = T.kwh.toFixed(1) + " kWh";
           $("sDist").textContent = Math.round(T.km) + " km";
+          /* Say so when the distance is measured between logged readings,
+             because no starting odometer was given for this vehicle. */
+          var distLabel = $("sDistLabel");
+          if (distLabel) {
+            distLabel.textContent = TXT(
+              T.kmEstimated ? "tile.distEst" : "tile.dist",
+            );
+            distLabel.title = T.kmEstimated
+              ? TXT("tile.distEstHelp")
+              : TXT("tile.distHelp");
+          }
           $("sCost").textContent = fmtMoney(T.cost);
           $("sDur").textContent = T.h.toFixed(1) + " h";
           $("sEff").textContent =
@@ -6095,6 +6472,56 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           }
         }
         /* The background page must not be reachable by keyboard while a modal is open. */
+        /**
+         * Ask the user to confirm a destructive action.
+         * Replaces window.confirm so the prompt matches the rest of the app,
+         * traps focus, closes on Escape and hands focus back to the caller.
+         * @param {string} message  plain text, already translated
+         * @param {Object} [opts]   heading and a destructive/danger tone
+         * @returns {Promise<boolean>} resolves true when confirmed
+         */
+        var confirmState = null;
+        function askConfirm(message, opts) {
+          opts = opts || {};
+          var sheet = $("confirmSheet");
+          if (!sheet) return Promise.resolve(window.confirm(message));
+          /* A second request while the dialog is open resolves the first one
+             as cancelled, so a pending promise is never left dangling. */
+          if (confirmState) confirmState.resolve(false);
+          var body = $("confirmBody");
+          var heading = $("confirmHeading");
+          if (body) body.textContent = message;
+          if (heading)
+            heading.textContent = TXT(opts.heading || "confirm.title");
+          var ok = $("confirmOk");
+          if (ok) ok.textContent = TXT(opts.ok || "confirm.ok");
+          var cancel = $("confirmCancel");
+          if (cancel) cancel.textContent = TXT(opts.cancel || "confirm.cancel");
+          $("confirmSheet").classList.add("on");
+          lockBackground(true);
+          return new Promise(function (resolve) {
+            confirmState = {
+              resolve: resolve,
+              trigger: document.activeElement,
+            };
+            if (ok) ok.focus();
+          });
+        }
+        function closeConfirm(result) {
+          var sheet = $("confirmSheet");
+          if (!sheet || !sheet.classList.contains("on")) return;
+          sheet.classList.remove("on");
+          lockBackground(false);
+          var st = confirmState;
+          confirmState = null;
+          if (st) {
+            if (st.trigger && st.trigger.focus && st.trigger.isConnected)
+              try {
+                st.trigger.focus();
+              } catch (e) {}
+            st.resolve(!!result);
+          }
+        }
         function lockBackground(on) {
           var app = document.querySelector(".wrap"),
             side = document.querySelector(".side"),
@@ -6369,14 +6796,14 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
         function delFav(id) {
           var f = favById(id);
           if (!f) return;
-          if (!confirm(TXT("toast.delFavQ", { n: f.name }))) return;
-          favs = favs.filter(function (x) {
-            return x.id !== id;
+          return askConfirm(TXT("toast.delFavQ", { n: f.name }), {
+            heading: "confirm.deleteFav",
+            ok: "confirm.delete",
+          }).then(function (yes) {
+            if (!yes) return false;
+            doDeleteFav(id);
+            return true;
           });
-          if (editFav === id) clearFavForm();
-          saveFavs();
-          renderFavs();
-          toast(TXT("toast.delFav"));
         }
         /**
          * Create or update a favourite from a saved session, so ticking
@@ -6966,6 +7393,85 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
         }
 
         /* ---------- actions ---------- */
+        /**
+         * Delete a vehicle and every session that belongs to it.
+         * Split out of removeVehicle so the confirmation and the action are
+         * separate steps and the action can be reused.
+         * @param {string} id  vehicle id
+         */
+        function doRemoveVehicle(id) {
+          var v = vehById(id);
+          if (!v) return;
+          var gone = sessions.filter(function (s) {
+            return s.vehicleId === id;
+          });
+          vehicles = vehicles.filter(function (x) {
+            return x.id !== id;
+          });
+          sessions = sessions.filter(function (s) {
+            return s.vehicleId !== id;
+          });
+          if (cur >= vehicles.length) cur = vehicles.length - 1;
+          save();
+          render();
+          toast(TXT("toast.vehRem", { v: v.name }));
+          /* sessions go first: the vehicle delete would cascade server-side anyway,
+             but deleting them explicitly keeps a signed-in client and the database
+             in step even if the cascade is ever removed */
+          for (var i = 0; i < gone.length; i++)
+            syncDelete("sessions", gone[i].id);
+          syncDelete("vehicles", id);
+        }
+        /** Delete one stored session. Called after the user confirms. */
+        function doDeleteSession(id) {
+          sessions = sessions.filter(function (x) {
+            return x.id !== id;
+          });
+          save();
+          render();
+          toast(TXT("toast.deleted"));
+          syncDelete("sessions", id);
+        }
+        /** Delete one favourite location. Called after the user confirms. */
+        function doDeleteFav(id) {
+          favs = favs.filter(function (x) {
+            return x.id !== id;
+          });
+          if (editFav === id) clearFavForm();
+          saveFavs();
+          renderFavs();
+          toast(TXT("toast.delFav"));
+        }
+        /** Delete every stored session but keep vehicles and favourites. */
+        function doClearSessions() {
+          sessions = [];
+          save();
+          render();
+          toast(TXT("toast.cleared"));
+          syncReplaceAll();
+        }
+        /** Delete every vehicle, session and favourite, then start again. */
+        function doWipe() {
+          vehicles = [
+            {
+              id: uuid(),
+              name: TXT("veh.default"),
+              icon: "🚗",
+              initialOdometer: 0,
+            },
+          ];
+          sessions = [];
+          favs = [];
+          cur = 0;
+          clearFavForm();
+          save();
+          saveFavs();
+          render();
+          toast(TXT("toast.wiped"));
+          /* syncPull would just re-download the rows the user asked to delete, so the
+             cloud copy is cleared directly and the new baseline vehicle re-pushed */
+          syncReplaceAll();
+        }
         function addVehicle() {
           var name = $("vName").value.trim();
           if (!name) {
@@ -6992,34 +7498,14 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
         function removeVehicle(id) {
           var v = vehById(id);
           if (!v) return;
-          if (
-            !confirm(
-              TXT("toast.remQ", {
-                v: v.name,
-                n: ofVehicle(id).length,
-              }),
-            )
-          )
-            return;
-          var gone = sessions.filter(function (s) {
-            return s.vehicleId === id;
+          return askConfirm(
+            TXT("toast.remQ", { v: v.name, n: ofVehicle(id).length }),
+            { heading: "confirm.removeVehicle", ok: "confirm.remove" },
+          ).then(function (yes) {
+            if (!yes) return false;
+            doRemoveVehicle(id);
+            return true;
           });
-          vehicles = vehicles.filter(function (x) {
-            return x.id !== id;
-          });
-          sessions = sessions.filter(function (s) {
-            return s.vehicleId !== id;
-          });
-          if (cur >= vehicles.length) cur = vehicles.length - 1;
-          save();
-          render();
-          toast(TXT("toast.vehRem", { v: v.name }));
-          /* sessions go first: the vehicle delete would cascade server-side anyway,
-   but deleting them explicitly keeps a signed-in client and the database
-   in step even if the cascade is ever removed */
-          for (var i = 0; i < gone.length; i++)
-            syncDelete("sessions", gone[i].id);
-          syncDelete("vehicles", id);
         }
         function openVeh(id) {
           var v = vehById(id);
@@ -7068,14 +7554,15 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           var s = sessions.filter(function (x) {
             return x.id === id;
           })[0];
-          if (!s || !confirm(TXT("toast.delQ", { loc: s.location }))) return;
-          sessions = sessions.filter(function (x) {
-            return x.id !== id;
+          if (!s) return;
+          return askConfirm(TXT("toast.delQ", { loc: s.location }), {
+            heading: "confirm.deleteSession",
+            ok: "confirm.delete",
+          }).then(function (yes) {
+            if (!yes) return false;
+            doDeleteSession(id);
+            return true;
           });
-          save();
-          render();
-          toast(TXT("toast.deleted"));
-          syncDelete("sessions", id);
         }
         function download(name, text, type) {
           var b = new Blob([text], { type: type }),
@@ -7534,34 +8021,23 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           this.value = "";
         });
         $("clearBtn").addEventListener("click", function () {
-          if (!confirm(TXT("toast.clearQ", { n: sessions.length }))) return;
-          sessions = [];
-          save();
-          render();
-          toast(TXT("toast.cleared"));
-          syncReplaceAll();
+          return askConfirm(TXT("toast.clearQ", { n: sessions.length }), {
+            heading: "confirm.clearSessions",
+          }).then(function (yes) {
+            if (!yes) return false;
+            doClearSessions();
+            return true;
+          });
         });
         $("wipeBtn").addEventListener("click", function () {
-          if (!confirm(TXT("toast.wipeQ"))) return;
-          vehicles = [
-            {
-              id: uuid(),
-              name: TXT("veh.default"),
-              icon: "🚗",
-              initialOdometer: 0,
-            },
-          ];
-          sessions = [];
-          favs = [];
-          cur = 0;
-          clearFavForm();
-          save();
-          saveFavs();
-          render();
-          toast(TXT("toast.wiped"));
-          /* syncPull would just re-download the rows the user asked to delete, so the
-   cloud copy is cleared directly and the new baseline vehicle re-pushed */
-          syncReplaceAll();
+          return askConfirm(TXT("toast.wipeQ"), {
+            heading: "confirm.wipe",
+            ok: "confirm.deleteEverything",
+          }).then(function (yes) {
+            if (!yes) return false;
+            doWipe();
+            return true;
+          });
         });
         $("sForm").addEventListener("submit", function (e) {
           e.preventDefault();
@@ -7724,6 +8200,16 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
         $("editSheet").addEventListener("click", function (e) {
           if (e.target === this) closeEdit();
         });
+        $("confirmOk").addEventListener("click", function () {
+          closeConfirm(true);
+        });
+        $("confirmCancel").addEventListener("click", function () {
+          closeConfirm(false);
+        });
+        $("confirmSheet").addEventListener("click", function (e) {
+          if (e.target === this) closeConfirm(false);
+        });
+
         $("authForm").addEventListener("submit", submitAuth);
         $("authToggle").addEventListener("click", function () {
           authMode = authMode === "in" ? "up" : "in";
@@ -7745,6 +8231,11 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
         document.addEventListener("keydown", function (e) {
           /* Escape closes the topmost dialog, unless the address combobox is open. */
           if (e.key === "Escape") {
+            /* the confirmation dialog sits on top of everything */
+            if ($("confirmSheet").classList.contains("on")) {
+              closeConfirm(false);
+              return;
+            }
             if ($("editSheet").classList.contains("on")) {
               closeEdit();
               return;
@@ -7757,6 +8248,10 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           }
           /* Tab is confined to the open dialog. */
           if (e.key === "Tab") {
+            if ($("confirmSheet").classList.contains("on")) {
+              trapFocus(e, $("confirmSheet"));
+              return;
+            }
             if ($("editSheet").classList.contains("on")) {
               trapFocus(e, $("editSheet"));
               return;
@@ -7819,6 +8314,19 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
         syncHints();
         if (window.EV_I18N) window.EV_I18N.bootLang();
       })();
+
+      /* Register the offline service worker.
+         Deferred to the load event so it never competes with first paint, and
+         feature-guarded because file:// and older browsers have no
+         ServiceWorkerContainer. Registration failure is silent on purpose: the
+         app is fully usable without it, and a rejected promise here would be
+         an unhandled rejection for the user. */
+      window.addEventListener("load", function () {
+        if (!("serviceWorker" in navigator)) return;
+        if (location.protocol !== "http:" && location.protocol !== "https:")
+          return;
+        navigator.serviceWorker.register("sw.js").catch(function () {});
+      });
     </script>
   </body>
 </html>

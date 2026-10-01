@@ -1901,6 +1901,96 @@
       "fi": "Palautettiin {n} sessiota ja {f} suosikkia · {o} sessiota ohitettiin, koska niiden ajoneuvo puuttui",
       "sv": "Återställde {n} session(er) och {f} favorit(er) · {o} session(er) hoppades över eftersom deras fordon saknades",
       "se": ""
+    },
+    "tile.distEst": {
+      "en": "Distance (since first reading)",
+      "fi": "Matka (ensimmäisestä lukemasta)",
+      "sv": "Sträcka (sedan första mätning)",
+      "se": ""
+    },
+    "tile.distEstHelp": {
+      "en": "No starting odometer was given for this vehicle, so distance is measured from the first logged reading.",
+      "fi": "Ajoneuvolle ei ole asetettu aloitusmatkamittaria, joten matka lasketaan ensimmäisestä kirjatusta lukemasta.",
+      "sv": "Ingen startodometer har angetts för det här fordonet, så sträckan mäts från första loggade mätningen.",
+      "se": ""
+    },
+    "tile.distHelp": {
+      "en": "Distance from the starting odometer you set for this vehicle.",
+      "fi": "Matka ajoneuvulle asettamastasi aloitusmatkamittarista.",
+      "sv": "Sträcka från startodometern du angett för det här fordonet.",
+      "se": ""
+    },
+    "confirm.title": {
+      "en": "Please confirm",
+      "fi": "Vahvista",
+      "sv": "Bekräfta",
+      "se": ""
+    },
+    "confirm.body": {
+      "en": "Are you sure?",
+      "fi": "Haluatko varmasti?",
+      "sv": "Är du säker?",
+      "se": ""
+    },
+    "confirm.ok": {
+      "en": "Yes, continue",
+      "fi": "Kyllä, jatka",
+      "sv": "Ja, fortsätt",
+      "se": ""
+    },
+    "confirm.cancel": {
+      "en": "Cancel",
+      "fi": "Peruuta",
+      "sv": "Avbryt",
+      "se": ""
+    },
+    "confirm.delete": {
+      "en": "Delete",
+      "fi": "Poista",
+      "sv": "Ta bort",
+      "se": ""
+    },
+    "confirm.remove": {
+      "en": "Remove vehicle",
+      "fi": "Poista ajoneuvo",
+      "sv": "Ta bort fordon",
+      "se": ""
+    },
+    "confirm.deleteEverything": {
+      "en": "Delete everything",
+      "fi": "Poista kaikki",
+      "sv": "Ta bort allt",
+      "se": ""
+    },
+    "confirm.removeVehicle": {
+      "en": "Remove this vehicle?",
+      "fi": "Poistetaanko ajoneuvo?",
+      "sv": "Ta bort det här fordonet?",
+      "se": ""
+    },
+    "confirm.deleteSession": {
+      "en": "Delete this session?",
+      "fi": "Poistetaanko sessio?",
+      "sv": "Ta bort den här sessionen?",
+      "se": ""
+    },
+    "confirm.deleteFav": {
+      "en": "Delete this favourite?",
+      "fi": "Poistetaanko suosikki?",
+      "sv": "Ta bort den här favoriten?",
+      "se": ""
+    },
+    "confirm.clearSessions": {
+      "en": "Clear all sessions?",
+      "fi": "Tyhjennetäänkö kaikki sessiot?",
+      "sv": "Rensa alla sessioner?",
+      "se": ""
+    },
+    "confirm.wipe": {
+      "en": "Delete everything?",
+      "fi": "Poistetaanko kaikki?",
+      "sv": "Ta bort allt?",
+      "se": ""
     }
   }
 }

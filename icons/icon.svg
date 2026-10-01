@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="EV Multi-Tracker">
+  <title>EV Multi-Tracker</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3b82f6" />
+      <stop offset="1" stop-color="#1e40af" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="114.5" fill="url(#bg)" />
+  <path
+    fill="#ffffff"
+    d="M307.2 20.5 133.1 281.6h99.8L192 491.5 378.9 230.4h-102.1z"
+  />
+</svg>

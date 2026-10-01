@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="EV Multi-Tracker">
+  <title>EV Multi-Tracker</title>
+  <defs>
+    <linearGradient id="bgm" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3b82f6" />
+      <stop offset="1" stop-color="#1e40af" />
+    </linearGradient>
+  </defs>
+  <!-- Full-bleed square for maskable safe-zone cropping. -->
+  <rect width="512" height="512" fill="url(#bgm)" />
+  <path
+    fill="#ffffff"
+    d="M327.7 59.4 217 326.6h66.6L213.4 459.5 340.7 225.6h-68.1z"
+  />
+</svg>
