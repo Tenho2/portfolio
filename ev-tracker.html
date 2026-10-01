@@ -2798,6 +2798,12 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                         "auth.shortPw":
                             "Choose a password of at least 8 characters.",
                         "auth.badLogin": "Wrong username or password.",
+                        "auth.notConfirmed":
+                            "This account still needs an email confirmation, which can never arrive because usernames use a fake domain. Turn off \"Confirm email\" in Supabase, then register again.",
+                        "auth.exists":
+                            "That username is already registered. Sign in instead.",
+                        "auth.rate":
+                            "Too many attempts. Wait a minute and try again.",
                         "auth.failed":
                             "Something went wrong. Please try again.",
                         "veh.default": "Vehicle 1",
@@ -3186,6 +3192,12 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                         "auth.shortPw":
                             "Valitse salasana, jossa on vähintään 8 merkkiä.",
                         "auth.badLogin": "Väärä käyttäjätunnus tai salasana.",
+                        "auth.notConfirmed":
+                            "Tiliä pitää vielä vahvistaa sähköpostilla, mikä ei koskaan tavoita, koska käyttäjätunnus käyttää keksiettä verkkotunnusta. Poista \"Confirm email\" -asetus Supabasesta ja rekisteröidy uudelleen.",
+                        "auth.exists":
+                            "Tuo käyttäjätunnus on jo rekisteröity. Kirjaudu sisään sen sijaan.",
+                        "auth.rate":
+                            "Liikaa yrityksiä. Odota minuutti ja yritä uudelleen.",
                         "auth.failed": "Jokin meni pieleen. Yritä uudelleen.",
                         "veh.default": "Ajoneuvo 1",
                         "sync.pending":
@@ -3575,6 +3587,11 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                         "auth.missing": "Ange användarnamn och lösenord.",
                         "auth.shortPw": "Välj ett lösenord med minst 8 tecken.",
                         "auth.badLogin": "Fel användarnamn eller lösenord.",
+                        "auth.notConfirmed":
+                            "Kontot behöver fortfarande bekräftas via e-post, vilket aldrig kan komma fram eftersom användarnamnet använder en falsk domän. Stäng av \"Confirm email\" i Supabase och registrera om.",
+                        "auth.exists":
+                            "Det användarnamnet är redan registrerat. Logga in i stället.",
+                        "auth.rate": "För många försök. Vänta en minut och försök igen.",
                         "auth.failed": "Något gick fel. Försök igen.",
                         "veh.default": "Fordon 1",
                         "sync.pending":
@@ -4637,8 +4654,11 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                 var SUPABASE_URL = "https://ztzsyklfaqxurbtvsvtz.supabase.co";
                 var SUPABASE_ANON_KEY =
                     "sb_publishable_X13saO5I9lyqRUm5T4X3sA_pLxtrT1B";
-                /* usernames are not email addresses; this domain can never receive mail */
-                var AUTH_FAKE_DOMAIN = "@ev-tracker.local";
+                /* Usernames are not email addresses. .test is a reserved TLD (RFC 2606) that
+   can never be registered publicly, so a confirmation mail could not arrive
+   even if the project had confirmation enabled. Verified: Supabase's address
+   validator accepts this domain. */
+                var AUTH_FAKE_DOMAIN = "@evtracker.test";
                 var authMode = "in",
                     authReady = false,
                     authUser = null,
@@ -4668,6 +4688,80 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                         AUTH_FAKE_DOMAIN
                         ? e.slice(0, -AUTH_FAKE_DOMAIN.length)
                         : e;
+                }
+                /* Maps a Supabase auth error to a message key.
+                   Supabase reports the reason in error_code, which is stable
+                   across SDK versions, so it is matched first and the human
+                   message is only used as a fallback. */
+                function authErrKey(err) {
+                    var code = String(
+                        (err && (err.code || err.error_code)) || "",
+                    ).toLowerCase();
+                    var msg = String((err && err.message) || "").toLowerCase();
+                    /* an unknown username and a wrong password must stay
+                       indistinguishable, so both map to the same key */
+                    if (
+                        code.indexOf("invalid_credentials") >= 0 ||
+                        msg.indexOf("invalid login") >= 0
+                    )
+                        return "auth.badLogin";
+                    if (
+                        code.indexOf("email_not_confirmed") >= 0 ||
+                        msg.indexOf("not confirmed") >= 0
+                    )
+                        return "auth.notConfirmed";
+                    if (
+                        code.indexOf("user_already_exists") >= 0 ||
+                        code.indexOf("already_registered") >= 0 ||
+                        code.indexOf("email_exists") >= 0 ||
+                        msg.indexOf("already registered") >= 0 ||
+                        msg.indexOf("already been registered") >= 0
+                    )
+                        return "auth.exists";
+                    if (
+                        code.indexOf("rate_limit") >= 0 ||
+                        code.indexOf("over_email_send") >= 0 ||
+                        msg.indexOf("rate limit") >= 0 ||
+                        msg.indexOf("too many") >= 0
+                    )
+                        return "auth.rate";
+                    if (window.console && window.console.warn)
+                        window.console.warn("[auth] unmapped error", code, msg);
+                    return "auth.failed";
+                }
+                /* The text shown in the auth box.
+
+                   A raw Supabase message is the fastest way to diagnose a
+                   login that refuses to work, so the server wording is shown
+                   verbatim instead of being flattened into one generic line.
+                   The one exception is a bad credential: that stays on the
+                   neutral message so the form cannot be used to find out which
+                   usernames exist. */
+                function authErrText(err) {
+                    if (!err) return TXT("auth.failed");
+                    var raw = String(err.message || "").trim();
+                    if (authErrKey(err) === "auth.badLogin")
+                        return TXT("auth.badLogin");
+                    return raw || TXT("auth.failed");
+                }
+                /* Full detail for the console, including the parts that are
+                   deliberately kept off screen. */
+                function authLogErr(where, err) {
+                    if (!window.console || !window.console.warn) return;
+                    window.console.warn(
+                        "[auth] " +
+                            where +
+                            " failed:",
+                        err &&
+                            err.code !== undefined
+                                ? {
+                                      code: err.code,
+                                      error_code: err.error_code,
+                                      status: err.status,
+                                      message: err.message,
+                                  }
+                                : err,
+                    );
                 }
                 function authMsg(text, kind) {
                     var m = $("authMsg");
@@ -4763,7 +4857,8 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                     try {
                         var email = toFakeEmail(u),
                             res;
-                        if (authMode === "up")
+                        var registering = authMode === "up";
+                        if (registering)
                             res = await authClient.auth.signUp({
                                 email: email,
                                 password: p,
@@ -4774,29 +4869,33 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                                 password: p,
                             });
                         var err = res && res.error;
+
+                        /* A name that is already taken is not a failure worth
+                           reporting: it means the account exists, so the useful
+                           move is to sign in with the password just typed. */
+                        if (err && registering && authErrKey(err) === "auth.exists") {
+                            authLogErr("signUp (name taken, retrying as sign-in)", err);
+                            res = await authClient.auth.signInWithPassword({
+                                email: email,
+                                password: p,
+                            });
+                            err = res && res.error;
+                        }
+
                         if (err) {
-                            /* an unknown username and a wrong password give the same message on
-   purpose, so the form cannot be used to discover which users exist */
-                            var unknown =
-                                String(err.message || "")
-                                    .toLowerCase()
-                                    .indexOf("invalid login") >= 0;
-                            authMsg(
-                                TXT(unknown ? "auth.badLogin" : "auth.failed"),
-                                "err",
-                            );
+                            authLogErr(registering ? "signUp" : "signIn", err);
+                            authMsg(authErrText(err), "err");
                         } else if (res.data && res.data.session) {
-                            /* sign-up returned a session straight away, so email
-                               confirmation is off for this project: the account
-                               is usable immediately. */
+                            /* a session came straight back, so the project does
+                               not require email confirmation */
                             authMsg(TXT("auth.ok"), "ok");
                             $("authPass").value = "";
                             showApp(res.data.user);
-                        } else if (authMode === "up") {
-                            /* No session yet. Confirming by email can never work
-                               for this non-deliverable domain, so try signing in
-                               straight away: when confirmation is enabled this
-                               simply fails and the user is told what to do. */
+                        } else if (registering) {
+                            /* The account exists but no session was issued. With
+                               confirmation enabled the sign-in below fails with
+                               email_not_confirmed, and that reason is shown as is
+                               so the project setting can be fixed. */
                             try {
                                 var li = await authClient.auth.signInWithPassword({
                                     email: email,
@@ -4807,16 +4906,38 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                                     $("authPass").value = "";
                                     showApp(li.data.user);
                                 } else {
-                                    authMsg(TXT("auth.checkMail"), "");
+                                    authLogErr(
+                                        "signIn after sign-up",
+                                        li && li.error
+                                            ? li.error
+                                            : { message: "no session returned" },
+                                    );
+                                    authMsg(
+                                        authErrText(
+                                            li && li.error
+                                                ? li.error
+                                                : { message: TXT("auth.failed") },
+                                        ),
+                                        "err",
+                                    );
                                 }
                             } catch (liErr) {
-                                authMsg(TXT("auth.checkMail"), "");
+                                authLogErr("signIn after sign-up", liErr);
+                                authMsg(authErrText(liErr), "err");
                             }
                         } else {
                             authMsg(TXT("auth.ok"), "ok");
                         }
                     } catch (err2) {
-                        authMsg(TXT("auth.failed"), "err");
+                        /* a thrown error is a transport or library failure, not a
+                           credential problem, so the real reason is worth seeing */
+                        authLogErr(registering ? "signUp" : "signIn", err2);
+                        authMsg(
+                            err2 && err2.message
+                                ? err2.message
+                                : TXT("auth.failed"),
+                            "err",
+                        );
                     } finally {
                         setAuthBusy(false);
                     }

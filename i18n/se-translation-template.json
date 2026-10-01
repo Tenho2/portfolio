@@ -1871,6 +1871,24 @@
       "fi": "Ajoneuvon tiedot",
       "sv": "Fordonsuppgifter",
       "se": ""
+    },
+    "auth.notConfirmed": {
+      "en": "This account still needs an email confirmation, which can never arrive because usernames use a fake domain. Turn off \"Confirm email\" in Supabase, then register again.",
+      "fi": "Tiliä pitää vielä vahvistaa sähköpostilla, mikä ei koskaan tavoita, koska käyttäjätunnus käyttää keksiettä verkkotunnusta. Poista \"Confirm email\" -asetus Supabasesta ja rekisteröidy uudelleen.",
+      "sv": "Kontot behöver fortfarande bekräftas via e-post, vilket aldrig kan komma fram eftersom användarnamnet använder en falsk domän. Stäng av \"Confirm email\" i Supabase och registrera om.",
+      "se": ""
+    },
+    "auth.exists": {
+      "en": "That username is already registered. Sign in instead.",
+      "fi": "Tuo käyttäjätunnus on jo rekisteröity. Kirjaudu sisään sen sijaan.",
+      "sv": "Det användarnamnet är redan registrerat. Logga in i stället.",
+      "se": ""
+    },
+    "auth.rate": {
+      "en": "Too many attempts. Wait a minute and try again.",
+      "fi": "Liikaa yrityksiä. Odota minuutti ja yritä uudelleen.",
+      "sv": "För många försök. Vänta en minut och försök igen.",
+      "se": ""
     }
   }
 }
