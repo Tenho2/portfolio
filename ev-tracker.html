@@ -1264,18 +1264,26 @@
                         aria-live="polite"
                         hidden
                     ></div>
+                    <!-- The English text inside the tags is a fallback. applyI18n
+                         overwrites it with the detected language, so the buttons
+                         are never rendered as empty rectangles while the language
+                         boot runs. -->
                     <button
                         class="btn block"
                         type="submit"
                         id="authGo"
                         data-i18n="auth.signIn"
-                    ></button>
+                    >
+                        Sign in
+                    </button>
                     <button
                         class="btn ghost block auth-alt"
                         type="button"
                         id="authToggle"
                         data-i18n="auth.needAccount"
-                    ></button>
+                    >
+                        Need an account? Register
+                    </button>
                 </form>
                 <p
                     class="mini"
@@ -3769,6 +3777,14 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                         syncCents();
                         syncHints();
                     } catch (e) {}
+                    /* applyI18n rewrites both auth buttons from their data-i18n
+                       keys, which always means the login labels. Re-apply the
+                       current mode so switching language mid-register keeps
+                       saying "create account". */
+                    try {
+                        if (typeof syncAuthButtons === "function")
+                            syncAuthButtons(false);
+                    } catch (e) {}
                 };
                 var vehicles = [],
                     sessions = [],
@@ -4690,23 +4706,41 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                         syncNote("");
                     }
                 }
-                function setAuthBusy(b) {
+                /* Renders the auth form in the current language. Called from initAuth so the
+                   buttons are filled before the deferred language boot finishes,
+                   and again whenever the mode or language changes. */
+                function applyAuthI18n() {
+                    var view = $("authView");
+                    if (window.EV_I18N && view)
+                        window.EV_I18N.applyI18n(view);
+                    syncAuthButtons(false);
+                }
+                /* Single place that owns both button labels, so sign in and
+                   register can never drift apart. */
+                function syncAuthButtons(busy) {
                     var go = $("authGo"),
                         tg = $("authToggle");
-                    if (go) go.disabled = !!b;
-                    if (tg) tg.disabled = !!b;
-                    if (go)
-                        go.textContent = b
-                            ? TXT(
-                                  authMode === "up"
-                                      ? "auth.working"
-                                      : "auth.working",
-                              )
+                    if (go) {
+                        go.disabled = !!busy;
+                        go.textContent = busy
+                            ? TXT("auth.working")
                             : TXT(
                                   authMode === "up"
                                       ? "auth.createAccount"
                                       : "auth.signIn",
                               );
+                    }
+                    if (tg) {
+                        tg.disabled = !!busy;
+                        tg.textContent = TXT(
+                            authMode === "up"
+                                ? "auth.haveAccount"
+                                : "auth.needAccount",
+                        );
+                    }
+                }
+                function setAuthBusy(b) {
+                    syncAuthButtons(!!b);
                 }
                 async function submitAuth(e) {
                     if (e) e.preventDefault();
@@ -4752,20 +4786,34 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                                 "err",
                             );
                         } else if (res.data && res.data.session) {
+                            /* sign-up returned a session straight away, so email
+                               confirmation is off for this project: the account
+                               is usable immediately. */
                             authMsg(TXT("auth.ok"), "ok");
                             $("authPass").value = "";
                             showApp(res.data.user);
+                        } else if (authMode === "up") {
+                            /* No session yet. Confirming by email can never work
+                               for this non-deliverable domain, so try signing in
+                               straight away: when confirmation is enabled this
+                               simply fails and the user is told what to do. */
+                            try {
+                                var li = await authClient.auth.signInWithPassword({
+                                    email: email,
+                                    password: p,
+                                });
+                                if (li && li.data && li.data.session) {
+                                    authMsg(TXT("auth.ok"), "ok");
+                                    $("authPass").value = "";
+                                    showApp(li.data.user);
+                                } else {
+                                    authMsg(TXT("auth.checkMail"), "");
+                                }
+                            } catch (liErr) {
+                                authMsg(TXT("auth.checkMail"), "");
+                            }
                         } else {
-                            /* sign-up without a session means the project wants email confirmation,
-   which can never arrive for the dummy domain */
-                            authMsg(
-                                TXT(
-                                    authMode === "up"
-                                        ? "auth.checkMail"
-                                        : "auth.ok",
-                                ),
-                                authMode === "up" ? "" : "ok",
-                            );
+                            authMsg(TXT("auth.ok"), "ok");
                         }
                     } catch (err2) {
                         authMsg(TXT("auth.failed"), "err");
@@ -4783,11 +4831,20 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                     authMsg("");
                     showApp(null);
                 }
+                /* Fill the auth form in the detected language before anything else, so the
+                   buttons and labels are never blank while the CDN script and
+                   the session are still resolving. */
                 function initAuth() {
+                    applyAuthI18n();
                     var lib = $("supabaseLib");
+                    var clientStarted = false;
                     function finish() {
+                        /* the load event and the immediate check below can both
+                           fire, so the client must only be built once */
+                        if (clientStarted) return;
                         if (!authConfigured()) {
                             /* placeholders: stay open as a local-only, single-user app */
+                            clientStarted = true;
                             authReady = true;
                             document.body.classList.remove("need-auth");
                             $("logoutBtn").hidden = true;
@@ -4800,6 +4857,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                             authMsg(TXT("auth.noLib"), "err");
                             return;
                         }
+                        clientStarted = true;
                         authClient = window.supabase.createClient(
                             SUPABASE_URL,
                             SUPABASE_ANON_KEY,
@@ -7642,20 +7700,12 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                 $("authForm").addEventListener("submit", submitAuth);
                 $("authToggle").addEventListener("click", function () {
                     authMode = authMode === "in" ? "up" : "in";
-                    $("authGo").textContent = TXT(
-                        authMode === "up"
-                            ? "auth.createAccount"
-                            : "auth.signIn",
-                    );
-                    $("authToggle").textContent = TXT(
-                        authMode === "up"
-                            ? "auth.haveAccount"
-                            : "auth.needAccount",
-                    );
+                    syncAuthButtons(false);
                     $("authPass").setAttribute(
                         "autocomplete",
                         authMode === "up" ? "new-password" : "current-password",
                     );
+                    /* clear any error from the previous attempt */
                     authMsg("");
                     $("authUser").focus();
                 });
