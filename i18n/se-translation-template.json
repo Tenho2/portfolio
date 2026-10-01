@@ -2082,6 +2082,12 @@
       "sv": "Delning är inte installerad på servern än. Kör delnings-SQL i Supabase och ladda om sidan.",
       "se": ""
     },
+    "set.shareLoading": {
+      "en": "Checking sharing…",
+      "fi": "Tarkistetaan jakamista…",
+      "sv": "Kontrollerar delning…",
+      "se": ""
+    },
     "a11y.shareVeh": {
       "en": "Share vehicle: {v}",
       "fi": "Jaa ajoneuvo: {v}",
@@ -2140,6 +2146,186 @@
       "en": "Access removed for {u}",
       "fi": "Käyttöoikeus poistettu käyttäjältä {u}",
       "sv": "Åtkomsten borttagen för {u}",
+      "se": ""
+    },
+    "fav.priceCents": {
+      "en": "Price in cents",
+      "fi": "Hinta sentteinä",
+      "sv": "Pris i cent",
+      "se": ""
+    },
+    "ph.favcents": {
+      "en": "e.g. 35",
+      "fi": "esim. 35",
+      "sv": "t.ex. 35",
+      "se": ""
+    },
+    "aria.favcents": {
+      "en": "price per kWh in whole euro cents",
+      "fi": "hinta per kWh kokonaisina eurosentteinä",
+      "sv": "pris per kWh i hela eurocent",
+      "se": ""
+    },
+    "set.shareCodeLabel": {
+      "en": "Your code for this vehicle",
+      "fi": "Ajoneuvosi koodi",
+      "sv": "Din kod för fordonet",
+      "se": ""
+    },
+    "set.shareCodeNone": {
+      "en": "loading…",
+      "fi": "ladataan…",
+      "sv": "laddar…",
+      "se": ""
+    },
+    "set.shareCopy": {
+      "en": "Copy code",
+      "fi": "Kopioi koodi",
+      "sv": "Kopiera kod",
+      "se": ""
+    },
+    "set.shareRotate": {
+      "en": "New code",
+      "fi": "Uusi koodi",
+      "sv": "Ny kod",
+      "se": ""
+    },
+    "set.shareCodeHint": {
+      "en": "Anyone with this code can add the vehicle to their own account. A new code stops the old one working; everyone who already added the vehicle keeps their access.",
+      "fi": "Kuka tahansa, jolla on tämä koodi, voi lisätä ajoneuvon omaan tililleen. Uusi koodi poistaa vanhan käytöstä, ja kaikki jo lisänneet säilyttävät oikeutensa.",
+      "sv": "Vem som helst med koden kan lägga till fordonet på sitt eget konto. En ny kod gör den gamla ogiltig, och alla som redan lagt till behåller sin åtkomst.",
+      "se": ""
+    },
+    "set.redeem": {
+      "en": "Add a shared vehicle",
+      "fi": "Lisää jaettu ajoneuvo",
+      "sv": "Lägg till ett delat fordon",
+      "se": ""
+    },
+    "set.redeemLead": {
+      "en": "Somebody gave you a code for their vehicle. Enter it here and the vehicle appears in your list, where you can add charging sessions to it.",
+      "fi": "Joku antoi sinulle koodin ajoneuvoonsa. Syötä koodi tähän, niin ajoneuvo ilmestyy listaasi ja voit lisätä siihen latauksia.",
+      "sv": "Någon har gett dig en kod till sitt fordon. Ange den här så visas fordonet i din lista, där du kan lägga till laddningar.",
+      "se": ""
+    },
+    "set.redeemLabel": {
+      "en": "Code",
+      "fi": "Koodi",
+      "sv": "Kod",
+      "se": ""
+    },
+    "set.redeemGo": {
+      "en": "Add vehicle",
+      "fi": "Lisää ajoneuvo",
+      "sv": "Lägg till fordon",
+      "se": ""
+    },
+    "set.redeemHint": {
+      "en": "Six characters, letters and digits, for example K7M2QX. The 0/O and 1/I are left out so it can be read aloud.",
+      "fi": "Kuusi merkkiä, kirjaimia ja numeroita, esimerkiksi K7M2QX. Merkkejä 0/O ja 1/I ei käytetä, jotta koodi voidaan lukea ääneen.",
+      "sv": "Sex tecken, bokstäver och siffror, till exempel K7M2QX. 0/O och 1/I används inte, så koden kan läsas upp.",
+      "se": ""
+    },
+    "set.sharedTag": {
+      "en": "shared",
+      "fi": "jaettu",
+      "sv": "delat",
+      "se": ""
+    },
+    "aria.redeemcode": {
+      "en": "share code of a vehicle somebody shared with you",
+      "fi": "ajanoneuvon koodi, jonku joku on jakanut sinulle",
+      "sv": "delningskod för ett fordon som någon delat med dig",
+      "se": ""
+    },
+    "ph.redeemcode": {
+      "en": "e.g. K7M2QX",
+      "fi": "esim. K7M2QX",
+      "sv": "t.ex. K7M2QX",
+      "se": ""
+    },
+    "toast.codeOk": {
+      "en": "{v} added to your vehicles",
+      "fi": "{v} lisättiin ajoneuvoihisi",
+      "sv": "{v} lades till i dina fordon",
+      "se": ""
+    },
+    "toast.codeAlready": {
+      "en": "{v} was already on your list",
+      "fi": "{v} oli jo listallasi",
+      "sv": "{v} fanns redan i din lista",
+      "se": ""
+    },
+    "toast.codeNoSuch": {
+      "en": "No vehicle matches the code {c}. Check it with the person who gave it to you.",
+      "fi": "Koodille {c} ei löydy ajoneuvoa. Tarkista koodi koodin antaneelta henkilöltä.",
+      "sv": "Inget fordon matchar koden {c}. Kontrollera koden med personen som gav den.",
+      "se": ""
+    },
+    "toast.codeEmpty": {
+      "en": "Type the code first",
+      "fi": "Syötä koodi ensin",
+      "sv": "Ange koden först",
+      "se": ""
+    },
+    "toast.codeLooking": {
+      "en": "Looking up the code…",
+      "fi": "Haetaan koodilla…",
+      "sv": "Slår upp koden…",
+      "se": ""
+    },
+    "toast.codeOwn": {
+      "en": "{v} is your own vehicle",
+      "fi": "{v} on oma ajoneuvosi",
+      "sv": "{v} är ditt eget fordon",
+      "se": ""
+    },
+    "toast.codeUnavailable": {
+      "en": "Codes are not available on the server yet. Run the sharing-codes SQL in Supabase and reload.",
+      "fi": "Koodit eivät ole vielä käytössä palvelimella. Aja Supabasessa koodien SQL ja lataa sivu uudelleen.",
+      "sv": "Koder är inte installerade på servern än. Kör kod-SQL i Supabase och ladda om sidan.",
+      "se": ""
+    },
+    "toast.codeCopied": {
+      "en": "Code {c} copied",
+      "fi": "Koodi {c} kopioitu",
+      "sv": "Koden {c} kopierad",
+      "se": ""
+    },
+    "toast.codeCopyFail": {
+      "en": "Copy failed. The code is {c}",
+      "fi": "Kopiointi epäonnistui. Koodi on {c}",
+      "sv": "Kopieringen misslyckades. Koden är {c}",
+      "se": ""
+    },
+    "toast.codeRotated": {
+      "en": "New code: {c}",
+      "fi": "Uusi koodi: {c}",
+      "sv": "Ny kod: {c}",
+      "se": ""
+    },
+    "toast.codeRotateQ": {
+      "en": "Issue a new code? The old one stops working immediately.",
+      "fi": "Uusitaanko koodi? Vanha koodi poistuu käytöstä heti.",
+      "sv": "Skapa en ny kod? Den gamla slutar fungera direkt.",
+      "se": ""
+    },
+    "toast.codeFail": {
+      "en": "Could not change the code.",
+      "fi": "Koodin vaihtaminen epäonnistui.",
+      "sv": "Kunde inte byta kod.",
+      "se": ""
+    },
+    "confirm.shareRotate": {
+      "en": "New code?",
+      "fi": "Uusi koodi?",
+      "sv": "Ny kod?",
+      "se": ""
+    },
+    "confirm.yes": {
+      "en": "Yes, continue",
+      "fi": "Kyllä, jatka",
+      "sv": "Ja, fortsätt",
       "se": ""
     }
   }

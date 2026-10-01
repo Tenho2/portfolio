@@ -1307,6 +1307,38 @@
         }
       }
       @media (prefers-reduced-motion: reduce) {
+        .codebox {
+          border: 1px dashed var(--line);
+          border-radius: 10px;
+          padding: 0.75rem;
+          margin-bottom: 0.75rem;
+          background: var(--soft);
+        }
+        /* The code is meant to be read aloud, so it is large and monospaced with
+         wide letter spacing to keep characters apart. */
+        .code {
+          font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+          font-size: 1.9rem;
+          font-weight: 700;
+          letter-spacing: 0.22em;
+          padding-left: 0.22em;
+          word-break: break-all;
+          user-select: all;
+        }
+        .shared-tag {
+          display: inline-block;
+          font-size: 0.72rem;
+          padding: 0.05rem 0.4rem;
+          border-radius: 999px;
+          border: 1px solid var(--line);
+          color: var(--muted);
+          margin-left: 0.35rem;
+          vertical-align: middle;
+        }
+        .veh button[disabled] {
+          opacity: 0.55;
+          cursor: not-allowed;
+        }
         * {
           animation: none !important;
           transition: none !important;
@@ -1882,6 +1914,45 @@
           </div>
           <div class="hint" id="vOdoHint" data-i18n="set.initialOdoLead"></div>
         </div>
+        <!-- Adding a car somebody else owns, using the short code they were
+             given. No username needed: the code identifies the vehicle and the
+             signed-in account becomes the driver. -->
+        <div class="panel" id="redeemPanel" hidden>
+          <h2>
+            <span aria-hidden="true">🔑</span>
+            <span data-i18n="set.redeem"></span>
+          </h2>
+          <p class="lead" data-i18n="set.redeemLead"></p>
+          <div class="addrow-fields" style="margin-top: 0">
+            <div class="f" style="max-width: 240px">
+              <label for="redeemCode" data-i18n="set.redeemLabel"></label>
+              <input
+                type="text"
+                id="redeemCode"
+                maxlength="10"
+                autocomplete="off"
+                autocapitalize="characters"
+                spellcheck="false"
+                data-i18n-ph="ph.redeemcode"
+                data-i18n-aria="aria.redeemcode"
+                aria-describedby="redeemHint"
+              />
+            </div>
+            <button
+              type="button"
+              class="btn sec"
+              id="redeemGo"
+              data-i18n="set.redeemGo"
+            ></button>
+          </div>
+          <div class="hint" id="redeemHint" data-i18n="set.redeemHint"></div>
+          <div
+            class="hint"
+            id="redeemStat"
+            role="status"
+            aria-live="polite"
+          ></div>
+        </div>
         <!-- Sharing. Hidden until the owner picks a vehicle, because the
              controls only make sense for one car at a time. -->
         <div class="panel" id="sharePanel" hidden>
@@ -2204,19 +2275,40 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             <div id="mapMsg" class="mini" hidden data-i18n="fav.mapOff"></div>
           </div>
           <!-- A per-place price, so home or the office always charges at the
-               rate that actually applies there. Empty means "use the default". -->
-          <div class="f" style="max-width: 220px">
-            <label for="fPrice" data-i18n="fav.price"></label
-            ><input
-              type="number"
-              id="fPrice"
-              min="0"
-              step="0.01"
-              data-i18n-ph="ph.favprice"
-              aria-describedby="fPriceHint"
-            />
-            <div class="hint" id="fPriceHint" data-i18n="fav.priceHint"></div>
+               rate that actually applies there. Empty means "use the default".
+               Euro and whole cents are kept in step, like the session form. -->
+          <div class="row">
+            <div class="f" style="max-width: 200px">
+              <label for="fPrice" data-i18n="fav.price"></label
+              ><input
+                type="number"
+                id="fPrice"
+                min="0"
+                step="0.01"
+                data-i18n-ph="ph.favprice"
+                aria-describedby="fPriceHint"
+              />
+            </div>
+            <div class="f" style="max-width: 200px">
+              <label for="fPriceCents" data-i18n="fav.priceCents"></label
+              ><input
+                type="number"
+                id="fPriceCents"
+                min="0"
+                max="99"
+                step="1"
+                data-i18n-ph="ph.favcents"
+                data-i18n-aria="aria.favcents"
+              />
+            </div>
           </div>
+          <div class="hint" id="fPriceHint" data-i18n="fav.priceHint"></div>
+          <div
+            class="hint"
+            id="fPriceMirror"
+            role="status"
+            aria-live="polite"
+          ></div>
           <div class="addrow">
             <button
               type="button"
@@ -2896,6 +2988,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               "Sign in to share a vehicle with someone else.",
             "set.shareNoSupport":
               "Sharing is not set up on the server yet. Run the sharing SQL in Supabase and reload.",
+            "set.shareLoading": "Checking sharing…",
             "a11y.shareVeh": "Share vehicle: {v}",
             "a11y.unshare": "Remove access for {v}",
             "ph.shareuser": "e.g. anna",
@@ -2907,6 +3000,43 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "toast.shareNoName": "Enter a username first",
             "toast.unshareQ": "Remove access for {u}?",
             "toast.unshareOk": "Access removed for {u}",
+            "fav.priceCents": "Price in cents",
+            "ph.favcents": "e.g. 35",
+            "aria.favcents": "price per kWh in whole euro cents",
+            "set.shareCodeLabel": "Your code for this vehicle",
+            "set.shareCodeNone": "loading…",
+            "set.shareCopy": "Copy code",
+            "set.shareRotate": "New code",
+            "set.shareCodeHint":
+              "Anyone with this code can add the vehicle to their own account. A new code stops the old one working; everyone who already added the vehicle keeps their access.",
+            "set.redeem": "Add a shared vehicle",
+            "set.redeemLead":
+              "Somebody gave you a code for their vehicle. Enter it here and the vehicle appears in your list, where you can add charging sessions to it.",
+            "set.redeemLabel": "Code",
+            "set.redeemGo": "Add vehicle",
+            "set.redeemHint":
+              "Six characters, letters and digits, for example K7M2QX. The 0/O and 1/I are left out so it can be read aloud.",
+            "set.sharedTag": "shared",
+            "aria.redeemcode":
+              "share code of a vehicle somebody shared with you",
+            "ph.redeemcode": "e.g. K7M2QX",
+            "toast.codeOk": "{v} added to your vehicles",
+            "toast.codeAlready": "{v} was already on your list",
+            "toast.codeNoSuch":
+              "No vehicle matches the code {c}. Check it with the person who gave it to you.",
+            "toast.codeEmpty": "Type the code first",
+            "toast.codeLooking": "Looking up the code…",
+            "toast.codeOwn": "{v} is your own vehicle",
+            "toast.codeUnavailable":
+              "Codes are not available on the server yet. Run the sharing-codes SQL in Supabase and reload.",
+            "toast.codeCopied": "Code {c} copied",
+            "toast.codeCopyFail": "Copy failed. The code is {c}",
+            "toast.codeRotated": "New code: {c}",
+            "toast.codeRotateQ":
+              "Issue a new code? The old one stops working immediately.",
+            "toast.codeFail": "Could not change the code.",
+            "confirm.shareRotate": "New code?",
+            "confirm.yes": "Yes, continue",
           },
           fi: {
             "ed.for": "Ajoneuvo {n} - luotu {d}",
@@ -3319,6 +3449,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               "Kirjaudu sisään, niin voit jakaa ajoneuvon toisen henkilön kanssa.",
             "set.shareNoSupport":
               "Jakaminen ei ole vielä käytössä palvelimella. Aja Supabasessa jakamisen SQL ja lataa sivu uudelleen.",
+            "set.shareLoading": "Tarkistetaan jakamista…",
             "a11y.shareVeh": "Jaa ajoneuvo: {v}",
             "a11y.unshare": "Poista käyttöoikeus: {v}",
             "ph.shareuser": "esim. anna",
@@ -3330,6 +3461,43 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "toast.shareNoName": "Anna ensin käyttäjätunnus",
             "toast.unshareQ": "Poistetaanko käyttöoikeus käyttäjältä {u}?",
             "toast.unshareOk": "Käyttöoikeus poistettu käyttäjältä {u}",
+            "fav.priceCents": "Hinta sentteinä",
+            "ph.favcents": "esim. 35",
+            "aria.favcents": "hinta per kWh kokonaisina eurosentteinä",
+            "set.shareCodeLabel": "Ajoneuvosi koodi",
+            "set.shareCodeNone": "ladataan…",
+            "set.shareCopy": "Kopioi koodi",
+            "set.shareRotate": "Uusi koodi",
+            "set.shareCodeHint":
+              "Kuka tahansa, jolla on tämä koodi, voi lisätä ajoneuvon omaan tililleen. Uusi koodi poistaa vanhan käytöstä, ja kaikki jo lisänneet säilyttävät oikeutensa.",
+            "set.redeem": "Lisää jaettu ajoneuvo",
+            "set.redeemLead":
+              "Joku antoi sinulle koodin ajoneuvoonsa. Syötä koodi tähän, niin ajoneuvo ilmestyy listaasi ja voit lisätä siihen latauksia.",
+            "set.redeemLabel": "Koodi",
+            "set.redeemGo": "Lisää ajoneuvo",
+            "set.redeemHint":
+              "Kuusi merkkiä, kirjaimia ja numeroita, esimerkiksi K7M2QX. Merkkejä 0/O ja 1/I ei käytetä, jotta koodi voidaan lukea ääneen.",
+            "set.sharedTag": "jaettu",
+            "aria.redeemcode":
+              "ajanoneuvon koodi, jonku joku on jakanut sinulle",
+            "ph.redeemcode": "esim. K7M2QX",
+            "toast.codeOk": "{v} lisättiin ajoneuvoihisi",
+            "toast.codeAlready": "{v} oli jo listallasi",
+            "toast.codeNoSuch":
+              "Koodille {c} ei löydy ajoneuvoa. Tarkista koodi koodin antaneelta henkilöltä.",
+            "toast.codeEmpty": "Syötä koodi ensin",
+            "toast.codeLooking": "Haetaan koodilla…",
+            "toast.codeOwn": "{v} on oma ajoneuvosi",
+            "toast.codeUnavailable":
+              "Koodit eivät ole vielä käytössä palvelimella. Aja Supabasessa koodien SQL ja lataa sivu uudelleen.",
+            "toast.codeCopied": "Koodi {c} kopioitu",
+            "toast.codeCopyFail": "Kopiointi epäonnistui. Koodi on {c}",
+            "toast.codeRotated": "Uusi koodi: {c}",
+            "toast.codeRotateQ":
+              "Uusitaanko koodi? Vanha koodi poistuu käytöstä heti.",
+            "toast.codeFail": "Koodin vaihtaminen epäonnistui.",
+            "confirm.shareRotate": "Uusi koodi?",
+            "confirm.yes": "Kyllä, jatka",
           },
           sv: {
             "ed.for": "Fordon {n} - skapad {d}",
@@ -3739,6 +3907,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               "Logga in för att dela ett fordon med någon annan.",
             "set.shareNoSupport":
               "Delning är inte installerad på servern än. Kör delnings-SQL i Supabase och ladda om sidan.",
+            "set.shareLoading": "Kontrollerar delning…",
             "a11y.shareVeh": "Dela fordon: {v}",
             "a11y.unshare": "Ta bort åtkomst för {v}",
             "ph.shareuser": "t.ex. anna",
@@ -3750,6 +3919,43 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "toast.shareNoName": "Ange ett användarnamn först",
             "toast.unshareQ": "Ta bort åtkomsten för {u}?",
             "toast.unshareOk": "Åtkomsten borttagen för {u}",
+            "fav.priceCents": "Pris i cent",
+            "ph.favcents": "t.ex. 35",
+            "aria.favcents": "pris per kWh i hela eurocent",
+            "set.shareCodeLabel": "Din kod för fordonet",
+            "set.shareCodeNone": "laddar…",
+            "set.shareCopy": "Kopiera kod",
+            "set.shareRotate": "Ny kod",
+            "set.shareCodeHint":
+              "Vem som helst med koden kan lägga till fordonet på sitt eget konto. En ny kod gör den gamla ogiltig, och alla som redan lagt till behåller sin åtkomst.",
+            "set.redeem": "Lägg till ett delat fordon",
+            "set.redeemLead":
+              "Någon har gett dig en kod till sitt fordon. Ange den här så visas fordonet i din lista, där du kan lägga till laddningar.",
+            "set.redeemLabel": "Kod",
+            "set.redeemGo": "Lägg till fordon",
+            "set.redeemHint":
+              "Sex tecken, bokstäver och siffror, till exempel K7M2QX. 0/O och 1/I används inte, så koden kan läsas upp.",
+            "set.sharedTag": "delat",
+            "aria.redeemcode":
+              "delningskod för ett fordon som någon delat med dig",
+            "ph.redeemcode": "t.ex. K7M2QX",
+            "toast.codeOk": "{v} lades till i dina fordon",
+            "toast.codeAlready": "{v} fanns redan i din lista",
+            "toast.codeNoSuch":
+              "Inget fordon matchar koden {c}. Kontrollera koden med personen som gav den.",
+            "toast.codeEmpty": "Ange koden först",
+            "toast.codeLooking": "Slår upp koden…",
+            "toast.codeOwn": "{v} är ditt eget fordon",
+            "toast.codeUnavailable":
+              "Koder är inte installerade på servern än. Kör kod-SQL i Supabase och ladda om sidan.",
+            "toast.codeCopied": "Koden {c} kopierad",
+            "toast.codeCopyFail": "Kopieringen misslyckades. Koden är {c}",
+            "toast.codeRotated": "Ny kod: {c}",
+            "toast.codeRotateQ":
+              "Skapa en ny kod? Den gamla slutar fungera direkt.",
+            "toast.codeFail": "Kunde inte byta kod.",
+            "confirm.shareRotate": "Ny kod?",
+            "confirm.yes": "Ja, fortsätt",
           },
           se: {
             "fav.name": "Namma",
@@ -4472,9 +4678,159 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           var v = vehById(vehicleId);
           return !!(v && ownerId() && v.userId === ownerId());
         }
+        /**
+         * The owner's short code for a vehicle, asking the server for one the
+         * first time. Codes are server-allocated so they cannot collide.
+         * @param {string} vehicleId
+         * @param {boolean} rotate  issue a fresh code instead of the current one
+         * @returns {Promise<string>} the code, or "" when unavailable
+         */
+        function shareCode(vehicleId, rotate) {
+          if (!syncOn() || !vehicleId) return Promise.resolve("");
+          var fn = rotate ? "rotate_share_code" : "ensure_share_code";
+          var cached = shareCodeCache[vehicleId];
+          if (!rotate && cached) return Promise.resolve(cached);
+          return authClient
+            .rpc(fn, { p_vehicle: vehicleId })
+            .then(function (res) {
+              if (res && res.error) throw res.error;
+              var code = String((res && res.data) || "")
+                .trim()
+                .toUpperCase();
+              if (code) {
+                shareCodeCache[vehicleId] = code;
+                codesAvailable = true;
+              }
+              return code;
+            })
+            .catch(function (e) {
+              /* 404 or "function does not exist" means the SQL has not been run */
+              codesAvailable = false;
+              if (window.console && window.console.warn)
+                window.console.warn("[share] code unavailable", e);
+              return "";
+            });
+        }
+        /**
+         * Add a shared vehicle using a code someone was given.
+         * @param {string} code  the six character code
+         * @returns {Promise<{status:string, vehicle?:Object}>}
+         */
+        function redeemShareCode(code) {
+          if (!syncOn()) return Promise.resolve({ status: "signed-out" });
+          var clean = String(code || "")
+            .trim()
+            .toUpperCase();
+          if (!clean) return Promise.resolve({ status: "empty" });
+          return authClient
+            .rpc("redeem_share_code", { p_code: clean })
+            .then(function (res) {
+              if (res && res.error) throw res.error;
+              var data = res && res.data;
+              if (typeof data === "string") {
+                try {
+                  data = JSON.parse(data);
+                } catch (e) {
+                  data = { status: data };
+                }
+              }
+              var out = data && data.status ? data : { status: "unknown" };
+              /* Show the car immediately instead of waiting for the next pull. */
+              if (
+                out.status === "ok" &&
+                out.vehicleId &&
+                !vehById(out.vehicleId)
+              ) {
+                vehicles.push(rowVehicle(out));
+                cur = vehicles.length - 1;
+                save();
+                markDirty("vehicles", out.vehicleId);
+                render();
+              }
+              if (out.status === "ok") loadShares();
+              return out;
+            })
+            .catch(function () {
+              return { status: "unavailable" };
+            });
+        }
+        /** Copy text to the clipboard, with a fallback for older browsers. */
+        function copyText(text) {
+          if (navigator.clipboard && navigator.clipboard.writeText)
+            return navigator.clipboard.writeText(text);
+          return new Promise(function (resolve, reject) {
+            var ta = document.createElement("textarea");
+            ta.value = text;
+            ta.setAttribute("readonly", "");
+            ta.style.position = "fixed";
+            ta.style.opacity = "0";
+            document.body.appendChild(ta);
+            ta.select();
+            var ok = false;
+            try {
+              ok = document.execCommand("copy");
+            } catch (e) {
+              ok = false;
+            }
+            document.body.removeChild(ta);
+            if (ok) resolve();
+            else reject(new Error("copy failed"));
+          });
+        }
+
+        /* ---------- adding a shared vehicle with a code ---------- */
+        var REDEEM_TEXT = {
+          ok: "toast.codeOk",
+          "own-vehicle": "toast.codeOwn",
+          "no-such-code": "toast.codeNoSuch",
+          empty: "toast.codeEmpty",
+          "signed-out": "set.shareSignedOut",
+          unavailable: "toast.codeUnavailable",
+          unknown: "toast.codeUnavailable",
+        };
+        /** The redeem box is pointless while signed out, so it stays hidden. */
+        function renderRedeemPanel() {
+          var p = $("redeemPanel");
+          if (!p) return;
+          p.hidden = !syncOn();
+        }
+        /**
+         * Look up a code and add the vehicle it belongs to.
+         * @returns {Promise<string>} the status reported by the server
+         */
+        function doRedeem() {
+          var input = $("redeemCode");
+          var stat = $("redeemStat");
+          if (!input) return Promise.resolve("empty");
+          var code = input.value.trim().toUpperCase();
+          if (!code) {
+            stat.textContent = TXT("toast.codeEmpty");
+            input.focus();
+            return Promise.resolve("empty");
+          }
+          stat.textContent = TXT("toast.codeLooking");
+          return redeemShareCode(code).then(function (res) {
+            var key = REDEEM_TEXT[res.status] || "toast.codeUnavailable";
+            if (res.status === "ok" && res.already)
+              stat.textContent = TXT("toast.codeAlready", { v: res.name });
+            else stat.textContent = TXT(key, { v: res.name, c: code });
+            if (res.status === "ok") {
+              input.value = "";
+              toast(TXT("toast.codeOk", { v: res.name }));
+              render();
+              syncPull();
+            } else if (res.status === "no-such-code") {
+              input.focus();
+              input.select();
+            }
+            return res.status;
+          });
+        }
 
         /* ---------- sharing user interface ---------- */
         var shareTarget = null;
+        var shareCodeCache = {};
+        var codesAvailable = false;
         var shareNames = {};
         try {
           shareNames = JSON.parse(localStorage.getItem(K.n) || "{}") || {};
@@ -4515,6 +4871,11 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           go("settings");
           var first = $("shareBody").querySelector("input, button");
           if (first) first.focus();
+          /* Ask for the code so the panel is never briefly empty. */
+          if (ownsVehicle(vehicleId) && !shareCodeCache[vehicleId])
+            shareCode(vehicleId, false).then(function (code) {
+              if (code && shareTarget === vehicleId) renderShare();
+            });
         }
         /**
          * Draw the sharing panel. It states plainly why the controls are
@@ -4538,13 +4899,47 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               '<p class="mini">' + TXT("set.shareNotOwner") + "</p>";
             return;
           }
+          /* "not checked yet" and "not supported" are different answers, and
+             showing the wrong one before the first check would tell the user to
+             run SQL they have already run. */
+          if (!sharesChecked) {
+            box.innerHTML =
+              '<p class="mini">' + TXT("set.shareLoading") + "</p>";
+            var wanted = shareTarget;
+            loadShares().then(function () {
+              if (shareTarget === wanted) renderShare();
+            });
+            return;
+          }
           if (!sharesAvailable) {
             box.innerHTML =
               '<p class="mini">' + TXT("set.shareNoSupport") + "</p>";
             return;
           }
           var list = shares[shareTarget] || [];
-          var h = "";
+          /* The short code comes first, because passing it on is the easy path
+             and needs no username from the other person. */
+          var code = shareCodeCache[shareTarget] || "";
+          var h =
+            '<div class="codebox">' +
+            '<div class="mini" id="shareCodeLabel">' +
+            TXT("set.shareCodeLabel") +
+            "</div>" +
+            '<div class="code" id="shareCodeValue">' +
+            (code ? esc(code) : TXT("set.shareCodeNone")) +
+            "</div>" +
+            '<div class="qa" style="margin-top:0.4rem">' +
+            '<button type="button" class="btn sm sec" id="shareCopy"' +
+            (code ? "" : " disabled") +
+            ">" +
+            TXT("set.shareCopy") +
+            "</button>" +
+            '<button type="button" class="btn sm ghost" id="shareRotate">' +
+            TXT("set.shareRotate") +
+            "</button></div>" +
+            '<div class="hint">' +
+            TXT("set.shareCodeHint") +
+            "</div></div>";
           if (!list.length) {
             h += '<p class="mini">' + TXT("set.shareNone") + "</p>";
           } else {
@@ -4589,8 +4984,44 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "</div>";
           box.innerHTML = h;
           if (window.EV_I18N) window.EV_I18N.applyI18n(box);
-          /* The panel is rebuilt from scratch each time, so the invite controls
-             are wired here rather than once at startup. */
+          /* The panel is rebuilt from scratch each time, so the controls are
+             wired here rather than once at startup. */
+          var copy = $("shareCopy");
+          if (copy)
+            copy.addEventListener("click", function () {
+              var c = shareCodeCache[shareTarget] || "";
+              if (!c) return;
+              copyText(c).then(
+                function () {
+                  toast(TXT("toast.codeCopied", { c: c }));
+                },
+                function () {
+                  toast(TXT("toast.codeCopyFail", { c: c }));
+                },
+              );
+            });
+          var rot = $("shareRotate");
+          if (rot)
+            rot.addEventListener("click", function () {
+              var vehicle = shareTarget;
+              return askConfirm(TXT("toast.codeRotateQ"), {
+                heading: "confirm.shareRotate",
+                ok: "confirm.yes",
+              }).then(function (yes) {
+                if (!yes) return "";
+                rot.disabled = true;
+                return shareCode(vehicle, true).then(function (code) {
+                  rot.disabled = false;
+                  if (!code) {
+                    toast(TXT("toast.codeFail"));
+                    return "";
+                  }
+                  toast(TXT("toast.codeRotated", { c: code }));
+                  renderShare();
+                  return code;
+                });
+              });
+            });
           var invite = $("shareInvite");
           if (invite)
             invite.addEventListener("click", function () {
@@ -6128,26 +6559,36 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           var vs = "";
           for (var k = 0; k < vehicles.length; k++) {
             var c2 = ofVehicle(vehicles[k].id).length;
+            var mine = ownsVehicle(vehicles[k].id);
             vs +=
               '<div class="item"><span aria-hidden="true" style="font-size:1.2rem">' +
               esc(vehicles[k].icon) +
               "</span>" +
               '<span class="nm">' +
               esc(vehicles[k].name) +
+              /* A car added with somebody else's code behaves like any other,
+                 but it is not yours to rename or delete, so say so. */
+              (mine || !syncOn()
+                ? ""
+                : '<span class="shared-tag">' +
+                  TXT("set.sharedTag") +
+                  "</span>") +
               "</span>" +
               '<span class="mt">' +
               TXT("fav.uses", { n: c2 }) +
               "</span>" +
-              '<button type="button" class="btn sm ghost" data-ren="' +
-              esc(vehicles[k].id) +
-              '" aria-label="' +
-              TXT("a11y.renameVeh", {
-                v: esc(vehicles[k].name),
-              }) +
-              '"><span aria-hidden="true">' +
-              TXT("set.rename") +
-              "</span></button>" +
-              (canShare() && ownsVehicle(vehicles[k].id)
+              (mine
+                ? '<button type="button" class="btn sm ghost" data-ren="' +
+                  esc(vehicles[k].id) +
+                  '" aria-label="' +
+                  TXT("a11y.renameVeh", {
+                    v: esc(vehicles[k].name),
+                  }) +
+                  '"><span aria-hidden="true">' +
+                  TXT("set.rename") +
+                  "</span></button>"
+                : "") +
+              (canShare() && mine
                 ? '<button type="button" class="btn sm sec" data-share="' +
                   esc(vehicles[k].id) +
                   '" aria-label="' +
@@ -6159,7 +6600,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                     : "") +
                   "</span></button>"
                 : "") +
-              (vehicles.length > 1
+              (vehicles.length > 1 && mine
                 ? '<button type="button" class="btn sm dgr" data-rm="' +
                   esc(vehicles[k].id) +
                   '" aria-label="' +
@@ -6174,6 +6615,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           }
           $("vehSettings").innerHTML = vs;
           renderImportTarget();
+          renderRedeemPanel();
           syncCents();
           renderFavs();
           renderChart();
@@ -6772,6 +7214,14 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
         $("impGo").addEventListener("click", function () {
           $("impFile").click();
         });
+        $("redeemGo").addEventListener("click", function () {
+          doRedeem();
+        });
+        $("redeemCode").addEventListener("keydown", function (e) {
+          if (e.key !== "Enter") return;
+          e.preventDefault();
+          doRedeem();
+        });
         $("impFile").addEventListener("change", function () {
           var f = this.files && this.files[0];
           if (!f) return;
@@ -7087,7 +7537,12 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             addr = $("fAddr").value.trim();
           var la = $("fLat").value.trim(),
             lo = $("fLng").value.trim();
-          var pr = $("fPrice") ? $("fPrice").value.trim() : "";
+          /* Cents win when both are filled, because they are the exact form. */
+          var cents = $("fPriceCents") ? $("fPriceCents").value.trim() : "";
+          var eur = $("fPrice") ? $("fPrice").value.trim() : "";
+          var price = null;
+          if (cents !== "" && isNum(cents)) price = Math.max(0, +cents) / 100;
+          else if (eur !== "" && isNum(eur)) price = Math.max(0, +eur);
           return {
             name: name || addr,
             address: addr || name,
@@ -7095,8 +7550,41 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             lng: lo === "" ? null : isNum(+lo) ? +lo : null,
             /* An empty or unusable field means "no own price", which is not the
                same as a price of 0, so it is stored as null rather than 0. */
-            price: pr === "" || !isNum(pr) ? null : Math.max(0, +pr),
+            price: price,
           };
+        }
+        /** Mirror the euro price into whole cents, or clear both when empty. */
+        function syncFavCents() {
+          var e = $("fPrice"),
+            c = $("fPriceCents");
+          if (!e || !c) return;
+          var p = isNum(e.value) ? Math.max(0, +e.value) : null;
+          c.value = p === null ? "" : Math.round(p * 100);
+          var m = $("fPriceMirror");
+          if (m)
+            m.textContent =
+              p === null
+                ? ""
+                : TXT("toast.centsMirror", {
+                    c: c.value,
+                    v: fmtCents(+c.value),
+                  });
+        }
+        /** Mirror whole cents into the euro price. An empty box is ignored, exactly
+         like the session form's cents field: euro is the master, so clearing
+         the cents box must not wipe a price that is still shown in euro. */
+        function syncFavPrice() {
+          var e = $("fPrice"),
+            c = $("fPriceCents");
+          if (!e || !c) return;
+          if (c.value === "" || !isNum(c.value)) return;
+          e.value = (Math.max(0, +c.value) / 100).toFixed(2);
+          var m = $("fPriceMirror");
+          if (m)
+            m.textContent = TXT("toast.centsMirror", {
+              c: c.value,
+              v: fmtCents(Math.max(0, +c.value)),
+            });
         }
         /**
          * The place's own price per kWh, or null when it has none.
@@ -7118,6 +7606,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           if ($("fPrice")) {
             var fp = favPrice(f);
             $("fPrice").value = fp === null ? "" : fp.toFixed(2);
+            syncFavCents();
           }
           editFav = f.id || null;
           $("fSave").textContent = f.id ? TXT("fav.update") : TXT("fav.save");
@@ -7131,6 +7620,8 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           $("fLat").value = "";
           $("fLng").value = "";
           if ($("fPrice")) $("fPrice").value = "";
+          if ($("fPriceCents")) $("fPriceCents").value = "";
+          if ($("fPriceMirror")) $("fPriceMirror").textContent = "";
           editFav = null;
           $("fSave").textContent = TXT("fav.save");
           $("geoStat").textContent = TXT("fav.findHint");
@@ -7149,11 +7640,15 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           }
           if (editFav) {
             var old = favById(editFav);
+            /* A stale id means the favourite was deleted elsewhere, for example
+               in another tab. Saving has to create the new entry instead of
+               silently throwing the data away. */
             if (old) {
               f.id = old.id;
               favs[favs.indexOf(old)] = f;
-            }
-          } else {
+            } else editFav = null;
+          }
+          if (!editFav) {
             var dup = null;
             for (var i = 0; i < favs.length; i++) {
               if (
@@ -7277,6 +7772,52 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             encodeURIComponent(q)
           );
         }
+        /**
+         * Choose the most specific hit from a Nominatim result list.
+         * Free-text search ranks a whole road above one house, so asking for a
+         * single result meant "Kostilantie 5" often resolved to the road itself
+         * with no street number. Asking for several results and choosing here
+         * is what makes house numbers appear.
+         * @param {Array}  res  results from Nominatim
+         * @param {string} q    what the user typed
+         * @returns {Object|null}
+         */
+        function pickBestHit(res, q) {
+          if (!res || !res.length) return null;
+          /* a trailing number in the query is almost always a street number */
+          var want = String(q || "").match(/\s(\d{1,5}\s?[A-Za-z]?)\s*$/);
+          want = want ? want[1].toLowerCase().replace(/\s+/g, "") : "";
+          var best = null;
+          var bestScore = -1;
+          for (var i = 0; i < res.length; i++) {
+            var hit = res[i];
+            var a = hit.address || {};
+            var num = String(a.house_number || "")
+              .toLowerCase()
+              .replace(/\s+/g, "");
+            var score = 0;
+            /* an exact street-number match beats everything */
+            if (want && num && num === want) score += 100;
+            else if (want && num) score += 40;
+            else if (num) score += 20;
+            /* a real address beats a road, a municipality or a POI */
+            if (a.house_number) score += 10;
+            if (a.road || a.pedestrian || a.footway) score += 4;
+            if (isNum(hit.importance))
+              score += Math.max(0, Math.min(9, hit.importance));
+            /* earlier results are Nominatim's own preference */
+            score += Math.max(0, 3 - i) * 0.5;
+            if (score > bestScore) {
+              bestScore = score;
+              best = hit;
+            }
+          }
+          return best;
+        }
+        /** True when the text carries a house number, e.g. "Kostilantie 5". */
+        function looksLikeHouseNumber(q) {
+          return /\s\d{1,5}\s?[A-Za-z]?\s*$/.test(String(q || ""));
+        }
         function escapeRe(s) {
           return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         }
@@ -7327,13 +7868,28 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             var dup = new RegExp("\\s+" + escapeRe(city) + "$", "i");
             if (dup.test(name)) name = name.replace(dup, "").trim();
           }
+          /* Searching a bare road name returns the road itself, where hit.name
+             and address.road are the same string. Keeping both produced
+             "Kostilantie, Kostilantie, Punkalaidun, 31900". */
+          if (name && road && name.toLowerCase() === road.toLowerCase())
+            name = "";
           var parts = [];
           if (name) parts.push(name);
           if (road) parts.push(num ? road + " " + num : road);
           else if (num) parts.push(num);
           var place = cityLine(city, pc);
           if (place) parts.push(place);
-          return parts.join(", ");
+          /* last line of defence: never repeat an identical part */
+          var out = [];
+          for (var p = 0; p < parts.length; p++) {
+            var t = String(parts[p]).trim();
+            if (!t) continue;
+            var dupSeen = false;
+            for (var q2 = 0; q2 < out.length; q2++)
+              if (out[q2].toLowerCase() === t.toLowerCase()) dupSeen = true;
+            if (!dupSeen) out.push(t);
+          }
+          return out.join(", ");
         }
         /**
          * Load Leaflet once and run the callback when it is ready.
@@ -7491,17 +8047,19 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             return;
           }
           $("geoStat").textContent = TXT("toast.looking", { q: q });
-          fetch(nomUrl(q, 1))
+          /* Several results, then choose the most specific one, so a street
+             number in the query actually resolves to that house. */
+          fetch(nomUrl(q, 10))
             .then(function (r) {
               if (!r.ok) throw new Error("http " + r.status);
               return r.json();
             })
             .then(function (res) {
-              if (!res || !res.length) {
+              var hit = pickBestHit(res, q);
+              if (!hit) {
                 $("geoStat").textContent = TXT("toast.noMatch", { q: q });
                 return;
               }
-              var hit = res[0];
               var short = shortAddress(hit);
               var lat = parseFloat(hit.lat),
                 lng = parseFloat(hit.lon);
@@ -7618,16 +8176,16 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             return;
           }
           setLocStatus(TXT("toast.looking", { q: q }));
-          fetch(nomUrl(q, 1))
+          fetch(nomUrl(q, 10))
             .then(function (r) {
               return r.ok ? r.json() : [];
             })
             .then(function (res) {
-              if (!res || !res.length) {
+              var hit = pickBestHit(res, q);
+              if (!hit) {
                 setLocStatus(TXT("toast.noMatch2", { q: q }));
                 return;
               }
-              var hit = res[0];
               var short = shortAddress(hit);
               $("location").value = short || hit.display_name || "";
               locGeo = {
@@ -7925,6 +8483,11 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             name: name,
             icon: "🚗",
             initialOdometer: odo,
+            /* Record the owner locally straight away. Without it the sharing
+               controls stay hidden on a brand new car until the server sends
+               the row back, which leaves the Share button mysteriously absent
+               for anyone creating their first vehicle. */
+            userId: ownerId() || null,
           };
           vehicles.push(v);
           $("vName").value = "";
@@ -8587,6 +9150,11 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           if (isFinite(la) && isFinite(lo))
             showPin("map", la, lo, $("fName").value.trim(), favPinDragged);
         });
+        /* The two price boxes stay in step, so the whole-centre form is always
+           as usable as the euro one. */
+        if ($("fPrice")) $("fPrice").addEventListener("input", syncFavCents);
+        if ($("fPriceCents"))
+          $("fPriceCents").addEventListener("input", syncFavPrice);
         $("locFind").addEventListener("click", function () {
           closeSuggest();
           lookupLocation();
