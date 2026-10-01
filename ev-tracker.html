@@ -3760,12 +3760,20 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                         });
                     }
                 }
+                /* Exposed so the app script, which is a separate IIFE with its own scope, can
+                   reach the translation helpers. Anything referenced from the
+                   app script must be published here or it will be undefined. */
                 window.EV_I18N = {
                     t: t,
                     setLang: setLang,
                     bootLang: bootLang,
                     currentLang: currentLang,
                     applyI18n: applyI18n,
+                    /* Exposed because the app script is a separate IIFE and
+                       cannot see anything declared in this one. Rows it builds
+                       from HTML carry data-i18n-aria names that must be
+                       re-translated after a language switch. */
+                    refreshAriaNames: refreshAriaNames,
                     dict: D,
                     langs: LANGS,
                 };
@@ -5253,7 +5261,17 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                     if (el) el.textContent = TXT("a11y.stats") + " - " + v.name;
                 }
                 /* Rebuilds the tiles, table and favourite rows, then re-applies translated
-   accessible names, since those rows are recreated from HTML on every render. */
+   accessible names, since those rows are recreated from HTML on every render.
+                   refreshAriaNames lives in the translation script, which is a
+                   separate IIFE, so it is reached through the EV_I18N bridge and
+                   guarded: a missing helper must never stop the app rendering. */
+                function refreshAriaNames() {
+                    try {
+                        var i18n = window.EV_I18N;
+                        if (i18n && typeof i18n.refreshAriaNames === "function")
+                            i18n.refreshAriaNames();
+                    } catch (e) {}
+                }
                 function render() {
                     renderBody();
                     refreshAriaNames();
