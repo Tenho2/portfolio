@@ -2679,6 +2679,8 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "sync.pending": "Saved locally · {n} change(s) waiting to sync",
             "sync.loading": "Syncing…",
             "sync.offline": "Offline · changes stay on this device",
+            "sync.syncFailed":
+              "Could not reach the server · changes stay on this device",
           },
           fi: {
             "ed.for": "Ajoneuvo {n} - luotu {d}",
@@ -3049,6 +3051,8 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "sync.loading": "Synkronoidaan…",
             "sync.offline":
               "Ei verkkoyhteyttä · muutokset säilyvät tälle laitteelle",
+            "sync.syncFailed":
+              "Palvelimeen ei saa yhteyttä · muutokset säilyvät tälle laitteelle",
           },
           sv: {
             "ed.for": "Fordon {n} - skapad {d}",
@@ -3416,6 +3420,8 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "sync.loading": "Synkar…",
             "sync.offline":
               "Ingen anslutning · ändringar stannar på den här enheten",
+            "sync.syncFailed":
+              "Kunde inte nå servern · ändringar stannar på den här enheten",
           },
           se: {
             "fav.name": "Namma",
@@ -4085,11 +4091,16 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
         function syncPull() {
           if (!syncOn()) return Promise.resolve(false);
           syncNote(TXT("sync.loading"));
+          /* vres is declared out here on purpose. The vehicles response has to
+             survive into the second .then, and a variable declared inside the
+             first callback would not be in scope there. */
+          var vres = null;
           return authClient
             .from("vehicles")
             .select("*")
             .order("created_at", { ascending: true })
-            .then(function (vres) {
+            .then(function (r) {
+              vres = r;
               if (vres && vres.error) throw vres.error;
               return authClient
                 .from("sessions")
@@ -4134,7 +4145,12 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             .catch(function (e) {
               if (window.console && window.console.warn)
                 window.console.warn("[sync] pull failed", e);
-              syncNote(TXT("sync.offline"), "warn");
+              /* A server error while the browser is online is not the same
+                 thing as being offline, and saying so was misleading. */
+              syncNote(
+                TXT(syncOnline() ? "sync.syncFailed" : "sync.offline"),
+                "warn",
+              );
               return false;
             });
         }
@@ -7628,6 +7644,10 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
         watchChartLib();
         window.addEventListener("online", function () {
           leafletState = 0;
+          /* Clear the badge first. When there is no session there is nothing to
+             pull, and the offline notice would otherwise stay on screen even
+             though the connection is back. */
+          syncNote("");
           if (syncOn()) syncPull();
         });
         window.addEventListener("offline", function () {

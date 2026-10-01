@@ -1889,6 +1889,12 @@
       "fi": "Liikaa yrityksiä. Odota minuutti ja yritä uudelleen.",
       "sv": "För många försök. Vänta en minut och försök igen.",
       "se": ""
+    },
+    "sync.syncFailed": {
+      "en": "Could not reach the server · changes stay on this device",
+      "fi": "Palvelimeen ei saa yhteyttä · muutokset säilyvät tälle laitteelle",
+      "sv": "Kunde inte nå servern · ändringar stannar på den här enheten",
+      "se": ""
     }
   }
 }
