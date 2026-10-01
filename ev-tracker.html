@@ -1882,6 +1882,19 @@
           </div>
           <div class="hint" id="vOdoHint" data-i18n="set.initialOdoLead"></div>
         </div>
+        <!-- Sharing. Hidden until the owner picks a vehicle, because the
+             controls only make sense for one car at a time. -->
+        <div class="panel" id="sharePanel" hidden>
+          <h2>
+            <span aria-hidden="true">👥</span>
+            <span data-i18n="set.share"></span>
+          </h2>
+          <p class="lead">
+            <span id="shareVehName"></span>
+            <span id="shareLead" data-i18n="set.shareLead"></span>
+          </p>
+          <div id="shareBody"></div>
+        </div>
         <div class="panel">
           <h2>
             <span aria-hidden="true">💶</span>
@@ -1975,6 +1988,13 @@
           </h2>
           <p class="lead" data-i18n-html="im.lead"></p>
 
+          <!-- With more than one vehicle stored, rows that name no vehicle in the
+               file need a destination, so the user picks one here. -->
+          <div class="f" style="max-width: 420px" id="impTargetWrap" hidden>
+            <label for="impTarget" data-i18n="im.target"></label>
+            <select id="impTarget"></select>
+            <div class="hint" data-i18n="im.targetLead"></div>
+          </div>
           <div class="f" style="max-width: 420px">
             <label for="impFile" data-i18n="im.choose"></label>
             <input
@@ -2182,6 +2202,20 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               tabindex="0"
             ></div>
             <div id="mapMsg" class="mini" hidden data-i18n="fav.mapOff"></div>
+          </div>
+          <!-- A per-place price, so home or the office always charges at the
+               rate that actually applies there. Empty means "use the default". -->
+          <div class="f" style="max-width: 220px">
+            <label for="fPrice" data-i18n="fav.price"></label
+            ><input
+              type="number"
+              id="fPrice"
+              min="0"
+              step="0.01"
+              data-i18n-ph="ph.favprice"
+              aria-describedby="fPriceHint"
+            />
+            <div class="hint" id="fPriceHint" data-i18n="fav.priceHint"></div>
           </div>
           <div class="addrow">
             <button
@@ -2841,6 +2875,38 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "sync.offline": "Offline · changes stay on this device",
             "sync.syncFailed":
               "Could not reach the server · changes stay on this device",
+            "fav.price": "Price per kWh (€)",
+            "fav.priceHint":
+              "Leave empty to use the default price. A favourite price is applied automatically when you pick the place.",
+            "im.target": "Import into vehicle",
+            "im.targetLead":
+              "Rows that name a vehicle in the file keep that vehicle. Rows without one are imported here.",
+            "set.share": "Share",
+            "set.shareLead":
+              "Let other people add charging sessions to this vehicle. They cannot rename or delete it.",
+            "set.shareWith": "Driver username",
+            "set.shareInvite": "Invite",
+            "set.shareHint":
+              "The username is the part before the domain. No email address is needed and none is stored.",
+            "set.shareNone": "No other drivers yet.",
+            "set.shareRemove": "Remove",
+            "set.shareCanEdit": "Can add sessions",
+            "set.shareNotOwner": "Only the owner of a vehicle can share it.",
+            "set.shareSignedOut":
+              "Sign in to share a vehicle with someone else.",
+            "set.shareNoSupport":
+              "Sharing is not set up on the server yet. Run the sharing SQL in Supabase and reload.",
+            "a11y.shareVeh": "Share vehicle: {v}",
+            "a11y.unshare": "Remove access for {v}",
+            "ph.shareuser": "e.g. anna",
+            "ph.favprice": "e.g. 0.30",
+            "toast.favPrice": "Price set to {p} per kWh",
+            "toast.shareOk": "{u} can now add sessions to {v}",
+            "toast.shareFail":
+              "Could not share. Check the username, and that you own the vehicle.",
+            "toast.shareNoName": "Enter a username first",
+            "toast.unshareQ": "Remove access for {u}?",
+            "toast.unshareOk": "Access removed for {u}",
           },
           fi: {
             "ed.for": "Ajoneuvo {n} - luotu {d}",
@@ -2850,11 +2916,11 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "toast.found": "Löytyi: {v}",
             brand: "Sähköautojen latausloki",
             "nav.dashboard": "Kojelauta",
-            "nav.add": "Lisää sessio",
+            "nav.add": "Lisää lataus",
             "nav.log": "Latausloki",
             "nav.fav": "Suosikit",
             "nav.set": "Asetukset",
-            db: "Selaintila · {n} sessiota · {v} ajoneuvoa",
+            db: "Selaintila · {n} latausta · {v} ajoneuvoa",
             "dash.lead":
               "Valitun ajoneuvon summat. Kaikki laskurit alkavat nollasta.",
             "dash.pick": "Valitse ajoneuvo",
@@ -2872,15 +2938,15 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "tile.kwh100": "keskim. kWh / 100 km",
             "tile.cost100": "keskim. €/100 km",
             "tile.speed": "keskim. latausteho",
-            "tile.duravg": "keskim. sessioaika",
-            "as.title": "Lisää lataussessio",
+            "tile.duravg": "keskim. latausaika",
+            "as.title": "Lisää lataus",
             "as.date": "Päivämäärä",
             "as.time": "Aika",
-            "as.dur": "Sessioaika",
+            "as.dur": "Latausaika",
             "as.durHint":
-              "1 minuutin tarkkuudella. Oletuksena keskimääräinen sessioaika.",
+              "1 minuutin tarkkuudella. Oletuksena keskimääräinen latausaika.",
             "as.durHintSec":
-              "Sekunnit näkyvät, alkavat 00:sta. Oletuksena keskimääräinen sessioaika.",
+              "Sekunnit näkyvät, alkavat 00:sta. Oletuksena keskimääräinen latausaika.",
             "as.durSec": "Näytä sekunnit (oletus 00)",
             "as.mileage": "Matkamittarilukema (km)",
             "as.location": "Paikka / laturi",
@@ -2889,7 +2955,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "as.mapDrag":
               "Vedä nappia säätääksesi sijaintia tai napsauta karttaa.",
             "as.mapOff":
-              "Kartta ei ole käytettävissä offline-tilassa. Osoite tallennetaan silti sessioon.",
+              "Kartta ei ole käytettävissä offline-tilassa. Osoite tallennetaan silti lataukseen.",
             "as.energy": "Ladattu energia (kWh)",
             "as.socStart": "Aloitus %",
             "as.socEnd": "Lopetus %",
@@ -2912,9 +2978,9 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "ph.auto": "automaattinen",
             "ph.notes": "esim. 150 kW, 24 °C, akku 20 → 80 %",
             "ph.favname": "esim. Koti, Vaasa S1",
-            "cl.lead": "Tallennetut sessiot, uusin ensin.",
+            "cl.lead": "Tallennetut lataukset, uusin ensin.",
             "cl.none":
-              "Ei vielä sessioita — lisää yksi kohdasta “Lisää sessio”.",
+              "Ei vielä latauksia — lisää yksi kohdasta “Lisää lataus”.",
             "th.date": "Päivä",
             "th.time": "Aika",
             "th.dur": "Kesto",
@@ -2952,7 +3018,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "fav.noCoords": " · ei koordinaatteja",
             "fav.uses": "{n} käyttökertaa",
             "fav.empty":
-              "Ei vielä suosikkeja — nimeä yksi ylhäältä tai valitse “Tallenna tämä paikka suosikiksi” lisätessäsi sessiota.",
+              "Ei vielä suosikkeja — nimeä yksi ylhäältä tai valitse “Tallenna tämä paikka suosikiksi” lisätessäsi latausta.",
             "set.vehicles": "Ajoneuvot",
             "set.vehiclesLead":
               "Ajoneuvovalikko näytetään vain, kun niitä on useampi kuin yksi.",
@@ -2961,7 +3027,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "set.remove": "Poista",
             "set.price": "Energian hinta",
             "set.priceLead":
-              "Käytetään sessioihin, joissa kustannus jätetään tyhjäksi. Sama arvo on muokattavissa kokonaisina eurosentteinä Lisää sessio -näkymässä.",
+              "Käytetään latauksiin, joissa kustannus jätetään tyhjäksi. Sama arvo on muokattavissa kokonaisina eurosentteinä Lisää lataus -näkymässä.",
             "set.priceEur": "Hinta per kWh (€)",
             "set.priceCents": "Sama hinta sentteinä",
             "set.export": "Vie data",
@@ -2977,11 +3043,11 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "set.dataLead": "Varmuuskopioi, palauta ja siivoa.",
             "set.backup": "Varmuuskopioi JSON",
             "set.restore": "Palauta varmuuskopio",
-            "set.clear": "Tyhjennä sessiot",
+            "set.clear": "Tyhjennä lataukset",
             "set.wipe": "Poista kaikki",
             "im.title": "Tuo latausdataa",
             "im.lead":
-              "Lataa sessiot tiedostosta. Tuetut: <strong>.csv</strong>, <strong>.tsv</strong> ja <strong>.json</strong>. Nykyiset sessiot säilytetään, ja tuodut sessiot lisätään <em>Ajoneuvo</em>-sarakkeen mukaiseen ajoneuvoon, tai nykyisesti valittuun ajoneuvoon, jos sarake puuttuu tai on tyhjä.",
+              "Lataa lataukset tiedostosta. Tuetut: <strong>.csv</strong>, <strong>.tsv</strong> ja <strong>.json</strong>. Nykyiset lataukset säilytetään, ja tuodut lataukset lisätään <em>Ajoneuvo</em>-sarakkeen mukaiseen ajoneuvoon, tai nykyisesti valittuun ajoneuvoon, jos sarake puuttuu tai on tyhjä.",
             "im.choose": "Valitse tiedosto",
             "im.go": "Tuo tiedosto",
             "im.tplNote":
@@ -3013,7 +3079,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               "Sama kuin CSV, mutta sarakkeet erotetaan sarkausmerkillä. Tallentamalla CSV:n Excelistä tai Google Sheetsistä muodossa “Taulukkoerotettu (.tsv)” toimii.",
             "how.json": "JSON",
             "how.jsonP":
-              "Joko tavallinen sessioiden taulukko, tai aiemmin Varmuuskopioi JSON -toiminnolla tehty tiedosto (joka voi sisältää myös <code>vehicles</code>, <code>favourites</code> ja <code>pricePerKwh</code>).",
+              "Joko tavallisten latausten taulukko, tai aiemmin Varmuuskopioi JSON -toiminnolla tehty tiedosto (joka voi sisältää myös <code>vehicles</code>, <code>favourites</code> ja <code>pricePerKwh</code>).",
             "how.notes2": "Huomioita",
             "how.n1":
               "UTF-8-tiedoston ensimmäinen rivi voi sisältää tavumerkintä; se ohitetaan.",
@@ -3021,7 +3087,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               'Teksti, jossa on pilkku, puolipiste tai lainausmerkki, on kuitattava kahdella lainausmerkillä (<code>"Oy, Ab"</code>).',
             "how.n3":
               "Rivit, joista puuttuu päivämäärä, aika, paikka tai numeerinen energia-arvo, ohitetaan ja luetellaan syineen, joten mitään ei tuoda huomaamatta.",
-            "ed.title": "Muokkaa lataussessiota",
+            "ed.title": "Muokkaa latausta",
             "ed.durHint": "1 minuutin tarkkuudella",
             "ed.cost": "Kustannus (€)",
             "ed.fav": "Tallennettu suosikkipaikaksi",
@@ -3031,8 +3097,8 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "aria.theme": "Vaihda väriteema",
             "aria.map": "Kartta",
             "aria.sessMap": "Valitun paikan kartta",
-            "aria.edit": "Muokkaa sessiota",
-            "aria.del": "Poista sessio",
+            "aria.edit": "Muokkaa latausta",
+            "aria.del": "Poista lataus",
             "aria.newveh": "Uuden ajoneuvon nimi",
             "aria.addr": "Osoite",
             "aria.cents": "Hinta per kWh eurosentteinä",
@@ -3041,36 +3107,36 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "ph.addr": "Katu, kaupunki, maa",
             "tag.yes": "kyllä",
             "tag.no": "ei",
-            "toast.storage": "Tallennustila täynnä — sessiota ei tallennettu",
+            "toast.storage": "Tallennustila täynnä — latausta ei tallennettu",
             "toast.favSave": "Suosikkeja ei voitu tallentaa",
-            "toast.saved": "Sessio tallennettiin ajoneuvoon {v}",
+            "toast.saved": "Lataus tallennettiin ajoneuvoon {v}",
             "toast.savedFav":
-              "Sessio tallennettiin ajoneuvoon {v} · suosikki päivitetty",
-            "toast.updated": "Sessio päivitetty",
-            "toast.deleted": "Sessio poistettu",
+              "Lataus tallennettiin ajoneuvoon {v} · suosikki päivitetty",
+            "toast.updated": "Lataus päivitetty",
+            "toast.deleted": "Lataus poistettu",
             "toast.delFav": "Suosikki poistettu",
             "toast.vehAdd": "{v} lisätty",
             "toast.vehRem": "{v} poistettu",
             "toast.vehName": "Anna ajoneuvolle nimi",
-            "toast.csv": "{n} sessiota vietty CSV-muodossa",
-            "toast.json": "{n} sessiota vietty",
+            "toast.csv": "{n} latausta vietty CSV-muodossa",
+            "toast.json": "{n} latausta vietty",
             "toast.nothing": "Ei vielä vietävää",
             "toast.backup": "Varmuuskopio ladattu",
-            "toast.restore": "Palautettiin {n} sessiota ja {f} suosikkia",
+            "toast.restore": "Palautettiin {n} latausta ja {f} suosikkia",
             "toast.restoreOrphans":
-              "Palautettiin {n} sessiota ja {f} suosikkia · {o} sessiota ohitettiin, koska niiden ajoneuvo puuttui",
+              "Palautettiin {n} latausta ja {f} suosikkia · {o} latausta ohitettiin, koska niiden ajoneuvo puuttui",
             "toast.badRestore": "Tiedosto ei ole kelvollinen varmuuskopio",
-            "toast.cleared": "Sessiot tyhjennetty",
+            "toast.cleared": "Lataukset tyhjennetty",
             "toast.wiped": "Kaikki poistettu",
             "toast.clearQ":
-              "Poistetaanko kaikki {n} tallennettua sessiota? Ajoneuvot ja suosikit säilyvät.",
+              "Poistetaanko kaikki {n} tallennettua latausta? Ajoneuvot ja suosikit säilyvät.",
             "toast.wipeQ":
-              "Poistetaanko kaikki ajoneuvot, kaikki sessiot ja kaikki suosikit? Tätä ei voi perua.",
-            "toast.remQ": "Poistetaanko {v} ja sen {n} sessiota?",
-            "toast.delQ": "Poistetaanko sessio paikassa {loc}?",
+              "Poistetaanko kaikki ajoneuvot, kaikki lataukset ja kaikki suosikit? Tätä ei voi perua.",
+            "toast.remQ": "Poistetaanko {v} ja sen {n} latausta?",
+            "toast.delQ": "Poistetaanko lataus paikassa {loc}?",
             "toast.renQ": "Uusi nimi ajoneuvulle {v}",
             "toast.delFavQ": "Poistetaanko suosikki “{n}”?",
-            "toast.imported": "{n} sessiota tuotu",
+            "toast.imported": "{n} latausta tuotu",
             "toast.tplCsv": "CSV-malli ladattu",
             "toast.tplJson": "JSON-malli ladattu",
             "toast.locFirst": "Kirjoita ensin osoite",
@@ -3082,7 +3148,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               "Osoitehaku epäonnistui (offline tai estetty). Voit silti asettaa napin kartalle tai syöttää koordinaatit.",
             "toast.locFirst2": "Kirjoita ensin osoite.",
             "toast.offline2":
-              "Olet offline-tilassa — osoite tallennetaan silti sessioon.",
+              "Olet offline-tilassa — osoite tallennetaan silti lataukseen.",
             "toast.noMatch2": "Ei osumaa hakusanalle “{q}”.",
             "toast.geoFail2": "Osoitehaku epäonnistui (offline tai estetty).",
             "toast.geoNone": "Tämä selain ei voi jakaa sijaintiasi.",
@@ -3117,7 +3183,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "err.json": "Tiedostoa ei voitu lukea JSON-muodossa.",
             "err.jsonBad": "Tiedosto ei ole kelvollinen JSON: {m}",
             "err.jsonShape":
-              "Odotettiin sessioiden taulukkoa tai varmuuskopio-objektia, jossa on sessions-taulukko.",
+              "Odotettiin latausten taulukkoa tai varmuuskopio-objektia, jossa on sessions-taulukko.",
             "err.rowObj": "rivi {n}: ei ole objekti",
             "err.empty": "Ei tuotavaa.",
             "err.emptyMore":
@@ -3142,9 +3208,9 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "err.open": "Tiedostoa ei voitu avata.",
             more: "… ja {n} muuta",
             "veh.created": "{v} luotu",
-            "imp.note": "Tuotiin {n} sessiota.",
-            "log.for": "{n} sessiota tallennettu ajoneuvoon {v}, uusin ensin.",
-            "log.none": "Ajoneuvoon {v} ei ole vielä tallennettu sessioita.",
+            "imp.note": "Tuotiin {n} latausta.",
+            "log.for": "{n} latausta tallennettu ajoneuvoon {v}, uusin ensin.",
+            "log.none": "Ajoneuvoon {v} ei ole vielä tallennettu latauksia.",
             yes: "kyllä",
             no: "ei",
             lang: "Kieli",
@@ -3153,14 +3219,14 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "a11y.stats": "Valitun ajoneuvon summat",
             "a11y.vehList": "Ajoneuvon valinta",
             "a11y.picked": "Valittu: {v}",
-            "a11y.editSession": "Muokkaa sessiota: {v}, {d}",
-            "a11y.deleteSession": "Poista sessio: {v}, {d}",
+            "a11y.editSession": "Muokkaa latausta: {v}, {d}",
+            "a11y.deleteSession": "Poista lataus: {v}, {d}",
             "a11y.useFav": "Käytä suosikkia: {v}",
             "a11y.editFav": "Muokkaa suosikkia: {v}",
             "a11y.deleteFav": "Poista suosikki: {v}",
             "a11y.renameVeh": "Nimeä ajoneuvo uudelleen: {v}",
             "a11y.removeVeh": "Poista ajoneuvo: {v}",
-            "grp.when": "Milloin sessio tapahtui",
+            "grp.when": "Milloin lataus tapahtui",
             "grp.duration": "Kesto ja matka",
             "grp.soc": "Akun varaus, alku ja loppu",
             "grp.coords": "Kartan koordinaatit",
@@ -3169,11 +3235,11 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "chart.energy": "Energia (kWh)",
             "chart.cost": "Kustannus (€)",
             "chart.empty":
-              "Ei vielä sessioita tälle ajoneuvolle. Lisää sessio, niin näet kuukausikartan.",
+              "Ei vielä latauksia tälle ajoneuvolle. Lisää lataus, niin näet kuukausikartan.",
             "chart.offline":
               "Kaavakirjastoa ei voitu ladata (ei internetyhteyttä?). Muu toimii normaalisti.",
             "how.soc":
-              "Akun varaus ennen ja jälkeen istunnan, prosentteina (0-100). Jätä tyhjäksi, jos tuntematon.",
+              "Akun varaus ennen ja jälkeen latauksen, prosentteina (0-100). Jätä tyhjäksi, jos tuntematon.",
             "err.soc":
               "Rivi {n}: akun prosenttiarvo ei ole numero, jätettiin tyhjäksi.",
             "set.editVehicle": "Muokkaa ajoneuvoa",
@@ -3184,7 +3250,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "aria.initialodo": "aloitusmatkamittarin lukema kilometreinä",
             "as.vehicle": "Ajoneuvon nimi",
             "auth.lead":
-              "Kirjaudu sisään synkronoidaksesi ajoneuvot ja sessiot.",
+              "Kirjaudu sisään synkronoidaksesi ajoneuvot ja lataukset.",
             "auth.username": "Käyttäjätunnus",
             "auth.usernameHint": "Sähköpostiosoitetta ei tarvita.",
             "auth.password": "Salasana",
@@ -3199,9 +3265,9 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "confirm.remove": "Poista ajoneuvo",
             "confirm.deleteEverything": "Poista kaikki",
             "confirm.removeVehicle": "Poistetaanko ajoneuvo?",
-            "confirm.deleteSession": "Poistetaanko sessio?",
+            "confirm.deleteSession": "Poistetaanko lataus?",
             "confirm.deleteFav": "Poistetaanko suosikki?",
-            "confirm.clearSessions": "Tyhjennetäänkö kaikki sessiot?",
+            "confirm.clearSessions": "Tyhjennetäänkö kaikki lataukset?",
             "confirm.wipe": "Poistetaanko kaikki?",
             "auth.needAccount": "Tarvitseko tilin? Rekisteröidy",
             "auth.haveAccount": "Onko tili jo? Kirjaudu",
@@ -3232,6 +3298,38 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               "Ei verkkoyhteyttä · muutokset säilyvät tälle laitteelle",
             "sync.syncFailed":
               "Palvelimeen ei saa yhteyttä · muutokset säilyvät tälle laitteelle",
+            "fav.price": "Hinta per kWh (€)",
+            "fav.priceHint":
+              "Jätä tyhjäksi, jos haluat käyttää oletushintaa. Suosikin hinta otetaan käyttöön automaattisesti, kun valitset paikan.",
+            "im.target": "Tuo ajoneuvoon",
+            "im.targetLead":
+              "Rivit, joissa tiedostossa on ajoneuvon nimi, säilyttävät sen. Rivit ilman nimeä tuodaan tähän ajoneuvoon.",
+            "set.share": "Jaa",
+            "set.shareLead":
+              "Anna muiden henkilöiden lisätä latauksia tähän ajoneuvoon. He eivät voi nimetä sitä uudelleen eivätkä poistaa sitä.",
+            "set.shareWith": "Kuljettajan käyttäjätunnus",
+            "set.shareInvite": "Kutsu",
+            "set.shareHint":
+              "Käyttäjätunnus on verkkotunnuksen edessä oleva osa. Sähköpostiosoitetta ei tarvita eikä tallenneta.",
+            "set.shareNone": "Ei vielä muita kuljettajia.",
+            "set.shareRemove": "Poista",
+            "set.shareCanEdit": "Voi lisätä latauksia",
+            "set.shareNotOwner": "Vain ajoneuvon omistaja voi jakaa sen.",
+            "set.shareSignedOut":
+              "Kirjaudu sisään, niin voit jakaa ajoneuvon toisen henkilön kanssa.",
+            "set.shareNoSupport":
+              "Jakaminen ei ole vielä käytössä palvelimella. Aja Supabasessa jakamisen SQL ja lataa sivu uudelleen.",
+            "a11y.shareVeh": "Jaa ajoneuvo: {v}",
+            "a11y.unshare": "Poista käyttöoikeus: {v}",
+            "ph.shareuser": "esim. anna",
+            "ph.favprice": "esim. 0,30",
+            "toast.favPrice": "Hinnaksi asetettiin {p} per kWh",
+            "toast.shareOk": "{u} voi nyt lisätä latauksia ajoneuvoon {v}",
+            "toast.shareFail":
+              "Jakaminen ei onnistunut. Tarkista käyttäjätunnus ja että omistat ajoneuvon.",
+            "toast.shareNoName": "Anna ensin käyttäjätunnus",
+            "toast.unshareQ": "Poistetaanko käyttöoikeus käyttäjältä {u}?",
+            "toast.unshareOk": "Käyttöoikeus poistettu käyttäjältä {u}",
           },
           sv: {
             "ed.for": "Fordon {n} - skapad {d}",
@@ -3620,6 +3718,38 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               "Ingen anslutning · ändringar stannar på den här enheten",
             "sync.syncFailed":
               "Kunde inte nå servern · ändringar stannar på den här enheten",
+            "fav.price": "Pris per kWh (€)",
+            "fav.priceHint":
+              "Lämna tomt för att använda standardpriset. Ett favoritpris tillämpas automatiskt när du väljer platsen.",
+            "im.target": "Importera till fordon",
+            "im.targetLead":
+              "Rader som anger ett fordon i filen behåller det. Rader utan namn importeras hit.",
+            "set.share": "Dela",
+            "set.shareLead":
+              "Låt andra lägga till laddningar på det här fordonet. De kan inte byta namn på det eller ta bort det.",
+            "set.shareWith": "Förarens användarnamn",
+            "set.shareInvite": "Bjud in",
+            "set.shareHint":
+              "Användarnamnet är delen före domänen. Ingen e-postadress behövs och ingen sparas.",
+            "set.shareNone": "Inga andra förare ännu.",
+            "set.shareRemove": "Ta bort",
+            "set.shareCanEdit": "Kan lägga till laddningar",
+            "set.shareNotOwner": "Endast ägaren till ett fordon kan dela det.",
+            "set.shareSignedOut":
+              "Logga in för att dela ett fordon med någon annan.",
+            "set.shareNoSupport":
+              "Delning är inte installerad på servern än. Kör delnings-SQL i Supabase och ladda om sidan.",
+            "a11y.shareVeh": "Dela fordon: {v}",
+            "a11y.unshare": "Ta bort åtkomst för {v}",
+            "ph.shareuser": "t.ex. anna",
+            "ph.favprice": "t.ex. 0,30",
+            "toast.favPrice": "Priset satt till {p} per kWh",
+            "toast.shareOk": "{u} kan nu lägga till laddningar på {v}",
+            "toast.shareFail":
+              "Kunde inte dela. Kontrollera användarnamnet och att du äger fordonet.",
+            "toast.shareNoName": "Ange ett användarnamn först",
+            "toast.unshareQ": "Ta bort åtkomsten för {u}?",
+            "toast.unshareOk": "Åtkomsten borttagen för {u}",
           },
           se: {
             "fav.name": "Namma",
@@ -3840,6 +3970,10 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           p: "ev.v1.price",
           t: "theme",
           f: "ev.v1.favs",
+          /* usernames of people we invited, keyed by vehicle and user id.
+             The share table only stores ids, so this is what lets the owner
+             recognise "Anna" instead of a bare uuid. */
+          n: "ev.v1.shareNames",
         };
         var $ = function (id) {
           return document.getElementById(id);
@@ -4247,6 +4381,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                 /* 404 simply means the SQL has not been run yet */
                 sharesAvailable = false;
                 sharesChecked = true;
+                if (shareTarget) renderShare();
                 return false;
               }
               shares = {};
@@ -4261,11 +4396,14 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               }
               sharesAvailable = true;
               sharesChecked = true;
+              /* Keep an open panel in step with what the server now says. */
+              if (shareTarget) renderShare();
               return true;
             })
             .catch(function () {
               sharesAvailable = false;
               sharesChecked = true;
+              if (shareTarget) renderShare();
               return false;
             });
         }
@@ -4333,6 +4471,193 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
         function ownsVehicle(vehicleId) {
           var v = vehById(vehicleId);
           return !!(v && ownerId() && v.userId === ownerId());
+        }
+
+        /* ---------- sharing user interface ---------- */
+        var shareTarget = null;
+        var shareNames = {};
+        try {
+          shareNames = JSON.parse(localStorage.getItem(K.n) || "{}") || {};
+        } catch (err) {
+          /* a corrupt name cache is only cosmetic, so start over */
+          shareNames = {};
+        }
+        /** True when the signed-in user could have sharing controls at all. */
+        function canShare() {
+          return !!syncOn();
+        }
+        function saveShareNames() {
+          try {
+            localStorage.setItem(K.n, JSON.stringify(shareNames));
+          } catch (err) {
+            /* losing the labels is not worth interrupting the user for */
+          }
+        }
+        /** Remember a username against the user id the invite resolved to. */
+        function noteShareName(vehicleId, userId, name) {
+          if (!vehicleId || !userId || !name) return;
+          if (!shareNames[vehicleId]) shareNames[vehicleId] = {};
+          shareNames[vehicleId][userId] = name;
+          saveShareNames();
+        }
+        /** Best available label for a share: the username we invited, else a short id. */
+        function shareLabel(vehicleId, userId) {
+          var byVeh = shareNames[vehicleId];
+          if (byVeh && byVeh[userId]) return byVeh[userId];
+          return String(userId || "").slice(0, 8);
+        }
+        /** Open the sharing panel for one vehicle. */
+        function openShare(vehicleId) {
+          shareTarget = vehicleId;
+          var v = vehById(vehicleId);
+          $("shareVehName").textContent = v ? v.name + ": " : "";
+          renderShare();
+          go("settings");
+          var first = $("shareBody").querySelector("input, button");
+          if (first) first.focus();
+        }
+        /**
+         * Draw the sharing panel. It states plainly why the controls are
+         * missing instead of silently showing an empty box.
+         */
+        function renderShare() {
+          var panel = $("sharePanel");
+          if (!shareTarget || !vehById(shareTarget)) {
+            panel.hidden = true;
+            return;
+          }
+          panel.hidden = false;
+          var box = $("shareBody");
+          if (!syncOn()) {
+            box.innerHTML =
+              '<p class="mini">' + TXT("set.shareSignedOut") + "</p>";
+            return;
+          }
+          if (!ownsVehicle(shareTarget)) {
+            box.innerHTML =
+              '<p class="mini">' + TXT("set.shareNotOwner") + "</p>";
+            return;
+          }
+          if (!sharesAvailable) {
+            box.innerHTML =
+              '<p class="mini">' + TXT("set.shareNoSupport") + "</p>";
+            return;
+          }
+          var list = shares[shareTarget] || [];
+          var h = "";
+          if (!list.length) {
+            h += '<p class="mini">' + TXT("set.shareNone") + "</p>";
+          } else {
+            h += '<div class="list">';
+            for (var i = 0; i < list.length; i++) {
+              h +=
+                '<div class="item">' +
+                '<span aria-hidden="true" style="font-size:1.2rem">👤</span>' +
+                '<span class="nm">' +
+                esc(shareLabel(shareTarget, list[i].user_id)) +
+                "</span>" +
+                '<span class="mt">' +
+                TXT("set.shareCanEdit") +
+                "</span>" +
+                '<button type="button" class="btn sm dgr" data-unshare="' +
+                esc(list[i].user_id) +
+                '" aria-label="' +
+                TXT("a11y.unshare", {
+                  v: esc(shareLabel(shareTarget, list[i].user_id)),
+                }) +
+                '"><span aria-hidden="true">' +
+                TXT("set.shareRemove") +
+                "</span></button></div>";
+            }
+            h += "</div>";
+          }
+          h +=
+            '<div class="addrow-fields" style="margin-top:0.5rem">' +
+            '<div class="f">' +
+            '<label for="shareUser">' +
+            TXT("set.shareWith") +
+            "</label>" +
+            '<input type="text" id="shareUser" maxlength="60" ' +
+            'data-i18n-ph="ph.shareuser" ' +
+            'autocomplete="off" spellcheck="false" />' +
+            "</div>" +
+            '<button type="button" class="btn sec" id="shareInvite">' +
+            TXT("set.shareInvite") +
+            "</button></div>" +
+            '<div class="hint">' +
+            TXT("set.shareHint") +
+            "</div>";
+          box.innerHTML = h;
+          if (window.EV_I18N) window.EV_I18N.applyI18n(box);
+          /* The panel is rebuilt from scratch each time, so the invite controls
+             are wired here rather than once at startup. */
+          var invite = $("shareInvite");
+          if (invite)
+            invite.addEventListener("click", function () {
+              doShareInvite();
+            });
+          var who = $("shareUser");
+          if (who)
+            who.addEventListener("keydown", function (ev) {
+              if (ev.key !== "Enter") return;
+              ev.preventDefault();
+              doShareInvite();
+            });
+        }
+        /**
+         * Invite the typed username to the vehicle currently shown.
+         * @returns {Promise<void>}
+         */
+        function doShareInvite() {
+          var input = $("shareUser");
+          if (!input || !shareTarget) return Promise.resolve();
+          var name = input.value.trim();
+          if (!name) {
+            toast(TXT("toast.shareNoName"));
+            input.focus();
+            return Promise.resolve();
+          }
+          var vehicle = shareTarget;
+          return shareAdd(vehicle, name).then(function (ok) {
+            if (!ok) {
+              toast(TXT("toast.shareFail"));
+              if (input) input.focus();
+              return;
+            }
+            /* The id that was just granted is the newest entry for this car. */
+            var now = shares[vehicle] || [];
+            for (var i = now.length - 1; i >= 0; i--)
+              noteShareName(vehicle, now[i].user_id, name);
+            if (input) input.value = "";
+            toast(TXT("toast.shareOk", { u: name, v: vehById(vehicle).name }));
+            renderShare();
+          });
+        }
+        /**
+         * Revoke one driver's access after confirmation.
+         * @param {string} userId
+         */
+        function unshare(userId) {
+          if (!shareTarget || !userId) return Promise.resolve(false);
+          var label = shareLabel(shareTarget, userId);
+          return askConfirm(TXT("toast.unshareQ", { u: label }), {
+            heading: "confirm.remove",
+            ok: "confirm.remove",
+          }).then(function (yes) {
+            if (!yes) return false;
+            var vehicle = shareTarget;
+            return shareRemove(vehicle, userId).then(function (ok) {
+              if (ok) {
+                if (shareNames[vehicle]) delete shareNames[vehicle][userId];
+                saveShareNames();
+                toast(TXT("toast.unshareOk", { u: label }));
+                renderShare();
+              } else {
+                toast(TXT("toast.shareFail"));
+              }
+              return ok;
+            });
+          });
         }
         /**
          * Run a worker over a list with a bounded number in flight.
@@ -4694,14 +5019,18 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                 address: f,
                 lat: null,
                 lng: null,
+                price: null,
               });
             else if (f && typeof f === "object")
+              /* Every field is rebuilt explicitly, so a newly added one has to be
+                 listed here too or it is lost the next time the page loads. */
               favs.push({
                 id: f.id || uid(),
                 name: String(f.name || f.address || "Favourite"),
                 address: String(f.address || f.name || ""),
                 lat: isNum(f.lat) ? +f.lat : null,
                 lng: isNum(f.lng) ? +f.lng : null,
+                price: isNum(f.price) && +f.price >= 0 ? +f.price : null,
               });
           }
         }
@@ -5818,6 +6147,18 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               '"><span aria-hidden="true">' +
               TXT("set.rename") +
               "</span></button>" +
+              (canShare() && ownsVehicle(vehicles[k].id)
+                ? '<button type="button" class="btn sm sec" data-share="' +
+                  esc(vehicles[k].id) +
+                  '" aria-label="' +
+                  TXT("a11y.shareVeh", { v: esc(vehicles[k].name) }) +
+                  '"><span aria-hidden="true">' +
+                  TXT("set.share") +
+                  (shareCount(vehicles[k].id)
+                    ? " (" + shareCount(vehicles[k].id) + ")"
+                    : "") +
+                  "</span></button>"
+                : "") +
               (vehicles.length > 1
                 ? '<button type="button" class="btn sm dgr" data-rm="' +
                   esc(vehicles[k].id) +
@@ -5832,6 +6173,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               "</div>";
           }
           $("vehSettings").innerHTML = vs;
+          renderImportTarget();
           syncCents();
           renderFavs();
           renderChart();
@@ -5847,6 +6189,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           for (var i = 0; i < favs.length; i++) {
             var f = favs[i];
             var has = isNum(f.lat) && isNum(f.lng);
+            var fp = favPrice(f);
             var uses = sessions.filter(function (s) {
               return s.location === f.address || s.location === f.name;
             }).length;
@@ -5855,6 +6198,11 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               '<span aria-hidden="true" style="font-size:1.2rem">📍</span>' +
               '<span class="nm">' +
               esc(f.name) +
+              (fp === null
+                ? ""
+                : ' <span class="mt">💶 ' +
+                  esc(fmtCents(Math.round(fp * 100))) +
+                  "</span>") +
               '<br><span class="mt">' +
               esc(f.address) +
               (has
@@ -6099,9 +6447,56 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           if (h > 23 || mi > 59) return null;
           return pad(h) + ":" + pad(mi);
         }
+        /**
+         * The vehicle rows without their own Vehicle column should land in. With only
+         * one vehicle stored there is no choice to make, so it falls back to that one.
+         * @returns {Object|null}
+         */
+        function importTargetVehicle() {
+          if (vehicles.length < 2) return veh();
+          var sel = $("impTarget");
+          var wanted = sel ? sel.value : "";
+          for (var i = 0; i < vehicles.length; i++)
+            if (vehicles[i].id === wanted) return vehicles[i];
+          return veh();
+        }
+        /**
+         * Show the "import into" picker, but only when the choice actually
+         * exists. Called from render() so it follows vehicle changes.
+         */
+        function renderImportTarget() {
+          var wrap = $("impTargetWrap"),
+            sel = $("impTarget");
+          if (!wrap || !sel) return;
+          var many = vehicles.length > 1;
+          wrap.hidden = !many;
+          if (!many) return;
+          var keep = sel.value || (veh() ? veh().id : "");
+          var h = "";
+          for (var i = 0; i < vehicles.length; i++)
+            h +=
+              '<option value="' +
+              esc(vehicles[i].id) +
+              '">' +
+              esc(vehicles[i].name) +
+              "</option>";
+          sel.innerHTML = h;
+          sel.value = vehicles.some(function (v) {
+            return v.id === keep;
+          })
+            ? keep
+            : vehicles[0].id;
+        }
+        /**
+         * Resolve the Vehicle column, falling back to the picker when the file
+         * does not name one. Existing behaviour kept: an unknown name creates
+         * a new vehicle, because the file is the source of truth.
+         * @param {string} name  the Vehicle cell, possibly empty
+         * @returns {Object} the vehicle the row belongs to
+         */
         function vehicleForImport(name) {
           var want = String(name || "").trim();
-          if (!want) return veh();
+          if (!want) return importTargetVehicle();
           var low = want.toLowerCase();
           for (var i = 0; i < vehicles.length; i++) {
             if (vehicles[i].name.toLowerCase() === low) return vehicles[i];
@@ -6692,12 +7087,24 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             addr = $("fAddr").value.trim();
           var la = $("fLat").value.trim(),
             lo = $("fLng").value.trim();
+          var pr = $("fPrice") ? $("fPrice").value.trim() : "";
           return {
             name: name || addr,
             address: addr || name,
             lat: la === "" ? null : isNum(+la) ? +la : null,
             lng: lo === "" ? null : isNum(+lo) ? +lo : null,
+            /* An empty or unusable field means "no own price", which is not the
+               same as a price of 0, so it is stored as null rather than 0. */
+            price: pr === "" || !isNum(pr) ? null : Math.max(0, +pr),
           };
+        }
+        /**
+         * The place's own price per kWh, or null when it has none.
+         * @param {Object} f  a favourite
+         * @returns {number|null}
+         */
+        function favPrice(f) {
+          return f && isNum(f.price) && f.price >= 0 ? +f.price : null;
         }
         /**
          * Load a favourite into the form for editing.
@@ -6708,6 +7115,10 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           $("fAddr").value = f.address || "";
           $("fLat").value = isNum(f.lat) ? f.lat : "";
           $("fLng").value = isNum(f.lng) ? f.lng : "";
+          if ($("fPrice")) {
+            var fp = favPrice(f);
+            $("fPrice").value = fp === null ? "" : fp.toFixed(2);
+          }
           editFav = f.id || null;
           $("fSave").textContent = f.id ? TXT("fav.update") : TXT("fav.save");
           if (isNum(f.lat) && isNum(f.lng))
@@ -6719,6 +7130,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           $("fAddr").value = "";
           $("fLat").value = "";
           $("fLng").value = "";
+          if ($("fPrice")) $("fPrice").value = "";
           editFav = null;
           $("fSave").textContent = TXT("fav.save");
           $("geoStat").textContent = TXT("fav.findHint");
@@ -6769,6 +7181,8 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
         }
         /**
          * Fill the session location from a favourite and load its coordinates.
+         * A favourite that carries its own price also applies it, so home and
+         * the office always charge at the rate that applies there.
          * @param {string} id  favourite id
          */
         function useFav(id) {
@@ -6776,6 +7190,13 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           if (!f) return;
           $("location").value = f.address || f.name;
           go("add-session");
+          var fp = favPrice(f);
+          if (fp !== null) {
+            setPriceCents(Math.round(fp * 100));
+            recalcFromPrice();
+            syncCents();
+            toast(TXT("toast.favPrice", { p: fmtCents(Math.round(fp * 100)) }));
+          }
           $("location").focus();
         }
         /**
@@ -6833,6 +7254,9 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             address: address || n,
             lat: isNum(lat) ? lat : null,
             lng: isNum(lng) ? lng : null,
+            /* A place saved from a session has no price of its own yet; when the
+               favourite already exists above, its price is deliberately kept. */
+            price: null,
           });
           saveFavs();
           renderFavs();
@@ -7086,10 +7510,25 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               if (!$("fName").value.trim())
                 $("fName").value = hit.name || short || q;
               if (short) $("fAddr").value = short;
+              showPin("map", lat, lng, hit.name || short, favPinDragged);
+              /* A successful lookup now stores the place straight away. Finding
+                 an address used to only fill the form, which read as "nothing
+                 happened" on the saved list until Save was pressed as well. */
+              /* Looking up a different address in the same form means a new
+                 place, not a silent overwrite of the one being edited. */
+              var beingEdited = editFav ? favById(editFav) : null;
+              if (beingEdited) {
+                var wasAddr = (beingEdited.address || "").toLowerCase();
+                if (
+                  wasAddr &&
+                  ($("fAddr").value || "").toLowerCase() !== wasAddr
+                )
+                  editFav = null;
+              }
+              saveFavourite();
               $("geoStat").textContent = TXT("toast.found", {
                 v: short,
               });
-              showPin("map", lat, lng, hit.name || short, favPinDragged);
             })
             .catch(function () {
               $("geoStat").textContent = TXT("toast.geoFail");
@@ -7635,7 +8074,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
         /* ---------- events ---------- */
         document.addEventListener("click", function (e) {
           var t = e.target.closest(
-            "[data-go],[data-v],[data-del],[data-edit],[data-ren],[data-rm],[data-use],[data-fedit],[data-fdel]",
+            "[data-go],[data-v],[data-del],[data-edit],[data-ren],[data-rm],[data-use],[data-fedit],[data-fdel],[data-share],[data-unshare]",
           );
           if (!t) return;
           if (t.hasAttribute("data-go")) {
@@ -7678,6 +8117,14 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           }
           if (t.hasAttribute("data-rm")) {
             removeVehicle(t.getAttribute("data-rm"));
+            return;
+          }
+          if (t.hasAttribute("data-share")) {
+            openShare(t.getAttribute("data-share"));
+            return;
+          }
+          if (t.hasAttribute("data-unshare")) {
+            unshare(t.getAttribute("data-unshare"));
           }
         });
         $("vSave").addEventListener("click", addVehicle);

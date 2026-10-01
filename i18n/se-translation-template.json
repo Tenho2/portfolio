@@ -80,7 +80,7 @@
     },
     "nav.add": {
       "en": "Add session",
-      "fi": "Lisää sessio",
+      "fi": "Lisää lataus",
       "sv": "Lägg till session",
       "se": ""
     },
@@ -104,7 +104,7 @@
     },
     "db": {
       "en": "Local storage · {n} session(s) · {v} vehicle(s)",
-      "fi": "Selaintila · {n} sessiota · {v} ajoneuvoa",
+      "fi": "Selaintila · {n} latausta · {v} ajoneuvoa",
       "sv": "Lokalt lagring · {n} session(er) · {v} fordon",
       "se": ""
     },
@@ -144,6 +144,24 @@
       "sv": "Sträcka",
       "se": ""
     },
+    "tile.distEst": {
+      "en": "Distance (since first reading)",
+      "fi": "Matka (ensimmäisestä lukemasta)",
+      "sv": "Sträcka (sedan första mätning)",
+      "se": ""
+    },
+    "tile.distEstHelp": {
+      "en": "No starting odometer was given for this vehicle, so distance is measured from the first logged reading.",
+      "fi": "Ajoneuvolle ei ole asetettu aloitusmatkamittaria, joten matka lasketaan ensimmäisestä kirjatusta lukemasta.",
+      "sv": "Ingen startodometer har angetts för det här fordonet, så sträckan mäts från första loggade mätningen.",
+      "se": ""
+    },
+    "tile.distHelp": {
+      "en": "Distance from the starting odometer you set for this vehicle.",
+      "fi": "Matka ajoneuvulle asettamastasi aloitusmatkamittarista.",
+      "sv": "Sträcka från startodometern du angett för det här fordonet.",
+      "se": ""
+    },
     "tile.cost": {
       "en": "Total cost",
       "fi": "Kokonaiskustannus",
@@ -176,13 +194,13 @@
     },
     "tile.duravg": {
       "en": "Avg session duration",
-      "fi": "keskim. sessioaika",
+      "fi": "keskim. latausaika",
       "sv": "medel sessionstid",
       "se": ""
     },
     "as.title": {
       "en": "Add charging session",
-      "fi": "Lisää lataussessio",
+      "fi": "Lisää lataus",
       "sv": "Lägg till laddningssession",
       "se": ""
     },
@@ -200,19 +218,19 @@
     },
     "as.dur": {
       "en": "Session duration",
-      "fi": "Sessioaika",
+      "fi": "Latausaika",
       "sv": "Sessionstid",
       "se": ""
     },
     "as.durHint": {
       "en": "1-minute steps. Defaults to your average session length.",
-      "fi": "1 minuutin tarkkuudella. Oletuksena keskimääräinen sessioaika.",
+      "fi": "1 minuutin tarkkuudella. Oletuksena keskimääräinen latausaika.",
       "sv": "1 minuters steg. Förvalet är din genomsnittliga sessionstid.",
       "se": ""
     },
     "as.durHintSec": {
       "en": "Seconds shown, starting from 00. Defaults to your average session length.",
-      "fi": "Sekunnit näkyvät, alkavat 00:sta. Oletuksena keskimääräinen sessioaika.",
+      "fi": "Sekunnit näkyvät, alkavat 00:sta. Oletuksena keskimääräinen latausaika.",
       "sv": "Sekunder visas, börjar på 00. Förvalet är din genomsnittliga sessionstid.",
       "se": ""
     },
@@ -254,7 +272,7 @@
     },
     "as.mapOff": {
       "en": "Map unavailable offline. The address is still saved with the session.",
-      "fi": "Kartta ei ole käytettävissä offline-tilassa. Osoite tallennetaan silti sessioon.",
+      "fi": "Kartta ei ole käytettävissä offline-tilassa. Osoite tallennetaan silti lataukseen.",
       "sv": "Kartan är inte tillgänglig offline. Adressen sparas ändå med sessionen.",
       "se": ""
     },
@@ -262,6 +280,24 @@
       "en": "Energy charged (kWh)",
       "fi": "Ladattu energia (kWh)",
       "sv": "Laddad energi (kWh)",
+      "se": ""
+    },
+    "as.socStart": {
+      "en": "Start %",
+      "fi": "Aloitus %",
+      "sv": "Start %",
+      "se": ""
+    },
+    "as.socEnd": {
+      "en": "End %",
+      "fi": "Lopetus %",
+      "sv": "Slut %",
+      "se": ""
+    },
+    "ph.soc": {
+      "en": "e.g. 20",
+      "fi": "esim. 20",
+      "sv": "t.ex. 20",
       "se": ""
     },
     "as.total": {
@@ -362,13 +398,13 @@
     },
     "cl.lead": {
       "en": "Stored sessions, newest first.",
-      "fi": "Tallennetut sessiot, uusin ensin.",
+      "fi": "Tallennetut lataukset, uusin ensin.",
       "sv": "Sparade sessioner, nyast först.",
       "se": ""
     },
     "cl.none": {
       "en": "No sessions yet — add one from “Add session”.",
-      "fi": "Ei vielä sessioita — lisää yksi kohdasta “Lisää sessio”.",
+      "fi": "Ei vielä latauksia — lisää yksi kohdasta “Lisää lataus”.",
       "sv": "Inga sessioner än — lägg till en under ”Lägg till session”.",
       "se": ""
     },
@@ -572,7 +608,7 @@
     },
     "fav.empty": {
       "en": "No favourites yet — name one above, or tick “Save this location as a favourite” when logging a session.",
-      "fi": "Ei vielä suosikkeja — nimeä yksi ylhäältä tai valitse “Tallenna tämä paikka suosikiksi” lisätessäsi sessiota.",
+      "fi": "Ei vielä suosikkeja — nimeä yksi ylhäältä tai valitse “Tallenna tämä paikka suosikiksi” lisätessäsi latausta.",
       "sv": "Inga favoriter än — namnge en ovan, eller kryssa i ”Spara den här platsen som favorit” när du loggar en session.",
       "se": ""
     },
@@ -614,7 +650,7 @@
     },
     "set.priceLead": {
       "en": "Used for any session where the cost is left empty. The same value is editable in whole euro cents on the Add session page.",
-      "fi": "Käytetään sessioihin, joissa kustannus jätetään tyhjäksi. Sama arvo on muokattavissa kokonaisina eurosentteinä Lisää sessio -näkymässä.",
+      "fi": "Käytetään latauksiin, joissa kustannus jätetään tyhjäksi. Sama arvo on muokattavissa kokonaisina eurosentteinä Lisää lataus -näkymässä.",
       "sv": "Används för sessioner där kostnaden lämnas tom. Samma värde går att ändra i hela eurocent på sidan Lägg till session.",
       "se": ""
     },
@@ -704,7 +740,7 @@
     },
     "set.clear": {
       "en": "Clear sessions",
-      "fi": "Tyhjennä sessiot",
+      "fi": "Tyhjennä lataukset",
       "sv": "Rensa sessioner",
       "se": ""
     },
@@ -722,7 +758,7 @@
     },
     "im.lead": {
       "en": "Load sessions from a file. Supported: <strong>.csv</strong>, <strong>.tsv</strong> and <strong>.json</strong>. Existing sessions are kept; the imported ones are added to the vehicle in the <em>Vehicle</em> column, or to the currently selected vehicle when that column is missing or empty.",
-      "fi": "Lataa sessiot tiedostosta. Tuetut: <strong>.csv</strong>, <strong>.tsv</strong> ja <strong>.json</strong>. Nykyiset sessiot säilytetään, ja tuodut sessiot lisätään <em>Ajoneuvo</em>-sarakkeen mukaiseen ajoneuvoon, tai nykyisesti valittuun ajoneuvoon, jos sarake puuttuu tai on tyhjä.",
+      "fi": "Lataa lataukset tiedostosta. Tuetut: <strong>.csv</strong>, <strong>.tsv</strong> ja <strong>.json</strong>. Nykyiset lataukset säilytetään, ja tuodut lataukset lisätään <em>Ajoneuvo</em>-sarakkeen mukaiseen ajoneuvoon, tai nykyisesti valittuun ajoneuvoon, jos sarake puuttuu tai on tyhjä.",
       "sv": "Ladda sessioner från en fil. Stöds: <strong>.csv</strong>, <strong>.tsv</strong> och <strong>.json</strong>. Befintliga sessioner behålls, och importerade sessioner läggs till fordonet i kolumnen <em>Fordon</em>, eller till det fordon som är valt när kolumnen saknas eller är tom.",
       "se": ""
     },
@@ -866,7 +902,7 @@
     },
     "how.jsonP": {
       "en": "Either a plain array of session objects, or a file previously produced by <em>Backup JSON</em> (which may also contain <code>vehicles</code>, <code>favourites</code> and <code>pricePerKwh</code>).",
-      "fi": "Joko tavallinen sessioiden taulukko, tai aiemmin Varmuuskopioi JSON -toiminnolla tehty tiedosto (joka voi sisältää myös <code>vehicles</code>, <code>favourites</code> ja <code>pricePerKwh</code>).",
+      "fi": "Joko tavallisten latausten taulukko, tai aiemmin Varmuuskopioi JSON -toiminnolla tehty tiedosto (joka voi sisältää myös <code>vehicles</code>, <code>favourites</code> ja <code>pricePerKwh</code>).",
       "sv": "Antingen en enkel array med sessioner, eller en fil från <em>Säkerhetskopiera JSON</em> (som kan innehålla <code>vehicles</code>, <code>favourites</code> och <code>pricePerKwh</code>).",
       "se": ""
     },
@@ -896,7 +932,7 @@
     },
     "ed.title": {
       "en": "Edit charging session",
-      "fi": "Muokkaa lataussessiota",
+      "fi": "Muokkaa latausta",
       "sv": "Redigera laddningssession",
       "se": ""
     },
@@ -956,13 +992,13 @@
     },
     "aria.edit": {
       "en": "Edit session",
-      "fi": "Muokkaa sessiota",
+      "fi": "Muokkaa latausta",
       "sv": "Redigera session",
       "se": ""
     },
     "aria.del": {
       "en": "Delete session",
-      "fi": "Poista sessio",
+      "fi": "Poista lataus",
       "sv": "Ta bort session",
       "se": ""
     },
@@ -1016,7 +1052,7 @@
     },
     "toast.storage": {
       "en": "Storage full — session not saved",
-      "fi": "Tallennustila täynnä — sessiota ei tallennettu",
+      "fi": "Tallennustila täynnä — latausta ei tallennettu",
       "sv": "Lagringsutrymmet är fullt — sessionen sparades inte",
       "se": ""
     },
@@ -1028,25 +1064,25 @@
     },
     "toast.saved": {
       "en": "Session saved to {v}",
-      "fi": "Sessio tallennettiin ajoneuvoon {v}",
+      "fi": "Lataus tallennettiin ajoneuvoon {v}",
       "sv": "Sessionen sparades för {v}",
       "se": ""
     },
     "toast.savedFav": {
       "en": "Session saved to {v} · favourite updated",
-      "fi": "Sessio tallennettiin ajoneuvoon {v} · suosikki päivitetty",
+      "fi": "Lataus tallennettiin ajoneuvoon {v} · suosikki päivitetty",
       "sv": "Sessionen sparades för {v} · favoriten uppdaterad",
       "se": ""
     },
     "toast.updated": {
       "en": "Session updated",
-      "fi": "Sessio päivitetty",
+      "fi": "Lataus päivitetty",
       "sv": "Sessionen uppdaterad",
       "se": ""
     },
     "toast.deleted": {
       "en": "Session deleted",
-      "fi": "Sessio poistettu",
+      "fi": "Lataus poistettu",
       "sv": "Sessionen borttagen",
       "se": ""
     },
@@ -1076,13 +1112,13 @@
     },
     "toast.csv": {
       "en": "{n} session(s) exported as CSV",
-      "fi": "{n} sessiota vietty CSV-muodossa",
+      "fi": "{n} latausta vietty CSV-muodossa",
       "sv": "{n} session(er) exporterade som CSV",
       "se": ""
     },
     "toast.json": {
       "en": "{n} session(s) exported",
-      "fi": "{n} sessiota vietty",
+      "fi": "{n} latausta vietty",
       "sv": "{n} session(er) exporterade",
       "se": ""
     },
@@ -1100,8 +1136,14 @@
     },
     "toast.restore": {
       "en": "Restored {n} session(s) and {f} favourite(s)",
-      "fi": "Palautettiin {n} sessiota ja {f} suosikkia",
+      "fi": "Palautettiin {n} latausta ja {f} suosikkia",
       "sv": "Återställde {n} session(er) och {f} favorit(er)",
+      "se": ""
+    },
+    "toast.restoreOrphans": {
+      "en": "Restored {n} session(s) and {f} favourite(s) · {o} session(s) skipped because their vehicle was missing",
+      "fi": "Palautettiin {n} latausta ja {f} suosikkia · {o} latausta ohitettiin, koska niiden ajoneuvo puuttui",
+      "sv": "Återställde {n} session(er) och {f} favorit(er) · {o} session(er) hoppades över eftersom deras fordon saknades",
       "se": ""
     },
     "toast.badRestore": {
@@ -1112,7 +1154,7 @@
     },
     "toast.cleared": {
       "en": "Sessions cleared",
-      "fi": "Sessiot tyhjennetty",
+      "fi": "Lataukset tyhjennetty",
       "sv": "Sessionerna rensade",
       "se": ""
     },
@@ -1124,25 +1166,25 @@
     },
     "toast.clearQ": {
       "en": "Delete all {n} stored session(s)? Vehicles and favourites stay.",
-      "fi": "Poistetaanko kaikki {n} tallennettua sessiota? Ajoneuvot ja suosikit säilyvät.",
+      "fi": "Poistetaanko kaikki {n} tallennettua latausta? Ajoneuvot ja suosikit säilyvät.",
       "sv": "Ta bort alla {n} sparade session(er)? Fordon och favoriter behålls.",
       "se": ""
     },
     "toast.wipeQ": {
       "en": "Delete all vehicles, every stored session and all favourites? This cannot be undone.",
-      "fi": "Poistetaanko kaikki ajoneuvot, kaikki sessiot ja kaikki suosikit? Tätä ei voi perua.",
+      "fi": "Poistetaanko kaikki ajoneuvot, kaikki lataukset ja kaikki suosikit? Tätä ei voi perua.",
       "sv": "Ta bort alla fordon, alla sessioner och alla favoriter? Det går inte att ångra.",
       "se": ""
     },
     "toast.remQ": {
       "en": "Remove {v} and its {n} session(s)?",
-      "fi": "Poistetaanko {v} ja sen {n} sessiota?",
+      "fi": "Poistetaanko {v} ja sen {n} latausta?",
       "sv": "Ta bort {v} och dess {n} session(er)?",
       "se": ""
     },
     "toast.delQ": {
       "en": "Delete this session at {loc}?",
-      "fi": "Poistetaanko sessio paikassa {loc}?",
+      "fi": "Poistetaanko lataus paikassa {loc}?",
       "sv": "Ta bort sessionen på {loc}?",
       "se": ""
     },
@@ -1160,7 +1202,7 @@
     },
     "toast.imported": {
       "en": "{n} session(s) imported",
-      "fi": "{n} sessiota tuotu",
+      "fi": "{n} latausta tuotu",
       "sv": "{n} session(er) importerade",
       "se": ""
     },
@@ -1208,7 +1250,7 @@
     },
     "toast.offline2": {
       "en": "You are offline — the address is still saved with the session.",
-      "fi": "Olet offline-tilassa — osoite tallennetaan silti sessioon.",
+      "fi": "Olet offline-tilassa — osoite tallennetaan silti lataukseen.",
       "sv": "Du är offline — adressen sparas ändå med sessionen.",
       "se": ""
     },
@@ -1376,7 +1418,7 @@
     },
     "err.jsonShape": {
       "en": "Expected an array of sessions, or a backup object with a sessions array.",
-      "fi": "Odotettiin sessioiden taulukkoa tai varmuuskopio-objektia, jossa on sessions-taulukko.",
+      "fi": "Odotettiin latausten taulukkoa tai varmuuskopio-objektia, jossa on sessions-taulukko.",
       "sv": "Förväntade en array med sessioner, eller ett säkerhetskopieobjekt med en sessions-array.",
       "se": ""
     },
@@ -1502,19 +1544,19 @@
     },
     "imp.note": {
       "en": "Imported {n} session(s).",
-      "fi": "Tuotiin {n} sessiota.",
+      "fi": "Tuotiin {n} latausta.",
       "sv": "Importerade {n} session(er).",
       "se": ""
     },
     "log.for": {
       "en": "{n} session(s) stored for {v}, newest first.",
-      "fi": "{n} sessiota tallennettu ajoneuvoon {v}, uusin ensin.",
+      "fi": "{n} latausta tallennettu ajoneuvoon {v}, uusin ensin.",
       "sv": "{n} session(er) sparade för {v}, nyast först.",
       "se": ""
     },
     "log.none": {
       "en": "No sessions stored for {v} yet.",
-      "fi": "Ajoneuvoon {v} ei ole vielä tallennettu sessioita.",
+      "fi": "Ajoneuvoon {v} ei ole vielä tallennettu latauksia.",
       "sv": "Inga sessioner sparade för {v} än.",
       "se": ""
     },
@@ -1536,22 +1578,106 @@
       "sv": "Språk",
       "se": ""
     },
-    "as.socStart": {
-      "en": "Start %",
-      "fi": "Aloitus %",
-      "sv": "Start %",
+    "a11y.skip": {
+      "en": "Skip to main content",
+      "fi": "Siirry pääsisältöön",
+      "sv": "Hoppa till huvudinnehållet",
       "se": ""
     },
-    "as.socEnd": {
-      "en": "End %",
-      "fi": "Lopetus %",
-      "sv": "Slut %",
+    "a11y.nav": {
+      "en": "Main navigation",
+      "fi": "Päävalikko",
+      "sv": "Huvudmeny",
       "se": ""
     },
-    "ph.soc": {
-      "en": "e.g. 20",
-      "fi": "esim. 20",
-      "sv": "t.ex. 20",
+    "a11y.stats": {
+      "en": "Totals for the selected vehicle",
+      "fi": "Valitun ajoneuvon summat",
+      "sv": "Summor för valt fordon",
+      "se": ""
+    },
+    "a11y.vehList": {
+      "en": "Vehicle selection",
+      "fi": "Ajoneuvon valinta",
+      "sv": "Fordonsval",
+      "se": ""
+    },
+    "a11y.picked": {
+      "en": "Selected: {v}",
+      "fi": "Valittu: {v}",
+      "sv": "Valt: {v}",
+      "se": ""
+    },
+    "a11y.editSession": {
+      "en": "Edit session: {v}, {d}",
+      "fi": "Muokkaa latausta: {v}, {d}",
+      "sv": "Redigera session: {v}, {d}",
+      "se": ""
+    },
+    "a11y.deleteSession": {
+      "en": "Delete session: {v}, {d}",
+      "fi": "Poista lataus: {v}, {d}",
+      "sv": "Ta bort session: {v}, {d}",
+      "se": ""
+    },
+    "a11y.useFav": {
+      "en": "Use favourite location: {v}",
+      "fi": "Käytä suosikkia: {v}",
+      "sv": "Använd favoritplats: {v}",
+      "se": ""
+    },
+    "a11y.editFav": {
+      "en": "Edit favourite: {v}",
+      "fi": "Muokkaa suosikkia: {v}",
+      "sv": "Redigera favorit: {v}",
+      "se": ""
+    },
+    "a11y.deleteFav": {
+      "en": "Delete favourite: {v}",
+      "fi": "Poista suosikki: {v}",
+      "sv": "Ta bort favorit: {v}",
+      "se": ""
+    },
+    "a11y.renameVeh": {
+      "en": "Rename vehicle: {v}",
+      "fi": "Nimeä ajoneuvo uudelleen: {v}",
+      "sv": "Byt namn på fordon: {v}",
+      "se": ""
+    },
+    "a11y.removeVeh": {
+      "en": "Remove vehicle: {v}",
+      "fi": "Poista ajoneuvo: {v}",
+      "sv": "Ta bort fordon: {v}",
+      "se": ""
+    },
+    "grp.when": {
+      "en": "When the session happened",
+      "fi": "Milloin lataus tapahtui",
+      "sv": "När sessionen skedde",
+      "se": ""
+    },
+    "grp.duration": {
+      "en": "How long and how far",
+      "fi": "Kesto ja matka",
+      "sv": "Längd och sträcka",
+      "se": ""
+    },
+    "grp.soc": {
+      "en": "State of charge, start and end",
+      "fi": "Akun varaus, alku ja loppu",
+      "sv": "Batterinivå, start och slut",
+      "se": ""
+    },
+    "grp.coords": {
+      "en": "Map coordinates",
+      "fi": "Kartan koordinaatit",
+      "sv": "Kartkoordinater",
+      "se": ""
+    },
+    "grp.vehicle": {
+      "en": "Vehicle details",
+      "fi": "Ajoneuvon tiedot",
+      "sv": "Fordonsuppgifter",
       "se": ""
     },
     "chart.title": {
@@ -1574,7 +1700,7 @@
     },
     "chart.empty": {
       "en": "No sessions for this vehicle yet. Add one to see the monthly chart.",
-      "fi": "Ei vielä sessioita tälle ajoneuvolle. Lisää sessio, niin näet kuukausikartan.",
+      "fi": "Ei vielä latauksia tälle ajoneuvolle. Lisää lataus, niin näet kuukausikartan.",
       "sv": "Inga sessioner för det här fordonet ännu. Lägg till en för att se månadskartan.",
       "se": ""
     },
@@ -1586,7 +1712,7 @@
     },
     "how.soc": {
       "en": "Battery charge level before and after the session, in percent (0-100). Leave empty if unknown.",
-      "fi": "Akun varaus ennen ja jälkeen istunnan, prosentteina (0-100). Jätä tyhjäksi, jos tuntematon.",
+      "fi": "Akun varaus ennen ja jälkeen latauksen, prosentteina (0-100). Jätä tyhjäksi, jos tuntematon.",
       "sv": "Batteriets laddningsnivå före och efter sessionen, i procent (0-100). Lämna tomt om okänt.",
       "se": ""
     },
@@ -1634,7 +1760,7 @@
     },
     "auth.lead": {
       "en": "Sign in to sync your vehicles and sessions.",
-      "fi": "Kirjaudu sisään synkronoidaksesi ajoneuvot ja sessiot.",
+      "fi": "Kirjaudu sisään synkronoidaksesi ajoneuvot ja lataukset.",
       "sv": "Logga in för att synka dina fordon och sessioner.",
       "se": ""
     },
@@ -1672,6 +1798,78 @@
       "en": "Log out",
       "fi": "Kirjaudu ulos",
       "sv": "Logga ut",
+      "se": ""
+    },
+    "confirm.title": {
+      "en": "Please confirm",
+      "fi": "Vahvista",
+      "sv": "Bekräfta",
+      "se": ""
+    },
+    "confirm.body": {
+      "en": "Are you sure?",
+      "fi": "Haluatko varmasti?",
+      "sv": "Är du säker?",
+      "se": ""
+    },
+    "confirm.ok": {
+      "en": "Yes, continue",
+      "fi": "Kyllä, jatka",
+      "sv": "Ja, fortsätt",
+      "se": ""
+    },
+    "confirm.cancel": {
+      "en": "Cancel",
+      "fi": "Peruuta",
+      "sv": "Avbryt",
+      "se": ""
+    },
+    "confirm.delete": {
+      "en": "Delete",
+      "fi": "Poista",
+      "sv": "Ta bort",
+      "se": ""
+    },
+    "confirm.remove": {
+      "en": "Remove vehicle",
+      "fi": "Poista ajoneuvo",
+      "sv": "Ta bort fordon",
+      "se": ""
+    },
+    "confirm.deleteEverything": {
+      "en": "Delete everything",
+      "fi": "Poista kaikki",
+      "sv": "Ta bort allt",
+      "se": ""
+    },
+    "confirm.removeVehicle": {
+      "en": "Remove this vehicle?",
+      "fi": "Poistetaanko ajoneuvo?",
+      "sv": "Ta bort det här fordonet?",
+      "se": ""
+    },
+    "confirm.deleteSession": {
+      "en": "Delete this session?",
+      "fi": "Poistetaanko lataus?",
+      "sv": "Ta bort den här sessionen?",
+      "se": ""
+    },
+    "confirm.deleteFav": {
+      "en": "Delete this favourite?",
+      "fi": "Poistetaanko suosikki?",
+      "sv": "Ta bort den här favoriten?",
+      "se": ""
+    },
+    "confirm.clearSessions": {
+      "en": "Clear all sessions?",
+      "fi": "Tyhjennetäänkö kaikki lataukset?",
+      "sv": "Rensa alla sessioner?",
+      "se": ""
+    },
+    "confirm.wipe": {
+      "en": "Delete everything?",
+      "fi": "Poistetaanko kaikki?",
+      "sv": "Ta bort allt?",
       "se": ""
     },
     "auth.needAccount": {
@@ -1740,6 +1938,24 @@
       "sv": "Fel användarnamn eller lösenord.",
       "se": ""
     },
+    "auth.notConfirmed": {
+      "en": "This account still needs an email confirmation, which can never arrive because usernames use a fake domain. Turn off \"Confirm email\" in Supabase, then register again.",
+      "fi": "Tiliä pitää vielä vahvistaa sähköpostilla, mikä ei koskaan tavoita, koska käyttäjätunnus käyttää keksiettä verkkotunnusta. Poista \"Confirm email\" -asetus Supabasesta ja rekisteröidy uudelleen.",
+      "sv": "Kontot behöver fortfarande bekräftas via e-post, vilket aldrig kan komma fram eftersom användarnamnet använder en falsk domän. Stäng av \"Confirm email\" i Supabase och registrera om.",
+      "se": ""
+    },
+    "auth.exists": {
+      "en": "That username is already registered. Sign in instead.",
+      "fi": "Tuo käyttäjätunnus on jo rekisteröity. Kirjaudu sisään sen sijaan.",
+      "sv": "Det användarnamnet är redan registrerat. Logga in i stället.",
+      "se": ""
+    },
+    "auth.rate": {
+      "en": "Too many attempts. Wait a minute and try again.",
+      "fi": "Liikaa yrityksiä. Odota minuutti ja yritä uudelleen.",
+      "sv": "För många försök. Vänta en minut och försök igen.",
+      "se": ""
+    },
     "auth.failed": {
       "en": "Something went wrong. Please try again.",
       "fi": "Jokin meni pieleen. Yritä uudelleen.",
@@ -1770,226 +1986,160 @@
       "sv": "Ingen anslutning · ändringar stannar på den här enheten",
       "se": ""
     },
-    "a11y.skip": {
-      "en": "Skip to main content",
-      "fi": "Siirry pääsisältöön",
-      "sv": "Hoppa till huvudinnehållet",
-      "se": ""
-    },
-    "a11y.nav": {
-      "en": "Main navigation",
-      "fi": "Päävalikko",
-      "sv": "Huvudmeny",
-      "se": ""
-    },
-    "a11y.stats": {
-      "en": "Totals for the selected vehicle",
-      "fi": "Valitun ajoneuvon summat",
-      "sv": "Summor för valt fordon",
-      "se": ""
-    },
-    "a11y.vehList": {
-      "en": "Vehicle selection",
-      "fi": "Ajoneuvon valinta",
-      "sv": "Fordonsval",
-      "se": ""
-    },
-    "a11y.picked": {
-      "en": "Selected: {v}",
-      "fi": "Valittu: {v}",
-      "sv": "Valt: {v}",
-      "se": ""
-    },
-    "a11y.editSession": {
-      "en": "Edit session: {v}, {d}",
-      "fi": "Muokkaa sessiota: {v}, {d}",
-      "sv": "Redigera session: {v}, {d}",
-      "se": ""
-    },
-    "a11y.deleteSession": {
-      "en": "Delete session: {v}, {d}",
-      "fi": "Poista sessio: {v}, {d}",
-      "sv": "Ta bort session: {v}, {d}",
-      "se": ""
-    },
-    "a11y.useFav": {
-      "en": "Use favourite location: {v}",
-      "fi": "Käytä suosikkia: {v}",
-      "sv": "Använd favoritplats: {v}",
-      "se": ""
-    },
-    "a11y.editFav": {
-      "en": "Edit favourite: {v}",
-      "fi": "Muokkaa suosikkia: {v}",
-      "sv": "Redigera favorit: {v}",
-      "se": ""
-    },
-    "a11y.deleteFav": {
-      "en": "Delete favourite: {v}",
-      "fi": "Poista suosikki: {v}",
-      "sv": "Ta bort favorit: {v}",
-      "se": ""
-    },
-    "a11y.renameVeh": {
-      "en": "Rename vehicle: {v}",
-      "fi": "Nimeä ajoneuvo uudelleen: {v}",
-      "sv": "Byt namn på fordon: {v}",
-      "se": ""
-    },
-    "a11y.removeVeh": {
-      "en": "Remove vehicle: {v}",
-      "fi": "Poista ajoneuvo: {v}",
-      "sv": "Ta bort fordon: {v}",
-      "se": ""
-    },
-    "grp.when": {
-      "en": "When the session happened",
-      "fi": "Milloin sessio tapahtui",
-      "sv": "När sessionen skedde",
-      "se": ""
-    },
-    "grp.duration": {
-      "en": "How long and how far",
-      "fi": "Kesto ja matka",
-      "sv": "Längd och sträcka",
-      "se": ""
-    },
-    "grp.soc": {
-      "en": "State of charge, start and end",
-      "fi": "Akun varaus, alku ja loppu",
-      "sv": "Batterinivå, start och slut",
-      "se": ""
-    },
-    "grp.coords": {
-      "en": "Map coordinates",
-      "fi": "Kartan koordinaatit",
-      "sv": "Kartkoordinater",
-      "se": ""
-    },
-    "grp.vehicle": {
-      "en": "Vehicle details",
-      "fi": "Ajoneuvon tiedot",
-      "sv": "Fordonsuppgifter",
-      "se": ""
-    },
-    "auth.notConfirmed": {
-      "en": "This account still needs an email confirmation, which can never arrive because usernames use a fake domain. Turn off \"Confirm email\" in Supabase, then register again.",
-      "fi": "Tiliä pitää vielä vahvistaa sähköpostilla, mikä ei koskaan tavoita, koska käyttäjätunnus käyttää keksiettä verkkotunnusta. Poista \"Confirm email\" -asetus Supabasesta ja rekisteröidy uudelleen.",
-      "sv": "Kontot behöver fortfarande bekräftas via e-post, vilket aldrig kan komma fram eftersom användarnamnet använder en falsk domän. Stäng av \"Confirm email\" i Supabase och registrera om.",
-      "se": ""
-    },
-    "auth.exists": {
-      "en": "That username is already registered. Sign in instead.",
-      "fi": "Tuo käyttäjätunnus on jo rekisteröity. Kirjaudu sisään sen sijaan.",
-      "sv": "Det användarnamnet är redan registrerat. Logga in i stället.",
-      "se": ""
-    },
-    "auth.rate": {
-      "en": "Too many attempts. Wait a minute and try again.",
-      "fi": "Liikaa yrityksiä. Odota minuutti ja yritä uudelleen.",
-      "sv": "För många försök. Vänta en minut och försök igen.",
-      "se": ""
-    },
     "sync.syncFailed": {
       "en": "Could not reach the server · changes stay on this device",
       "fi": "Palvelimeen ei saa yhteyttä · muutokset säilyvät tälle laitteelle",
       "sv": "Kunde inte nå servern · ändringar stannar på den här enheten",
       "se": ""
     },
-    "toast.restoreOrphans": {
-      "en": "Restored {n} session(s) and {f} favourite(s) · {o} session(s) skipped because their vehicle was missing",
-      "fi": "Palautettiin {n} sessiota ja {f} suosikkia · {o} sessiota ohitettiin, koska niiden ajoneuvo puuttui",
-      "sv": "Återställde {n} session(er) och {f} favorit(er) · {o} session(er) hoppades över eftersom deras fordon saknades",
+    "fav.price": {
+      "en": "Price per kWh (€)",
+      "fi": "Hinta per kWh (€)",
+      "sv": "Pris per kWh (€)",
       "se": ""
     },
-    "tile.distEst": {
-      "en": "Distance (since first reading)",
-      "fi": "Matka (ensimmäisestä lukemasta)",
-      "sv": "Sträcka (sedan första mätning)",
+    "fav.priceHint": {
+      "en": "Leave empty to use the default price. A favourite price is applied automatically when you pick the place.",
+      "fi": "Jätä tyhjäksi, jos haluat käyttää oletushintaa. Suosikin hinta otetaan käyttöön automaattisesti, kun valitset paikan.",
+      "sv": "Lämna tomt för att använda standardpriset. Ett favoritpris tillämpas automatiskt när du väljer platsen.",
       "se": ""
     },
-    "tile.distEstHelp": {
-      "en": "No starting odometer was given for this vehicle, so distance is measured from the first logged reading.",
-      "fi": "Ajoneuvolle ei ole asetettu aloitusmatkamittaria, joten matka lasketaan ensimmäisestä kirjatusta lukemasta.",
-      "sv": "Ingen startodometer har angetts för det här fordonet, så sträckan mäts från första loggade mätningen.",
+    "im.target": {
+      "en": "Import into vehicle",
+      "fi": "Tuo ajoneuvoon",
+      "sv": "Importera till fordon",
       "se": ""
     },
-    "tile.distHelp": {
-      "en": "Distance from the starting odometer you set for this vehicle.",
-      "fi": "Matka ajoneuvulle asettamastasi aloitusmatkamittarista.",
-      "sv": "Sträcka från startodometern du angett för det här fordonet.",
+    "im.targetLead": {
+      "en": "Rows that name a vehicle in the file keep that vehicle. Rows without one are imported here.",
+      "fi": "Rivit, joissa tiedostossa on ajoneuvon nimi, säilyttävät sen. Rivit ilman nimeä tuodaan tähän ajoneuvoon.",
+      "sv": "Rader som anger ett fordon i filen behåller det. Rader utan namn importeras hit.",
       "se": ""
     },
-    "confirm.title": {
-      "en": "Please confirm",
-      "fi": "Vahvista",
-      "sv": "Bekräfta",
+    "set.share": {
+      "en": "Share",
+      "fi": "Jaa",
+      "sv": "Dela",
       "se": ""
     },
-    "confirm.body": {
-      "en": "Are you sure?",
-      "fi": "Haluatko varmasti?",
-      "sv": "Är du säker?",
+    "set.shareLead": {
+      "en": "Let other people add charging sessions to this vehicle. They cannot rename or delete it.",
+      "fi": "Anna muiden henkilöiden lisätä latauksia tähän ajoneuvoon. He eivät voi nimetä sitä uudelleen eivätkä poistaa sitä.",
+      "sv": "Låt andra lägga till laddningar på det här fordonet. De kan inte byta namn på det eller ta bort det.",
       "se": ""
     },
-    "confirm.ok": {
-      "en": "Yes, continue",
-      "fi": "Kyllä, jatka",
-      "sv": "Ja, fortsätt",
+    "set.shareWith": {
+      "en": "Driver username",
+      "fi": "Kuljettajan käyttäjätunnus",
+      "sv": "Förarens användarnamn",
       "se": ""
     },
-    "confirm.cancel": {
-      "en": "Cancel",
-      "fi": "Peruuta",
-      "sv": "Avbryt",
+    "set.shareInvite": {
+      "en": "Invite",
+      "fi": "Kutsu",
+      "sv": "Bjud in",
       "se": ""
     },
-    "confirm.delete": {
-      "en": "Delete",
+    "set.shareHint": {
+      "en": "The username is the part before the domain. No email address is needed and none is stored.",
+      "fi": "Käyttäjätunnus on verkkotunnuksen edessä oleva osa. Sähköpostiosoitetta ei tarvita eikä tallenneta.",
+      "sv": "Användarnamnet är delen före domänen. Ingen e-postadress behövs och ingen sparas.",
+      "se": ""
+    },
+    "set.shareNone": {
+      "en": "No other drivers yet.",
+      "fi": "Ei vielä muita kuljettajia.",
+      "sv": "Inga andra förare ännu.",
+      "se": ""
+    },
+    "set.shareRemove": {
+      "en": "Remove",
       "fi": "Poista",
       "sv": "Ta bort",
       "se": ""
     },
-    "confirm.remove": {
-      "en": "Remove vehicle",
-      "fi": "Poista ajoneuvo",
-      "sv": "Ta bort fordon",
+    "set.shareCanEdit": {
+      "en": "Can add sessions",
+      "fi": "Voi lisätä latauksia",
+      "sv": "Kan lägga till laddningar",
       "se": ""
     },
-    "confirm.deleteEverything": {
-      "en": "Delete everything",
-      "fi": "Poista kaikki",
-      "sv": "Ta bort allt",
+    "set.shareNotOwner": {
+      "en": "Only the owner of a vehicle can share it.",
+      "fi": "Vain ajoneuvon omistaja voi jakaa sen.",
+      "sv": "Endast ägaren till ett fordon kan dela det.",
       "se": ""
     },
-    "confirm.removeVehicle": {
-      "en": "Remove this vehicle?",
-      "fi": "Poistetaanko ajoneuvo?",
-      "sv": "Ta bort det här fordonet?",
+    "set.shareSignedOut": {
+      "en": "Sign in to share a vehicle with someone else.",
+      "fi": "Kirjaudu sisään, niin voit jakaa ajoneuvon toisen henkilön kanssa.",
+      "sv": "Logga in för att dela ett fordon med någon annan.",
       "se": ""
     },
-    "confirm.deleteSession": {
-      "en": "Delete this session?",
-      "fi": "Poistetaanko sessio?",
-      "sv": "Ta bort den här sessionen?",
+    "set.shareNoSupport": {
+      "en": "Sharing is not set up on the server yet. Run the sharing SQL in Supabase and reload.",
+      "fi": "Jakaminen ei ole vielä käytössä palvelimella. Aja Supabasessa jakamisen SQL ja lataa sivu uudelleen.",
+      "sv": "Delning är inte installerad på servern än. Kör delnings-SQL i Supabase och ladda om sidan.",
       "se": ""
     },
-    "confirm.deleteFav": {
-      "en": "Delete this favourite?",
-      "fi": "Poistetaanko suosikki?",
-      "sv": "Ta bort den här favoriten?",
+    "a11y.shareVeh": {
+      "en": "Share vehicle: {v}",
+      "fi": "Jaa ajoneuvo: {v}",
+      "sv": "Dela fordon: {v}",
       "se": ""
     },
-    "confirm.clearSessions": {
-      "en": "Clear all sessions?",
-      "fi": "Tyhjennetäänkö kaikki sessiot?",
-      "sv": "Rensa alla sessioner?",
+    "a11y.unshare": {
+      "en": "Remove access for {v}",
+      "fi": "Poista käyttöoikeus: {v}",
+      "sv": "Ta bort åtkomst för {v}",
       "se": ""
     },
-    "confirm.wipe": {
-      "en": "Delete everything?",
-      "fi": "Poistetaanko kaikki?",
-      "sv": "Ta bort allt?",
+    "ph.shareuser": {
+      "en": "e.g. anna",
+      "fi": "esim. anna",
+      "sv": "t.ex. anna",
+      "se": ""
+    },
+    "ph.favprice": {
+      "en": "e.g. 0.30",
+      "fi": "esim. 0,30",
+      "sv": "t.ex. 0,30",
+      "se": ""
+    },
+    "toast.favPrice": {
+      "en": "Price set to {p} per kWh",
+      "fi": "Hinnaksi asetettiin {p} per kWh",
+      "sv": "Priset satt till {p} per kWh",
+      "se": ""
+    },
+    "toast.shareOk": {
+      "en": "{u} can now add sessions to {v}",
+      "fi": "{u} voi nyt lisätä latauksia ajoneuvoon {v}",
+      "sv": "{u} kan nu lägga till laddningar på {v}",
+      "se": ""
+    },
+    "toast.shareFail": {
+      "en": "Could not share. Check the username, and that you own the vehicle.",
+      "fi": "Jakaminen ei onnistunut. Tarkista käyttäjätunnus ja että omistat ajoneuvon.",
+      "sv": "Kunde inte dela. Kontrollera användarnamnet och att du äger fordonet.",
+      "se": ""
+    },
+    "toast.shareNoName": {
+      "en": "Enter a username first",
+      "fi": "Anna ensin käyttäjätunnus",
+      "sv": "Ange ett användarnamn först",
+      "se": ""
+    },
+    "toast.unshareQ": {
+      "en": "Remove access for {u}?",
+      "fi": "Poistetaanko käyttöoikeus käyttäjältä {u}?",
+      "sv": "Ta bort åtkomsten för {u}?",
+      "se": ""
+    },
+    "toast.unshareOk": {
+      "en": "Access removed for {u}",
+      "fi": "Käyttöoikeus poistettu käyttäjältä {u}",
+      "sv": "Åtkomsten borttagen för {u}",
       "se": ""
     }
   }
