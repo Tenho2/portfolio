@@ -277,6 +277,16 @@
         flex: 1 1 auto;
         min-width: 8rem;
       }
+      /* The "delete permanently" alternative sits between the safe default and
+         Cancel, so it must not read as the primary action. */
+      .btn.ghost.danger-ghost {
+        border-color: var(--danger);
+        color: var(--danger);
+      }
+      .btn.ghost.danger-ghost:hover {
+        background: var(--danger);
+        color: #fff;
+      }
       /* the logout control was a 40px circle holding a whole word */
       .tgl-wide {
         display: inline-flex;
@@ -425,8 +435,14 @@
         white-space: nowrap;
       }
       @media (max-width: 700px) {
+        /* Kept visible on purpose. Hiding it made it impossible to tell which
+           account was open on a phone, which is exactly the information you
+           need after getting it wrong once. The name is truncated rather than
+           removed, so it stays in the accessibility tree and still reads out in
+           full. Below 560px the header wraps and gives it a row of its own. */
         .user-chip {
-          display: none;
+          max-width: 26vw;
+          font-size: 0.78rem;
         }
       }
       h1,
@@ -1596,14 +1612,20 @@
             ><span class="mini" data-i18n="lang"></span
             ><select id="langSel" data-i18n-aria="lang"></select
           ></label>
-          <span
+          <!-- A real button, not a span: the badge is the only way to find out
+               what is stuck and why, so it has to be reachable and it has to
+               be announced as interactive. role="status" is kept on the inner
+               text so screen readers still hear the count change. -->
+          <button
             class="sync-badge"
             id="syncBadge"
+            type="button"
             data-kind=""
-            role="status"
-            aria-live="polite"
+            aria-expanded="false"
+            aria-controls="syncPanel"
+            data-i18n-aria="sync.open"
             hidden
-          ></span>
+          ></button>
           <span class="user-chip" id="userChip" hidden
             ><span class="nm" id="userName"></span
           ></span>
@@ -2708,6 +2730,14 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           >
             Confirm
           </button>
+          <!-- Only shown when a caller asks for it. Used by the deletes that
+               offer "delete permanently" next to the safer "move to bin". -->
+          <button
+            class="btn ghost danger-ghost"
+            type="button"
+            id="confirmAlt"
+            hidden
+          ></button>
           <button
             class="btn ghost"
             type="button"
@@ -2721,6 +2751,31 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
     </div>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <!-- Opened from the sync badge. Lists every row that is not on the server
+         yet, says why, and offers a way out for the ones that never will make
+         it. -->
+    <div
+      class="sheet"
+      id="syncPanel"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="syncPanelTitle"
+    >
+      <div class="sheet-box confirm-box">
+        <h3 id="syncPanelTitle">
+          <span aria-hidden="true">🔄</span>
+          <span data-i18n="sync.title"></span>
+        </h3>
+        <p class="mini" data-i18n="sync.lead"></p>
+        <div id="syncBody"></div>
+        <div class="addrow confirm-actions">
+          <button class="btn ghost" type="button" id="syncCloseBtn">
+            <span data-i18n="confirm.close"></span>
+          </button>
+        </div>
+      </div>
+    </div>
 
     <script>
       /* ---------- translations ----------
@@ -3106,10 +3161,29 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               'This account still needs an email confirmation, which can never arrive because usernames use a fake domain. Turn off "Confirm email" in Supabase, then register again.',
             "auth.exists":
               "That username is already registered. Sign in instead.",
+            "auth.logoutQ": "Sign out of {u}?",
             "auth.rate": "Too many attempts. Wait a minute and try again.",
             "auth.failed": "Something went wrong. Please try again.",
             "veh.default": "Vehicle 1",
             "sync.pending": "Saved locally · {n} change(s) waiting to sync",
+            "sync.open": "Show sync details",
+            "sync.title": "Sync status",
+            "sync.lead":
+              "Everything here is saved on this device and has not reached the server yet.",
+            "sync.allGood":
+              "Everything is on the server. Nothing is waiting to sync.",
+            "sync.discard": "Discard",
+            "sync.stalledHint":
+              "The server refused these, so waiting will not help. Discard one to remove it from this device, or open it and save again to try a fresh copy.",
+            "sync.reason.offline":
+              "waiting for a connection",
+            "sync.reason.queued": "waiting to be sent",
+            "sync.reason.rejected": "refused by the server",
+            "toast.legacyMoved":
+              "{n} piece(s) of unsynced data from an earlier version were moved to the signed-out area. Sign out to see them.",
+            "toast.discardQ": "Discard {v} and {n} item(s) from this device?",
+            "toast.discarded": "Discarded from this device",
+            "toast.deletedForever": "Deleted for good",
             "sync.loading": "Syncing…",
             "sync.offline": "Offline · changes stay on this device",
             "sync.syncFailed":
@@ -3194,21 +3268,27 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "confirm.rejectShare": "Refuse access",
             "confirm.reject": "Refuse",
             "confirm.irreversibleSession":
-              "This goes to the bin, not away. You can put it back from the bin until you empty it.",
+              "This goes to the bin, not away. You can put it back until you empty the bin — but until then it is still stored on the server. Use “Delete forever” if you need it gone now.",
             "confirm.irreversibleClear":
-              "Every charging session goes to the bin. You can restore them all from the bin until you empty it.",
+              "Every charging session goes to the bin and stays on the server until you empty it. You can restore them all until then.",
             "confirm.irreversibleWipe":
-              "Everything goes to the bin: every vehicle, every session and every favourite. You can restore anything until you empty the bin.",
+              "Everything goes to the bin: every vehicle, every session and every favourite. They stay on the server until you empty the bin.",
             "confirm.irreversibleUnshare":
               "They lose access immediately and cannot see the vehicle again. The sessions they already added stay, but they can no longer change them.",
             "confirm.irreversibleVehicle":
-              "The vehicle and all of its sessions go to the bin. You can restore them until you empty the bin.",
+              "The vehicle and its sessions go to the bin, and stay on the server until you empty it. Use “Delete forever” to remove them now.",
             "confirm.emptyBin": "Empty the bin",
             "confirm.deleteForever": "Delete forever",
+            "confirm.toBin": "Move to bin",
+            "confirm.close": "Close",
+            "confirm.logout": "Sign out",
+            "confirm.discard": "Discard",
             "confirm.irreversibleEmptyBin":
               "This cannot be undone. Everything in the bin is deleted from this device and from the database for good. There is no backup and no undo.",
             "confirm.irreversiblePurge":
               "This cannot be undone. The item is deleted from this device and from the database for good.",
+            "confirm.irreversibleDiscard":
+              "This cannot be undone. The item never reached the server, so discarding it deletes it from this device for good.",
             "ph.shareuser": "e.g. anna",
             "ph.favprice": "e.g. 0.30",
             "toast.favPrice": "Price set to {p} per kWh",
@@ -3641,6 +3721,22 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "veh.default": "Ajoneuvo 1",
             "sync.pending":
               "Tallennettu laitteelle · {n} muutosta odottaa synkronointia",
+            "sync.open": "Näytä synkronoinnin tiedot",
+            "sync.title": "Synkronointi",
+            "sync.lead":
+              "Kaikki tässä on tallennettu tälle laitteelle eikä ole vielä päässyt palvelimelle.",
+            "sync.allGood": "Kaikki on palvelimella. Ei mitään odottamassa.",
+            "sync.discard": "Hylkää",
+            "sync.stalledHint":
+              "Palvelin hylkäsi nämä, joten odottaminen ei auta. Hylkää poistaa kohteen tältä laitteelta, tai avaa ja tallenna uudelleen, jotta kopio lähetettäisiin.",
+            "sync.reason.offline": "odottaa yhteyttä",
+            "sync.reason.queued": "odottaa lähetystä",
+            "sync.reason.rejected": "palvelin hylkäsi",
+            "toast.legacyMoved":
+              "{n} synkronointematonta tietoa vanhemmasta versiosta siirrettiin uloskirjautuneen tilaan. Kirjaudu ulos nähdäksesi ne.",
+            "toast.discardQ": "Hylätäänkö {v} ja {n} kohdetta tältä laitteelta?",
+            "toast.discarded": "Hylätty tältä laitteelta",
+            "toast.deletedForever": "Poistettu pysyvästi",
             "sync.loading": "Synkronoidaan…",
             "sync.offline":
               "Ei verkkoyhteyttä · muutokset säilyvät tälle laitteelle",
@@ -3726,21 +3822,27 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "confirm.rejectShare": "Kiellä käyttöoikeus",
             "confirm.reject": "Kiellä",
             "confirm.irreversibleSession":
-              "Tämä siirtyy roskakoriin, ei katoa. Voit palauttaa sen roskakorista, kunnes tyhjennät roskakorin.",
+              "Tämä siirtyy roskakoriin, ei katoa. Voit palauttaa sen, kunnes tyhjennät roskakorin — mutta siihen asti se on tallessa myös palvelimella. Valitse “Poista pysyvästi”, jos haluat sen heti pois.",
             "confirm.irreversibleClear":
-              "Kaikki lataukset siirtyvät roskakoriin. Voit palauttaa kaiken roskakorista, kunnes tyhjennät sen.",
+              "Kaikki lataukset siirtyvät roskakoriin ja pysyvät palvelimella, kunnes tyhjennät roskakorin. Voit palauttaa kaiken siihen asti.",
             "confirm.irreversibleWipe":
-              "Kaikki siirtyy roskakoriin: jokainen ajoneuvo, jokainen lataus ja jokainen suosikki. Voit palauttaa mitä tahansa, kunnes tyhjennät roskakorin.",
+              "Kaikki siirtyy roskakoriin: jokainen ajoneuvo, lataus ja suosikki. Ne pysyvät palvelimella, kunnes tyhjennät roskakorin.",
             "confirm.irreversibleUnshare":
               "Hän menettää käyttöoikeuden heti eikä näe ajoneuvoa enää. Hänen jo lisäämänsä lataukset säilyvät, mutta hän ei voi enää muuttaa niitä.",
             "confirm.irreversibleVehicle":
-              "Ajoneuvo ja kaikki sen lataukset siirtyvät roskakoriin. Voit palauttaa ne, kunnes tyhjennät roskakorin.",
+              "Ajoneuvo ja sen lataukset siirtyvät roskakoriin ja pysyvät palvelimella, kunnes tyhjennät sen. Valitse “Poista pysyvästi”, jos haluat ne heti pois.",
             "confirm.emptyBin": "Tyhjennä roskakori",
             "confirm.deleteForever": "Poista pysyvästi",
+            "confirm.toBin": "Siirrä roskakoriin",
+            "confirm.close": "Sulje",
+            "confirm.logout": "Kirjaudu ulos",
+            "confirm.discard": "Hylkää",
             "confirm.irreversibleEmptyBin":
               "Tätä ei voi perua. Kaikki roskakorissa oleva poistetaan tältä laitteelta ja tietokannasta pysyvästi. Ei varmuuskopiota eikä peruutusta.",
             "confirm.irreversiblePurge":
               "Tätä ei voi perua. Kohde poistetaan tältä laitteelta ja tietokannasta pysyvästi.",
+            "confirm.irreversibleDiscard":
+              "Tätä ei voi perua. Kohde ei koskaan päässyt palvelimelle, joten hylkääminen poistaa sen tältä laitteelta pysyvästi.",
             "ph.shareuser": "esim. anna",
             "ph.favprice": "esim. 0,30",
             "toast.favPrice": "Hinnaksi asetettiin {p} per kWh",
@@ -4170,6 +4272,22 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "veh.default": "Fordon 1",
             "sync.pending":
               "Sparad lokalt · {n} ändring(ar) väntar på synkning",
+            "sync.open": "Visa synkdetaljer",
+            "sync.title": "Synkstatus",
+            "sync.lead":
+              "Allt här är sparat på den här enheten och har ännu inte nått servern.",
+            "sync.allGood": "Allt finns på servern. Inget väntar på synkning.",
+            "sync.discard": "Kasta",
+            "sync.stalledHint":
+              "Servern nekade dessa, så att vänta hjälper inte. Kasta bort en post för att ta bort den från enheten, eller öppna och spara igen för att skicka en ny kopia.",
+            "sync.reason.offline": "väntar på anslutning",
+            "sync.reason.queued": "väntar på att skickas",
+            "sync.reason.rejected": "nekad av servern",
+            "toast.legacyMoved":
+              "{n} osynkade datauppgifter från en äldre version flyttades till det utloggade området. Logga ut för att se dem.",
+            "toast.discardQ": "Kasta {v} och {n} post(er) från den här enheten?",
+            "toast.discarded": "Kastad från den här enheten",
+            "toast.deletedForever": "Raderad för alltid",
             "sync.loading": "Synkar…",
             "sync.offline":
               "Ingen anslutning · ändringar stannar på den här enheten",
@@ -4255,21 +4373,27 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "confirm.rejectShare": "Neka åtkomst",
             "confirm.reject": "Neka",
             "confirm.irreversibleSession":
-              "Detta hamnas i papperskorgen, inte bort. Du kan återställa det där tills du tömmer korgen.",
+              "Detta hamnas i papperskorgen, inte bort. Du kan återställa det tills du tömmer korgen — men tills dess ligger det kvar på servern. Välj ”Radera för alltid” om det ska bort nu.",
             "confirm.irreversibleClear":
-              "Alla laddsessioner hamnar i papperskorgen. Du kan återställa allt därifrån tills du tömmer den.",
+              "Alla laddsessioner hamnar i papperskorgen och ligger kvar på servern tills du tömmer den. Du kan återställa allt tills dess.",
             "confirm.irreversibleWipe":
-              "Allt hamnar i papperskorgen: varje fordon, varje laddsession och varje favorit. Du kan återställa vad som helst tills du tömmer korgen.",
+              "Allt hamnar i papperskorgen: varje fordon, laddsession och favorit. De ligger kvar på servern tills du tömmer korgen.",
             "confirm.irreversibleUnshare":
               "De förlorar åtkomst direkt och kan inte se fordonet igen. Sessioner de redan lagt till finns kvar, men de kan inte längre ändra dem.",
             "confirm.irreversibleVehicle":
-              "Fordonet och alla dess laddsessioner hamnar i papperskorgen. Du kan återställa dem tills du tömmer korgen.",
+              "Fordonet och dess sessioner hamnar i papperskorgen och ligger kvar på servern tills du tömmer den. Välj ”Radera för alltid” för att ta bort dem nu.",
             "confirm.emptyBin": "Töm papperskorgen",
             "confirm.deleteForever": "Radera för alltid",
+            "confirm.toBin": "Flytta till papperskorgen",
+            "confirm.close": "Stäng",
+            "confirm.logout": "Logga ut",
+            "confirm.discard": "Kasta",
             "confirm.irreversibleEmptyBin":
               "Detta går inte att ångra. Allt i papperskorgen raderas från den här enheten och från databasen för alltid. Ingen backup, ingen ångra.",
             "confirm.irreversiblePurge":
               "Detta går inte att ångra. Posten raderas från den här enheten och från databasen för alltid.",
+            "confirm.irreversibleDiscard":
+              "Detta går inte att ångra. Posten nådde aldrig servern, så att kasta bort den raderar den från den här enheten för alltid.",
             "ph.shareuser": "t.ex. anna",
             "ph.favprice": "t.ex. 0,30",
             "toast.favPrice": "Priset satt till {p} per kWh",
@@ -4564,6 +4688,83 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           };
         }
         var K = keysFor(null);
+        /* Keys from before storage was scoped per account. Everything written
+           before that landed in one global bucket for every account, which is
+           what let one account's vehicles appear under another. They are read
+           once and moved somewhere sensible, then left alone. */
+        var K_OLD = {
+          v: "ev.v1.vehicles",
+          s: "ev.v1.sessions",
+          f: "ev.v1.favs",
+          p: "ev.v1.price",
+          n: "ev.v1.shareNames",
+        };
+        var K_MIGRATED = "ev.v1.migratedToAccounts";
+        /**
+         * Move any leftover pre-scoped data into the signed-out local bucket.
+         *
+         * It deliberately does NOT guess an owner. That bucket could hold rows
+         * belonging to several different accounts, which is precisely the bug it
+         * came from, and quietly handing the lot to whoever signs in next would
+         * be the same mistake wearing a different hat. So it lands in "local",
+         * where it is visible when signed out and never claimed by an account
+         * that did not create it. Signed-in users get their data from the
+         * server, which is where it has been all along.
+         *
+         * Runs once, guarded by a flag, and never throws.
+         */
+        function migrateLegacyStorage() {
+          try {
+            if (localStorage.getItem(K_MIGRATED)) return;
+            var moved = 0;
+            /* Only adopt a slot if its new home is still empty, so this can
+               never overwrite real per-account data. */
+            function adopt(oldKey, newKey) {
+              var raw = localStorage.getItem(oldKey);
+              if (raw === null) return;
+              var existing = localStorage.getItem(newKey);
+              if (existing !== null && existing !== "[]" && existing !== "") return;
+              try {
+                var parsed = JSON.parse(raw);
+                if (!Array.isArray(parsed) || !parsed.length) return;
+                localStorage.setItem(newKey, raw);
+                moved++;
+              } catch (e) {
+                /* unparseable leftovers are left where they are */
+              }
+            }
+            adopt(K_OLD.v, keysFor(null).v);
+            adopt(K_OLD.s, keysFor(null).s);
+            adopt(K_OLD.f, keysFor(null).f);
+            var oldPrice = localStorage.getItem(K_OLD.p);
+            if (oldPrice !== null && localStorage.getItem(keysFor(null).p) === null) {
+              localStorage.setItem(keysFor(null).p, oldPrice);
+              moved++;
+            }
+            var oldNames = localStorage.getItem(K_OLD.n);
+            if (oldNames !== null && localStorage.getItem(keysFor(null).n) === null) {
+              localStorage.setItem(keysFor(null).n, oldNames);
+              moved++;
+            }
+            localStorage.setItem(K_MIGRATED, String(Date.now()));
+            if (moved) {
+              /* Say so rather than letting the data quietly reappear as a
+                 signed-out mystery. Anything that WAS synced is already coming
+                 back from the server; this is only what never made it up. */
+              if (window.console && window.console.info)
+                window.console.info(
+                  "[storage] moved " +
+                    moved +
+                    " pre-scoped slot(s) into the signed-out bucket",
+                );
+              try {
+                toast(TXT("toast.legacyMoved", { n: moved }));
+              } catch (e) {}
+            }
+          } catch (e) {
+            /* A migration failure must never stop the app booting. */
+          }
+        }
         /**
          * Point storage at one account's bucket. Must run before load().
          * @param {?string} userId
@@ -4773,12 +4974,15 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             si = Object.keys(syncDirty.sessions);
           /* Both lookups span the bin, because a row that was just deleted has
              moved out of the live arrays and the delete itself still has to
-             reach the server. */
+             reach the server. Rows the server has already refused are skipped:
+             retrying them would just fail again on every pull. */
           for (var a = 0; a < vi.length; a++) {
+            if (syncStalled.vehicles[vi[a]]) continue;
             var v = vehicleAnywhere(vi[a]);
             if (v) syncVehicle(v);
           }
           for (var b = 0; b < si.length; b++) {
+            if (syncStalled.sessions[si[b]]) continue;
             var s = sessionAnywhere(si[b]);
             if (s) syncSession(s);
           }
@@ -4806,6 +5010,32 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           b.hidden = false;
           b.textContent = text;
           b.dataset.kind = kind || "";
+          /* The count changes as rows land, and the panel body has to agree
+             with it whenever it happens to be open. */
+          if (!$("syncPanel").hidden) renderSyncPanel();
+        }
+        function openSyncPanel() {
+          var p = $("syncPanel");
+          if (!p) return;
+          renderSyncPanel();
+          p.classList.add("on");
+          lockBackground(true);
+          $("syncBadge").setAttribute("aria-expanded", "true");
+          var c = $("syncCloseBtn");
+          if (c) c.focus();
+        }
+        function closeSyncPanel() {
+          var p = $("syncPanel");
+          if (!p || !p.classList.contains("on")) return;
+          p.classList.remove("on");
+          /* The badge is inside the header, which lockBackground makes inert,
+             so focus cannot simply go back to it while it is still inert. */
+          lockBackground(false);
+          var b = $("syncBadge");
+          if (b) {
+            b.setAttribute("aria-expanded", "false");
+            if (!b.hidden) b.focus();
+          }
         }
         /* camelCase -> snake_case, matching the SQL schema.
    user_id is stamped from the signed-in account on every write, so the column
@@ -4939,6 +5169,23 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
            network failure from a row the database is going to refuse forever. */
         var MAX_PUSH_ATTEMPTS = 3;
         var pushAttempts = {};
+        /* Rows the server has refused, kept apart from the ordinary dirty queue.
+           A row that only sits in syncDirty is still waiting for the network and
+           will go through on its own. A row listed here never will, so it has to
+           be visible to the user and has to offer a way out. */
+        var syncStalled = { vehicles: {}, sessions: {} };
+        function markStalled(kind, id, reason) {
+          syncStalled[kind][id] = reason || "rejected";
+        }
+        function clearStalled(kind, id) {
+          if (syncStalled[kind]) delete syncStalled[kind][id];
+        }
+        function stalledCount() {
+          return (
+            Object.keys(syncStalled.vehicles).length +
+            Object.keys(syncStalled.sessions).length
+          );
+        }
         function bumpAttempt(kind, id) {
           var k = kind + ":" + id;
           pushAttempts[k] = (pushAttempts[k] || 0) + 1;
@@ -4961,6 +5208,9 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             return false;
           }
           clearDirty(kind, id);
+          /* Recorded rather than forgotten, so the sync panel can name it and the
+             user can decide whether to discard it. */
+          markStalled(kind, id, "rejected");
           syncFail(what + " - giving up, the server will not accept this row");
           if (window.console && window.console.warn)
             window.console.warn(
@@ -4990,6 +5240,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               var e = res && res.error;
               if (e) return failPush("vehicles", v.id, "vehicle upsert");
               clearDirty("vehicles", v.id);
+              clearStalled("vehicles", v.id);
               forgetAttempts("vehicles", v.id);
               return true;
             })
@@ -5018,6 +5269,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               var e = res && res.error;
               if (e) return failPush("sessions", s.id, "session upsert");
               clearDirty("sessions", s.id);
+              clearStalled("sessions", s.id);
               forgetAttempts("sessions", s.id);
               return true;
             })
@@ -6070,6 +6322,7 @@ if (e) {
                     }
                   for (var j = 0; j < slice.length; j++) {
                     clearDirty("sessions", slice[j].id);
+                    clearStalled("sessions", slice[j].id);
                     forgetAttempts("sessions", slice[j].id);
                   }
                   return true;
@@ -6942,6 +7195,14 @@ if (e) {
         }
         async function doLogout() {
           if (!authClient) return;
+          /* Names the account on the way out. Signing out of the wrong account
+             is how one account's data ends up looking like another's. */
+          var who = $("userName").textContent || TXT("auth.logout");
+          var yes = await askConfirm(TXT("auth.logoutQ", { u: who }), {
+            heading: "confirm.logout",
+            ok: "confirm.logout",
+          });
+          if (!yes) return;
           try {
             await authClient.auth.signOut();
           } catch (e) {
@@ -7554,6 +7815,152 @@ if (e) {
          * Build the bin view: everything deleted, with Restore and
          * Delete forever on each row.
          */
+        /**
+         * Everything that is not on the server yet, with a reason.
+         * The reason is the whole point: "waiting for the network" is harmless,
+         * while "the server refused this" will never resolve on its own.
+         * @returns {Array<{kind:string, id:string, label:string, why:string, hard:boolean}>}
+         */
+        function unsyncedRows() {
+          var out = [];
+          var offline = !syncOnline();
+          function add(kind, id, why, hard) {
+            var row =
+              kind === "vehicles" ? vehicleAnywhere(id) : sessionAnywhere(id);
+            out.push({
+              kind: kind,
+              id: id,
+              label: row
+                ? kind === "vehicles"
+                  ? row.name
+                  : row.location + " · " + row.date
+                : "(no longer on this device)",
+              why: why,
+              hard: !!hard,
+            });
+          }
+          var vi = Object.keys(syncDirty.vehicles);
+          for (var a = 0; a < vi.length; a++)
+            if (!syncStalled.vehicles[vi[a]])
+              add("vehicles", vi[a], offline ? "offline" : "queued", false);
+          var si = Object.keys(syncDirty.sessions);
+          for (var b = 0; b < si.length; b++)
+            if (!syncStalled.sessions[si[b]])
+              add("sessions", si[b], offline ? "offline" : "queued", false);
+          var sv = Object.keys(syncStalled.vehicles);
+          for (var c = 0; c < sv.length; c++)
+            add("vehicles", sv[c], syncStalled.vehicles[sv[c]], true);
+          var ss = Object.keys(syncStalled.sessions);
+          for (var d = 0; d < ss.length; d++)
+            add("sessions", ss[d], syncStalled.sessions[ss[d]], true);
+          return out;
+        }
+        /**
+         * Throw away one row that will never reach the server. Because it never
+         * made it up, removing it here is a real delete, and it is confirmed
+         * with the row named.
+         * @param {string} kind
+         * @param {string} id
+         */
+        function discardUnsynced(kind, id) {
+          var row = kind === "vehicles" ? vehicleAnywhere(id) : sessionAnywhere(id);
+          if (!row) return;
+          var label =
+            kind === "vehicles" ? row.name : row.location + " · " + row.date;
+          var extra =
+            kind === "vehicles"
+              ? sessions.filter(function (s) {
+                  return s.vehicleId === id;
+                }).length
+              : 0;
+          return askConfirm(
+            TXT("toast.discardQ", { v: label, n: 1 + extra }),
+            {
+              heading: "confirm.discard",
+              ok: "confirm.discard",
+              irreversible: "confirm.irreversibleDiscard",
+            },
+          ).then(function (yes) {
+            if (!yes) return false;
+            if (kind === "vehicles") {
+              var gone = sessions.filter(function (s) {
+                return s.vehicleId === id;
+              });
+              vehicles = vehicles.filter(function (v) {
+                return v.id !== id;
+              });
+              sessions = sessions.filter(function (s) {
+                return s.vehicleId !== id;
+              });
+              binned.vehicles = binned.vehicles.filter(function (v) {
+                return v.id !== id;
+              });
+              binned.sessions = binned.sessions.filter(function (s) {
+                return s.vehicleId !== id;
+              });
+              for (var i = 0; i < gone.length; i++) {
+                clearDirty("sessions", gone[i].id);
+                clearStalled("sessions", gone[i].id);
+                forgetAttempts("sessions", gone[i].id);
+              }
+            } else {
+              sessions = sessions.filter(function (s) {
+                return s.id !== id;
+              });
+              binned.sessions = binned.sessions.filter(function (s) {
+                return s.id !== id;
+              });
+            }
+            clearDirty(kind, id);
+            clearStalled(kind, id);
+            forgetAttempts(kind, id);
+            if (cur >= vehicles.length) cur = Math.max(0, vehicles.length - 1);
+            save();
+            render();
+            toast(TXT("toast.discarded"));
+            renderSyncPanel();
+            return true;
+          });
+        }
+        /** Render the sync panel body, which the header badge opens. */
+        function renderSyncPanel() {
+          var box = $("syncBody");
+          if (!box) return;
+          var rows = unsyncedRows();
+          if (!rows.length) {
+            box.innerHTML = '<p class="mini">' + TXT("sync.allGood") + "</p>";
+            return;
+          }
+          var h = '<div class="list">';
+          for (var i = 0; i < rows.length; i++) {
+            var r = rows[i];
+            h +=
+              '<div class="item">' +
+              '<span class="nm">' +
+              esc(r.label) +
+              "</span>" +
+              '<span class="mt">' +
+              esc(TXT("sync.reason." + r.why)) +
+              "</span>" +
+              (r.hard
+                ? '<button type="button" class="btn sm dgr" data-discard="' +
+                  esc(r.kind) +
+                  ":" +
+                  esc(r.id) +
+                  '">' +
+                  TXT("sync.discard") +
+                  "</button>"
+                : "") +
+              "</div>";
+          }
+          h += "</div>";
+          if (stalledCount())
+            h +=
+              '<div class="hint" style="margin-top:0.6rem">' +
+              TXT("sync.stalledHint") +
+              "</div>";
+          box.innerHTML = h;
+        }
         function renderBin() {
           var n = binCount();
           var badge = $("binCount");
@@ -8476,6 +8883,22 @@ if (e) {
           if (ok) ok.textContent = TXT(opts.ok || "confirm.ok");
           var cancel = $("confirmCancel");
           if (cancel) cancel.textContent = TXT(opts.cancel || "confirm.cancel");
+          /* opts.altKey names a third action, which resolves the promise with
+             the string "alt" instead of true. Existing callers test for truth,
+             so they are unaffected: only the dialogs that ask for this branch
+             on it, and they compare explicitly.
+             Truthiness is the reason a string is used at all: any object would
+             read as "yes" to the older callers. */
+          var alt = $("confirmAlt");
+          if (alt) {
+            if (opts.altKey) {
+              alt.hidden = false;
+              alt.textContent = TXT(opts.altKey);
+            } else {
+              alt.hidden = true;
+              alt.textContent = "";
+            }
+          }
           $("confirmSheet").classList.add("on");
           lockBackground(true);
           return new Promise(function (resolve) {
@@ -9816,11 +10239,37 @@ if (e) {
             TXT("toast.remQ", { v: v.name, n: ofVehicle(id).length }),
             {
               heading: "confirm.removeVehicle",
-              ok: "confirm.remove",
+              ok: "confirm.toBin",
+              altKey: "confirm.deleteForever",
               irreversible: "confirm.irreversibleVehicle",
             },
-          ).then(function (yes) {
-            if (!yes) return false;
+          ).then(function (choice) {
+            if (!choice) return false;
+            if (choice === "alt") {
+              var gone = sessions.filter(function (s) {
+                return s.vehicleId === id;
+              });
+              vehicles = vehicles.filter(function (x) {
+                return x.id !== id;
+              });
+              sessions = sessions.filter(function (s) {
+                return s.vehicleId !== id;
+              });
+              binned.vehicles = binned.vehicles.filter(function (x) {
+                return x.id !== id;
+              });
+              binned.sessions = binned.sessions.filter(function (s) {
+                return s.vehicleId !== id;
+              });
+              if (cur >= vehicles.length) cur = Math.max(0, vehicles.length - 1);
+              save();
+              render();
+              toast(TXT("toast.vehRem", { v: v.name }));
+              for (var i = 0; i < gone.length; i++)
+                syncDelete("sessions", gone[i].id);
+              syncDelete("vehicles", id);
+              return true;
+            }
             doRemoveVehicle(id);
             return true;
           });
@@ -9883,10 +10332,25 @@ if (e) {
           }
           return askConfirm(TXT("toast.delQ", { loc: s.location }), {
             heading: "confirm.deleteSession",
-            ok: "confirm.delete",
+            ok: "confirm.toBin",
+            altKey: "confirm.deleteForever",
             irreversible: "confirm.irreversibleSession",
-          }).then(function (yes) {
-            if (!yes) return false;
+          }).then(function (choice) {
+            /* "alt" is the explicit permanent delete, offered next to the safe
+               default so that somebody who really does want the data gone is
+               not forced through the bin and a second dialog. Anything falsy is
+               a cancel. */
+            if (!choice) return false;
+            if (choice === "alt") {
+              sessions = sessions.filter(function (x) {
+                return x.id !== id;
+              });
+              save();
+              render();
+              toast(TXT("toast.deletedForever"));
+              syncDelete("sessions", id);
+              return true;
+            }
             doDeleteSession(id);
             return true;
           });
@@ -9962,7 +10426,7 @@ if (e) {
         /* ---------- events ---------- */
         document.addEventListener("click", function (e) {
           var t = e.target.closest(
-            "[data-go],[data-v],[data-del],[data-edit],[data-ren],[data-rm],[data-use],[data-fedit],[data-fdel],[data-share],[data-unshare],[data-accept],[data-reject],[data-bin-restore],[data-bin-purge]",
+            "[data-go],[data-v],[data-del],[data-edit],[data-ren],[data-rm],[data-use],[data-fedit],[data-fdel],[data-share],[data-unshare],[data-accept],[data-reject],[data-bin-restore],[data-bin-purge],[data-discard]",
           );
           if (!t) return;
           if (t.hasAttribute("data-go")) {
@@ -10033,6 +10497,11 @@ if (e) {
           if (t.hasAttribute("data-bin-purge")) {
             var bp = (t.getAttribute("data-bin-purge") || "").split(":");
             if (bp[0] && bp[1]) binPurge(bp[0], bp[1]);
+            return;
+          }
+          if (t.hasAttribute("data-discard")) {
+            var dc = (t.getAttribute("data-discard") || "").split(":");
+            if (dc[0] && dc[1]) discardUnsynced(dc[0], dc[1]);
           }
         });
         /* The role dropdown carries its target in one attribute because the
@@ -10400,6 +10869,15 @@ if (e) {
         $("emptyBinBtn").addEventListener("click", function () {
           return emptyBin();
         });
+        $("syncBadge").addEventListener("click", function () {
+          openSyncPanel();
+        });
+        $("syncCloseBtn").addEventListener("click", function () {
+          closeSyncPanel();
+        });
+        $("syncPanel").addEventListener("click", function (e) {
+          if (e.target === this) closeSyncPanel();
+        });
         $("wipeBtn").addEventListener("click", function () {
           return askConfirm(TXT("toast.wipeQ"), {
             heading: "confirm.wipe",
@@ -10594,6 +11072,9 @@ if (e) {
         $("confirmCancel").addEventListener("click", function () {
           closeConfirm(false);
         });
+        $("confirmAlt").addEventListener("click", function () {
+          closeConfirm("alt");
+        });
         $("confirmSheet").addEventListener("click", function (e) {
           if (e.target === this) closeConfirm(false);
         });
@@ -10665,6 +11146,8 @@ if (e) {
           document.body.classList.add("dark");
           setThemeIcon("🌙");
         }
+        /* Before the first read, so the signed-out bucket is already whole. */
+        migrateLegacyStorage();
         load();
         loadFavs();
         initAuth();

@@ -27,10 +27,10 @@
  * because a navigation is network-first; an installed PWA launched from the
  * home screen can come straight out of the cache without any request at all.
  *
- * Last bumped: 2026-10-02, for the bin (recoverable deletes). v3 was per-account
- * local storage, v2 the sharing roles release.
+ * Last bumped: 2026-10-02, for the sync status panel and account visibility.
+ * v4 was the bin, v3 per-account local storage, v2 the sharing roles release.
  */
-const VERSION = "v4";
+const VERSION = "v5";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [
