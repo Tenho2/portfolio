@@ -246,6 +246,30 @@
         background: #0f172a;
         border-color: #475569;
       }
+      /* How many items are waiting in the bin, shown on the nav button so a
+         deletion is never invisible. */
+      .bin-count {
+        display: inline-block;
+        min-width: 1.5em;
+        margin-left: 0.3rem;
+        padding: 0 0.35em;
+        border-radius: 999px;
+        background: var(--warn);
+        color: #1f1300;
+        font-size: 0.7rem;
+        font-weight: 700;
+        line-height: 1.5;
+        text-align: center;
+      }
+      body.dark .bin-count {
+        color: #1f1300;
+      }
+      /* When something was binned, so the age of an entry is obvious. */
+      .bin-when {
+        font-size: 0.78rem;
+        color: var(--text-muted);
+        white-space: nowrap;
+      }
       .confirm-actions {
         margin-top: 0;
       }
@@ -1547,6 +1571,13 @@
             </button>
           </li>
           <li>
+            <button type="button" data-go="bin">
+              <span class="ic" aria-hidden="true">🗑️</span
+              ><span data-i18n="nav.bin"></span>
+              <span class="bin-count" id="binCount" hidden></span>
+            </button>
+          </li>
+          <li>
             <button type="button" data-go="settings">
               <span class="ic" aria-hidden="true">⚙️</span
               ><span data-i18n="nav.set"></span>
@@ -2297,6 +2328,24 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               <li data-i18n="how.n3"></li>
             </ul>
           </details>
+        </div>
+      </section>
+
+      <section class="view" id="bin">
+        <div class="panel">
+          <h2>
+            <span aria-hidden="true">🗑️</span>
+            <span data-i18n="bin.title"></span>
+          </h2>
+          <p class="lead" data-i18n="bin.lead"></p>
+          <div class="qa" style="margin-top: 0">
+            <button type="button" class="btn dgr" id="emptyBinBtn">
+              <span class="ic" aria-hidden="true">🔥</span
+              ><span data-i18n="bin.empty"></span>
+            </button>
+          </div>
+          <div class="hint" style="margin-top: 0.5rem" data-i18n="bin.emptyHint"></div>
+          <div id="binBody"></div>
         </div>
       </section>
 
@@ -3103,6 +3152,28 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "set.pendingTag": "Awaiting your approval",
             "set.pendingNoHistory":
               "Nothing to show yet. You are waiting for the owner to approve your request for this vehicle.",
+            "nav.bin": "Bin",
+            "bin.title": "Bin",
+            "bin.lead":
+              "Deleted items wait here instead of disappearing, so a mistake can be undone. Restoring puts a charging session back in its original place.",
+            "bin.empty": "Empty the bin",
+            "bin.emptyHint":
+              "Nothing is ever removed automatically. Items stay here until you delete them for good.",
+            "bin.emptyBody":
+              "The bin is empty. Anything you delete will wait here so you can put it back.",
+            "bin.vehicles": "Vehicles",
+            "bin.sessions": "Charging sessions",
+            "bin.favs": "Favourite locations",
+            "bin.restore": "Restore",
+            "bin.purge": "Delete forever",
+            "toast.vehBinned": "{v} moved to the bin",
+            "toast.favBinned": "Moved to the bin",
+            "toast.restored": "Restored",
+            "toast.binEmptied": "Bin emptied",
+            "toast.purged": "Deleted forever",
+            "toast.emptyBinQ":
+              "Delete {n} item(s) from the bin for good? This cannot be undone.",
+            "toast.purgeQ": "Delete {v} and {n} item(s) for good?",
             "set.pendingNoAddLead":
               "Waiting for the owner to approve your request. You can see the car, but not its history.",
             "set.viewerNoAddLead":
@@ -3123,15 +3194,21 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "confirm.rejectShare": "Refuse access",
             "confirm.reject": "Refuse",
             "confirm.irreversibleSession":
-              "This cannot be undone. The session is deleted for everyone, including the owner, and there is no backup.",
+              "This goes to the bin, not away. You can put it back from the bin until you empty it.",
             "confirm.irreversibleClear":
-              "This cannot be undone. Every charging session is deleted for good. Export a backup first if you might want them.",
+              "Every charging session goes to the bin. You can restore them all from the bin until you empty it.",
             "confirm.irreversibleWipe":
-              "This cannot be undone. Every vehicle and every charging session is deleted for good. There is no undo and no backup.",
+              "Everything goes to the bin: every vehicle, every session and every favourite. You can restore anything until you empty the bin.",
             "confirm.irreversibleUnshare":
               "They lose access immediately and cannot see the vehicle again. The sessions they already added stay, but they can no longer change them.",
             "confirm.irreversibleVehicle":
-              "This cannot be undone. The vehicle and all of its charging sessions are deleted for good.",
+              "The vehicle and all of its sessions go to the bin. You can restore them until you empty the bin.",
+            "confirm.emptyBin": "Empty the bin",
+            "confirm.deleteForever": "Delete forever",
+            "confirm.irreversibleEmptyBin":
+              "This cannot be undone. Everything in the bin is deleted from this device and from the database for good. There is no backup and no undo.",
+            "confirm.irreversiblePurge":
+              "This cannot be undone. The item is deleted from this device and from the database for good.",
             "ph.shareuser": "e.g. anna",
             "ph.favprice": "e.g. 0.30",
             "toast.favPrice": "Price set to {p} per kWh",
@@ -3607,6 +3684,28 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "set.pendingTag": "Odottaa hyväksyäsi",
             "set.pendingNoHistory":
               "Ei vielä mitään näytettävää. Odotat omistajan hyväksyntää pyynnöillesi tälle ajoneuvolle.",
+            "nav.bin": "Roskakori",
+            "bin.title": "Roskakori",
+            "bin.lead":
+              "Poistetut kohteet odottavat täällä eivätkä katoa, joten virheen voi palauttaa. Palautus palauttaa latauksen alkuperäiseen paikkaansa.",
+            "bin.empty": "Tyhjennä roskakori",
+            "bin.emptyHint":
+              "Mitään ei poisteta automaattisesti. Kohteet pysyvät täällä, kunnes poistat ne pysyvästi.",
+            "bin.emptyBody":
+              "Roskakori on tyhjä. Poistamasi kohteet odottavat täällä, jotta voit palauttaa ne.",
+            "bin.vehicles": "Ajoneuvot",
+            "bin.sessions": "Lataukset",
+            "bin.favs": "Suosikkisijainnit",
+            "bin.restore": "Palauta",
+            "bin.purge": "Poista pysyvästi",
+            "toast.vehBinned": "{v} siirretty roskakoriin",
+            "toast.favBinned": "Siirretty roskakoriin",
+            "toast.restored": "Palautettu",
+            "toast.binEmptied": "Roskakori tyhjennetty",
+            "toast.purged": "Poistettu pysyvästi",
+            "toast.emptyBinQ":
+              "Poistetaanko {n} kohdetta roskakorista pysyvästi? Tätä ei voi perua.",
+            "toast.purgeQ": "Poistetaanko {v} ja {n} kohdetta pysyvästi?",
             "set.pendingNoAddLead":
               "Odotat omistajan hyväksyntää. Näet ajoneuvon, mutta et sen historiaa.",
             "set.viewerNoAddLead":
@@ -3627,15 +3726,21 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "confirm.rejectShare": "Kiellä käyttöoikeus",
             "confirm.reject": "Kiellä",
             "confirm.irreversibleSession":
-              "Tätä ei voi perua. Lataus poistetaan kaikilta, myös omistajalta, eikä varmuuskopiota ole.",
+              "Tämä siirtyy roskakoriin, ei katoa. Voit palauttaa sen roskakorista, kunnes tyhjennät roskakorin.",
             "confirm.irreversibleClear":
-              "Tätä ei voi perua. Kaikki lataukset poistetaan pysyvästi. Ota varmuuskopio ennen, jos saatat vielä haluta ne.",
+              "Kaikki lataukset siirtyvät roskakoriin. Voit palauttaa kaiken roskakorista, kunnes tyhjennät sen.",
             "confirm.irreversibleWipe":
-              "Tätä ei voi perua. Kaikki ajoneuvot ja kaikki lataukset poistetaan pysyvästi. Ei peruutusta eikä varmuuskopiota.",
+              "Kaikki siirtyy roskakoriin: jokainen ajoneuvo, jokainen lataus ja jokainen suosikki. Voit palauttaa mitä tahansa, kunnes tyhjennät roskakorin.",
             "confirm.irreversibleUnshare":
               "Hän menettää käyttöoikeuden heti eikä näe ajoneuvoa enää. Hänen jo lisäämänsä lataukset säilyvät, mutta hän ei voi enää muuttaa niitä.",
             "confirm.irreversibleVehicle":
-              "Tätä ei voi perua. Ajoneuvo ja kaikki sen lataukset poistetaan pysyvästi.",
+              "Ajoneuvo ja kaikki sen lataukset siirtyvät roskakoriin. Voit palauttaa ne, kunnes tyhjennät roskakorin.",
+            "confirm.emptyBin": "Tyhjennä roskakori",
+            "confirm.deleteForever": "Poista pysyvästi",
+            "confirm.irreversibleEmptyBin":
+              "Tätä ei voi perua. Kaikki roskakorissa oleva poistetaan tältä laitteelta ja tietokannasta pysyvästi. Ei varmuuskopiota eikä peruutusta.",
+            "confirm.irreversiblePurge":
+              "Tätä ei voi perua. Kohde poistetaan tältä laitteelta ja tietokannasta pysyvästi.",
             "ph.shareuser": "esim. anna",
             "ph.favprice": "esim. 0,30",
             "toast.favPrice": "Hinnaksi asetettiin {p} per kWh",
@@ -4108,6 +4213,28 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "set.pendingTag": "Väntar på ditt godkännande",
             "set.pendingNoHistory":
               "Inget att visa än. Du väntar på att ägaren ska godkänna din förfrågan om fordonet.",
+            "nav.bin": "Papperskorg",
+            "bin.title": "Papperskorg",
+            "bin.lead":
+              "Borttagna poster väntar här i stället för att försvinna, så ett misstag går att ångra. Återställning sätter tillbaka laddsessionen på sin ursprungliga plats.",
+            "bin.empty": "Töm papperskorgen",
+            "bin.emptyHint":
+              "Ingenting tas bort automatiskt. Poster stannar här tills du raderar dem för alltid.",
+            "bin.emptyBody":
+              "Papperskorgen är tom. Det du tar bort väntar här så att du kan lägga tillbaka det.",
+            "bin.vehicles": "Fordon",
+            "bin.sessions": "Laddsessioner",
+            "bin.favs": " Favoritplatser",
+            "bin.restore": "Återställ",
+            "bin.purge": "Radera för alltid",
+            "toast.vehBinned": "{v} flyttades till papperskorgen",
+            "toast.favBinned": "Flyttades till papperskorgen",
+            "toast.restored": "Återställd",
+            "toast.binEmptied": "Papperskorgen är tom",
+            "toast.purged": "Raderad för alltid",
+            "toast.emptyBinQ":
+              "Radera {n} post(er) från papperskorgen för alltid? Detta går inte att ångra.",
+            "toast.purgeQ": "Radera {v} och {n} post(er) för alltid?",
             "set.pendingNoAddLead":
               "Du väntar på ägarens godkännande. Du ser fordonet men inte dess historik.",
             "set.viewerNoAddLead":
@@ -4128,15 +4255,21 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "confirm.rejectShare": "Neka åtkomst",
             "confirm.reject": "Neka",
             "confirm.irreversibleSession":
-              "Detta går inte att ångra. Sessionen tas bort för alla, även för ägaren, och det finns ingen backup.",
+              "Detta hamnas i papperskorgen, inte bort. Du kan återställa det där tills du tömmer korgen.",
             "confirm.irreversibleClear":
-              "Detta går inte att ångra. Alla laddsessioner tas bort permanent. Exportera en backup först om du kan behöva dem.",
+              "Alla laddsessioner hamnar i papperskorgen. Du kan återställa allt därifrån tills du tömmer den.",
             "confirm.irreversibleWipe":
-              "Detta går inte att ångra. Alla fordon och alla laddsessioner tas bort permanent. Varken ångra eller backup finns.",
+              "Allt hamnar i papperskorgen: varje fordon, varje laddsession och varje favorit. Du kan återställa vad som helst tills du tömmer korgen.",
             "confirm.irreversibleUnshare":
               "De förlorar åtkomst direkt och kan inte se fordonet igen. Sessioner de redan lagt till finns kvar, men de kan inte längre ändra dem.",
             "confirm.irreversibleVehicle":
-              "Detta går inte att ångra. Fordonet och alla dess laddsessioner tas bort permanent.",
+              "Fordonet och alla dess laddsessioner hamnar i papperskorgen. Du kan återställa dem tills du tömmer korgen.",
+            "confirm.emptyBin": "Töm papperskorgen",
+            "confirm.deleteForever": "Radera för alltid",
+            "confirm.irreversibleEmptyBin":
+              "Detta går inte att ångra. Allt i papperskorgen raderas från den här enheten och från databasen för alltid. Ingen backup, ingen ångra.",
+            "confirm.irreversiblePurge":
+              "Detta går inte att ångra. Posten raderas från den här enheten och från databasen för alltid.",
             "ph.shareuser": "t.ex. anna",
             "ph.favprice": "t.ex. 0,30",
             "toast.favPrice": "Priset satt till {p} per kWh",
@@ -4397,17 +4530,51 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
     <script>
       (function () {
         "use strict";
-        var K = {
-          v: "ev.v1.vehicles",
-          s: "ev.v1.sessions",
-          p: "ev.v1.price",
-          t: "theme",
-          f: "ev.v1.favs",
-          /* usernames of people we invited, keyed by vehicle and user id.
-             The share table only stores ids, so this is what lets the owner
-             recognise "Anna" instead of a bare uuid. */
-          n: "ev.v1.shareNames",
-        };
+        /* ---------- storage keys ----------
+           Per account, never global. One shared set of keys meant that signing
+           out of one account and into another carried the first account's
+           vehicles, sessions and favourites straight into the new one. They
+           then appeared labelled "shared vehicle", the sharing panel answered
+           "you are not the owner", and every pull tried to push rows the new
+           account was never allowed to write, which failed, retried, and left
+           the sync badge up.
+           "local" is the bucket used while nobody is signed in, so work done
+           offline survives a sign-out instead of being thrown away.
+           Theme and language stay global: those are device preferences, not
+           account data. */
+        var K_THEME = "theme";
+        var K_LANG = "ev.v1.lang";
+        function keysFor(userId) {
+          var pre = userId ? "ev.v1." + userId + "." : "ev.v1.local.";
+          return {
+            v: pre + "vehicles",
+            s: pre + "sessions",
+            /* The bin is stored under its own keys rather than inside the live
+               ones, so nothing that already reads vehicles/sessions has to
+               learn about it. */
+            bv: pre + "binVehicles",
+            bs: pre + "binSessions",
+            p: pre + "price",
+            f: pre + "favs",
+            /* usernames of people we invited, keyed by vehicle and user id.
+               The share table only stores ids, so this is what lets the owner
+               recognise "Anna" instead of a bare uuid. */
+            n: pre + "shareNames",
+            t: K_THEME,
+          };
+        }
+        var K = keysFor(null);
+        /**
+         * Point storage at one account's bucket. Must run before load().
+         * @param {?string} userId
+         * @returns {boolean} true when the bucket actually changed
+         */
+        function useAccount(userId) {
+          var next = keysFor(userId);
+          var changed = next.v !== K.v;
+          K = next;
+          return changed;
+        }
         var $ = function (id) {
           return document.getElementById(id);
         };
@@ -4444,10 +4611,43 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           favs = [],
           cur = 0,
           view = "dashboard",
-          dirty = false,
-          price = 0.2,
+          dirty = false,          price = 0.2,
           editFav = null,
           editVehId = null;
+
+        /* ---------- the bin ----------
+           Binned rows are held in their own arrays instead of being flagged in
+           place. Almost every calculation in the app reads `vehicles` and
+           `sessions` directly, so keeping deleted rows out of those arrays
+           entirely is what guarantees that totals, distance, the chart, exports,
+           the log and the import target cannot quietly include something the
+           user threw away. One split here, and nothing else needs to change. */
+        var binned = { vehicles: [], sessions: [], favs: [] };
+        /** How many items are waiting to be restored or purged. */
+        function binCount() {
+          return (
+            binned.vehicles.length +
+            binned.sessions.length +
+            binned.favs.length
+          );
+        }
+        /**
+         * Separate a loaded or pulled list into live rows and binned rows.
+         * @param {Array} list  rows straight from storage or the server
+         * @param {Array} into   binned bucket to append to
+         * @returns {Array} the rows that are still live
+         */
+        function splitBinned(list, into) {
+          var live = [];
+          if (!Array.isArray(list)) return live;
+          for (var i = 0; i < list.length; i++) {
+            var row = list[i];
+            if (!row) continue;
+            if (row.deletedAt) into.push(row);
+            else live.push(row);
+          }
+          return live;
+        }
 
         /* ---------- storage ---------- */
         function load() {
@@ -4467,6 +4667,22 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           } catch (e) {
             sessions = [];
           }
+          /* Everything the user deleted lives here, not in the live arrays. */
+          try {
+            binned.vehicles = JSON.parse(localStorage.getItem(K.bv)) || [];
+          } catch (e) {
+            binned.vehicles = [];
+          }
+          try {
+            binned.sessions = JSON.parse(localStorage.getItem(K.bs)) || [];
+          } catch (e) {
+            binned.sessions = [];
+          }
+          /* A row can reach storage already flagged, for instance if it was
+             saved before this split existed or arrived from the server, so the
+             split runs on load as well as on pull. */
+          vehicles = splitBinned(vehicles, binned.vehicles);
+          sessions = splitBinned(sessions, binned.sessions);
           if (!Array.isArray(vehicles) || !vehicles.length)
             vehicles = [
               {
@@ -4474,6 +4690,12 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                 name: TXT("veh.default"),
                 icon: "🚗",
                 initialOdometer: 0,
+                /* The baseline has to be stamped here for the same reason
+                   addVehicle stamps it: without an owner the row is labelled a
+                   shared vehicle, the sharing controls stay hidden, and
+                   canAddSession refuses, so a brand new account cannot log its
+                   first charge. */
+                userId: ownerId() || null,
               },
             ];
           if (!Array.isArray(sessions)) sessions = [];
@@ -4491,6 +4713,8 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           try {
             localStorage.setItem(K.v, JSON.stringify(vehicles));
             localStorage.setItem(K.s, JSON.stringify(sessions));
+            localStorage.setItem(K.bv, JSON.stringify(binned.vehicles));
+            localStorage.setItem(K.bs, JSON.stringify(binned.sessions));
           } catch (e) {
             toast(TXT("toast.storage"));
           }
@@ -4526,19 +4750,36 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
         function clearDirty(kind, id) {
           delete syncDirty[kind][id];
         }
+        /** Find a row by id whether it is live or in the bin, so a push that was
+    queued before the row moved cannot be stranded by the move. */
+        function vehicleAnywhere(id) {
+          var live = vehById(id);
+          if (live) return live;
+          for (var i = 0; i < binned.vehicles.length; i++)
+            if (binned.vehicles[i].id === id) return binned.vehicles[i];
+          return null;
+        }
+        function sessionAnywhere(id) {
+          for (var i = 0; i < sessions.length; i++)
+            if (sessions[i].id === id) return sessions[i];
+          for (var j = 0; j < binned.sessions.length; j++)
+            if (binned.sessions[j].id === id) return binned.sessions[j];
+          return null;
+        }
         /** Re-push every row previously marked dirty. Called after a successful pull. */
         function retryDirty() {
           if (!syncOn()) return;
           var vi = Object.keys(syncDirty.vehicles),
             si = Object.keys(syncDirty.sessions);
+          /* Both lookups span the bin, because a row that was just deleted has
+             moved out of the live arrays and the delete itself still has to
+             reach the server. */
           for (var a = 0; a < vi.length; a++) {
-            var v = vehById(vi[a]);
+            var v = vehicleAnywhere(vi[a]);
             if (v) syncVehicle(v);
           }
           for (var b = 0; b < si.length; b++) {
-            var s = sessions.filter(function (x) {
-              return x.id === si[b];
-            })[0];
+            var s = sessionAnywhere(si[b]);
             if (s) syncSession(s);
           }
         }
@@ -4590,6 +4831,9 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             initial_odometer: isNum(v.initialOdometer)
               ? num(v.initialOdometer)
               : 0,
+            /* null means live. A timestamp means the row is in the bin and the
+               client is expected to keep it out of the live arrays. */
+            deleted_at: v.deletedAt || null,
           };
         }
         /**
@@ -4624,6 +4868,9 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             lng: isNum(s.lng) ? num(s.lng) : null,
             socStart: soc(s.socStart),
             socEnd: soc(s.socEnd),
+            /* Kept through every write, or emptying the bin would silently
+               un-delete a row that got re-saved while it sat there. */
+            deleted_at: s.deletedAt || null,
           };
         }
         /* snake_case -> camelCase */
@@ -4638,6 +4885,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               ? num(r.initial_odometer)
               : 0,
             userId: r.user_id || null,
+            deletedAt: r.deleted_at || null,
           };
         }
         /**
@@ -4668,6 +4916,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             lng: isNum(r.lng) ? num(r.lng) : null,
             socStart: soc(r.socStart),
             socEnd: soc(r.socEnd),
+            deletedAt: r.deleted_at || null,
             created: r.created_at ? Date.parse(r.created_at) : Date.now(),
           };
         }
@@ -4683,6 +4932,48 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           if (window.console && window.console.warn)
             window.console.warn("[sync] " + what + " failed; kept locally");
         }
+        /* A row the server will never accept has to stop being retried. Replaying it
+           on every pull costs a full round trip each time, and because the pull
+           only finishes when the batch does, a handful of impossible rows made
+           syncing feel broken. Three tries is enough to tell a transient
+           network failure from a row the database is going to refuse forever. */
+        var MAX_PUSH_ATTEMPTS = 3;
+        var pushAttempts = {};
+        function bumpAttempt(kind, id) {
+          var k = kind + ":" + id;
+          pushAttempts[k] = (pushAttempts[k] || 0) + 1;
+          return pushAttempts[k];
+        }
+        function forgetAttempts(kind, id) {
+          delete pushAttempts[kind + ":" + id];
+        }
+        /**
+         * Record a failed push: keep it queued while it might still succeed,
+         * then give up on it so it cannot slow every future sync.
+         * @param {string} kind  "vehicles" or "sessions"
+         * @param {string} id
+         * @param {string} what  short description for the console
+         */
+        function failPush(kind, id, what) {
+          if (bumpAttempt(kind, id) < MAX_PUSH_ATTEMPTS) {
+            markDirty(kind, id);
+            syncFail(what);
+            return false;
+          }
+          clearDirty(kind, id);
+          syncFail(what + " - giving up, the server will not accept this row");
+          if (window.console && window.console.warn)
+            window.console.warn(
+              "[sync] " +
+                kind +
+                " " +
+                id +
+                " failed " +
+                MAX_PUSH_ATTEMPTS +
+                " times; it stays on this device only",
+            );
+          return false;
+        }
         /* push one vehicle; "mode" is insert or update, both handled by upsert */
         function syncVehicle(v) {
           if (!syncOn() || !v) return Promise.resolve(false);
@@ -4697,19 +4988,14 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             .then(function (res) {
               syncQueue.pending--;
               var e = res && res.error;
-              if (e) {
-                markDirty("vehicles", v.id);
-                syncFail("vehicle upsert");
-                return false;
-              }
+              if (e) return failPush("vehicles", v.id, "vehicle upsert");
               clearDirty("vehicles", v.id);
+              forgetAttempts("vehicles", v.id);
               return true;
             })
             .catch(function () {
               syncQueue.pending--;
-              markDirty("vehicles", v.id);
-              syncFail("vehicle upsert");
-              return false;
+              return failPush("vehicles", v.id, "vehicle upsert");
             });
         }
         /**
@@ -4730,19 +5016,14 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             .then(function (res) {
               syncQueue.pending--;
               var e = res && res.error;
-              if (e) {
-                markDirty("sessions", s.id);
-                syncFail("session upsert");
-                return false;
-              }
+              if (e) return failPush("sessions", s.id, "session upsert");
               clearDirty("sessions", s.id);
+              forgetAttempts("sessions", s.id);
               return true;
             })
             .catch(function () {
               syncQueue.pending--;
-              markDirty("sessions", s.id);
-              syncFail("session upsert");
-              return false;
+              return failPush("sessions", s.id, "session upsert");
             });
         }
         /* Deletes are recorded while offline too, otherwise a session deleted on a
@@ -5782,13 +6063,15 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                 .upsert(slice, { onConflict: "id" })
                 .then(function (res) {
                   var e = res && res.error;
-                  if (e) {
-                    for (var k = 0; k < slice.length; k++)
-                      markDirty("sessions", slice[k].id);
-                    return false;
-                  }
-                  for (var j = 0; j < slice.length; j++)
+if (e) {
+                      for (var k = 0; k < slice.length; k++)
+                        failPush("sessions", slice[k].id, "session bulk upsert");
+                      return false;
+                    }
+                  for (var j = 0; j < slice.length; j++) {
                     clearDirty("sessions", slice[j].id);
+                    forgetAttempts("sessions", slice[j].id);
+                  }
                   return true;
                 });
             },
@@ -5865,8 +6148,19 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                 var lsr = sessions[ls];
                 if (lsr && !knownS[lsr.id]) localOnlySessions.push(lsr);
               }
-              vehicles = pulledVehicles.concat(localOnlyVehicles);
-              sessions = pulledSessions.concat(localOnlySessions);
+              /* The server deliberately keeps binned rows, because they have to stay
+                 restorable, so the pull separates them here in the same way
+                 load() does. */
+              binned.vehicles = [];
+              binned.sessions = [];
+              vehicles = splitBinned(
+                pulledVehicles.concat(localOnlyVehicles),
+                binned.vehicles,
+              );
+              sessions = splitBinned(
+                pulledSessions.concat(localOnlySessions),
+                binned.sessions,
+              );
               if (!vehicles.length) {
                 /* brand new account: give them a baseline vehicle straight away */
                 var first = {
@@ -5874,6 +6168,9 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                   name: TXT("veh.default"),
                   icon: "\u{1F697}",
                   initialOdometer: 0,
+                  /* Stamped so the insert satisfies the vehicles insert policy
+                     (user_id = auth.uid()) and the car is treated as theirs. */
+                  userId: ownerId(),
                 };
                 vehicles.push(first);
                 syncVehicle(first);
@@ -5990,6 +6287,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                 lat: null,
                 lng: null,
                 price: null,
+                deletedAt: null,
               });
             else if (f && typeof f === "object")
               /* Every field is rebuilt explicitly, so a newly added one has to be
@@ -6001,8 +6299,12 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                 lat: isNum(f.lat) ? +f.lat : null,
                 lng: isNum(f.lng) ? +f.lng : null,
                 price: isNum(f.price) && +f.price >= 0 ? +f.price : null,
+                deletedAt: f.deletedAt || null,
               });
           }
+          /* Favourites never leave the device, so their bin is device-local too. */
+          binned.favs = [];
+          favs = splitBinned(favs, binned.favs);
         }
 
         /* ---------- helpers ---------- */
@@ -6333,6 +6635,10 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           authClient = null,
           authTimer = null,
           lastSyncUser = null;
+        /* Which account's storage bucket is currently loaded, or null for the
+           signed-out local bucket. Distinct from lastSyncUser, which tracks
+           when rows were last fetched. */
+        var lastAccount = null;
         function authConfigured() {
           return !!(
             SUPABASE_URL &&
@@ -6456,6 +6762,31 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           $("logoutBtn").hidden = !signed;
           var chip = $("userChip");
           if (chip) chip.hidden = !signed;
+          var who = signed ? user.id : null;
+          /* onAuthStateChange also fires for TOKEN_REFRESHED, which Supabase
+             sends roughly hourly and whenever the tab regains focus. Reloading
+             storage on those would reset the selected vehicle and throw away
+             edits that have not been written yet, so state is only swapped when
+             the account genuinely differs from the one in the current bucket. */
+          if (who !== lastAccount) {
+            useAccount(who);
+            load();
+            if (signed) {
+              /* A vehicle made while signed out has no owner stamped, because
+                 there was no account to stamp it with. This account is the only
+                 one that could have created it on this device, so adopt it now
+                 instead of letting it fail the vehicles insert policy on every
+                 pull, which is what left the sync badge permanently lit. */
+              var adopted = 0;
+              for (var ai = 0; ai < vehicles.length; ai++)
+                if (vehicles[ai] && !vehicles[ai].userId) {
+                  vehicles[ai].userId = user.id;
+                  adopted++;
+                }
+              if (adopted) save();
+            }
+            lastAccount = who;
+          }
           if (signed) {
             $("userName").textContent = fromFakeEmail(user.email || "");
             render();
@@ -7193,6 +7524,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           }
           $("vehSettings").innerHTML = vs;
           renderImportTarget();
+          renderBin();
           renderRedeemPanel();
           syncCents();
           renderFavs();
@@ -7203,6 +7535,217 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
          * Rebuild both favourite surfaces: the saved list and the quick chips
          * shown under the session form.
          */
+        /**
+         * Format when a row was binned, for the bin list.
+         * @param {?string} iso
+         * @returns {string} a short local date and time, or "" if unknown
+         */
+        function binWhen(iso) {
+          if (!iso) return "";
+          var t = Date.parse(iso);
+          if (!isFinite(t)) return "";
+          try {
+            return new Date(t).toLocaleString();
+          } catch (e) {
+            return new Date(t).toISOString().slice(0, 16).replace("T", " ");
+          }
+        }
+        /**
+         * Build the bin view: everything deleted, with Restore and
+         * Delete forever on each row.
+         */
+        function renderBin() {
+          var n = binCount();
+          var badge = $("binCount");
+          if (badge) {
+            badge.textContent = String(n);
+            badge.hidden = !n;
+          }
+          var empty = $("emptyBinBtn");
+          if (empty) empty.disabled = !n;
+          /* Only build the list when the bin is actually on screen. render()
+             runs after every edit and every language change, and assembling
+             this markup each time for a hidden view is pure waste. */
+          if (view !== "bin") return;
+          var box = $("binBody");
+          if (!box) return;
+          if (!n) {
+            box.innerHTML =
+              '<p class="empty">' + TXT("bin.emptyBody") + "</p>";
+            return;
+          }
+          var h = "";
+          /* Newest binned first, which is the order you want to look for a
+             mistake you just made. */
+          function byNewest(a, b) {
+            var ta = Date.parse(a.deletedAt || "") || 0;
+            var tb = Date.parse(b.deletedAt || "") || 0;
+            return tb - ta;
+          }
+          function section(key, titleKey, rows, labelFn) {
+            if (!rows.length) return;
+            h +=
+              '<h3 style="margin-top:1.25rem">' +
+              TXT(titleKey) +
+              ' <span class="mini">(' +
+              rows.length +
+              ")</span></h3>" +
+              '<div class="list">';
+            for (var i = 0; i < rows.length; i++) {
+              var row = rows[i];
+              var id = esc(row.id);
+              h +=
+                '<div class="item">' +
+                '<span class="nm">' +
+                esc(labelFn(row)) +
+                "</span>" +
+                '<span class="bin-when">' +
+                esc(binWhen(row.deletedAt)) +
+                "</span>" +
+                '<button type="button" class="btn sm ghost" data-bin-restore="' +
+                key +
+                ":" +
+                id +
+                '">' +
+                TXT("bin.restore") +
+                "</button>" +
+                '<button type="button" class="btn sm dgr" data-bin-purge="' +
+                key +
+                ":" +
+                id +
+                '">' +
+                TXT("bin.purge") +
+                "</button></div>";
+            }
+            h += "</div>";
+          }
+          section(
+            "vehicles",
+            "bin.vehicles",
+            binned.vehicles.slice().sort(byNewest),
+            function (v) {
+              var count = binned.sessions.filter(function (s) {
+                return s.vehicleId === v.id;
+              }).length;
+              return v.name + (count ? "  (" + count + ")" : "");
+            },
+          );
+          section(
+            "sessions",
+            "bin.sessions",
+            binned.sessions.slice().sort(byNewest),
+            function (s) {
+              var v = null;
+              for (var i = 0; i < binned.vehicles.length; i++)
+                if (binned.vehicles[i].id === s.vehicleId)
+                  v = binned.vehicles[i];
+              return (
+                (v ? v.name + " · " : "") +
+                s.location +
+                " · " +
+                num(s.energy).toFixed(2) +
+                " kWh · " +
+                s.date
+              );
+            },
+          );
+          section(
+            "favs",
+            "bin.favs",
+            binned.favs,
+            function (f) {
+              return f.name + (f.address && f.address !== f.name
+                ? " · " + f.address
+                : "");
+            },
+          );
+          box.innerHTML = h;
+        }
+        /**
+         * Put a binned row back, by kind.
+         * @param {string} kind  "vehicles", "sessions" or "favs"
+         * @param {string} id
+         */
+        function binRestore(kind, id) {
+          if (kind === "vehicles") restoreVehicle(id);
+          else if (kind === "sessions") restoreSession(id);
+          else if (kind === "favs") restoreFav(id);
+          renderBin();
+        }
+        /**
+         * Delete one binned row for good. This is the only irreversible action,
+         * so it is confirmed on its own even though the whole bin can be
+         * emptied in one go.
+         * @param {string} kind
+         * @param {string} id
+         */
+        function binPurge(kind, id) {
+          var list =
+            kind === "vehicles"
+              ? binned.vehicles
+              : kind === "sessions"
+                ? binned.sessions
+                : binned.favs;
+          var row = null;
+          for (var i = 0; i < list.length; i++)
+            if (list[i].id === id) row = list[i];
+          if (!row) return;
+          var label =
+            kind === "vehicles"
+              ? row.name
+              : kind === "sessions"
+                ? row.location
+                : row.name;
+          /* Purging a vehicle takes everything binned with it, which would
+             otherwise leave orphaned sessions in the bin. */
+          var orphans = 0;
+          if (kind === "vehicles") {
+            orphans = binned.sessions.filter(function (s) {
+              return s.vehicleId === id;
+            }).length;
+          }
+          return askConfirm(
+            TXT("toast.purgeQ", {
+              n: 1 + orphans,
+              v: label,
+            }),
+            {
+              heading: "confirm.deleteForever",
+              ok: "confirm.deleteForever",
+              irreversible: "confirm.irreversiblePurge",
+            },
+          ).then(function (yes) {
+            if (!yes) return false;
+            if (kind === "vehicles") {
+              binned.vehicles = binned.vehicles.filter(function (x) {
+                return x.id !== id;
+              });
+              var gone = binned.sessions.filter(function (s) {
+                return s.vehicleId === id;
+              });
+              binned.sessions = binned.sessions.filter(function (s) {
+                return s.vehicleId !== id;
+              });
+              for (var i = 0; i < gone.length; i++)
+                syncDelete("sessions", gone[i].id);
+              syncDelete("vehicles", id);
+            } else if (kind === "sessions") {
+              binned.sessions = binned.sessions.filter(function (x) {
+                return x.id !== id;
+              });
+              syncDelete("sessions", id);
+            } else {
+              binned.favs = binned.favs.filter(function (x) {
+                return x.id !== id;
+              });
+            }
+            save();
+            saveFavs();
+            render();
+            toast(TXT("toast.purged"));
+            return true;
+          });
+        }
         function renderFavs() {
           var box = $("favList"),
             html = "";
@@ -8994,41 +9537,121 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
          * separate steps and the action can be reused.
          * @param {string} id  vehicle id
          */
+        /* ---------- the bin ---------- */
+        function binStamp() {
+          return new Date().toISOString();
+        }
+        /**
+         * Move a vehicle and all of its sessions to the bin.
+         * The timestamp is what the database stores, so the row stays
+         * restorable on this device and on every other one.
+         * @param {string} id
+         */
         function doRemoveVehicle(id) {
           var v = vehById(id);
           if (!v) return;
           var gone = sessions.filter(function (s) {
             return s.vehicleId === id;
           });
+          var at = binStamp();
           vehicles = vehicles.filter(function (x) {
             return x.id !== id;
           });
           sessions = sessions.filter(function (s) {
             return s.vehicleId !== id;
           });
+          v.deletedAt = at;
+          gone.forEach(function (s) {
+            s.deletedAt = at;
+          });
+          binned.vehicles.push(v);
+          binned.sessions = binned.sessions.concat(gone);
           if (cur >= vehicles.length) cur = vehicles.length - 1;
           save();
           render();
-          toast(TXT("toast.vehRem", { v: v.name }));
-          /* sessions go first: the vehicle delete would cascade server-side anyway,
-             but deleting them explicitly keeps a signed-in client and the database
-             in step even if the cascade is ever removed */
-          for (var i = 0; i < gone.length; i++)
-            syncDelete("sessions", gone[i].id);
-          syncDelete("vehicles", id);
+          toast(TXT("toast.vehBinned", { v: v.name }));
+          /* An UPDATE, not a delete, so the cloud copy learns about it too. The
+             dirty queue replays it if the device is offline. */
+          for (var i = 0; i < gone.length; i++) {
+            markDirty("sessions", gone[i].id);
+            syncSession(gone[i]);
+          }
+          markDirty("vehicles", id);
+          syncVehicle(v);
         }
-        /** Delete one stored session. Called after the user confirms. */
+        /** Bin one stored session. Called after the user confirms. */
         function doDeleteSession(id) {
+          var s = null;
+          for (var i = 0; i < sessions.length; i++)
+            if (sessions[i].id === id) s = sessions[i];
+          if (!s) return;
           sessions = sessions.filter(function (x) {
             return x.id !== id;
           });
+          s.deletedAt = binStamp();
+          binned.sessions.push(s);
           save();
           render();
           toast(TXT("toast.deleted"));
-          syncDelete("sessions", id);
+          markDirty("sessions", id);
+          syncSession(s);
         }
-        /** Delete one favourite location. Called after the user confirms. */
+        /**
+         * Put one binned session back. Its original position in the history is
+         * preserved because the row is never rebuilt, only moved.
+         * @param {string} id
+         */
+        function restoreSession(id) {
+          var s = null;
+          for (var i = 0; i < binned.sessions.length; i++)
+            if (binned.sessions[i].id === id) s = binned.sessions[i];
+          if (!s) return;
+          binned.sessions = binned.sessions.filter(function (x) {
+            return x.id !== id;
+          });
+          s.deletedAt = null;
+          sessions.push(s);
+          save();
+          render();
+          toast(TXT("toast.restored"));
+          markDirty("sessions", id);
+          syncSession(s);
+        }
+        /** Put one binned vehicle, and everything binned with it, back. */
+        function restoreVehicle(id) {
+          var v = null;
+          for (var i = 0; i < binned.vehicles.length; i++)
+            if (binned.vehicles[i].id === id) v = binned.vehicles[i];
+          if (!v) return;
+          var back = [];
+          var still = [];
+          for (var j = 0; j < binned.sessions.length; j++) {
+            if (binned.sessions[j].vehicleId === id) back.push(binned.sessions[j]);
+            else still.push(binned.sessions[j]);
+          }
+          binned.vehicles = binned.vehicles.filter(function (x) {
+            return x.id !== id;
+          });
+          binned.sessions = still;
+          v.deletedAt = null;
+          vehicles.push(v);
+          for (var k = 0; k < back.length; k++) {
+            back[k].deletedAt = null;
+            sessions.push(back[k]);
+            markDirty("sessions", back[k].id);
+            syncSession(back[k]);
+          }
+          save();
+          render();
+          toast(TXT("toast.restored"));
+          markDirty("vehicles", id);
+          syncVehicle(v);
+        }
+        /** Remove one favourite location. Called after the user confirms. */
         function doDeleteFav(id) {
+          var f = null;
+          for (var i = 0; i < favs.length; i++) if (favs[i].id === id) f = favs[i];
+          if (!f) return;
           favs = favs.filter(function (x) {
             return x.id !== id;
           });
@@ -9037,22 +9660,54 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           renderFavs();
           toast(TXT("toast.delFav"));
         }
-        /** Delete every stored session but keep vehicles and favourites. */
+        /** Move every session to the bin, keeping vehicles and favourites. Reversible:
+            the confirmation says so and the bin lists everything it took. */
         function doClearSessions() {
+          var at = binStamp();
+          var gone = sessions.slice();
           sessions = [];
+          for (var i = 0; i < gone.length; i++) {
+            gone[i].deletedAt = at;
+            binned.sessions.push(gone[i]);
+            markDirty("sessions", gone[i].id);
+            syncSession(gone[i]);
+          }
           save();
           render();
           toast(TXT("toast.cleared"));
-          syncReplaceAll();
         }
-        /** Delete every vehicle, session and favourite, then start again. */
+        /** Move everything to the bin and start again with a fresh baseline.
+            Still recoverable: the bin keeps every row, and emptying it is the
+            only step that cannot be undone. */
         function doWipe() {
+          var at = binStamp();
+          var goneV = vehicles.slice();
+          var goneS = sessions.slice();
+          var goneF = favs.slice();
+          var i;
+          for (i = 0; i < goneS.length; i++) {
+            goneS[i].deletedAt = at;
+            binned.sessions.push(goneS[i]);
+            markDirty("sessions", goneS[i].id);
+            syncSession(goneS[i]);
+          }
+          for (i = 0; i < goneV.length; i++) {
+            goneV[i].deletedAt = at;
+            binned.vehicles.push(goneV[i]);
+            markDirty("vehicles", goneV[i].id);
+            syncVehicle(goneV[i]);
+          }
+          for (i = 0; i < goneF.length; i++) {
+            goneF[i].deletedAt = at;
+            binned.favs.push(goneF[i]);
+          }
           vehicles = [
             {
               id: uuid(),
               name: TXT("veh.default"),
               icon: "🚗",
               initialOdometer: 0,
+              userId: ownerId() || null,
             },
           ];
           sessions = [];
@@ -9063,9 +9718,62 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           saveFavs();
           render();
           toast(TXT("toast.wiped"));
-          /* syncPull would just re-download the rows the user asked to delete, so the
-             cloud copy is cleared directly and the new baseline vehicle re-pushed */
-          syncReplaceAll();
+          syncVehicle(vehicles[0]);
+        }
+        /** Move one favourite location to the bin, where it can be restored. */
+        function binFav(id) {
+          var f = null;
+          for (var i = 0; i < favs.length; i++) if (favs[i].id === id) f = favs[i];
+          if (!f) return;
+          favs = favs.filter(function (x) {
+            return x.id !== id;
+          });
+          if (editFav === id) clearFavForm();
+          f.deletedAt = binStamp();
+          binned.favs.push(f);
+          saveFavs();
+          renderFavs();
+          toast(TXT("toast.favBinned"));
+        }
+        function restoreFav(id) {
+          var f = null;
+          for (var i = 0; i < binned.favs.length; i++)
+            if (binned.favs[i].id === id) f = binned.favs[i];
+          if (!f) return;
+          binned.favs = binned.favs.filter(function (x) {
+            return x.id !== id;
+          });
+          f.deletedAt = null;
+          favs.push(f);
+          saveFavs();
+          renderFavs();
+          toast(TXT("toast.restored"));
+        }
+        /**
+         * Empty the bin for good. This is the only genuinely irreversible action
+         * left in the app, and it says so.
+         */
+        function emptyBin() {
+          var n = binCount();
+          if (!n) return Promise.resolve(false);
+          return askConfirm(TXT("toast.emptyBinQ", { n: n }), {
+            heading: "confirm.emptyBin",
+            ok: "confirm.deleteForever",
+            irreversible: "confirm.irreversibleEmptyBin",
+          }).then(function (yes) {
+            if (!yes) return false;
+            var goneVeh = binned.vehicles.slice();
+            var goneSes = binned.sessions.slice();
+            binned = { vehicles: [], sessions: [], favs: [] };
+            save();
+            saveFavs();
+            render();
+            toast(TXT("toast.binEmptied"));
+            /* Only now are these real deletes. */
+            for (var i = 0; i < goneSes.length; i++) syncDelete("sessions", goneSes[i].id);
+            for (var j = 0; j < goneVeh.length; j++) syncDelete("vehicles", goneVeh[j].id);
+            return true;
+          });
         }
         function addVehicle() {
           var name = $("vName").value.trim();
@@ -9254,7 +9962,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
         /* ---------- events ---------- */
         document.addEventListener("click", function (e) {
           var t = e.target.closest(
-            "[data-go],[data-v],[data-del],[data-edit],[data-ren],[data-rm],[data-use],[data-fedit],[data-fdel],[data-share],[data-unshare],[data-accept],[data-reject]",
+            "[data-go],[data-v],[data-del],[data-edit],[data-ren],[data-rm],[data-use],[data-fedit],[data-fdel],[data-share],[data-unshare],[data-accept],[data-reject],[data-bin-restore],[data-bin-purge]",
           );
           if (!t) return;
           if (t.hasAttribute("data-go")) {
@@ -9284,7 +9992,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             return;
           }
           if (t.hasAttribute("data-fdel")) {
-            delFav(t.getAttribute("data-fdel"));
+            binFav(t.getAttribute("data-fdel"));
             return;
           }
           if (t.hasAttribute("data-del")) {
@@ -9313,6 +10021,18 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           }
           if (t.hasAttribute("data-reject")) {
             decideShare(t.getAttribute("data-reject"), "rejected");
+            return;
+          }
+          /* "kind:id" in one attribute, because the bin is rebuilt from scratch
+             on every render and cannot keep per-element handlers. */
+          if (t.hasAttribute("data-bin-restore")) {
+            var br = (t.getAttribute("data-bin-restore") || "").split(":");
+            if (br[0] && br[1]) binRestore(br[0], br[1]);
+            return;
+          }
+          if (t.hasAttribute("data-bin-purge")) {
+            var bp = (t.getAttribute("data-bin-purge") || "").split(":");
+            if (bp[0] && bp[1]) binPurge(bp[0], bp[1]);
           }
         });
         /* The role dropdown carries its target in one attribute because the
@@ -9668,8 +10388,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           r.readAsText(f);
           this.value = "";
         });
-        $("clearBtn").addEventListener("click", function () {
-          return askConfirm(TXT("toast.clearQ", { n: sessions.length }), {
+        $("clearBtn").addEventListener("click", function () {          return askConfirm(TXT("toast.clearQ", { n: sessions.length }), {
             heading: "confirm.clearSessions",
             irreversible: "confirm.irreversibleClear",
           }).then(function (yes) {
@@ -9677,6 +10396,9 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             doClearSessions();
             return true;
           });
+        });
+        $("emptyBinBtn").addEventListener("click", function () {
+          return emptyBin();
         });
         $("wipeBtn").addEventListener("click", function () {
           return askConfirm(TXT("toast.wipeQ"), {

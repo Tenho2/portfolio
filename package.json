@@ -5,7 +5,7 @@
   "description": "Personal portfolio site. The EV tracker is a dependency-free, single-file app; these scripts are developer tooling only and produce no build output.",
   "scripts": {
     "check": "npm run test && npm run fmt:check && npm run lint:html && npm run lint:js",
-    "test": "node tools/test-roles.mjs",
+    "test": "node tools/test-roles.mjs && node tools/test-storage.mjs && node tools/test-bin.mjs",
     "fmt": "prettier --write \"*.{json,md}\"",
     "fmt:check": "prettier --check \"*.{json,md}\"",
     "fmt:html": "prettier --write \"*.html\"",
