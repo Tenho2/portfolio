@@ -213,6 +213,39 @@
         margin-bottom: 1.4rem;
         overflow-wrap: anywhere;
       }
+      /* Appended to the confirm body on destructive actions only. The wording
+         is deliberately blunt: there is no undo and no server-side copy. */
+      .confirm-warn {
+        margin: 0.85rem 0 0;
+        padding: 0.65rem 0.8rem;
+        border: 2px solid var(--danger);
+        border-radius: 8px;
+        background: #fee2e2;
+        color: #7f1d1d;
+        font-weight: 700;
+        line-height: 1.45;
+      }
+      body.dark .confirm-warn {
+        background: #7f1d1d;
+        border-color: var(--danger);
+        color: #fee2e2;
+      }
+      /* Role picker in the owner's share list. */
+      .role-sel {
+        padding: 0.35rem 0.5rem;
+        border: 2px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+        color: var(--text);
+        font: inherit;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      body.dark .role-sel {
+        background: #0f172a;
+        border-color: #475569;
+      }
       .confirm-actions {
         margin-top: 0;
       }
@@ -2075,7 +2108,7 @@
             />
           </div>
           <div class="addrow" style="margin-top: 0">
-            <button class="btn sec" id="impGo" data-i18n="im.go"></button>
+            <button type="button" class="btn sec" id="impGo" data-i18n="im.go"></button>
             <span class="mini" data-i18n="im.tplNote"></span>
           </div>
 
@@ -2991,6 +3024,49 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "set.shareLoading": "Checking sharing…",
             "a11y.shareVeh": "Share vehicle: {v}",
             "a11y.unshare": "Remove access for {v}",
+            "a11y.acceptShare": "Approve access for {v}",
+            "a11y.rejectShare": "Refuse access for {v}",
+            "role.viewer": "Viewer",
+            "role.driver": "Driver",
+            "role.admin": "Admin",
+            "set.sharePendingTitle": "Pending requests",
+            "set.sharePendingLead":
+              "These people entered a share code. They cannot see or change anything until you accept them.",
+            "set.shareMembersTitle": "People with access",
+            "set.shareAccept": "Accept",
+            "set.shareReject": "Refuse",
+            "set.pendingTag": "Awaiting your approval",
+            "set.pendingNoHistory":
+              "Nothing to show yet. You are waiting for the owner to approve your request for this vehicle.",
+            "set.pendingNoAddLead":
+              "Waiting for the owner to approve your request. You can see the car, but not its history.",
+            "set.viewerNoAddLead":
+              "You have read-only access to this vehicle.",
+            "toast.shareAccepted": "{u} now has access",
+            "toast.shareRejected": "{u} was refused",
+            "toast.shareRoleOk": "{u} is now {r}",
+            "toast.rejectQ":
+              "Refuse access for {u}? They will need a new code and a new request.",
+            "toast.noPermission": "You do not have permission for that",
+            "toast.pendingNoAdd":
+              "You are waiting for approval, so you cannot add sessions yet.",
+            "toast.codePending":
+              "Request sent to {v}. You will get access when the owner approves it.",
+            "toast.codeAlreadyMember": "You already have access to {v}",
+            "toast.codeAlreadyPending":
+              "Your request for {v} is already waiting for approval.",
+            "confirm.rejectShare": "Refuse access",
+            "confirm.reject": "Refuse",
+            "confirm.irreversibleSession":
+              "This cannot be undone. The session is deleted for everyone, including the owner, and there is no backup.",
+            "confirm.irreversibleClear":
+              "This cannot be undone. Every charging session is deleted for good. Export a backup first if you might want them.",
+            "confirm.irreversibleWipe":
+              "This cannot be undone. Every vehicle and every charging session is deleted for good. There is no undo and no backup.",
+            "confirm.irreversibleUnshare":
+              "They lose access immediately and cannot see the vehicle again. The sessions they already added stay, but they can no longer change them.",
+            "confirm.irreversibleVehicle":
+              "This cannot be undone. The vehicle and all of its charging sessions are deleted for good.",
             "ph.shareuser": "e.g. anna",
             "ph.favprice": "e.g. 0.30",
             "toast.favPrice": "Price set to {p} per kWh",
@@ -3452,6 +3528,49 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "set.shareLoading": "Tarkistetaan jakamista…",
             "a11y.shareVeh": "Jaa ajoneuvo: {v}",
             "a11y.unshare": "Poista käyttöoikeus: {v}",
+            "a11y.acceptShare": "Hyväksy käyttöoikeus: {v}",
+            "a11y.rejectShare": "Kiellä käyttöoikeus: {v}",
+            "role.viewer": "Katselija",
+            "role.driver": "Kuljettaja",
+            "role.admin": "Ylläpitäjä",
+            "set.sharePendingTitle": "Odotavat pyynnöt",
+            "set.sharePendingLead":
+              "Nämä henkilöt syöttivät jakokoodin. He eivät näe eivätkä voi muuttaa mitään, ennen kuin hyväksyt heidät.",
+            "set.shareMembersTitle": "Henkilöt, joilla on käyttöoikeus",
+            "set.shareAccept": "Hyväksy",
+            "set.shareReject": "Kiellä",
+            "set.pendingTag": "Odottaa hyväksyäsi",
+            "set.pendingNoHistory":
+              "Ei vielä mitään näytettävää. Odotat omistajan hyväksyntää pyynnöillesi tälle ajoneuvolle.",
+            "set.pendingNoAddLead":
+              "Odotat omistajan hyväksyntää. Näet ajoneuvon, mutta et sen historiaa.",
+            "set.viewerNoAddLead":
+              "Sinulla on vain lukuoikeus tähän ajoneuvoon.",
+            "toast.shareAccepted": "{u} sai käyttöoikeuden",
+            "toast.shareRejected": "Käyttöoikeus evättiin: {u}",
+            "toast.shareRoleOk": "{u} on nyt {r}",
+            "toast.rejectQ":
+              "Kielletäänkö käyttöoikeus käyttäjälle {u}? Hän tarvitsee uuden koodin ja uuden pyynnön.",
+            "toast.noPermission": "Sinulla ei ole oikeutta siihen",
+            "toast.pendingNoAdd":
+              "Odotat hyväksyntää, etk voi vielä lisätä latauksia.",
+            "toast.codePending":
+              "Pyyntö lähetetty ajoneuvolle {v}. Saat käyttöoikeuden, kun omistaja hyväksyy sen.",
+            "toast.codeAlreadyMember": "Sinulla on jo käyttöoikeus ajoneuvoon {v}",
+            "toast.codeAlreadyPending":
+              "Pyynnösi ajoneuvoon {v} odottaa jo hyväksyntää.",
+            "confirm.rejectShare": "Kiellä käyttöoikeus",
+            "confirm.reject": "Kiellä",
+            "confirm.irreversibleSession":
+              "Tätä ei voi perua. Lataus poistetaan kaikilta, myös omistajalta, eikä varmuuskopiota ole.",
+            "confirm.irreversibleClear":
+              "Tätä ei voi perua. Kaikki lataukset poistetaan pysyvästi. Ota varmuuskopio ennen, jos saatat vielä haluta ne.",
+            "confirm.irreversibleWipe":
+              "Tätä ei voi perua. Kaikki ajoneuvot ja kaikki lataukset poistetaan pysyvästi. Ei peruutusta eikä varmuuskopiota.",
+            "confirm.irreversibleUnshare":
+              "Hän menettää käyttöoikeuden heti eikä näe ajoneuvoa enää. Hänen jo lisäämänsä lataukset säilyvät, mutta hän ei voi enää muuttaa niitä.",
+            "confirm.irreversibleVehicle":
+              "Tätä ei voi perua. Ajoneuvo ja kaikki sen lataukset poistetaan pysyvästi.",
             "ph.shareuser": "esim. anna",
             "ph.favprice": "esim. 0,30",
             "toast.favPrice": "Hinnaksi asetettiin {p} per kWh",
@@ -3910,6 +4029,49 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "set.shareLoading": "Kontrollerar delning…",
             "a11y.shareVeh": "Dela fordon: {v}",
             "a11y.unshare": "Ta bort åtkomst för {v}",
+            "a11y.acceptShare": "Godkänn åtkomst för {v}",
+            "a11y.rejectShare": "Neka åtkomst för {v}",
+            "role.viewer": "Läsare",
+            "role.driver": "Förare",
+            "role.admin": "Administratör",
+            "set.sharePendingTitle": "Väntande förfrågan",
+            "set.sharePendingLead":
+              "De här personerna har matat in en delningskod. De kan varken se eller ändra något förrän du godkänner dem.",
+            "set.shareMembersTitle": "Personer med åtkomst",
+            "set.shareAccept": "Godkänn",
+            "set.shareReject": "Neka",
+            "set.pendingTag": "Väntar på ditt godkännande",
+            "set.pendingNoHistory":
+              "Inget att visa än. Du väntar på att ägaren ska godkänna din förfrågan om fordonet.",
+            "set.pendingNoAddLead":
+              "Du väntar på ägarens godkännande. Du ser fordonet men inte dess historik.",
+            "set.viewerNoAddLead":
+              "Du har endast läsbehörighet till det här fordonet.",
+            "toast.shareAccepted": "{u} har nu åtkomst",
+            "toast.shareRejected": "Åtkomst nekades för {u}",
+            "toast.shareRoleOk": "{u} är nu {r}",
+            "toast.rejectQ":
+              "Neka åtkomst för {u}? De behöver en ny kod och en ny förfrågan.",
+            "toast.noPermission": "Du har inte behörighet för det",
+            "toast.pendingNoAdd":
+              "Du väntar på godkännande och kan inte lägga till laddningar än.",
+            "toast.codePending":
+              "Förfrågan skickad till {v}. Du får åtkomst när ägaren godkänner den.",
+            "toast.codeAlreadyMember": "Du har redan åtkomst till {v}",
+            "toast.codeAlreadyPending":
+              "Din förfrågan för {v} väntar redan på godkännande.",
+            "confirm.rejectShare": "Neka åtkomst",
+            "confirm.reject": "Neka",
+            "confirm.irreversibleSession":
+              "Detta går inte att ångra. Sessionen tas bort för alla, även för ägaren, och det finns ingen backup.",
+            "confirm.irreversibleClear":
+              "Detta går inte att ångra. Alla laddsessioner tas bort permanent. Exportera en backup först om du kan behöva dem.",
+            "confirm.irreversibleWipe":
+              "Detta går inte att ångra. Alla fordon och alla laddsessioner tas bort permanent. Varken ångra eller backup finns.",
+            "confirm.irreversibleUnshare":
+              "De förlorar åtkomst direkt och kan inte se fordonet igen. Sessioner de redan lagt till finns kvar, men de kan inte längre ändra dem.",
+            "confirm.irreversibleVehicle":
+              "Detta går inte att ångra. Fordonet och alla dess laddsessioner tas bort permanent.",
             "ph.shareuser": "t.ex. anna",
             "ph.favprice": "t.ex. 0,30",
             "toast.favPrice": "Priset satt till {p} per kWh",
@@ -4374,7 +4536,12 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
         function sessionRow(s) {
           return {
             id: s.id,
-            user_id: ownerId(),
+            /* Keep the ORIGINAL author. An owner or admin correcting somebody
+               else's session must not take authorship of it, and the database
+               checks can_edit_session against this column, so writing the
+               editor's own id here would silently lock them out of their own
+               row on the next edit. Mirrors what vehicleRow does for vehicles. */
+            user_id: s.userId || ownerId(),
             vehicle_id: s.vehicleId,
             date: String(s.date || ""),
             time: s.time ? String(s.time) : null,
@@ -4417,6 +4584,9 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           return {
             id: r.id,
             vehicleId: r.vehicle_id,
+            /* Who logged it. Not the same as the signed-in user once an admin or
+               the owner edits somebody else's row. */
+            userId: r.user_id || null,
             date: String(r.date || ""),
             time: fmtTime(r.time),
             duration: r.duration == null ? "" : String(r.duration),
@@ -4580,7 +4750,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           if (!syncOn()) return Promise.resolve(false);
           return authClient
             .from("vehicle_shares")
-            .select("vehicle_id,user_id,role")
+            .select("vehicle_id,user_id,role,status")
             .then(function (res) {
               var e = res && res.error;
               if (e) {
@@ -4597,7 +4767,12 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                 if (!shares[vid]) shares[vid] = [];
                 shares[vid].push({
                   user_id: rows[i].user_id,
-                  role: rows[i].role || "driver",
+                  role: rows[i].role || "viewer",
+                  /* A share with no status predates the roles migration, which
+                     backfilled every existing row to accepted. Treating a
+                     missing status as accepted keeps the app working in the
+                     window before SUPABASE_SHARING_ROLES.sql has been run. */
+                  status: rows[i].status || "accepted",
                 });
               }
               sharesAvailable = true;
@@ -4678,6 +4853,226 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           var v = vehById(vehicleId);
           return !!(v && ownerId() && v.userId === ownerId());
         }
+        /* ---------- roles ----------
+   The ladder mirrors the database exactly. The client only hides what the
+   server would refuse anyway; RLS and the rank helpers in
+   SUPABASE_SHARING_ROLES.sql are what actually decide, so a tampered client
+   gains nothing here. Ranks match vehicle_rank(). */
+        var ROLE_RANK = { owner: 4, admin: 3, driver: 2, viewer: 1 };
+        var ROLES = ["viewer", "driver", "admin"];
+        function rankOf(role) {
+          return ROLE_RANK[role] || 0;
+        }
+        /**
+         * This user's own share row for a vehicle, pending or not.
+         * @param {string} vehicleId
+         * @returns {?{user_id:string, role:string, status:string}}
+         */
+        function myShare(vehicleId) {
+          var me = ownerId();
+          if (!vehicleId || !me) return null;
+          var list = shares[vehicleId] || [];
+          for (var i = 0; i < list.length; i++)
+            if (list[i].user_id === me) return list[i];
+          return null;
+        }
+        /**
+         * The role that grants access, or null when there is none.
+         * A pending or rejected request resolves to null on purpose: that is
+         * what makes waiting for approval actually mean something.
+         * @param {string} vehicleId
+         * @returns {?string}
+         */
+        function myRole(vehicleId) {
+          if (ownsVehicle(vehicleId)) return "owner";
+          var s = myShare(vehicleId);
+          return s && s.status === "accepted" ? s.role || "viewer" : null;
+        }
+        function myRank(vehicleId) {
+          return rankOf(myRole(vehicleId));
+        }
+        /** True while a request exists but the owner has not answered it. */
+        function isPending(vehicleId) {
+          var s = myShare(vehicleId);
+          return !!s && s.status === "pending";
+        }
+        /** Read access. A pending requester counts so their placeholder card
+            renders; the server still refuses them every real read. */
+        function canView(vehicleId) {
+          return myRank(vehicleId) >= 1 || isPending(vehicleId);
+        }
+        function canAddSession(vehicleId) {
+          return myRank(vehicleId) >= 2;
+        }
+        /** Vehicle settings belong to the owner and admins. */
+        function canEditVehicle(vehicleId) {
+          return myRank(vehicleId) >= 3;
+        }
+        /**
+         * May this session be edited or deleted?
+         * Admins and the owner may touch anyone's; a driver only their own.
+         * @param {Object} s  a local session
+         * @returns {boolean}
+         */
+        function canEditSession(s) {
+          if (!s) return false;
+          var r = myRank(s.vehicleId);
+          if (r >= 3) return true;
+          return r >= 2 && !!ownerId() && s.userId === ownerId();
+        }
+        /** True when the signed-in user may write this vehicle row to the
+            server. A local-only vehicle has no userId yet and was made here,
+            so it counts as theirs; a pending placeholder does not, because the
+            insert policy would reject it on every pull. */
+        function mayWriteVehicle(vehicleId) {
+          var v = vehById(vehicleId);
+          if (!v) return false;
+          if (!v.userId) return true;
+          return ownsVehicle(vehicleId) || canEditVehicle(vehicleId);
+        }
+        /* ---------- owner decisions ---------- */
+        /**
+         * Accept or reject a request.
+         * @param {string} vehicleId
+         * @param {string} userId
+         * @param {string} status  "accepted" or "rejected"
+         * @returns {Promise<boolean>}
+         */
+        function shareSetStatus(vehicleId, userId, status) {
+          if (!syncOn() || !vehicleId || !userId) return Promise.resolve(false);
+          return authClient
+            .rpc("set_share_status", {
+              p_vehicle: vehicleId,
+              p_user: userId,
+              p_status: status,
+            })
+            .then(function (res) {
+              if (res && res.error) throw res.error;
+              if ((res && res.data) !== "ok") return false;
+              return loadShares().then(function () {
+                return true;
+              });
+            })
+            .catch(function (e) {
+              if (window.console && window.console.warn)
+                window.console.warn("[share] status failed", e);
+              return false;
+            });
+        }
+        /**
+         * Change an accepted member's role. Assigning one also accepts them,
+         * so the owner can do both from the same control.
+         * @param {string} vehicleId
+         * @param {string} userId
+         * @param {string} role  one of ROLES
+         * @returns {Promise<boolean>}
+         */
+        function shareSetRole(vehicleId, userId, role) {
+          if (!syncOn() || !vehicleId || !userId) return Promise.resolve(false);
+          if (ROLES.indexOf(role) < 0) return Promise.resolve(false);
+          return authClient
+            .rpc("set_share_role", {
+              p_vehicle: vehicleId,
+              p_user: userId,
+              p_role: role,
+            })
+            .then(function (res) {
+              if (res && res.error) throw res.error;
+              if ((res && res.data) !== "ok") return false;
+              return loadShares().then(function () {
+                return true;
+              });
+            })
+            .catch(function (e) {
+              if (window.console && window.console.warn)
+                window.console.warn("[share] role failed", e);
+              return false;
+            });
+        }
+        /** A <select> listing the three assignable roles. */
+        function roleSelect(vehicleId, userId, current, id) {
+          var h = '<select class="role-sel" id="' + id + '" data-role-set="' +
+            esc(vehicleId) + "|" + esc(userId) + '">';
+          for (var i = 0; i < ROLES.length; i++)
+            h +=
+              '<option value="' +
+              ROLES[i] +
+              '"' +
+              (ROLES[i] === current ? " selected" : "") +
+              ">" +
+              TXT("role." + ROLES[i]) +
+              "</option>";
+          return h + "</select>";
+        }
+        /**
+         * Accept or reject a request. Only a rejection is confirmed, because
+         * accepting can be undone from the member list but rejecting reads as
+         * final to the person waiting.
+         * @param {string} userId
+         * @param {string} status  "accepted" or "rejected"
+         * @returns {Promise<boolean>}
+         */
+        function decideShare(userId, status) {
+          if (!shareTarget || !userId) return Promise.resolve(false);
+          var vehicle = shareTarget,
+            label = shareLabel(vehicle, userId);
+          var run = function () {
+            return shareSetStatus(vehicle, userId, status).then(function (ok) {
+              if (ok) {
+                toast(
+                  TXT(
+                    status === "accepted"
+                      ? "toast.shareAccepted"
+                      : "toast.shareRejected",
+                    { u: label },
+                  ),
+                );
+                render();
+                /* render() does not rebuild the share panel, so it is refreshed
+                   separately or the accepted row would linger until a reload. */
+                if (shareTarget === vehicle) renderShare();
+              } else {
+                toast(TXT("toast.shareFail"));
+              }
+              return ok;
+            });
+          };
+          if (status !== "rejected") return run();
+          return askConfirm(TXT("toast.rejectQ", { u: label }), {
+            heading: "confirm.rejectShare",
+            ok: "confirm.reject",
+          }).then(function (yes) {
+            return yes ? run() : false;
+          });
+        }
+        /**
+         * Apply a role picked in the owner's dropdown.
+         * @param {string} vehicleId
+         * @param {string} userId
+         * @param {string} role
+         * @returns {Promise<boolean>}
+         */
+        function changeShareRole(vehicleId, userId, role) {
+          if (!vehicleId || !userId || !role) return Promise.resolve(false);
+          var label = shareLabel(vehicleId, userId);
+          return shareSetRole(vehicleId, userId, role).then(function (ok) {
+            if (ok) {
+              toast(
+                TXT("toast.shareRoleOk", {
+                  u: label,
+                  r: TXT("role." + role),
+                }),
+              );
+              render();
+              if (shareTarget === vehicleId) renderShare();
+            } else {
+              toast(TXT("toast.shareFail"));
+              /* Put the dropdown back to what the server still believes. */
+              renderShare();
+            }
+            return ok;
+          });
+        }
         /**
          * The owner's short code for a vehicle, asking the server for one the
          * first time. Codes are server-allocated so they cannot collide.
@@ -4735,19 +5130,34 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                 }
               }
               var out = data && data.status ? data : { status: "unknown" };
-              /* Show the car immediately instead of waiting for the next pull. */
+              /* Show the car immediately instead of waiting for the next pull.
+                 The RPC answers with vehicleId, so it is mapped to id here:
+                 rowVehicle reads id, and passing the raw payload left the new
+                 vehicle without one. */
               if (
-                out.status === "ok" &&
+                (out.status === "ok" || out.status === "pending") &&
                 out.vehicleId &&
                 !vehById(out.vehicleId)
               ) {
-                vehicles.push(rowVehicle(out));
+                vehicles.push(
+                  rowVehicle({
+                    id: out.vehicleId,
+                    name: out.name,
+                    icon: out.icon,
+                    initial_odometer: out.initial_odometer,
+                    user_id: out.user_id,
+                  }),
+                );
                 cur = vehicles.length - 1;
                 save();
-                markDirty("vehicles", out.vehicleId);
+                /* A pending request is not ours to write, so it is deliberately
+                   not queued for upload. mayWriteVehicle keeps syncPull from
+                   retrying it on every refresh. */
+                if (out.status === "ok") markDirty("vehicles", out.vehicleId);
                 render();
               }
-              if (out.status === "ok") loadShares();
+              if (out.status === "ok" || out.status === "pending")
+                loadShares();
               return out;
             })
             .catch(function () {
@@ -4781,6 +5191,9 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
         /* ---------- adding a shared vehicle with a code ---------- */
         var REDEEM_TEXT = {
           ok: "toast.codeOk",
+          pending: "toast.codePending",
+          "already-member": "toast.codeAlreadyMember",
+          "already-pending": "toast.codeAlreadyPending",
           "own-vehicle": "toast.codeOwn",
           "no-such-code": "toast.codeNoSuch",
           empty: "toast.codeEmpty",
@@ -4940,26 +5353,81 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             '<div class="hint">' +
             TXT("set.shareCodeHint") +
             "</div></div>";
+          /* Pending requests come first and separately: they are the only entries the
+             owner has to act on, and mixing them into the member list made it
+             look like they already had access. */
+          var pending = [],
+            accepted = [];
+          for (var li = 0; li < list.length; li++) {
+            if (list[li].status === "pending") pending.push(list[li]);
+            else if (list[li].status !== "rejected") accepted.push(list[li]);
+          }
+          if (pending.length) {
+            h +=
+              '<h3 style="margin-top:1.25rem">' +
+              TXT("set.sharePendingTitle") +
+              "</h3>" +
+              '<div class="hint" style="margin-bottom:0.5rem">' +
+              TXT("set.sharePendingLead") +
+              "</div>" +
+              '<div class="list">';
+            for (var p = 0; p < pending.length; p++) {
+              var plabel = shareLabel(shareTarget, pending[p].user_id);
+              h +=
+                '<div class="item">' +
+                '<span aria-hidden="true" style="font-size:1.2rem">⏳</span>' +
+                '<span class="nm">' +
+                esc(plabel) +
+                "</span>" +
+                roleSelect(
+                  shareTarget,
+                  pending[p].user_id,
+                  pending[p].role || "viewer",
+                  "roleSelP" + p,
+                ) +
+                '<button type="button" class="btn sm sec" data-accept="' +
+                esc(pending[p].user_id) +
+                '" aria-label="' +
+                TXT("a11y.acceptShare", { v: esc(plabel) }) +
+                '">' +
+                TXT("set.shareAccept") +
+                "</button>" +
+                '<button type="button" class="btn sm dgr" data-reject="' +
+                esc(pending[p].user_id) +
+                '" aria-label="' +
+                TXT("a11y.rejectShare", { v: esc(plabel) }) +
+                '">' +
+                TXT("set.shareReject") +
+                "</button></div>";
+            }
+            h += "</div>";
+          }
           if (!list.length) {
             h += '<p class="mini">' + TXT("set.shareNone") + "</p>";
-          } else {
-            h += '<div class="list">';
-            for (var i = 0; i < list.length; i++) {
+          } else if (accepted.length) {
+            h +=
+              '<h3 style="margin-top:1.25rem">' +
+              TXT("set.shareMembersTitle") +
+              "</h3>" +
+              '<div class="list">';
+            for (var i = 0; i < accepted.length; i++) {
+              var mlabel = shareLabel(shareTarget, accepted[i].user_id);
               h +=
                 '<div class="item">' +
                 '<span aria-hidden="true" style="font-size:1.2rem">👤</span>' +
                 '<span class="nm">' +
-                esc(shareLabel(shareTarget, list[i].user_id)) +
+                esc(mlabel) +
                 "</span>" +
-                '<span class="mt">' +
-                TXT("set.shareCanEdit") +
-                "</span>" +
+                roleSelect(
+                  shareTarget,
+                  accepted[i].user_id,
+                  accepted[i].role || "viewer",
+                  "roleSelM" + i,
+                ) +
                 '<button type="button" class="btn sm dgr" data-unshare="' +
-                esc(list[i].user_id) +
+                esc(accepted[i].user_id) +
                 '" aria-label="' +
-                TXT("a11y.unshare", {
-                  v: esc(shareLabel(shareTarget, list[i].user_id)),
-                }) +
+                TXT("a11y.unshare", { v: esc(mlabel) }) +
                 '"><span aria-hidden="true">' +
                 TXT("set.shareRemove") +
                 "</span></button></div>";
@@ -5074,6 +5542,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           return askConfirm(TXT("toast.unshareQ", { u: label }), {
             heading: "confirm.remove",
             ok: "confirm.remove",
+            irreversible: "confirm.irreversibleUnshare",
           }).then(function (yes) {
             if (!yes) return false;
             var vehicle = shareTarget;
@@ -5355,8 +5824,13 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               retryDeleted();
               /* Anything the server had never seen goes up now, so a row created
                  on this device is not lost on the next refresh. */
+              /* A pending placeholder belongs to somebody else's vehicle, so the
+                 insert policy would reject it. Pushing it anyway would fail on
+                 every pull, mark it dirty again and leave the sync badge up for
+                 good, so it stays local until the request is accepted. */
               for (var pv2 = 0; pv2 < localOnlyVehicles.length; pv2++)
-                syncVehicle(localOnlyVehicles[pv2]);
+                if (mayWriteVehicle(localOnlyVehicles[pv2].id))
+                  syncVehicle(localOnlyVehicles[pv2]);
               if (localOnlySessions.length) syncSessions(localOnlySessions);
               return true;
             })
@@ -5773,13 +6247,13 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           }, 2600);
         }
 
-        /* ---------- render ---------- */
         /* ---------- supabase auth ----------
-   Credentials are placeholders. Replace them with the values from
-   Supabase -> Project Settings -> API. Until then the app stays usable
-   offline and never contacts Supabase.
-   The anon key is designed to be public: Row Level Security in the SQL
-   schema is what actually protects the data, not this key. */
+   The publishable key below is the only Supabase credential this app needs,
+   and it is designed to be public: Row Level Security in the SQL schema is
+   what actually protects the data, not this key. Never put a service_role
+   key here.
+   authConfigured() still guards against an unedited template URL so that a
+   fresh clone stays usable offline instead of failing to boot. */
         var SUPABASE_URL = "https://ztzsyklfaqxurbtvsvtz.supabase.co";
         var SUPABASE_ANON_KEY =
           "sb_publishable_X13saO5I9lyqRUm5T4X3sA_pLxtrT1B";
@@ -6406,7 +6880,19 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                   "add-session": "Add charging session",
                   settings: "Settings",
                 }[view] || "Dashboard";
+          /* Say why the form is unusable instead of letting someone fill it in
+             and then hit a refusal from the server. */
           $("formVeh").textContent = v.name;
+          var canAdd = canAddSession(v.id);
+          if (!canAdd) {
+            $("formVeh").textContent =
+              v.name +
+              ": " +
+              TXT(
+                isPending(v.id) ? "set.pendingNoAddLead" : "set.viewerNoAddLead",
+              );
+          }
+          $("sForm").hidden = !canAdd;
           $("dbInfo").textContent = TXT("db", {
             n: sessions.length,
             v: vehicles.length,
@@ -6436,7 +6922,11 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                 ofVehicle(vehicles[i].id).length +
                 " session" +
                 (ofVehicle(vehicles[i].id).length === 1 ? "" : "s") +
-                "</div></button>";
+                "</div>" +
+                (isPending(vehicles[i].id)
+                  ? '<div class="s">' + TXT("set.pendingTag") + "</div>"
+                  : "") +
+                "</button>";
             }
             $("vehList").innerHTML = h;
           }
@@ -6510,27 +7000,40 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               '</td><td class="wrapc">' +
               esc(s.notes || "—") +
               "</td>" +
-              '<td><button type="button" class="btn sm ghost" data-edit="' +
-              esc(s.id) +
-              '" aria-label="' +
-              TXT("a11y.editSession", {
-                v: esc(s.location),
-                d: esc(s.date),
-              }) +
-              '"><span aria-hidden="true">✎</span></button> ' +
-              '<button type="button" class="btn sm dgr" data-del="' +
-              esc(s.id) +
-              '" aria-label="' +
-              TXT("a11y.deleteSession", {
-                v: esc(s.location),
-                d: esc(s.date),
-              }) +
-              '"><span aria-hidden="true">✕</span></button></td></tr>';
+              /* The buttons are omitted rather than disabled: a viewer should
+                 not be offered an action the server would refuse, and an empty
+                 cell keeps the row height stable. */
+              (canEditSession(s)
+                ? '<td><button type="button" class="btn sm ghost" data-edit="' +
+                  esc(s.id) +
+                  '" aria-label="' +
+                  TXT("a11y.editSession", {
+                    v: esc(s.location),
+                    d: esc(s.date),
+                  }) +
+                  '"><span aria-hidden="true">✎</span></button> ' +
+                  '<button type="button" class="btn sm dgr" data-del="' +
+                  esc(s.id) +
+                  '" aria-label="' +
+                  TXT("a11y.deleteSession", {
+                    v: esc(s.location),
+                    d: esc(s.date),
+                  }) +
+                  '"><span aria-hidden="true">✕</span></button></td>'
+                : '<td class="mt">—</td>') +
+              "</tr>";
           }
           $("logBody").innerHTML =
             tb ||
             '<tr><td colspan="11" class="empty">' +
-              TXT("cl.none") +
+              /* A pending requester can read nothing at all, so an empty table
+                 would read as lost data rather than as a request still waiting
+                 for the owner. */
+              TXT(
+                canView(v.id) && isPending(v.id)
+                  ? "set.pendingNoHistory"
+                  : "cl.none",
+              ) +
               "</td></tr>";
 
           var sl = $("scope"),
@@ -6560,6 +7063,10 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           for (var k = 0; k < vehicles.length; k++) {
             var c2 = ofVehicle(vehicles[k].id).length;
             var mine = ownsVehicle(vehicles[k].id);
+            /* Admins may rename and change settings. Sharing and deleting the
+               vehicle itself stay with the owner. */
+            var editable = canEditVehicle(vehicles[k].id);
+            var waiting = isPending(vehicles[k].id);
             vs +=
               '<div class="item"><span aria-hidden="true" style="font-size:1.2rem">' +
               esc(vehicles[k].icon) +
@@ -6567,17 +7074,23 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               '<span class="nm">' +
               esc(vehicles[k].name) +
               /* A car added with somebody else's code behaves like any other,
-                 but it is not yours to rename or delete, so say so. */
-              (mine || !syncOn()
-                ? ""
-                : '<span class="shared-tag">' +
-                  TXT("set.sharedTag") +
-                  "</span>") +
+                 but it is not yours to rename or delete, so say so. A request
+                 still waiting for approval is called out separately, because
+                 otherwise an empty history looks like data loss. */
+              (waiting
+                ? '<span class="shared-tag">' +
+                  TXT("set.pendingTag") +
+                  "</span>"
+                : mine || !syncOn()
+                  ? ""
+                  : '<span class="shared-tag">' +
+                    TXT("set.sharedTag") +
+                    "</span>") +
               "</span>" +
               '<span class="mt">' +
               TXT("fav.uses", { n: c2 }) +
               "</span>" +
-              (mine
+              (editable
                 ? '<button type="button" class="btn sm ghost" data-ren="' +
                   esc(vehicles[k].id) +
                   '" aria-label="' +
@@ -7335,7 +7848,20 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           if (confirmState) confirmState.resolve(false);
           var body = $("confirmBody");
           var heading = $("confirmHeading");
-          if (body) body.textContent = message;
+          if (body) {
+            /* Assigning textContent clears any previous warning, so a reused
+               dialog never stacks one message on top of another. */
+            body.textContent = message;
+            /* opts.irreversible names a translation key. Destructive actions
+               pass one so the dialog states plainly that there is no undo,
+               rather than leaving the user to guess from the verb. */
+            if (opts.irreversible) {
+              var warn = document.createElement("p");
+              warn.className = "confirm-warn";
+              warn.textContent = TXT(opts.irreversible);
+              body.appendChild(warn);
+            }
+          }
           if (heading)
             heading.textContent = TXT(opts.heading || "confirm.title");
           var ok = $("confirmOk");
@@ -7395,6 +7921,13 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           for (var i = 0; i < sessions.length; i++)
             if (sessions[i].id === id) s = sessions[i];
           if (!s) return;
+          /* The button is already hidden for anyone without the role, but the
+             edit sheet is reachable from the event delegation as well, so the
+             check is repeated where the change would actually happen. */
+          if (!canEditSession(s)) {
+            toast(TXT("toast.noPermission"));
+            return;
+          }
           editId = id;
           lastFocus = document.activeElement;
           $("editFor").textContent = TXT("ed.for", {
@@ -8500,9 +9033,19 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
         function removeVehicle(id) {
           var v = vehById(id);
           if (!v) return;
+          /* Deleting the vehicle is owner-only, matching the delete policy. An
+             admin can clear the history but not remove the car itself. */
+          if (!ownsVehicle(id)) {
+            toast(TXT("toast.noPermission"));
+            return;
+          }
           return askConfirm(
             TXT("toast.remQ", { v: v.name, n: ofVehicle(id).length }),
-            { heading: "confirm.removeVehicle", ok: "confirm.remove" },
+            {
+              heading: "confirm.removeVehicle",
+              ok: "confirm.remove",
+              irreversible: "confirm.irreversibleVehicle",
+            },
           ).then(function (yes) {
             if (!yes) return false;
             doRemoveVehicle(id);
@@ -8512,6 +9055,10 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
         function openVeh(id) {
           var v = vehById(id);
           if (!v) return;
+          if (!canEditVehicle(id)) {
+            toast(TXT("toast.noPermission"));
+            return;
+          }
           editVehId = id;
           lastFocus = document.activeElement;
           $("vfName").value = v.name || "";
@@ -8557,9 +9104,14 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             return x.id === id;
           })[0];
           if (!s) return;
+          if (!canEditSession(s)) {
+            toast(TXT("toast.noPermission"));
+            return;
+          }
           return askConfirm(TXT("toast.delQ", { loc: s.location }), {
             heading: "confirm.deleteSession",
             ok: "confirm.delete",
+            irreversible: "confirm.irreversibleSession",
           }).then(function (yes) {
             if (!yes) return false;
             doDeleteSession(id);
@@ -8637,7 +9189,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
         /* ---------- events ---------- */
         document.addEventListener("click", function (e) {
           var t = e.target.closest(
-            "[data-go],[data-v],[data-del],[data-edit],[data-ren],[data-rm],[data-use],[data-fedit],[data-fdel],[data-share],[data-unshare]",
+            "[data-go],[data-v],[data-del],[data-edit],[data-ren],[data-rm],[data-use],[data-fedit],[data-fdel],[data-share],[data-unshare],[data-accept],[data-reject]",
           );
           if (!t) return;
           if (t.hasAttribute("data-go")) {
@@ -8688,7 +9240,28 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           }
           if (t.hasAttribute("data-unshare")) {
             unshare(t.getAttribute("data-unshare"));
+            return;
           }
+          if (t.hasAttribute("data-accept")) {
+            decideShare(t.getAttribute("data-accept"), "accepted");
+            return;
+          }
+          if (t.hasAttribute("data-reject")) {
+            decideShare(t.getAttribute("data-reject"), "rejected");
+          }
+        });
+        /* The role dropdown carries its target in one attribute because the
+           share panel is rebuilt from scratch on every render and cannot keep
+           per-element handlers. Wired once here rather than inside renderShare,
+           which would stack another listener on #shareBody each time it ran. */
+        document.addEventListener("change", function (e) {
+          var sel = e.target.closest
+            ? e.target.closest("select.role-sel")
+            : null;
+          if (!sel) return;
+          var bits = (sel.getAttribute("data-role-set") || "").split("|");
+          if (!bits[0] || !bits[1]) return;
+          changeShareRole(bits[0], bits[1], sel.value);
         });
         $("vSave").addEventListener("click", addVehicle);
         $("vName").addEventListener("keydown", function (e) {
@@ -9033,6 +9606,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
         $("clearBtn").addEventListener("click", function () {
           return askConfirm(TXT("toast.clearQ", { n: sessions.length }), {
             heading: "confirm.clearSessions",
+            irreversible: "confirm.irreversibleClear",
           }).then(function (yes) {
             if (!yes) return false;
             doClearSessions();
@@ -9043,6 +9617,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           return askConfirm(TXT("toast.wipeQ"), {
             heading: "confirm.wipe",
             ok: "confirm.deleteEverything",
+            irreversible: "confirm.irreversibleWipe",
           }).then(function (yes) {
             if (!yes) return false;
             doWipe();
@@ -9055,6 +9630,17 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             d = f.elements;
           if (!f.reportValidity()) return;
           var v = veh();
+          /* Viewers and anyone still awaiting approval cannot log sessions.
+             The insert policy would refuse the row anyway; catching it here
+             keeps the reason visible instead of surfacing a sync error. */
+          if (!canAddSession(v.id)) {
+            toast(
+              TXT(
+                isPending(v.id) ? "toast.pendingNoAdd" : "toast.noPermission",
+              ),
+            );
+            return;
+          }
           var s = {
             id: uuid(),
             vehicleId: v.id,

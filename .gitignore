@@ -1,0 +1,15 @@
+# Developer tooling only. The app itself has no dependencies and no build step:
+# ev-tracker.html is served as-is.
+node_modules/
+
+# npm writes this, not us.
+package-lock.json
+
+# OS noise
+.DS_Store
+Thumbs.db
+
+# Local editor state
+.vscode/
+.idea/
+*.swp
