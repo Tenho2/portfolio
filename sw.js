@@ -16,7 +16,20 @@
  * instead of a chart.
  */
 
-const VERSION = "v1";
+/*
+ * BUMP THIS ON EVERY DEPLOY THAT CHANGES ev-tracker.html.
+ *
+ * The cache name is derived from it, so a new value makes the install handler
+ * fetch a fresh shell and the activate handler delete the old one. Leaving it
+ * alone is what leaves phones on an old build for weeks: the worker script
+ * itself only re-runs when IT changes, and every other asset is served
+ * cache-first from a cache nothing ever refreshes. Desktop usually hides this
+ * because a navigation is network-first; an installed PWA launched from the
+ * home screen can come straight out of the cache without any request at all.
+ *
+ * Last bumped: 2026-10-02, for sharing roles and owner approval.
+ */
+const VERSION = "v2";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [

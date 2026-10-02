@@ -1339,6 +1339,71 @@
           padding: 0.9rem;
         }
       }
+      /* Narrow phones.
+         The header carries five things: the title, a language picker, the sync
+         badge, a sign-out button and a theme toggle. Side by side that is wider
+         than a 360px viewport, and because body clips overflow-x the controls
+         were simply cut off rather than scrolling. Letting the title take its
+         own row and shrinking the controls keeps every one of them reachable. */
+      @media (max-width: 560px) {
+        .top {
+          flex-wrap: wrap;
+          gap: 0.55rem;
+          padding: 0.7rem 0.85rem;
+        }
+        .top h1 {
+          /* order:-1 plus a full-width basis puts the title on row one and
+             every control on row two, instead of the title being squeezed to
+             nothing by the buttons. */
+          order: -1;
+          flex: 1 1 100%;
+          font-size: 1.05rem;
+        }
+        .top-right {
+          flex: 1 1 100%;
+          flex-wrap: wrap;
+          justify-content: flex-start;
+          gap: 0.4rem;
+        }
+        /* The visible "Language" word is redundant next to the picker, and the
+           accessible name is already carried by data-i18n-aria on the select. */
+        .lang-wrap > .mini {
+          display: none;
+        }
+        #langSel {
+          flex: 0 0 auto;
+          padding: 0.3rem 1.5rem 0.3rem 0.45rem;
+          font-size: 0.8rem;
+        }
+        .sync-badge {
+          font-size: 0.72rem;
+          padding: 0.2rem 0.5rem;
+        }
+        .tgl-wide {
+          height: 34px;
+          padding: 0 0.6rem;
+          font-size: 0.78rem;
+        }
+        .tgl {
+          width: 34px;
+          height: 34px;
+          font-size: 1rem;
+        }
+        /* Reclaim width from the panels too; they are the widest fixed part of
+           the layout and were contributing to the overflow. */
+        .wrap {
+          padding: 0.7rem;
+        }
+        .panel {
+          padding: 1rem 0.9rem;
+        }
+        .top h1 {
+          min-width: 0;
+        }
+        .stats {
+          grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+        }
+      }
       @media (prefers-reduced-motion: reduce) {
         .codebox {
           border: 1px dashed var(--line);
@@ -9922,11 +9987,51 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
          ServiceWorkerContainer. Registration failure is silent on purpose: the
          app is fully usable without it, and a rejected promise here would be
          an unhandled rejection for the user. */
+      var swReloading = false;
       window.addEventListener("load", function () {
         if (!("serviceWorker" in navigator)) return;
         if (location.protocol !== "http:" && location.protocol !== "https:")
           return;
-        navigator.serviceWorker.register("sw.js").catch(function () {});
+        navigator.serviceWorker
+          .register("sw.js")
+          .then(function (reg) {
+            /* The worker calls skipWaiting() during install, so once it reaches
+               "installed" it takes over immediately. Left alone, a phone keeps
+               running whatever build it first cached until the cache name in
+               sw.js changes, which is exactly the bug this replaces. */
+            function takeOver(worker) {
+              if (!worker) return;
+              if (worker.state === "installed") worker.postMessage("skip-waiting");
+              else
+                worker.addEventListener("statechange", function () {
+                  if (worker.state === "installed")
+                    worker.postMessage("skip-waiting");
+                });
+            }
+            if (reg.installing) takeOver(reg.installing);
+            if (reg.waiting) takeOver(reg.waiting);
+            reg.addEventListener("updatefound", function () {
+              takeOver(reg.installing);
+            });
+          })
+          .catch(function () {});
+        /* Fires when the new worker claims this page. */
+        navigator.serviceWorker.addEventListener("controllerchange", function () {
+          if (swReloading) return;
+          /* Reloading while somebody is halfway through typing a session would
+             throw their entry away, so leave them on the current build; the
+             next navigation picks the new one up. */
+          var a = document.activeElement;
+          if (
+            a &&
+            (a.tagName === "INPUT" ||
+              a.tagName === "TEXTAREA" ||
+              a.tagName === "SELECT")
+          )
+            return;
+          swReloading = true;
+          location.reload();
+        });
       });
     </script>
   </body>
