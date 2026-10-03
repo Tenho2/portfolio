@@ -2178,6 +2178,9 @@
             <span data-i18n="set.data"></span>
           </h2>
           <p class="lead" data-i18n="set.dataLead"></p>
+          <!-- Which build this device is actually running. The point is to make
+               a stale phone obvious without opening DevTools. -->
+          <p class="mini" id="buildRow"></p>
           <div class="qa" style="margin-top: 0">
             <button type="button" id="backup">
               <span class="ic" aria-hidden="true">⬇️</span
@@ -2768,6 +2771,13 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           <span data-i18n="sync.title"></span>
         </h3>
         <p class="mini" data-i18n="sync.lead"></p>
+        <div class="qa" style="margin-top: 0.5rem">
+          <button type="button" class="btn ghost" id="syncRetryBtn">
+            <span class="ic" aria-hidden="true">🔁</span
+            ><span data-i18n="sync.retryNow"></span>
+          </button>
+          <span class="mini" id="syncCountdown" hidden></span>
+        </div>
         <div id="syncBody"></div>
         <div class="addrow confirm-actions">
           <button class="btn ghost" type="button" id="syncCloseBtn">
@@ -3166,6 +3176,13 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "auth.failed": "Something went wrong. Please try again.",
             "veh.default": "Vehicle 1",
             "sync.pending": "Saved locally · {n} change(s) waiting to sync",
+            "sync.retryNow": "Retry now",
+            "sync.nextTry": "Next try in {n}s",
+            "set.build": "Build",
+            "set.sw": "SW",
+            "set.swNone": "none (not installed)",
+            "toast.codeTimeout":
+              "The server did not answer in time. Check your connection and try the code again.",
             "sync.open": "Show sync details",
             "sync.title": "Sync status",
             "sync.lead":
@@ -3721,6 +3738,13 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "veh.default": "Ajoneuvo 1",
             "sync.pending":
               "Tallennettu laitteelle · {n} muutosta odottaa synkronointia",
+            "sync.retryNow": "Yritä nyt",
+            "sync.nextTry": "Seuraava yritys {n} s kuluttua",
+            "set.build": "Rakennus",
+            "set.sw": "SW",
+            "set.swNone": "ei (ei asennettu)",
+            "toast.codeTimeout":
+              "Palvelin ei vastannut ajoissa. Tarkista yhteys ja kokeile koodia uudelleen.",
             "sync.open": "Näytä synkronoinnin tiedot",
             "sync.title": "Synkronointi",
             "sync.lead":
@@ -4272,6 +4296,13 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "veh.default": "Fordon 1",
             "sync.pending":
               "Sparad lokalt · {n} ändring(ar) väntar på synkning",
+            "sync.retryNow": "Försök nu",
+            "sync.nextTry": "Nästa försök om {n} s",
+            "set.build": "Build",
+            "set.sw": "SW",
+            "set.swNone": "ingen (inte installerad)",
+            "toast.codeTimeout":
+              "Servern svarade inte i tid. Kontrollera din anslutning och försök koden igen.",
             "sync.open": "Visa synkdetaljer",
             "sync.title": "Synkstatus",
             "sync.lead":
@@ -4850,7 +4881,97 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           return live;
         }
 
+        /* Where this build came from, shown in Settings so a stale phone can be
+           spotted without DevTools. APP_BUILD is manual; the worker version is
+           asked for at runtime, so it can never drift out of step with sw.js. */
+        var APP_BUILD = "2026-10-02";
+        var swVersionCache = null;
+        /**
+         * Ask the active service worker which version it is.
+         * @returns {Promise<?string>} e.g. "v5", or null when unavailable
+         */
+        function askSwVersion() {
+          if (swVersionCache) return Promise.resolve(swVersionCache);
+          if (!("serviceWorker" in navigator) || !navigator.serviceWorker.controller)
+            return Promise.resolve(null);
+          return new Promise(function (resolve) {
+            var done = false;
+            function finish(v) {
+              if (done) return;
+              done = true;
+              if (v) swVersionCache = v;
+              resolve(v || null);
+            }
+            var ch = new MessageChannel();
+            ch.port1.onmessage = function (ev) {
+              finish(ev.data && ev.data.version);
+            };
+            /* A worker that cannot answer must not leave the row blank
+               forever. */
+            setTimeout(function () {
+              finish(null);
+            }, 1500);
+            try {
+              navigator.serviceWorker.controller.postMessage(
+                { type: "which-version" },
+                [ch.port2],
+              );
+            } catch (e) {
+              finish(null);
+            }
+          });
+        }
+        function renderBuildRow() {
+          var row = $("buildRow");
+          if (!row) return;
+          row.textContent =
+            TXT("set.build") + " " + APP_BUILD + " · " + TXT("set.sw") + " …";
+          askSwVersion().then(function (v) {
+            if (!row.isConnected) return;
+            row.textContent =
+              TXT("set.build") +
+              " " +
+              APP_BUILD +
+              " · " +
+              TXT("set.sw") +
+              " " +
+              (v || TXT("set.swNone"));
+          });
+        }
         /* ---------- storage ---------- */
+        /* A request with no timeout can hang forever. When a phone sleeps, the
+           connection is often left half-open rather than refused, so the promise
+           never settles: the panel stays on "loading" with no error and no way
+           out until the browser eventually gives up, which can be minutes. An
+           abort turns that into a prompt, actionable failure. */
+        var SUPABASE_TIMEOUT_MS = 15000;
+        /**
+         * Attach an abort signal and a deadline to a Supabase query builder.
+         * The timer is intentionally not cleared on success: aborting a request
+         * that already finished is a no-op, and the alternative is threading a
+         * cleanup callback through every call site for no real benefit.
+         * @param {Object} builder  a supabase query or rpc builder
+         * @param {number} [ms]
+         * @returns {Object} the same builder, chainable as before
+         */
+        function timed(builder, ms) {
+          if (!builder || typeof AbortController === "undefined") return builder;
+          var ctl = new AbortController();
+          setTimeout(function () {
+            try {
+              ctl.abort();
+            } catch (e) {}
+          }, ms || SUPABASE_TIMEOUT_MS);
+          return builder.abortSignal(ctl.signal);
+        }
+        /** True when a rejection was our own deadline rather than the server. */
+        function isTimeout(e) {
+          return !!(
+            e &&
+            (e.name === "AbortError" ||
+              /abort|timeout|timed out/i.test(String(e.message || "")))
+          );
+        }
         function load() {
           try {
             vehicles = JSON.parse(localStorage.getItem(K.v)) || [];
@@ -4947,6 +5068,10 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
         /** Remember a row whose write failed so it can be retried. */
         function markDirty(kind, id) {
           syncDirty[kind][id] = 1;
+          /* armRetry, NOT scheduleRetry: resetting the backoff on every failure
+             would keep it at the first step and hammer the server every two
+             seconds indefinitely. */
+          if (typeof armRetry === "function") armRetry();
         }
         function clearDirty(kind, id) {
           delete syncDirty[kind][id];
@@ -5010,10 +5135,9 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           b.hidden = false;
           b.textContent = text;
           b.dataset.kind = kind || "";
-          /* The count changes as rows land, and the panel body has to agree
+          /* The countdown changes as rows land, and the panel body has to agree
              with it whenever it happens to be open. */
-          if (!$("syncPanel").hidden) renderSyncPanel();
-        }
+          if (!$("syncPanel").hidden) renderSyncPanel();        }
         function openSyncPanel() {
           var p = $("syncPanel");
           if (!p) return;
@@ -5402,8 +5526,9 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           if (!syncOn() || !vehicleId) return Promise.resolve(false);
           var name = String(username || "").trim();
           if (!name) return Promise.resolve(false);
-          return authClient
-            .rpc("invite_driver", { p_vehicle: vehicleId, p_username: name })
+          return timed(
+              authClient.rpc("invite_driver", { p_vehicle: vehicleId, p_username: name }),
+            )
             .then(function (res) {
               var err = res && res.error;
               if (err) throw err;
@@ -5538,12 +5663,13 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
          */
         function shareSetStatus(vehicleId, userId, status) {
           if (!syncOn() || !vehicleId || !userId) return Promise.resolve(false);
-          return authClient
-            .rpc("set_share_status", {
-              p_vehicle: vehicleId,
-              p_user: userId,
-              p_status: status,
-            })
+          return timed(
+              authClient.rpc("set_share_status", {
+                p_vehicle: vehicleId,
+                p_user: userId,
+                p_status: status,
+              }),
+            )
             .then(function (res) {
               if (res && res.error) throw res.error;
               if ((res && res.data) !== "ok") return false;
@@ -5568,12 +5694,13 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
         function shareSetRole(vehicleId, userId, role) {
           if (!syncOn() || !vehicleId || !userId) return Promise.resolve(false);
           if (ROLES.indexOf(role) < 0) return Promise.resolve(false);
-          return authClient
-            .rpc("set_share_role", {
-              p_vehicle: vehicleId,
-              p_user: userId,
-              p_role: role,
-            })
+          return timed(
+              authClient.rpc("set_share_role", {
+                p_vehicle: vehicleId,
+                p_user: userId,
+                p_role: role,
+              }),
+            )
             .then(function (res) {
               if (res && res.error) throw res.error;
               if ((res && res.data) !== "ok") return false;
@@ -5683,8 +5810,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           var fn = rotate ? "rotate_share_code" : "ensure_share_code";
           var cached = shareCodeCache[vehicleId];
           if (!rotate && cached) return Promise.resolve(cached);
-          return authClient
-            .rpc(fn, { p_vehicle: vehicleId })
+          return timed(authClient.rpc(fn, { p_vehicle: vehicleId }))
             .then(function (res) {
               if (res && res.error) throw res.error;
               var code = String((res && res.data) || "")
@@ -5697,10 +5823,19 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               return code;
             })
             .catch(function (e) {
-              /* 404 or "function does not exist" means the SQL has not been run */
-              codesAvailable = false;
+              /* Only a missing SQL function means codes are genuinely
+                 unsupported. A timeout or a dropped connection says nothing
+                 about the server, and treating it as "unavailable" left the
+                 panel permanently blank until a full reload. */
+              var msg = String((e && e.message) || "").toLowerCase();
+              var missing =
+                /does not exist|404|not found|pgrst/i.test(msg);
+              if (missing) codesAvailable = false;
               if (window.console && window.console.warn)
-                window.console.warn("[share] code unavailable", e);
+                window.console.warn(
+                  "[share] code unavailable" + (isTimeout(e) ? " (timed out)" : ""),
+                  e,
+                );
               return "";
             });
         }
@@ -5715,8 +5850,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             .trim()
             .toUpperCase();
           if (!clean) return Promise.resolve({ status: "empty" });
-          return authClient
-            .rpc("redeem_share_code", { p_code: clean })
+          return timed(authClient.rpc("redeem_share_code", { p_code: clean }))
             .then(function (res) {
               if (res && res.error) throw res.error;
               var data = res && res.data;
@@ -5758,7 +5892,13 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                 loadShares();
               return out;
             })
-            .catch(function () {
+            .catch(function (e) {
+              /* Reported separately from "unavailable" so the message can tell
+                 the user to check their connection and try again, rather than
+                 implying the code was wrong. */
+              if (isTimeout(e)) return { status: "timeout" };
+              if (window.console && window.console.warn)
+                window.console.warn("[share] redeem failed", e);
               return { status: "unavailable" };
             });
         }
@@ -5796,6 +5936,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           "no-such-code": "toast.codeNoSuch",
           empty: "toast.codeEmpty",
           "signed-out": "set.shareSignedOut",
+          timeout: "toast.codeTimeout",
           unavailable: "toast.codeUnavailable",
           unknown: "toast.codeUnavailable",
         };
@@ -7786,6 +7927,7 @@ if (e) {
           $("vehSettings").innerHTML = vs;
           renderImportTarget();
           renderBin();
+          if (view === "settings") renderBuildRow();
           renderRedeemPanel();
           syncCents();
           renderFavs();
@@ -7926,6 +8068,7 @@ if (e) {
         function renderSyncPanel() {
           var box = $("syncBody");
           if (!box) return;
+          renderRetryCountdown();
           var rows = unsyncedRows();
           if (!rows.length) {
             box.innerHTML = '<p class="mini">' + TXT("sync.allGood") + "</p>";
@@ -7960,6 +8103,99 @@ if (e) {
               TXT("sync.stalledHint") +
               "</div>";
           box.innerHTML = h;
+        }
+        /* Retry cadence for queued rows. Short enough that a phone that slept
+           through a failure catches up on its own shortly after waking, which
+           is the case that used to leave the badge looking stuck. */
+        var RETRY_STEPS_MS = [2000, 5000, 15000, 30000, 60000];
+        var retryTimer = null;
+        var retryStep = 0;
+        /**
+         * (Re)start the countdown to the next upload attempt.
+         * Called after anything that changes the queue, so the number under the
+         * badge is never a promise the app cannot keep.
+         */
+        function scheduleRetry() {
+          if (retryTimer) clearTimeout(retryTimer);
+          retryTimer = null;
+          retryStep = 0;
+          armRetry();
+        }
+        function armRetry() {
+          if (retryTimer) clearTimeout(retryTimer);
+          retryTimer = null;
+          var pending = pendingCount();
+          if (!pending || !syncOn()) {
+            renderRetryCountdown();
+            return;
+          }
+          var wait = RETRY_STEPS_MS[Math.min(retryStep, RETRY_STEPS_MS.length - 1)];
+          var tick = setInterval(renderRetryCountdown, 1000);
+          retryTimer = setTimeout(function () {
+            clearInterval(tick);
+            retryTimer = null;
+            retryStep++;
+            /* One row at a time, so a queue of ten does not fire ten RPCs the
+               instant the tab wakes. */
+            flushOneDirty();
+          }, wait);
+          renderRetryCountdown();
+        }
+        /** Push the single most urgent queued row, then re-arm. */
+        function flushOneDirty() {
+          var vi = Object.keys(syncDirty.vehicles).filter(function (id) {
+            return !syncStalled.vehicles[id];
+          });
+          var si = Object.keys(syncDirty.sessions).filter(function (id) {
+            return !syncStalled.sessions[id];
+          });
+          var p = Promise.resolve(false);
+          if (vi.length) {
+            var v = vehicleAnywhere(vi[0]);
+            p = v ? syncVehicle(v) : Promise.resolve(false);
+          } else if (si.length) {
+            var s = sessionAnywhere(si[0]);
+            p = s ? syncSession(s) : Promise.resolve(false);
+          }
+          armRetry();
+          return p;
+        }
+        /** Rows waiting to be sent, ignoring the ones the server refused. */
+        function pendingCount() {
+          function count(kind) {
+            var n = 0;
+            var keys = Object.keys(syncDirty[kind]);
+            for (var i = 0; i < keys.length; i++)
+              if (!syncStalled[kind][keys[i]]) n++;
+            return n;
+          }
+          return count("vehicles") + count("sessions");
+        }
+        /**
+         * Show the countdown, and offer an immediate retry. This replaces a
+         * message that could sit unchanged for a long time with nothing to do
+         * about it, which read as "stuck" whether or not it was.
+         */
+        function renderRetryCountdown() {
+          var el = $("syncCountdown");
+          if (!el) return;
+          if (!retryTimer) {
+            el.hidden = true;
+            return;
+          }
+          var wait = RETRY_STEPS_MS[Math.min(retryStep, RETRY_STEPS_MS.length - 1)];
+          var left = Math.max(0, Math.ceil(wait / 1000));
+          el.hidden = false;
+          el.textContent = TXT("sync.nextTry", { n: left });
+        }
+        /** Forget the backoff and try right now, then start again gently. */
+        function retryNow() {
+          if (retryTimer) clearTimeout(retryTimer);
+          retryTimer = null;
+          retryStep = 0;
+          if (syncOn() && syncOnline()) syncPull();
+          else scheduleRetry();
+          renderSyncPanel();
         }
         function renderBin() {
           var n = binCount();
@@ -10240,36 +10476,10 @@ if (e) {
             {
               heading: "confirm.removeVehicle",
               ok: "confirm.toBin",
-              altKey: "confirm.deleteForever",
               irreversible: "confirm.irreversibleVehicle",
             },
-          ).then(function (choice) {
-            if (!choice) return false;
-            if (choice === "alt") {
-              var gone = sessions.filter(function (s) {
-                return s.vehicleId === id;
-              });
-              vehicles = vehicles.filter(function (x) {
-                return x.id !== id;
-              });
-              sessions = sessions.filter(function (s) {
-                return s.vehicleId !== id;
-              });
-              binned.vehicles = binned.vehicles.filter(function (x) {
-                return x.id !== id;
-              });
-              binned.sessions = binned.sessions.filter(function (s) {
-                return s.vehicleId !== id;
-              });
-              if (cur >= vehicles.length) cur = Math.max(0, vehicles.length - 1);
-              save();
-              render();
-              toast(TXT("toast.vehRem", { v: v.name }));
-              for (var i = 0; i < gone.length; i++)
-                syncDelete("sessions", gone[i].id);
-              syncDelete("vehicles", id);
-              return true;
-            }
+          ).then(function (yes) {
+            if (!yes) return false;
             doRemoveVehicle(id);
             return true;
           });
@@ -10333,24 +10543,9 @@ if (e) {
           return askConfirm(TXT("toast.delQ", { loc: s.location }), {
             heading: "confirm.deleteSession",
             ok: "confirm.toBin",
-            altKey: "confirm.deleteForever",
             irreversible: "confirm.irreversibleSession",
-          }).then(function (choice) {
-            /* "alt" is the explicit permanent delete, offered next to the safe
-               default so that somebody who really does want the data gone is
-               not forced through the bin and a second dialog. Anything falsy is
-               a cancel. */
-            if (!choice) return false;
-            if (choice === "alt") {
-              sessions = sessions.filter(function (x) {
-                return x.id !== id;
-              });
-              save();
-              render();
-              toast(TXT("toast.deletedForever"));
-              syncDelete("sessions", id);
-              return true;
-            }
+          }).then(function (yes) {
+            if (!yes) return false;
             doDeleteSession(id);
             return true;
           });
@@ -10875,6 +11070,9 @@ if (e) {
         $("syncCloseBtn").addEventListener("click", function () {
           closeSyncPanel();
         });
+        $("syncRetryBtn").addEventListener("click", function () {
+          retryNow();
+        });
         $("syncPanel").addEventListener("click", function (e) {
           if (e.target === this) closeSyncPanel();
         });
@@ -11162,6 +11360,9 @@ if (e) {
         go(document.getElementById(start) ? start : "dashboard");
         watchChartLib();
         window.addEventListener("online", function () {
+          /* A phone that slept through a failure re-arms the backoff from the
+             start, because the reason it was waiting is gone. */
+          scheduleRetry();
           leafletState = 0;
           /* Clear the badge first. When there is no session there is nothing to
              pull, and the offline notice would otherwise stay on screen even

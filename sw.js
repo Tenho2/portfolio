@@ -27,10 +27,10 @@
  * because a navigation is network-first; an installed PWA launched from the
  * home screen can come straight out of the cache without any request at all.
  *
- * Last bumped: 2026-10-02, for the sync status panel and account visibility.
- * v4 was the bin, v3 per-account local storage, v2 the sharing roles release.
+ * Last bumped: 2026-10-02, for sync countdown, build badge and request
+ * timeouts. v5 was the sync status panel, v4 the bin.
  */
-const VERSION = "v5";
+const VERSION = "v6";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [
@@ -147,4 +147,13 @@ self.addEventListener("fetch", (event) => {
 // Let the page trigger an update check after it has been interacted with.
 self.addEventListener("message", (event) => {
   if (event.data === "skip-waiting") self.skipWaiting();
+  /* The Settings panel shows the worker's own version so a phone can confirm it
+     actually updated without opening DevTools. Answering from here rather than
+     duplicating the string in the page means there is only ever one place to
+     bump, which is the mistake that left phones on a stale build before. */
+  if (event.data && event.data.type === "which-version") {
+    const reply = { type: "version", version: VERSION, cache: CACHE };
+    if (event.ports && event.ports[0]) event.ports[0].postMessage(reply);
+    else if (event.source) event.source.postMessage(reply);
+  }
 });
