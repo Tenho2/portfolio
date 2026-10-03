@@ -27,10 +27,10 @@
  * because a navigation is network-first; an installed PWA launched from the
  * home screen can come straight out of the cache without any request at all.
  *
- * Last bumped: 2026-10-02, for sync countdown, build badge and request
- * timeouts. v5 was the sync status panel, v4 the bin.
+ * Last bumped: 2026-10-02, for nearest-match proximity and geocoding missing
+ * favourite coordinates. v7 was location defaults.
  */
-const VERSION = "v6";
+const VERSION = "v8";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [

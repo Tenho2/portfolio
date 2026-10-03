@@ -1,6 +1,8 @@
 -- EV Multi-Tracker: sharing roles and owner approval
 -- Run this in the Supabase SQL editor AFTER SUPABASE_SHARING.sql,
--- SUPABASE_SHARING_CODES.sql and SUPABASE_SHARING_FIX2.sql.
+-- SUPABASE_SHARING_CODES.sql and SUPABASE_SHARING_FIX2.sql, all of which are in
+-- this folder. The order matters: this one replaces the policies the earlier
+-- files created.
 -- Dashboard -> SQL Editor -> New query -> paste -> Run.
 --
 -- Everything here is idempotent: re-running it is safe and changes nothing

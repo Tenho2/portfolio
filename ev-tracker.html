@@ -2119,6 +2119,30 @@
         </div>
         <div class="panel">
           <h2>
+            <span aria-hidden="true">🌆</span>
+            <span data-i18n="set.defTitle"></span>
+          </h2>
+          <p class="lead" data-i18n="set.defLead"></p>
+          <div class="row">
+            <div class="f">
+              <label for="defLoc" data-i18n="set.defLoc"></label>
+              <select id="defLoc"></select>
+              <div class="hint" data-i18n="set.defLocHint"></div>
+            </div>
+            <div class="f">
+              <label for="defHour" data-i18n="set.defHour"></label>
+              <select id="defHour"></select>
+              <div class="hint" data-i18n="set.defHourHint"></div>
+            </div>
+          </div>
+          <div class="chk" style="margin-top: 0.25rem">
+            <input type="checkbox" id="defGeo" />
+            <label for="defGeo" data-i18n="set.defGeo"></label>
+          </div>
+          <div class="hint" data-i18n="set.defGeoHint"></div>
+        </div>
+        <div class="panel">
+          <h2>
             <span aria-hidden="true">💶</span>
             <span data-i18n="set.price"></span>
           </h2>
@@ -2501,6 +2525,16 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             <span aria-hidden="true">📍</span>
             <span data-i18n="fav.saved"></span>
           </h2>
+          <!-- Proximity matching can only use places that have coordinates.
+               This fills in the ones that have none and leaves everything else
+               untouched, so it cannot move a pin that is already right. -->
+          <div class="qa" style="margin-top: 0">
+            <button type="button" class="btn ghost" id="favGeoBtn">
+              <span class="ic" aria-hidden="true">🛰️</span
+              ><span data-i18n="fav.geoMissing"></span>
+            </button>
+          </div>
+          <div class="hint" id="favGeoStat" role="status" aria-live="polite"></div>
           <div class="list" id="favList"></div>
         </div>
       </section>
@@ -2902,6 +2936,12 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "fav.save": "Save favourite",
             "fav.clear": "Clear form",
             "fav.saved": "Saved",
+            "fav.geoMissing": "Look up missing coordinates",
+            "toast.geoNoneMissing":
+              "Every saved place already has coordinates ({s} checked).",
+            "toast.geoDone":
+              "Looked up {n}, could not place {f}. {s} already had coordinates and were left alone.",
+            "toast.geoProgress": "Looking up {d} of {t}… {n} found",
             "fav.use": "Use",
             "fav.edit": "Edit",
             "fav.map": "Map",
@@ -3181,6 +3221,28 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "set.build": "Build",
             "set.sw": "SW",
             "set.swNone": "none (not installed)",
+            "set.defTitle": "Location defaults",
+            "set.defLead":
+              "Pre-fill the charging location when you add a session. It only ever fills an empty field, so you can always type something else.",
+            "set.defLoc": "Default place",
+            "set.defLocHint": "Taken from your favourite locations.",
+            "set.defNone": "None",
+            "set.defHour": "Use it after",
+            "set.defNever": "Never",
+            "set.defHourHint": "Your own local clock.",
+            "set.defGeo": "Use my device location instead",
+            "set.defGeoHint":
+              "Matches saved places within 100 m. Readings coarser than 50 m are ignored, so this usually does nothing on a desktop. Your position is used for the comparison and then discarded — it is never stored and never sent to the server.",
+            "set.defApplied": "Default place filled in: {v}",
+            "set.geoMatched": "Near a saved place: {v}",
+            "set.geoAmbiguous":
+              "Two saved places are equally close. Used {v} without its price — check and adjust.",
+            "set.geoTooCoarse":
+              "Location was not precise enough ({n} m), so nothing was filled in.",
+            "toast.defSaved": "Location default saved",
+            "toast.geoAllowed": "Location access granted",
+            "toast.geoDenied":
+              "Location access was refused, so automatic matching is off",
             "toast.codeTimeout":
               "The server did not answer in time. Check your connection and try the code again.",
             "sync.open": "Show sync details",
@@ -3456,6 +3518,12 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "fav.save": "Tallenna suosikiksi",
             "fav.clear": "Tyhjennä lomake",
             "fav.saved": "Tallennetut",
+            "fav.geoMissing": "Etsi puuttuvat koordinaatit",
+            "toast.geoNoneMissing":
+              "Jokaisella tallennetulla paikalla on jo koordinaatit ({s} tarkistettu).",
+            "toast.geoDone":
+              "Löytyi {n}, ei löytynyt {f}. {s} paikalla oli jo koordinaatit ja ne jätettiin ennalleen.",
+            "toast.geoProgress": "Etsitään {d}/{t}… löytyi {n}",
             "fav.use": "Käytä",
             "fav.edit": "Muokkaa",
             "fav.map": "Kartta",
@@ -3743,6 +3811,28 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "set.build": "Rakennus",
             "set.sw": "SW",
             "set.swNone": "ei (ei asennettu)",
+            "set.defTitle": "Sijaintien oletukset",
+            "set.defLead":
+              "Esitäytä latauspaikka, kun lisäät session. Se täyttää vain tyhjän kentän, joten voit aina kirjoittaa jotain muuta.",
+            "set.defLoc": "Oletuspaikka",
+            "set.defLocHint": "Otetaan suosikkisijainneistasi.",
+            "set.defNone": "Ei mitään",
+            "set.defHour": "Käytä klo",
+            "set.defNever": "Ei koskaan",
+            "set.defHourHint": "Oma paikallinen kellonaika.",
+            "set.defGeo": "Käytä laitteeni sijaintia sen sijaan",
+            "set.defGeoHint":
+              "Vastaa tallennettuja paikkoja 100 m sisällä. Liian epätarkat luvut (yli 50 m) hylätään, joten työpöydällä ei tapahdu yleensä mitään. Sijaintisi käytetään vertailuun ja se hylätään heti — sitä ei tallenneta eikä lähetetä palvelimelle.",
+            "set.defApplied": "Oletuspaikka täytetty: {v}",
+            "set.geoMatched": "Lähellä tallennettua paikkaa: {v}",
+            "set.geoAmbiguous":
+              "{n} tallennettua paikkaa on 100 m sisällä. Käytettiin {v} ilman hintaa — tarkista ja korjaa.",
+            "set.geoTooCoarse":
+              "Sijainti ei ollut tarpeeksi tarkka ({n} m), joten mitään ei täytetty.",
+            "toast.defSaved": "Sijainnin oletus tallennettu",
+            "toast.geoAllowed": "Sijainti lupa myönnetty",
+            "toast.geoDenied":
+              "Sijainti lupa evättiin, joten automaattinen tunnistus on pois",
             "toast.codeTimeout":
               "Palvelin ei vastannut ajoissa. Tarkista yhteys ja kokeile koodia uudelleen.",
             "sync.open": "Näytä synkronoinnin tiedot",
@@ -4016,6 +4106,12 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "fav.save": "Spara favorit",
             "fav.clear": "Tyda formuläret",
             "fav.saved": "Sparade",
+            "fav.geoMissing": "Slå upp saknade koordinater",
+            "toast.geoNoneMissing":
+              "Alla sparade platser har redan koordinater ({s} kontrollerade).",
+            "toast.geoDone":
+              "Hittade {n}, kunde inte placera {f}. {s} hade redan koordinater och lämnades orörda.",
+            "toast.geoProgress": "Slår upp {d} av {t}… {n} hittade",
             "fav.use": "Använd",
             "fav.edit": "Redigera",
             "fav.map": "Karta",
@@ -4301,6 +4397,28 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "set.build": "Build",
             "set.sw": "SW",
             "set.swNone": "ingen (inte installerad)",
+            "set.defTitle": "Standardplatser",
+            "set.defLead":
+              "Fyller i laddplatsen när du lägger till en session. Den fyller bara ett tomt fält, så du kan alltid skriva något annat.",
+            "set.defLoc": "Standardplats",
+            "set.defLocHint": "Väljs bland dina favoriter.",
+            "set.defNone": "Ingen",
+            "set.defHour": "Använd efter",
+            "set.defNever": "Aldrig",
+            "set.defHourHint": "Din egen lokala klocka.",
+            "set.defGeo": "Använd min enhetsplats",
+            "set.defGeoHint":
+              "Matchar sparade platser inom 100 m. Avläsningar som är grövre än 50 m ignoreras, så detta händer oftast inte på en dator. Din position används för jämförelsen och kastas sedan — den lagras aldrig och skickas aldrig till servern.",
+            "set.defApplied": "Standardplats ifylld: {v}",
+            "set.geoMatched": "Nära en sparad plats: {v}",
+            "set.geoAmbiguous":
+              "{n} sparade platser ligger inom 100 m. Använde {v} utan pris — kontrollera och justera.",
+            "set.geoTooCoarse":
+              "Platsen var inte tillräckligt exakt ({n} m), så inget fylldes i.",
+            "toast.defSaved": "Standardplats sparad",
+            "toast.geoAllowed": "Platsåtkomst beviljad",
+            "toast.geoDenied":
+              "Platsåtkomst nekades, så automatisk matchning är av",
             "toast.codeTimeout":
               "Servern svarade inte i tid. Kontrollera din anslutning och försök koden igen.",
             "sync.open": "Visa synkdetaljer",
@@ -4710,6 +4828,9 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             bv: pre + "binVehicles",
             bs: pre + "binSessions",
             p: pre + "price",
+            /* Location defaults: which favourite to prefill, after what hour,
+               and whether to use device position. */
+            df: pre + "locDefaults",
             f: pre + "favs",
             /* usernames of people we invited, keyed by vehicle and user id.
                The share table only stores ids, so this is what lets the owner
@@ -4937,6 +5058,192 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               " " +
               (v || TXT("set.swNone"));
           });
+        }
+        /* ---------- location defaults ----------
+           A configurable default, never a hardcoded rule: which place, after
+           what hour, and whether device position may be consulted. The default
+           only ever fills an EMPTY field, so it can never overwrite something
+           the user typed or picked. */
+        var LOC_RADIUS_M = 100;
+        /* The accuracy gate, and the reason it exists. Desktop geolocation is
+           derived from the IP address and routinely reports accuracy in the
+           hundreds or thousands of metres, sometimes for the wrong city
+           entirely. A 100m match against such a reading is meaningless, and
+           acting on it would write the wrong place and the wrong price into
+           real data. Anything coarser than this is discarded, which in practice
+           means the feature works on a phone outdoors and stays quiet on a
+           desktop. */
+        var LOC_MAX_ACCURACY_M = 50;
+        var locDefaults = { loc: null, hour: null, geo: false };
+        function loadLocDefaults() {
+          try {
+            var raw = JSON.parse(localStorage.getItem(K.df) || "null");
+            if (raw && typeof raw === "object") {
+              locDefaults.loc = raw.loc || null;
+              locDefaults.hour = isNum(raw.hour) ? +raw.hour : null;
+              locDefaults.geo = !!raw.geo;
+            }
+          } catch (e) {
+            locDefaults = { loc: null, hour: null, geo: false };
+          }
+        }
+        function saveLocDefaults() {
+          try {
+            localStorage.setItem(K.df, JSON.stringify(locDefaults));
+          } catch (e) {
+            /* the preference still applies for this session */
+          }
+        }
+        /** Great-circle distance in metres. */
+        function metresBetween(lat1, lng1, lat2, lng2) {
+          var R = 6371000;
+          var toRad = Math.PI / 180;
+          var dLat = (lat2 - lat1) * toRad;
+          var dLng = (lng2 - lng1) * toRad;
+          var a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * toRad) *
+              Math.cos(lat2 * toRad) *
+              Math.sin(dLng / 2) *
+              Math.sin(dLng / 2);
+          return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+        }
+        /**
+         * When this place was last used, as a timestamp, or -1.
+         * Compared per place, not globally: the newest session overall is
+         * arbitrary when two saved chargers are close together.
+         */
+        function lastUsedAt(f) {
+          if (!f) return -1;
+          var want = (f.address || f.name || "").toLowerCase();
+          var best = -1;
+          for (var i = 0; i < sessions.length; i++) {
+            var s = sessions[i];
+            if (!s || s.deletedAt) continue;
+            if (String(s.location || "").toLowerCase() !== want) continue;
+            var t = Date.parse((s.date || "") + "T" + (s.time || "00:00"));
+            if (isFinite(t) && t > best) best = t;
+          }
+          return best;
+        }
+        /**
+         * Put a saved place into the form.
+         * @param {Object} f
+         * @param {boolean} withPrice  false leaves the price alone, which is
+         *        what an ambiguous proximity match gets: guessing the place is
+         *        recoverable, guessing its price is not.
+         * @returns {boolean} whether the field was filled
+         */
+        function fillLocationFromFav(f, withPrice) {
+          var input = $("location");
+          if (!f || !input) return false;
+          input.value = f.address || f.name;
+          var fp = favPrice(f);
+          if (withPrice && fp !== null) {
+            setPriceCents(Math.round(fp * 100));
+            recalcFromPrice();
+            syncCents();
+          }
+          return true;
+        }
+        /** The configured default, if the clock is past the chosen hour. */
+        function applyTimeDefault() {
+          if (!isNum(locDefaults.hour)) return false;
+          var f = locDefaults.loc ? favById(locDefaults.loc) : null;
+          if (!f) return false;
+          /* Before the hour, nothing happens. This compares the local clock
+             only; it is a convenience, not an inference about where you are. */
+          if (new Date().getHours() < locDefaults.hour) return false;
+          if (!fillLocationFromFav(f, true)) return false;
+          setLocStatus(TXT("set.defApplied", { v: f.name }));
+          return true;
+        }
+        /**
+         * Ask the device where we are and match it against saved places.
+         *
+         * The coordinates are used for the comparison and then dropped: nothing
+         * is written to storage and nothing is sent to the server. This is
+         * deliberately not location telemetry.
+         */
+        function tryNearbyFavourite() {
+          if (!navigator.geolocation) return;
+          if (typeof locDefaults.geoState === "string") return;
+          locDefaults.geoState = "asking";
+          navigator.geolocation.getCurrentPosition(
+            function (pos) {
+              locDefaults.geoState = "";
+              var acc = pos && pos.coords ? pos.coords.accuracy : null;
+              if (!isNum(acc) || acc > LOC_MAX_ACCURACY_M) {
+                setLocStatus(
+                  TXT("set.geoTooCoarse", { n: isNum(acc) ? Math.round(acc) : 0 }),
+                );
+                return;
+              }
+              var lat = pos.coords.latitude,
+                lng = pos.coords.longitude;
+              var near = [];
+              for (var i = 0; i < favs.length; i++) {
+                var f = favs[i];
+                if (!f || f.deletedAt) continue;
+                if (!isNum(f.lat) || !isNum(f.lng)) continue;
+                var d = metresBetween(lat, lng, +f.lat, +f.lng);
+                if (d <= LOC_RADIUS_M) near.push({ f: f, d: d });
+              }
+              if (!near.length) return;
+              /* Nearest wins. This is the signal that actually distinguishes two
+                 chargers at the same site: stand 10 m from the garage charger and
+                 90 m from the mall one and the distance picks the right one,
+                 where a recency or preference rule would have guessed. */
+              near.sort(function (a, b) {
+                return a.d - b.d;
+              });
+              var pick = near[0].f;
+              /* "Ambiguous" now means genuinely indistinguishable, not merely
+                 more than one candidate: two places within this far of each
+                 other cannot be told apart from one reading. */
+              var ambiguous = near.length > 1 && near[1].d - near[0].d < 25;
+              if (ambiguous && locDefaults.loc)
+                for (var j = 0; j < near.length; j++)
+                  if (near[j].f.id === locDefaults.loc) {
+                    pick = near[j].f;
+                    break;
+                  }
+              /* Nothing is committed silently either way: the field is filled
+                 and left for the user to confirm or correct, which is the same
+                 treatment a manually picked favourite gets. */
+              fillLocationFromFav(pick, !ambiguous);
+              setLocStatus(
+                ambiguous
+                  ? TXT("set.geoAmbiguous", { v: pick.name, n: near.length })
+                  : TXT("set.geoMatched", { v: pick.name }),
+              );
+            },
+            function () {
+              /* Denied, unavailable or timed out. Deliberately silent: the
+                 field simply stays as the user left it, and asking again on
+                 every keystroke would be worse than not trying. */
+              locDefaults.geoState = "";
+            },
+            { enableHighAccuracy: true, timeout: 8000, maximumAge: 300000 },
+          );
+        }
+        /**
+         * Fill an empty location field from the configured defaults. Never
+         * overwrites, so it is safe to call whenever the add view is opened.
+         */
+        function applyLocationDefaults() {
+          var input = $("location");
+          if (!input) return;
+          if (input.value.trim()) return;
+          if (locDefaults.geo) {
+            tryNearbyFavourite();
+            /* Still offer the clock default if position is slow or refused. */
+            setTimeout(function () {
+              if (input && !input.value.trim()) applyTimeDefault();
+            }, 1200);
+            return;
+          }
+          applyTimeDefault();
         }
         /* ---------- storage ---------- */
         /* A request with no timeout can hang forever. When a phone sleeps, the
@@ -5493,7 +5800,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                   /* A share with no status predates the roles migration, which
                      backfilled every existing row to accepted. Treating a
                      missing status as accepted keeps the app working in the
-                     window before SUPABASE_SHARING_ROLES.sql has been run. */
+                     window before supabase/SUPABASE_SHARING_ROLES.sql has been run. */
                   status: rows[i].status || "accepted",
                 });
               }
@@ -5579,7 +5886,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
         /* ---------- roles ----------
    The ladder mirrors the database exactly. The client only hides what the
    server would refuse anyway; RLS and the rank helpers in
-   SUPABASE_SHARING_ROLES.sql are what actually decide, so a tampered client
+   supabase/SUPABASE_SHARING_ROLES.sql are what actually decide, so a tampered client
    gains nothing here. Ranks match vehicle_rank(). */
         var ROLE_RANK = { owner: 4, admin: 3, driver: 2, viewer: 1 };
         var ROLES = ["viewer", "driver", "admin"];
@@ -8389,6 +8696,53 @@ if (e) {
             return true;
           });
         }
+        function renderLocDefaults() {
+          var sel = $("defLoc");
+          if (!sel) return;
+          var h = '<option value="">' + TXT("set.defNone") + "</option>";
+          for (var i = 0; i < favs.length; i++) {
+            if (!favs[i] || favs[i].deletedAt) continue;
+            h +=
+              '<option value="' +
+              esc(favs[i].id) +
+              '"' +
+              (favs[i].id === locDefaults.loc ? " selected" : "") +
+              ">" +
+              esc(favs[i].name) +
+              "</option>";
+          }
+          sel.innerHTML = h;
+          /* A default that pointed at a deleted or binned favourite falls back
+             to none rather than silently doing nothing. */
+          if (
+            locDefaults.loc &&
+            !favs.some(function (f) {
+              return f && !f.deletedAt && f.id === locDefaults.loc;
+            })
+          )
+            locDefaults.loc = null;
+          if (!locDefaults.loc) sel.value = "";
+          var hr = $("defHour");
+          if (hr) {
+            var oh = '<option value="">' + TXT("set.defNever") + "</option>";
+            for (var q = 0; q <= 23; q++) {
+              var hh = (q < 10 ? "0" : "") + q;
+              oh +=
+                '<option value="' +
+                q +
+                '"' +
+                (locDefaults.hour === q ? " selected" : "") +
+                ">" +
+                hh +
+                ":00" +
+                "</option>";
+            }
+            hr.innerHTML = oh;
+            hr.value = isNum(locDefaults.hour) ? String(locDefaults.hour) : "";
+          }
+          var geo = $("defGeo");
+          if (geo) geo.checked = !!locDefaults.geo;
+        }
         function renderFavs() {
           var box = $("favList"),
             html = "";
@@ -8456,6 +8810,9 @@ if (e) {
           }
           $("favQuick").innerHTML = chips;
           $("favQuick").hidden = favs.length === 0;
+          /* The default-location list is built from favourites, so it has to be
+             rebuilt whenever they change, including a deletion. */
+          renderLocDefaults();
           refreshDatalist();
         }
 
@@ -9561,6 +9918,99 @@ if (e) {
         var maps = {},
           leafletState = 0,
           lastGeo = 0;
+        /**
+         * Look up coordinates for saved places that have none.
+         *
+         * Only fills in what is MISSING. A place that already has coordinates
+         * is left alone even if they look wrong, because re-geocoding a correct
+         * pin can move it and quietly break proximity matching. Anything that
+         * needs fixing is a deliberate per-place edit, where the change is
+         * visible before it is saved.
+         *
+         * Nominatim's usage policy asks for at most one request a second, so
+         * this is deliberately sequential and paced rather than fired in
+         * parallel. @returns {Promise<{filled:number, failed:number, skipped:number}>}
+         */
+        function geocodeMissingFavs() {
+          var todo = favs.filter(function (f) {
+            return f && !f.deletedAt && !isNum(f.lat) && !isNum(f.lng);
+          });
+          var skipped = favs.filter(function (f) {
+            return f && !f.deletedAt && (isNum(f.lat) || isNum(f.lng));
+          }).length;
+          var stat = $("favGeoStat");
+          var out = { filled: 0, failed: 0, skipped: skipped };
+          if (!todo.length) {
+            if (stat)
+              stat.textContent = TXT("toast.geoNoneMissing", { s: skipped });
+            return Promise.resolve(out);
+          }
+          var btn = $("favGeoBtn");
+          if (btn) btn.disabled = true;
+          var i = 0;
+          function next() {
+            if (i >= todo.length) {
+              if (btn) btn.disabled = false;
+              saveFavs();
+              renderFavs();
+              if (stat)
+                stat.textContent = TXT("toast.geoDone", {
+                  n: out.filled,
+                  f: out.failed,
+                  s: skipped,
+                });
+              return Promise.resolve(out);
+            }
+            var f = todo[i++];
+            var q = (f.address || f.name || "").trim();
+            /* Paced, and it never starts faster than a request a second. */
+            var wait = Math.max(0, 1100 - (Date.now() - lastGeo));
+            lastGeo = Date.now() + wait;
+            return new Promise(function (resolve) {
+              setTimeout(function () {
+                if (!q) {
+                  out.failed++;
+                  resolve();
+                  return;
+                }
+                fetch(nomUrl(q, 1))
+                  .then(function (r) {
+                    if (!r.ok) throw new Error("http " + r.status);
+                    return r.json();
+                  })
+                  .then(function (res) {
+                    var hit = pickBestHit(res, q);
+                    if (!hit) {
+                      out.failed++;
+                      return;
+                    }
+                    var lat = parseFloat(hit.lat),
+                      lng = parseFloat(hit.lon);
+                    if (!isFinite(lat) || !isFinite(lng)) {
+                      out.failed++;
+                      return;
+                    }
+                    f.lat = lat;
+                    f.lng = lng;
+                    out.filled++;
+                  })
+                  .catch(function () {
+                    out.failed++;
+                  })
+                  .then(function () {
+                    if (stat)
+                      stat.textContent = TXT("toast.geoProgress", {
+                        d: i,
+                        t: todo.length,
+                        n: out.filled,
+                      });
+                    next();
+                  });
+              }, wait);
+            });
+          }
+          return next();
+        }
         function nomUrl(q, limit) {
           return (
             "https://nominatim.openstreetmap.org/search?format=jsonv2" +
@@ -10174,6 +10624,9 @@ if (e) {
           if (location.hash.slice(1) !== id)
             history.replaceState(null, "", "#" + id);
           render();
+          /* Only fills an empty field, so re-entering the view is safe and the
+             default appears without ever overwriting a typed location. */
+          if (id === "add-session") applyLocationDefaults();
           if (id === "favourites") {
             loadLeaflet(function () {
               if (maps["map"] && maps["map"].map)
@@ -10883,6 +11336,41 @@ if (e) {
           closeSuggest();
           useMyLocation();
         });
+        $("favGeoBtn").addEventListener("click", function () {
+          geocodeMissingFavs();
+        });
+        $("defLoc").addEventListener("change", function () {          locDefaults.loc = this.value || null;
+          saveLocDefaults();
+          toast(TXT("toast.defSaved"));
+        });
+        $("defHour").addEventListener("change", function () {
+          locDefaults.hour = this.value === "" ? null : parseInt(this.value, 10);
+          saveLocDefaults();
+          toast(TXT("toast.defSaved"));
+        });
+        $("defGeo").addEventListener("change", function () {
+          locDefaults.geo = !!this.checked;
+          saveLocDefaults();
+          /* Ask once, at the moment it is switched on, so the browser prompt is
+             not deferred to a moment the user will not connect with it. */
+          if (locDefaults.geo && navigator.geolocation)
+            navigator.geolocation.getCurrentPosition(
+              function () {
+                locDefaults.geoState = "";
+                toast(TXT("toast.geoAllowed"));
+              },
+              function () {
+                locDefaults.geoState = "";
+                locDefaults.geo = false;
+                saveLocDefaults();
+                var cb = $("defGeo");
+                if (cb) cb.checked = false;
+                toast(TXT("toast.geoDenied"));
+              },
+              { enableHighAccuracy: true, timeout: 10000 },
+            );
+          else toast(TXT("toast.defSaved"));
+        });
         $("exCsv").addEventListener("click", doCSV);
         $("exJson").addEventListener("click", function () {
           var list = sorted(scopeList());
@@ -11348,6 +11836,7 @@ if (e) {
         migrateLegacyStorage();
         load();
         loadFavs();
+        loadLocDefaults();
         initAuth();
         authWatchdog();
         var dl = document.createElement("datalist");

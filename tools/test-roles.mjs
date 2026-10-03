@@ -108,7 +108,7 @@ function group(name, fn) {
   console.log(`${bad ? "FAIL" : "ok  "}  ${name}`);
 }
 
-/* The ladder in SUPABASE_SHARING_ROLES.sql: owner 4, admin 3, driver 2, viewer 1. */
+/* The ladder in supabase/SUPABASE_SHARING_ROLES.sql: owner 4, admin 3, driver 2, viewer 1. */
 group("role ladder matches the database", () => {
   is("owner rank", api.rankOf("owner"), 4);
   is("admin rank", api.rankOf("admin"), 3);
