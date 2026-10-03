@@ -25,9 +25,9 @@
  * because a navigation is network-first; an installed PWA launched from the
  * home screen can come straight out of the cache without any request at all.
  *
- * Last bumped: 2026-10-02, for the stale-chart fix on account switch.
+ * Last bumped: 2026-10-02, to show the server's rejection reason per row.
  */
-const VERSION = "v9";
+const VERSION = "v10";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [

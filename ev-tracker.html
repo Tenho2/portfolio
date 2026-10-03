@@ -421,6 +421,16 @@
         color: var(--warn);
         border-color: var(--warn);
       }
+      /* What the server said it objected to. Monospaced and deliberately
+         smaller than the label, because it is diagnostic detail rather than
+         something to read at a glance. */
+      .sync-err {
+        flex: 1 1 100%;
+        font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+        font-size: 0.72rem;
+        color: var(--danger);
+        overflow-wrap: anywhere;
+      }
       .user-chip {
         display: flex;
         align-items: center;
@@ -3254,12 +3264,11 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               "Everything is on the server. Nothing is waiting to sync.",
             "sync.discard": "Discard",
             "sync.stalledHint":
-              "The server refused these, so waiting will not help. Discard one to remove it from this device, or open it and save again to try a fresh copy.",
+              "The server refused these, so waiting will not help. The exact reason is shown under each one. Discard to remove it from this device, or open it and save again to try a fresh copy.",
             "sync.reason.offline":
               "waiting for a connection",
             "sync.reason.queued": "waiting to be sent",
-            "sync.reason.rejected": "refused by the server",
-            "toast.legacyMoved":
+            "sync.reason.rejected": "refused by the server",            "toast.legacyMoved":
               "{n} piece(s) of unsynced data from an earlier version were moved to the signed-out area. Sign out to see them.",
             "toast.discardQ": "Discard {v} and {n} item(s) from this device?",
             "toast.discarded": "Discarded from this device",
@@ -3844,7 +3853,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "sync.allGood": "Kaikki on palvelimella. Ei mitään odottamassa.",
             "sync.discard": "Hylkää",
             "sync.stalledHint":
-              "Palvelin hylkäsi nämä, joten odottaminen ei auta. Hylkää poistaa kohteen tältä laitteelta, tai avaa ja tallenna uudelleen, jotta kopio lähetettäisiin.",
+              "Palvelin hylkäsi nämä, joten odottaminen ei auta. Tarkka syy näytetään jokaisen kohdalla. Hylkää poistaa kohteen tältä laitteelta, tai avaa ja tallenna uudelleen, jotta kopio lähetettäisiin.",
             "sync.reason.offline": "odottaa yhteyttä",
             "sync.reason.queued": "odottaa lähetystä",
             "sync.reason.rejected": "palvelin hylkäsi",
@@ -4431,7 +4440,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "sync.allGood": "Allt finns på servern. Inget väntar på synkning.",
             "sync.discard": "Kasta",
             "sync.stalledHint":
-              "Servern nekade dessa, så att vänta hjälper inte. Kasta bort en post för att ta bort den från enheten, eller öppna och spara igen för att skicka en ny kopia.",
+              "Servern nekade dessa, så att vänta hjälper inte. Den exakta orsaken visas under varje post. Kasta för att ta bort den från enheten, eller öppna och spara igen för att skicka en ny kopia.",
             "sync.reason.offline": "väntar på anslutning",
             "sync.reason.queued": "väntar på att skickas",
             "sync.reason.rejected": "nekad av servern",
@@ -5608,8 +5617,14 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
            will go through on its own. A row listed here never will, so it has to
            be visible to the user and has to offer a way out. */
         var syncStalled = { vehicles: {}, sessions: {} };
-        function markStalled(kind, id, reason) {
-          syncStalled[kind][id] = reason || "rejected";
+        function markStalled(kind, id, reason, err) {
+          syncStalled[kind][id] = {
+            reason: reason || "rejected",
+            code: (err && (err.code || err.error_code)) || "",
+            message: String((err && (err.message || err.msg)) || "").trim(),
+            details: String((err && (err.details || err.hint)) || "").trim(),
+            when: new Date().toISOString(),
+          };
         }
         function clearStalled(kind, id) {
           if (syncStalled[kind]) delete syncStalled[kind][id];
@@ -5631,20 +5646,28 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
         /**
          * Record a failed push: keep it queued while it might still succeed,
          * then give up on it so it cannot slow every future sync.
+         *
+         * The server's own error is kept, because "refused by the server" on
+         * its own is not diagnosable. PostgREST reports a Row Level Security
+         * rejection as code 42501 with the offending table named, and a missing
+         * column as PGRSTxxx, which is the difference between a policy problem
+         * and a migration that was never run.
+         *
          * @param {string} kind  "vehicles" or "sessions"
          * @param {string} id
          * @param {string} what  short description for the console
+         * @param {Object} [err] the error PostgREST returned
          */
-        function failPush(kind, id, what) {
+        function failPush(kind, id, what, err) {
           if (bumpAttempt(kind, id) < MAX_PUSH_ATTEMPTS) {
             markDirty(kind, id);
             syncFail(what);
             return false;
           }
           clearDirty(kind, id);
-          /* Recorded rather than forgotten, so the sync panel can name it and the
-             user can decide whether to discard it. */
-          markStalled(kind, id, "rejected");
+          /* Recorded rather than forgotten, so the sync panel can name it and
+             the user can decide whether to discard it. */
+          markStalled(kind, id, "rejected", err);
           syncFail(what + " - giving up, the server will not accept this row");
           if (window.console && window.console.warn)
             window.console.warn(
@@ -5654,9 +5677,28 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                 id +
                 " failed " +
                 MAX_PUSH_ATTEMPTS +
-                " times; it stays on this device only",
+                " times: " +
+                describeServerError(err) +
+                " -- it stays on this device only",
             );
           return false;
+        }
+        /**
+         * A one-line summary of what the server actually said.
+         * @param {Object} [err]
+         * @returns {string}
+         */
+        function describeServerError(err) {
+          if (!err) return "no error detail";
+          var code = err.code || err.error_code || "";
+          var msg = String(err.message || err.msg || "").trim();
+          /* PostgREST puts the table name in `details` for a policy rejection,
+             which is the single most useful thing to show. */
+          var det = String(err.details || err.hint || "").trim();
+          var out = code ? code + ": " : "";
+          out += msg || "(no message)";
+          if (det && det.indexOf(msg) < 0) out += " (" + det + ")";
+          return out;
         }
         /* push one vehicle; "mode" is insert or update, both handled by upsert */
         function syncVehicle(v) {
@@ -5672,15 +5714,17 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             .then(function (res) {
               syncQueue.pending--;
               var e = res && res.error;
-              if (e) return failPush("vehicles", v.id, "vehicle upsert");
+              if (e) return failPush("vehicles", v.id, "vehicle upsert", e);
               clearDirty("vehicles", v.id);
               clearStalled("vehicles", v.id);
               forgetAttempts("vehicles", v.id);
               return true;
             })
-            .catch(function () {
+            .catch(function (ce) {
               syncQueue.pending--;
-              return failPush("vehicles", v.id, "vehicle upsert");
+              /* The thrown error is kept: a transport-level failure and a
+                 policy rejection look identical from the outside otherwise. */
+              return failPush("vehicles", v.id, "vehicle upsert", ce);
             });
         }
         /**
@@ -5701,15 +5745,15 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             .then(function (res) {
               syncQueue.pending--;
               var e = res && res.error;
-              if (e) return failPush("sessions", s.id, "session upsert");
+              if (e) return failPush("sessions", s.id, "session upsert", e);
               clearDirty("sessions", s.id);
               clearStalled("sessions", s.id);
               forgetAttempts("sessions", s.id);
               return true;
             })
-            .catch(function () {
+            .catch(function (ce) {
               syncQueue.pending--;
-              return failPush("sessions", s.id, "session upsert");
+              return failPush("sessions", s.id, "session upsert", ce);
             });
         }
         /* Deletes are recorded while offline too, otherwise a session deleted on a
@@ -6768,7 +6812,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                   var e = res && res.error;
 if (e) {
                       for (var k = 0; k < slice.length; k++)
-                        failPush("sessions", slice[k].id, "session bulk upsert");
+                        failPush("sessions", slice[k].id, "session bulk upsert", e);
                       return false;
                     }
                   for (var j = 0; j < slice.length; j++) {
@@ -8316,7 +8360,7 @@ if (e) {
         function unsyncedRows() {
           var out = [];
           var offline = !syncOnline();
-          function add(kind, id, why, hard) {
+          function add(kind, id, why, hard, stall) {
             var row =
               kind === "vehicles" ? vehicleAnywhere(id) : sessionAnywhere(id);
             out.push({
@@ -8327,8 +8371,17 @@ if (e) {
                   ? row.name
                   : row.location + " · " + row.date
                 : "(no longer on this device)",
-              why: why,
+              /* `stall` is the recorded server error, when there is one. */
+              why: typeof why === "object" && why ? why.reason : why,
               hard: !!hard,
+              code: (stall && stall.code) || "",
+              detail:
+                stall && (stall.message || stall.details)
+                  ? [stall.code, stall.message, stall.details]
+                      .filter(Boolean)
+                      .join(" · ")
+                  : "",
+              when: (stall && stall.when) || "",
             });
           }
           var vi = Object.keys(syncDirty.vehicles);
@@ -8340,11 +8393,15 @@ if (e) {
             if (!syncStalled.sessions[si[b]])
               add("sessions", si[b], offline ? "offline" : "queued", false);
           var sv = Object.keys(syncStalled.vehicles);
-          for (var c = 0; c < sv.length; c++)
-            add("vehicles", sv[c], syncStalled.vehicles[sv[c]], true);
+          for (var c = 0; c < sv.length; c++) {
+            var st = syncStalled.vehicles[sv[c]];
+            add("vehicles", sv[c], st, true, st);
+          }
           var ss = Object.keys(syncStalled.sessions);
-          for (var d = 0; d < ss.length; d++)
-            add("sessions", ss[d], syncStalled.sessions[ss[d]], true);
+          for (var d = 0; d < ss.length; d++) {
+            var st2 = syncStalled.sessions[ss[d]];
+            add("sessions", ss[d], st2, true, st2);
+          }
           return out;
         }
         /**
@@ -8432,10 +8489,20 @@ if (e) {
               '<span class="nm">' +
               esc(r.label) +
               "</span>" +
-              '<span class="mt">' +
-              esc(TXT("sync.reason." + r.why)) +
-              "</span>" +
-              (r.hard
+                '<span class="mt">' +
+                esc(TXT("sync.reason." + r.why)) +
+                "</span>" +
+                /* The server's own words. Without this the panel can only say
+                   that a write was refused, which is the least useful possible
+                   answer when the question is why. */
+                (r.detail
+                  ? '<span class="sync-err" title="' +
+                    esc(r.detail) +
+                    '">' +
+                    esc(r.detail.length > 90 ? r.detail.slice(0, 90) + "…" : r.detail) +
+                    "</span>"
+                  : "") +
+                (r.hard
                 ? '<button type="button" class="btn sm dgr" data-discard="' +
                   esc(r.kind) +
                   ":" +

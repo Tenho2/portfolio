@@ -108,7 +108,18 @@ group("offline is called out separately from queued", () => {
 group("a refused row is hard and offered a way out", () => {
   t.seed({
     syncDirty: { vehicles: {}, sessions: {} },
-    syncStalled: { vehicles: { v9: "rejected" }, sessions: {} },
+    syncStalled: {
+      vehicles: {
+        v9: {
+          reason: "rejected",
+          code: "42501",
+          message: "new row violates row-level security policy",
+          details: 'for table "vehicles"',
+          when: "2026-10-02T10:00:00.000Z",
+        },
+      },
+      sessions: {},
+    },
     vehicles: [row("v9")],
   });
   t.setOnline(true);
@@ -117,6 +128,27 @@ group("a refused row is hard and offered a way out", () => {
   is("reason", rows[0].why, "rejected");
   is("hard", rows[0].hard, true);
   is("stalledCount counts it", t.stalledCount(), 1);
+  /* The whole point of recording the error: "refused" on its own cannot be
+     diagnosed, and a policy rejection is the single most likely cause. */
+  is("code surfaced", rows[0].code, "42501");
+  is(
+    "message and table surfaced",
+    rows[0].detail.indexOf("row-level security") >= 0 &&
+      rows[0].detail.indexOf("vehicles") >= 0,
+    true,
+  );
+});
+
+group("a refusal with no error detail does not break the row", () => {
+  t.seed({
+    syncDirty: { vehicles: {}, sessions: {} },
+    syncStalled: { vehicles: { v8: { reason: "rejected" } }, sessions: {} },
+    vehicles: [row("v8")],
+  });
+  const rows = t.unsyncedRows();
+  is("still listed", rows.length, 1);
+  is("reason survives", rows[0].why, "rejected");
+  is("detail is empty rather than undefined", rows[0].detail, "");
 });
 
 group("a row in both queues is only listed once, as refused", () => {
