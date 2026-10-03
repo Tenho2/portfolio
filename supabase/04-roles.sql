@@ -1,6 +1,6 @@
 -- EV Multi-Tracker: sharing roles and owner approval
--- Run this in the Supabase SQL editor AFTER SUPABASE_SHARING.sql,
--- SUPABASE_SHARING_CODES.sql and SUPABASE_SHARING_FIX2.sql, all of which are in
+-- Run this in the Supabase SQL editor AFTER 01-schema.sql,
+-- 03-share-codes.sql and 02-sharing-fix.sql, all of which are in
 -- this folder. The order matters: this one replaces the policies the earlier
 -- files created.
 -- Dashboard -> SQL Editor -> New query -> paste -> Run.
@@ -197,7 +197,7 @@ $$;
 -- ---------------------------------------------------------------------------
 -- 3. Rebuild the policies
 --    Every policy on these three tables is dropped first, then a known set is
---    created. That is deliberate: SUPABASE_SHARING_FIX2.sql section 5 notes a
+--    created. That is deliberate: 02-sharing-fix.sql section 5 notes a
 --    leftover owner-only policy on sessions whose name nobody had recorded, and
 --    because Postgres ORs permissive policies together it would have kept
 --    granting write access past the new rules. Dropping by catalogue instead of

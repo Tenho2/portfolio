@@ -1,5 +1,5 @@
 -- EV Multi-Tracker: sharing fix #2
--- Run this in the SQL editor AFTER SUPABASE_SHARING.sql.
+-- Run this in the SQL editor AFTER 01-schema.sql.
 -- Everything here is idempotent.
 --
 -- Why this is needed

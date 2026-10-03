@@ -3160,6 +3160,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "chart.cost": "Cost (EUR)",
             "chart.empty":
               "No sessions for this vehicle yet. Add one to see the monthly chart.",
+            "chart.loading": "Loading…",
             "chart.offline":
               "The chart library could not be loaded (no internet connection?). Everything else works normally.",
             "how.soc":
@@ -3749,6 +3750,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "chart.cost": "Kustannus (€)",
             "chart.empty":
               "Ei vielä latauksia tälle ajoneuvolle. Lisää lataus, niin näet kuukausikartan.",
+            "chart.loading": "Ladataan…",
             "chart.offline":
               "Kaavakirjastoa ei voitu ladata (ei internetyhteyttä?). Muu toimii normaalisti.",
             "how.soc":
@@ -4336,6 +4338,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "chart.cost": "Kostnad (EUR)",
             "chart.empty":
               "Inga sessioner för det här fordonet ännu. Lägg till en för att se månadskartan.",
+            "chart.loading": "Läser in…",
             "chart.offline":
               "Diagrambiblioteket kunde inte laddas (ingen internetanslutning?). Allt annat fungerar normalt.",
             "how.soc":
@@ -5800,7 +5803,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                   /* A share with no status predates the roles migration, which
                      backfilled every existing row to accepted. Treating a
                      missing status as accepted keeps the app working in the
-                     window before supabase/SUPABASE_SHARING_ROLES.sql has been run. */
+                     window before supabase/04-roles.sql has been run. */
                   status: rows[i].status || "accepted",
                 });
               }
@@ -5886,7 +5889,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
         /* ---------- roles ----------
    The ladder mirrors the database exactly. The client only hides what the
    server would refuse anyway; RLS and the rank helpers in
-   supabase/SUPABASE_SHARING_ROLES.sql are what actually decide, so a tampered client
+   supabase/04-roles.sql are what actually decide, so a tampered client
    gains nothing here. Ranks match vehicle_rank(). */
         var ROLE_RANK = { owner: 4, admin: 3, driver: 2, viewer: 1 };
         var ROLES = ["viewer", "driver", "admin"];
@@ -7242,7 +7245,11 @@ if (e) {
         }
         function ofVehicle(id) {
           return sessions.filter(function (s) {
-            return s.vehicleId === id;
+            /* deletedAt is normally redundant here, because a binned row is
+               moved out of `sessions` entirely. It is checked anyway so that a
+               row flagged in place can never reach a total, the distance sum,
+               an export or the chart. */
+            return s.vehicleId === id && !s.deletedAt;
           });
         }
         function sorted(list) {
@@ -7469,9 +7476,28 @@ if (e) {
              storage on those would reset the selected vehicle and throw away
              edits that have not been written yet, so state is only swapped when
              the account genuinely differs from the one in the current bucket. */
-          if (who !== lastAccount) {
+                    if (who !== lastAccount) {
             useAccount(who);
             load();
+            /* The canvas keeps whatever was last drawn on it, so a chart built
+               for the previous account stays on screen until something
+               redraws it. renderChart only runs while the dashboard is the
+               visible view, which means simply switching accounts could leave
+               another account's charging history sitting on the dashboard.
+               Nothing survives a switch now. */
+            if (monthChart) {
+              try {
+                monthChart.destroy();
+              } catch (e) {}
+              monthChart = null;
+            }
+            var cb = $("chartBox"),
+              cn = $("chartNote");
+            if (cb) cb.hidden = true;
+            if (cn) {
+              cn.hidden = false;
+              cn.textContent = TXT("chart.loading");
+            }
             if (signed) {
               /* A vehicle made while signed out has no owner stamped, because
                  there was no account to stamp it with. This account is the only
@@ -7857,9 +7883,26 @@ if (e) {
             return ch;
           }
           if (monthChart) {
-            monthChart.data = data;
-            restyle(monthChart).update();
-            return;
+            /* Handing Chart.js a whole new `data` object does not reliably
+               rebuild the axes. When the number of months changes, which is
+               exactly what happens on an account switch or when a vehicle's
+               history is deleted, the old scale and labels can survive and keep
+               the previous series on screen. Rebuilding is the only way to be
+               sure the chart shows the data it was just handed. */
+            var sameShape =
+              monthChart.data.labels.length === data.labels.length;
+            if (sameShape) {
+              /* Same shape: mutate the arrays in place, which Chart.js does
+                 handle correctly, and avoids tearing the chart down on every
+                 render. */
+              monthChart.data.labels = data.labels;
+              monthChart.data.datasets[0].data = data.datasets[0].data;
+              monthChart.data.datasets[1].data = data.datasets[1].data;
+              restyle(monthChart).update();
+              return;
+            }
+            monthChart.destroy();
+            monthChart = null;
           }
           monthChart = new window.Chart($("monthChart"), {
             type: "bar",

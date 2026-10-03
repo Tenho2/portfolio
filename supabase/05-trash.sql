@@ -1,5 +1,5 @@
 -- EV Multi-Tracker: the bin (recoverable deletes)
--- Run this in the Supabase SQL editor AFTER SUPABASE_SHARING_ROLES.sql.
+-- Run this in the Supabase SQL editor AFTER 04-roles.sql.
 -- Dashboard -> SQL Editor -> New query -> paste -> Run.
 --
 -- Everything here is idempotent.
@@ -60,7 +60,7 @@ create index if not exists sessions_vehicle_deleted_idx
 -- ---------------------------------------------------------------------------
 -- 3. Nothing to grant
 --    Setting or clearing deleted_at is an ordinary UPDATE, and the policies
---    from SUPABASE_SHARING_ROLES.sql already gate it:
+--    from 04-roles.sql already gate it:
 --
 --      vehicles  "vehicles editable by owner or admin"
 --                USING     can_edit_vehicle(id)

@@ -1,6 +1,4 @@
-/*
- * EV Multi-Tracker service worker.
- *
+/* EV Multi-Tracker service worker.
  * Caching policy, in one rule:
  *
  *   same-origin, cacheable  -> cache-first (the app shell is versioned)
@@ -27,10 +25,9 @@
  * because a navigation is network-first; an installed PWA launched from the
  * home screen can come straight out of the cache without any request at all.
  *
- * Last bumped: 2026-10-02, for nearest-match proximity and geocoding missing
- * favourite coordinates. v7 was location defaults.
+ * Last bumped: 2026-10-02, for the stale-chart fix on account switch.
  */
-const VERSION = "v8";
+const VERSION = "v9";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [

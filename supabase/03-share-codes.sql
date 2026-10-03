@@ -1,5 +1,5 @@
 -- EV Multi-Tracker: shareable vehicle codes
--- Run this in the SQL editor AFTER SUPABASE_SHARING_FIX2.sql.
+-- Run this in the SQL editor AFTER 02-sharing-fix.sql.
 -- Everything here is idempotent.
 --
 -- Why this is needed
