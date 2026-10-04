@@ -25,9 +25,10 @@
  * because a navigation is network-first; an installed PWA launched from the
  * home screen can come straight out of the cache without any request at all.
  *
- * Last bumped: 2026-10-02, to show the server's rejection reason per row.
+ * Last bumped: 2026-10-02, to repair a stale vehicle owner id once on a
+ * Row Level Security rejection.
  */
-const VERSION = "v10";
+const VERSION = "v11";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [

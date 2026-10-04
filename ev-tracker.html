@@ -5492,13 +5492,16 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
          * @param {Object} v
          * @returns {Object} snake_case row, including user_id from the session
          */
-        function vehicleRow(v) {
+        function vehicleRow(v, forceOwner) {
           /* Keep the ORIGINAL owner. A shared driver who renames the car or
              edits its odometer must not take ownership away from the user who
-             created it, so v.userId wins over the signed-in user. */
+             created it, so v.userId wins over the signed-in user.
+             forceOwner is the one exception: it is used only for a retry of a
+             brand-new row this account is creating, where the stored id is
+             known to be stale. See syncVehicle. */
           return {
             id: v.id,
-            user_id: v.userId || ownerId(),
+            user_id: forceOwner ? ownerId() : v.userId || ownerId(),
             name: String(v.name || ""),
             icon: String(v.icon || "\u{1F697}"),
             initial_odometer: isNum(v.initialOdometer)
@@ -5708,13 +5711,73 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             return Promise.resolve(false);
           }
           syncQueue.pending++;
-          return authClient
-            .from("vehicles")
-            .upsert(vehicleRow(v), { onConflict: "id" })
+          /* True when the server objected because of Row Level Security rather
+             than because of anything about the network or the payload. */
+          function isPolicyRejection(err) {
+            var m =
+              String((err && err.message) || "") +
+              " " +
+              String((err && err.code) || "");
+            return /row-level security|42501|insufficient_privilege/i.test(m);
+          }
+          function onFailure(err, alreadyForced) {
+            /* Postgres says "new row violates row-level security policy", which
+               means the INSERT branch ran, so the row does not exist on the
+               server yet. This is therefore a row the signed-in account is
+               creating, and the only thing wrong with it is a stale owner id
+               left over from before storage was scoped per account. Retried
+               once with the session's own id.
+
+               If the retry is refused too, the row really does exist and belongs
+               to somebody else, and we stop rather than keep claiming it. That
+               is what stops this from ever taking a vehicle off another account. */
+            if (
+              isPolicyRejection(err) &&
+              !alreadyForced &&
+              v.userId &&
+              v.userId !== ownerId()
+            ) {
+              if (window.console && window.console.warn)
+                window.console.warn(
+                  "[sync] vehicle " +
+                    v.id +
+                    " carries a stale owner id; retrying as the signed-in account",
+                );
+              syncQueue.pending++;
+              return timed(
+                authClient
+                  .from("vehicles")
+                  .upsert(vehicleRow(v, true), { onConflict: "id" }),
+              )
+                .then(function (r2) {
+                  syncQueue.pending--;
+                  var e2 = r2 && r2.error;
+                  if (e2) return failPush("vehicles", v.id, "vehicle upsert", e2);
+                  /* Persist the corrected owner locally, or the next edit would
+                     send the stale id again. */
+                  v.userId = ownerId();
+                  clearDirty("vehicles", v.id);
+                  clearStalled("vehicles", v.id);
+                  forgetAttempts("vehicles", v.id);
+                  save();
+                  return true;
+                })
+                .catch(function (ce2) {
+                  syncQueue.pending--;
+                  return failPush("vehicles", v.id, "vehicle upsert", ce2);
+                });
+            }
+            return failPush("vehicles", v.id, "vehicle upsert", err);
+          }
+          return timed(
+            authClient
+              .from("vehicles")
+              .upsert(vehicleRow(v), { onConflict: "id" }),
+          )
             .then(function (res) {
               syncQueue.pending--;
               var e = res && res.error;
-              if (e) return failPush("vehicles", v.id, "vehicle upsert", e);
+              if (e) return onFailure(e, false);
               clearDirty("vehicles", v.id);
               clearStalled("vehicles", v.id);
               forgetAttempts("vehicles", v.id);
@@ -5724,7 +5787,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               syncQueue.pending--;
               /* The thrown error is kept: a transport-level failure and a
                  policy rejection look identical from the outside otherwise. */
-              return failPush("vehicles", v.id, "vehicle upsert", ce);
+              return onFailure(ce, false);
             });
         }
         /**
