@@ -25,10 +25,11 @@
  * because a navigation is network-first; an installed PWA launched from the
  * home screen can come straight out of the cache without any request at all.
  *
- * Last bumped: 2026-10-05, for the sharing panel explaining why a code could not
- * be generated instead of spinning forever, plus the whoami probe in diagnostics.
+ * Last bumped: 2026-10-05, for pushing a device-created vehicle with a plain
+ * insert instead of an upsert, plus restored vehicles keeping their owner and
+ * spacing between a button icon and its label.
  */
-const VERSION = "v17";
+const VERSION = "v19";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [

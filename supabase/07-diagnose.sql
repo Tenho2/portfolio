@@ -79,7 +79,7 @@ order by tablename, cmd, policyname;
 --     Expect: if tg_op = 'INSERT' and auth.uid() is not null then new.user_id := auth.uid()
 --
 --     The empty parentheses are required. A regprocedure cast carries the
---     argument list, so 'public.stamp_row_owner'::regprocedure is a syntax
+--     argument list, so 'public.stamp_row_owner()'::regprocedure is a syntax
 --     error for a function that takes none.
 select pg_get_functiondef('public.stamp_row_owner()'::regprocedure) as body;
 

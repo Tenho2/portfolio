@@ -163,7 +163,41 @@ group("the app module reaches other modules only through their public interface"
      string fragments throughout the app. */
   const privateNames = ["LANGS", "ORDER", "lang"];
 
-  /* The private must exist in the i18n file, or this check is guarding a name
+  group("a device-created row is pushed as an insert, never an upsert", () => {
+  /* The bug this guards: .upsert() compiles to INSERT ... ON CONFLICT DO
+     UPDATE, which pulls the UPDATE row-level policies into a write that should
+     be a create. Postgres words an UPDATE refusal identically to an INSERT one,
+     so a single upsert cannot tell us which gate rejected the row, and a
+     permissive insert policy does not shield the update half. */
+  const body = fnBody("syncVehicle");
+  is("syncVehicle was found", body.length > 0, true);
+  /* Both halves must be present: an insert for rows the server has never seen,
+     and an upsert for rows it has. Losing either is the bug coming back. */
+  is("it inserts", /\.from\("vehicles"\)\s*\n?\s*\.insert\(/.test(body), true);
+  is("it still upserts confirmed rows", /\.upsert\(/.test(body), true);
+  is("the insert branch is chosen by !v.confirmed", /var isCreate = !v\.confirmed/.test(body), true);
+  /* A duplicate key is not a failure: the id is already there, so the row is
+     marked seen and updated instead of being reported as unfixable. */
+  is("a duplicate key falls back to the update path", /isDuplicateKey\(e\)/.test(body), true);
+});
+
+/** The body of a top-level function, by brace matching. */
+function fnBody(name) {
+  const i = src.indexOf(`function ${name}(`);
+  if (i < 0) return "";
+  const start = src.indexOf("{", i);
+  let depth = 0;
+  for (let j = start; j < src.length; j++) {
+    if (src[j] === "{") depth++;
+    else if (src[j] === "}") {
+      depth--;
+      if (depth === 0) return src.slice(start, j + 1);
+    }
+  }
+  return "";
+}
+
+/* The private must exist in the i18n file, or this check is guarding a name
      that no longer exists and would pass for the wrong reason. */
   const declared = [];
   for (const name of privateNames) {

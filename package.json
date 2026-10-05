@@ -12,7 +12,7 @@
     "fmt:check": "prettier --check \"*.{json,md}\"",
     "fmt:html": "prettier --write \"*.html\"",
     "lint:html": "html-validate \"*.html\"",
-    "lint:js": "node tools/check-inline-js.mjs",
+    "lint:js": "node tools/check-inline-js.mjs && node tools/check-sql.mjs",
     "verify": "npm run check && npm run fmt"
   },
   "devDependencies": {

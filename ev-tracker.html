@@ -880,6 +880,13 @@
         padding: 0.4rem 0.7rem;
         font-size: 0.85rem;
       }
+      /* .btn is not a flex container, so an icon span and its label sat flush
+         against each other and read as one run-on token ("(icon)Kirjaudu ulos").
+         Spacing the icon is enough; making every button a flex row would change
+         how long labels wrap. */
+      .btn > .ic {
+        margin-inline-end: 0.4rem;
+      }
       .btn.block {
         width: 100%;
       }
@@ -3722,20 +3729,25 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           };
         }
         /* snake_case -> camelCase */
-        function rowVehicle(r) {
-          /* userId is the owner, which is not necessarily the signed-in user
-             once a vehicle is shared. */
-          return {
-            id: r.id,
-            name: String(r.name || "Vehicle"),
-            icon: String(r.icon || "\u{1F697}"),
-            initialOdometer: isNum(r.initial_odometer)
-              ? num(r.initial_odometer)
-              : 0,
-            userId: r.user_id || null,
-            deletedAt: r.deleted_at || null,
-          };
-        }
+function rowVehicle(r) {
+            /* userId is the owner, which is not necessarily the signed-in user
+               once a vehicle is shared. */
+            return {
+              id: r.id,
+              name: String(r.name || "Vehicle"),
+              icon: String(r.icon || "\u{1F697}"),
+              initialOdometer: isNum(r.initial_odometer)
+                ? num(r.initial_odometer)
+                : 0,
+              userId: r.user_id || null,
+              deletedAt: r.deleted_at || null,
+              /* It came from the server, so the server already has it. syncVehicle
+                 uses this to choose a plain insert for rows this device invented
+                 instead of an upsert that would also drag the UPDATE policies
+                 into a create. */
+              confirmed: true,
+            };
+          }
         /**
          * Convert a database row back into a local session.
          * @param {Object} r  row from the sessions table
@@ -4301,16 +4313,56 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               );
             return Promise.resolve(true);
           }
-          syncQueue.pending++;
-          return timed(
-            authClient
-              .from("vehicles")
-              .upsert(vehicleRow(v), { onConflict: "id" }),
-          )
+                  syncQueue.pending++;
+          /* Insert or update, decided deliberately rather than by letting one
+             statement cover both.
+
+             .upsert() compiles to INSERT ... ON CONFLICT (id) DO UPDATE, which
+             drags the UPDATE row-level policies into a write that should be a
+             create. That matters because Postgres words an UPDATE refusal
+             exactly like an INSERT one — "new row violates row-level security
+             policy for table vehicles" — so a single upsert cannot tell us which
+             gate rejected the row, and a permissive insert policy does not
+             shield the update half.
+
+             The client already knows which case this is. A row that came back
+             from a pull has been seen by the server, so it is an update. A row
+             this device invented has not, so it is an insert, and an insert
+             cannot reach the UPDATE policies at all. */
+          var isCreate = !v.confirmed;
+          var write = isCreate
+            ? authClient.from("vehicles").insert(vehicleRow(v))
+            : authClient
+                .from("vehicles")
+                .upsert(vehicleRow(v), { onConflict: "id" });
+          return timed(write)
             .then(function (res) {
               syncQueue.pending--;
               var e = res && res.error;
-              if (e) return failPush("vehicles", v.id, "vehicle upsert", e);
+              if (e) {
+                /* The id is already on the server. That is not a failure: it is
+                   a restored backup, a row another device created, or a pull
+                   that had not yet told us this id existed. Mark it seen and let
+                   the normal path update it, rather than reporting a duplicate
+                   key the user can do nothing about. */
+                if (isCreate && isDuplicateKey(e)) {
+                  v.confirmed = true;
+                  if (window.console && window.console.info)
+                    window.console.info(
+                      "[sync] vehicle " + v.id + " already exists on the " +
+                        "server; updating it instead of inserting",
+                    );
+                  return syncVehicle(v);
+                }
+                return failPush(
+                  "vehicles",
+                  v.id,
+                  isCreate ? "vehicle insert" : "vehicle update",
+                  e,
+                );
+              }
+              /* The server has it now, so later writes take the update path. */
+              v.confirmed = true;
               clearDirty("vehicles", v.id);
               clearStalled("vehicles", v.id);
               forgetAttempts("vehicles", v.id);
@@ -4320,8 +4372,28 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               syncQueue.pending--;
               /* The thrown error is kept: a transport-level failure and a
                  policy rejection look identical from the outside otherwise. */
-              return failPush("vehicles", v.id, "vehicle upsert", ce);
+              return failPush(
+                "vehicles",
+                v.id,
+                isCreate ? "vehicle insert" : "vehicle update",
+                ce,
+              );
             });
+        }
+        /** True when the server refused because the row is already there.
+         *
+         * 23505 is Postgres's unique_violation. PostgREST reports it as a plain
+         * conflict rather than a policy problem, which is what makes it safe to
+         * recognise: it says the id is taken, not that the row is forbidden.
+         * @param {Object} err
+         * @returns {boolean}
+         */
+        function isDuplicateKey(err) {
+          if (!err) return false;
+          if (String(err.code || err.error_code || "") === "23505") return true;
+          return /duplicate key|already exists|violates unique constraint/i.test(
+            String(err.message || "") + " " + String(err.details || ""),
+          );
         }
         /**
          * Push one session to Postgres.
@@ -8307,6 +8379,22 @@ vehicles = splitBinned(
                       id: bv.id,
                       name: String(bv.name || "Vehicle"),
                       icon: String(bv.icon || "🚗"),
+                      /* Stamped, or the restored car belongs to nobody as far as
+                         this device is concerned. ownsVehicle() compares
+                         userId with the signed-in id, so a vehicle without one
+                         resolves to no role at all and the interface reported
+                         the owner's own restored car as "waiting for the owner
+                         to approve your access" — which is a request for
+                         something nobody had asked for.
+
+                         It also made the row look writable to everybody:
+                         mayWriteVehicle() treats a missing owner as "not yet
+                         claimed", so an imported vehicle was pushed under an id
+                         the server may already attribute to another account. */
+                      userId: ownerId() || null,
+                      initialOdometer: isNum(bv.initialOdometer)
+                        ? num(bv.initialOdometer)
+                        : 0,
                     });
                 }
               }
