@@ -4023,8 +4023,18 @@ function rowVehicle(r) {
              the retry path and the give-up path both lose the raw error and this
              is the only place it survives. */
           diag("push:" + kind, {
+            /* Which operation actually failed. This is the single most useful
+               field and it was missing: Postgres words an INSERT refusal and an
+               UPDATE refusal identically, so without it every report said only
+               "42501 on vehicles" and the reader could not tell a refused create
+               from a refused edit. syncVehicle passes "vehicle insert" or
+               "vehicle update". */
+            operation: what,
             row: id,
             vehicle: kind === "vehicles" ? diagRowName(id) : undefined,
+            /* Whether this device believes the server already has the row. That
+               decides insert vs update, so it belongs next to the operation. */
+            confirmed: kind === "vehicles" ? diagRowConfirmed(id) : undefined,
             attempt: bumpAttemptPreview(kind, id),
             code: (err && (err.code || err.error_code)) || "(none)",
             message: (err && err.message) || "(none)",
@@ -4110,6 +4120,20 @@ function rowVehicle(r) {
           try {
             var v = vehById(id) || vehicleAnywhere(id);
             return v ? !!v.provisional : "(not on this device)";
+          } catch (e) {
+            return "(lookup failed)";
+          }
+        }
+        /** Whether this device believes the server already has this row.
+         *
+         * Undefined means the row predates the flag, which is the same as "not
+         * confirmed" for the insert/update decision, so it is reported as such
+         * rather than as a misleading false.
+         */
+        function diagRowConfirmed(id) {
+          try {
+            var v = vehById(id) || vehicleAnywhere(id);
+            return v ? (v.confirmed ? "yes" : "no (this device invented it)") : "(not on this device)";
           } catch (e) {
             return "(lookup failed)";
           }
