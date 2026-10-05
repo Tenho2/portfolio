@@ -139,7 +139,6 @@ Migrations must be pasted into the Supabase SQL editor **in numeric order**:
 | Order | File                          | What it does                                                 |
 | ----- | ----------------------------- | ------------------------------------------------------------ |
 | 1     | `supabase/01-schema.sql`      | `vehicle_shares`, sharing helpers, RLS policies              |
-| 2     | `supabase/02-sharing-fix.sql` | Sessions trigger, lock vehicle edits to the owner            |
 | 3     | `supabase/03-share-codes.sql` | 6-character share codes                                      |
 | 4     | `supabase/04-roles.sql`       | Roles (viewer/driver/admin), owner approval, tightened RLS   |
 | 5     | `supabase/05-trash.sql`       | `deleted_at` for the recoverable bin                         |
@@ -150,10 +149,16 @@ Every one is idempotent, so re-running is safe. Each ends with a query that
 confirms it worked. `07-diagnose.sql` is the exception: it is only SELECTs and
 makes no changes, so it is safe to run at any time.
 
+**There is no 02, and that is not a mistake.** It held a sessions trigger and
+four policies, and `04-roles.sql` recreates every one of them, so it was removed
+rather than left in place as a file that teaches the reader something untrue. The
+numbering gap is deliberate; the files are not renumbered because they
+cross-reference each other by number in their headers.
+
 **Run the diagnostic queries one at a time.** The Supabase SQL editor returns
 the result of the _last_ statement in a pasted script and nothing else, so
-pasting all nine at once shows you only the final query. `07b-one-at-a-time.sql`
-is the same four decisive queries split for that reason.
+pasting all of `07-diagnose.sql` at once shows you only the final query. Its
+header lists the four that decide it, in the order worth running.
 
 ### Why 06 exists
 

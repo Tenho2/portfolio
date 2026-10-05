@@ -462,6 +462,31 @@
           transform: none;
           max-width: none;
         }
+        /* On a phone the banner's own text is the important part, and a full
+           width button under it pushed the message off a short screen. The
+           button shrinks and drops its icon; the label is kept in full rather
+           than reduced to a symbol, because an icon with no text is not
+           something to tap by guesswork. */
+        .sync-banner {
+          flex-wrap: wrap;
+          gap: 0.5rem;
+          padding: 0.55rem 0.7rem;
+        }
+        .sync-banner-msg {
+          flex: 1 1 100%;
+          font-size: 0.9rem;
+          line-height: 1.35;
+        }
+        #syncBannerBtn {
+          flex: 0 0 auto;
+          align-self: flex-end;
+          padding: 0.35rem 0.6rem;
+          font-size: 0.8rem;
+          min-height: 0;
+        }
+        #syncBannerBtn .ic {
+          display: none;
+        }
       }
       .user-chip {
         display: flex;
@@ -2356,7 +2381,11 @@
               <span class="ic" aria-hidden="true">⬇️</span
               ><span data-i18n="set.backup"></span>
             </button>
-            <button type="button" class="btn warn" id="restoreBtn">
+            <button type="button" class="btn ghost" id="diagBtn">
+            <span class="ic" aria-hidden="true">🩺</span
+            ><span data-i18n="set.diag"></span>
+          </button>
+          <button type="button" class="btn warn" id="restoreBtn">
               <span class="ic" aria-hidden="true">⬆️</span
               ><span data-i18n="set.restore"></span>
             </button>
@@ -3917,6 +3946,21 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
          * @param {Object} [err] the error PostgREST returned
          */
         function failPush(kind, id, what, err) {
+          /* Recorded before anything else decides what to do with it, because
+             the retry path and the give-up path both lose the raw error and this
+             is the only place it survives. */
+          diag("push:" + kind, {
+            row: id,
+            vehicle: kind === "vehicles" ? diagRowName(id) : undefined,
+            attempt: bumpAttemptPreview(kind, id),
+            code: (err && (err.code || err.error_code)) || "(none)",
+            message: (err && err.message) || "(none)",
+            details: (err && err.details) || "(none)",
+            hint: (err && err.hint) || "(none)",
+            provisional: kind === "vehicles" ? isProvisionalRow(id) : undefined,
+            ownerOnDevice:
+              kind === "vehicles" ? diagRowOwner(id) : undefined,
+          });
           /* A 42501 is ambiguous from here, and the two causes need opposite
              responses, so it is resolved before anything else happens.
 
@@ -3963,6 +4007,41 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           return false;
         }
         /**
+         * Read-only helpers for the diagnostics report. Each tolerates a missing
+         * row, because the point is to describe a row that may well have been
+         * discarded by the time the report is generated.
+         */
+        function diagRowName(id) {
+          try {
+            var v = vehById(id) || vehicleAnywhere(id);
+            return v ? v.name : "(not on this device)";
+          } catch (e) {
+            return "(lookup failed)";
+          }
+        }
+        function diagRowOwner(id) {
+          try {
+            var v = vehById(id) || vehicleAnywhere(id);
+            if (!v) return "(not on this device)";
+            return v.userId || "(null - would be refused as unowned)";
+          } catch (e) {
+            return "(lookup failed)";
+          }
+        }
+        function isProvisionalRow(id) {
+          try {
+            var v = vehById(id) || vehicleAnywhere(id);
+            return v ? !!v.provisional : "(not on this device)";
+          } catch (e) {
+            return "(lookup failed)";
+          }
+        }
+        /* Reads the counter without incrementing it, so recording an event cannot
+           change the behaviour it is recording. failPush owns the increment. */
+        function bumpAttemptPreview(kind, id) {
+          return pushAttempts[kind + ":" + id] || 0;
+        }
+        /**
          * A one-line summary of what the server actually said.
          * @param {Object} [err]
          * @returns {string}
@@ -3978,6 +4057,117 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           out += msg || "(no message)";
           if (det && det.indexOf(msg) < 0) out += " (" + det + ")";
           return out;
+        }
+        /* ---------- diagnostics ----------
+           A short in-memory log of everything the server refused, kept so a user
+           can paste it into a bug report without opening developer tools.
+
+           It exists because the summary shown on screen is not enough to
+           diagnose anything. "42501 · new row violates row-level security policy
+           for table vehicles" names a symptom; the fields that identify the
+           cause are the ones PostgREST puts in `details` and `hint`, plus which
+           account and which row were involved. All of that used to exist only in
+           a console.warn that a phone user will never see.
+
+           Deliberately not sent anywhere. There is no endpoint, no telemetry and
+           no service_role key in this project, and the log stays in memory: it
+           is read out by copying it to the clipboard and pasting it into a
+           conversation, which the user chooses to do. It holds no token, no
+           password and no session, only ids a user already knows. */
+        var DIAG_MAX = 60;
+        var diagLog = [];
+        /**
+         * Record one event for the diagnostics report.
+         * @param {string} kind short machine-ish label, e.g. "push:vehicles"
+         * @param {Object} data already-stringified fields
+         */
+        function diag(kind, data) {
+          try {
+            diagLog.push({
+              at: new Date().toISOString(),
+              kind: kind,
+              account: (authUser && (authUser.email || authUser.id)) || "signed out",
+              data: data || {},
+            });
+            /* Bounded, because a retry loop would otherwise grow it without
+               limit on a device that is never going to recover. */
+            if (diagLog.length > DIAG_MAX) diagLog.shift();
+          } catch (e) {
+            /* Diagnostics must never be the reason something breaks. */
+          }
+        }
+        /**
+         * Build the report the user pastes into a bug report.
+         *
+         * The first section is deliberately hand-written rather than generated:
+         * "vehicle push refused, 42501" says nothing, but "insert refused with
+         * the row the database itself stamped" narrows it immediately.
+         * @returns {string}
+         */
+        function diagnosticsReport() {
+          var lines = [];
+          lines.push("EV Tracker diagnostics");
+          lines.push("generated: " + new Date().toISOString());
+          lines.push("build: " + buildStamp());
+          lines.push("user agent: " + navigator.userAgent);
+          lines.push("online: " + (syncOnline() ? "yes" : "no"));
+          lines.push("sync configured: " + (syncConfiguredForDiag() ? "yes" : "no"));
+          lines.push("local vehicles: " + vehicles.length);
+          lines.push("local sessions: " + sessions.length);
+          lines.push("dirty rows: " + JSON.stringify(unsyncedSummaryForDiag()));
+          lines.push("");
+          lines.push("EVENTS (newest last, max " + DIAG_MAX + ")");
+          if (!diagLog.length) lines.push("  none recorded");
+          for (var i = 0; i < diagLog.length; i++) {
+            var e = diagLog[i];
+            lines.push(
+              "  " + e.at + "  " + e.kind + "  account=" + e.account,
+            );
+            for (var k in e.data) {
+              if (Object.prototype.hasOwnProperty.call(e.data, k))
+                lines.push("      " + k + ": " + e.data[k]);
+            }
+          }
+          return lines.join("\n");
+        }
+        function syncConfiguredForDiag() {
+          try {
+            return !!(authClient && authUser && authUser.id);
+          } catch (e) {
+            return false;
+          }
+        }
+        function unsyncedSummaryForDiag() {
+          try {
+            var out = { vehicles: 0, sessions: 0 };
+            for (var kind in syncDirty)
+              if (Object.prototype.hasOwnProperty.call(syncDirty, kind))
+                out[kind] = Object.keys(syncDirty[kind] || {}).length;
+            return out;
+          } catch (e) {
+            return "unavailable";
+          }
+        }
+        /**
+         * Copy the report to the clipboard, for pasting into a bug report.
+         *
+         * A file download is no good here: on a phone it lands in Downloads,
+         * where it is never found again. The clipboard is where the text already
+         * has to be pasted.
+         * @returns {Promise<boolean>}
+         */
+        function copyDiagnostics() {
+          var text = diagnosticsReport();
+          return copyText(text).then(
+            function () {
+              toast(TXT("set.diagCopied"));
+              return true;
+            },
+            function () {
+              toast(TXT("set.diagFailed"));
+              return false;
+            },
+          );
         }
         /* push one vehicle; "mode" is insert or update, both handled by upsert
 
@@ -10249,6 +10439,9 @@ vehicles = splitBinned(
           );
           toast(TXT("toast.csv", { n: list.length }));
         }
+        $("diagBtn").addEventListener("click", function () {
+          return copyDiagnostics();
+        });
         $("backup").addEventListener("click", function () {
           download(
             "ev-backup-" + now().y + pad(now().m) + pad(now().d) + ".json",

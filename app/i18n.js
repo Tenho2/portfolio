@@ -166,6 +166,9 @@
       "set.data": "Data",
       "set.dataLead": "Backup, restore and cleanup.",
       "set.backup": "Backup JSON",
+      "set.diag": "Copy diagnostics",
+      "set.diagCopied": "Diagnostics copied. Paste them into a bug report.",
+      "set.diagFailed": "Could not copy. Open the browser console and report there.",
       "set.restore": "Restore backup",
       "set.clear": "Clear sessions",
       "set.wipe": "Delete everything",
@@ -482,7 +485,9 @@
       "sync.reason.rejected": "refused by the server",
       "sync.reason.notYet":
         "waiting for the owner to approve your access",
-      "sync.reason.wrong": "this row is not yours to save",            "toast.legacyMoved":
+      "sync.reason.wrong":
+        "the server would not accept this row (row-level security)",
+      "toast.legacyMoved":
         "{n} piece(s) of unsynced data from an earlier version were moved to the signed-out area. Sign out to see them.",
       "toast.discardQ": "Discard {v} and {n} item(s) from this device?",
       "toast.discarded": "Discarded from this device",
@@ -784,6 +789,9 @@
       "set.data": "Data",
       "set.dataLead": "Varmuuskopioi, palauta ja siivoa.",
       "set.backup": "Varmuuskopioi JSON",
+      "set.diag": "Kopioi vianmääritys",
+      "set.diagCopied": "Vianmääritys kopioitu. Liitä se vikailmoitukseen.",
+      "set.diagFailed": "Kopiointi ei onnistunut. Avaa selaimen kehittäjätyökalut ja ilmoita siellä.",
       "set.restore": "Palauta varmuuskopio",
       "set.clear": "Tyhjennä lataukset",
       "set.wipe": "Poista kaikki",
@@ -1042,7 +1050,7 @@
       "sync.banner":
         "{n} muutosta ei voitu tallentaa palvelimelle. Avaa nähdäksesi syyn.",
       "sync.nextTry": "Seuraava yritys {n} s kuluttua",
-      "set.build": "Rakennus",
+      "set.build": "Versio",
       "set.sw": "SW",
       "set.swNone": "ei (ei asennettu)",
       "set.vehNameHelp":
@@ -1105,7 +1113,8 @@
       "sync.reason.queued": "odottaa lähetystä",
       "sync.reason.rejected": "palvelin hylkäsi",
       "sync.reason.notYet": "odottaa omistajan hyväksyntää",
-      "sync.reason.wrong": "tätä riviä ei ole sinun tallennettavaksi",
+      "sync.reason.wrong":
+        "palvelin ei hyväksynyt tätä riviä (rivitason suojaus)",
       "toast.legacyMoved":
         "{n} synkronointematonta tietoa vanhemmasta versiosta siirrettiin uloskirjautuneen tilaan. Kirjaudu ulos nähdäksesi ne.",
       "toast.discardQ": "Hylätäänkö {v} ja {n} kohdetta tältä laitteelta?",
@@ -1409,6 +1418,9 @@
       "set.dataLead": "Säkerhetskopiera, återställ och städa.",
       "set.backup": "Säkerhetskopiera JSON",
       "set.restore": "Återställ säkerhetskopia",
+      "set.diag": "Kopiera diagnostik",
+      "set.diagCopied": "Diagnostiken är kopierad. Klistra in den i en felrapport.",
+      "set.diagFailed": "Kopieringen misslyckades. Öppna webbläsarens utvecklarverktyg och rapportera där.",
       "set.clear": "Rensa sessioner",
       "set.wipe": "Ta bort allt",
       "im.title": "Importera laddningsdata",
@@ -1727,7 +1739,8 @@
       "sync.reason.queued": "väntar på att skickas",
       "sync.reason.rejected": "nekad av servern",
       "sync.reason.notYet": "väntar på att ägaren godkänner din åtkomst",
-      "sync.reason.wrong": "den här posten är inte din att spara",
+      "sync.reason.wrong":
+        "servern accepterade inte den här posten (radnivåskydd)",
       "toast.legacyMoved":
         "{n} osynkade datauppgifter från en äldre version flyttades till det utloggade området. Logga ut för att se dem.",
       "toast.discardQ": "Kasta {v} och {n} post(er) från den här enheten?",

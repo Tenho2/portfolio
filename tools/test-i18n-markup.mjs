@@ -75,3 +75,55 @@ if (reallyMissing.length) {
   process.exit(1);
 }
 console.log("Every markup i18n key resolves.");
+
+/* --------------------------------------------------------------------------
+ * Keys used from script rather than from markup.
+ *
+ * The check above only sees data-i18n attributes, so it cannot catch a key that
+ * disappears from the dictionary while TXT("...") still asks for it. That is
+ * not hypothetical: editing app/i18n.js destroyed toast.legacyMoved exactly
+ * that way, and every other suite stayed green, because a missing key renders as
+ * the raw key string at runtime and nothing fails at build time.
+ *
+ * TXT() is the only accessor the application script uses. Its argument is a
+ * plain literal in almost every call; the ones built from a prefix are listed
+ * below so the sweep does not report them as missing.
+ * ----------------------------------------------------------------------- */
+const dynamicCodePrefixes = new Set(
+  [
+    ...src.matchAll(/\bTXT\(\s*"([A-Za-z0-9_.]*?)\$\{/g),
+    /* sync.reason.<kind> where kind comes from classifyRefusal(). */
+    ...src.matchAll(/"sync\.reason\."\s*\+/g),
+    /* TXT(someVariable) - a computed key cannot be resolved statically. */
+    ...src.matchAll(/\bTXT\(\s*[a-zA-Z_$][\w$]*\s*[,)]/g),
+  ].map((m) => m[1] || "(computed)"),
+);
+
+const usedInCode = new Map();
+/* The lookahead rejects a literal that is immediately concatenated, such as
+   TXT("sync.reason." + kind). Those are prefixes, not whole keys, and are
+   reported separately below instead. */
+for (const m of src.matchAll(/\bTXT\(\s*"([^"${]+)"(?!\s*\+)/g)) {
+  if (!usedInCode.has(m[1])) usedInCode.set(m[1], []);
+  usedInCode.get(m[1]).push(src.slice(0, m.index).split("\n").length);
+}
+
+const codeMissing = [...usedInCode.keys()].filter((k) => !defined.has(k)).sort();
+
+console.log(
+  `TXT() keys used: ${usedInCode.size} | computed (not checked): ${dynamicCodePrefixes.size}`,
+);
+
+if (codeMissing.length) {
+  console.error(
+    `\n${codeMissing.length} key(s) are asked for by script but missing from en:`,
+  );
+  for (const k of codeMissing) {
+    const l = usedInCode.get(k);
+    console.error(
+      `  ${k}  (line ${l[0]}${l.length > 1 ? ` and ${l.length - 1} more` : ""})`,
+    );
+  }
+  process.exit(1);
+}
+console.log("Every TXT() key resolves.");

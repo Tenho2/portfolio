@@ -25,12 +25,10 @@
  * because a navigation is network-first; an installed PWA launched from the
  * home screen can come straight out of the cache without any request at all.
  *
- * Last bumped: 2026-10-02, for the storage and i18n modules moving under app/,
- * the device-created default vehicle no longer being pushed, a renamed vehicle
- * no longer vanishing, and a policy refusal now checking whether the session
- * is actually alive.
+ * Last bumped: 2026-10-02, for the diagnostics report, the smaller mobile sync
+ * banner, and corrected sync.reason.wrong wording in all three languages.
  */
-const VERSION = "v14";
+const VERSION = "v15";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [

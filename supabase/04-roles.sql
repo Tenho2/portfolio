@@ -1,9 +1,14 @@
 -- EV Multi-Tracker: sharing roles and owner approval
--- Run this in the Supabase SQL editor AFTER 01-schema.sql,
--- 03-share-codes.sql and 02-sharing-fix.sql, all of which are in
--- this folder. The order matters: this one replaces the policies the earlier
--- files created.
+-- Run this in the Supabase SQL editor AFTER 01-schema.sql and
+-- 03-share-codes.sql, both of which are in this folder. The order matters:
+-- this one replaces the policies they created.
 -- Dashboard -> SQL Editor -> New query -> paste -> Run.
+--
+-- There is no 02. It used to hold a sessions trigger and four policies, and
+-- every one of them is recreated below, so it was removed rather than kept as
+-- a file that taught the reader something untrue. The numbering gap is
+-- deliberate; the files are not renumbered because they cross-reference each
+-- other by number in their headers.
 --
 -- Everything here is idempotent: re-running it is safe and changes nothing
 -- beyond making sure the final state matches the intent below.
@@ -211,11 +216,16 @@ $$;
 -- ---------------------------------------------------------------------------
 -- 3. Rebuild the policies
 --    Every policy on these three tables is dropped first, then a known set is
---    created. That is deliberate: 02-sharing-fix.sql section 5 notes a
---    leftover owner-only policy on sessions whose name nobody had recorded, and
---    because Postgres ORs permissive policies together it would have kept
---    granting write access past the new rules. Dropping by catalogue instead of
---    by name is what makes that impossible.
+--    created. That is deliberate. A live database turned out to carry policies
+--    named "vehicles own select", "vehicles own insert" and half a dozen more
+--    that appear in no file in this repository at all: they came from the
+--    original hand-built schema, before these migrations existed, so no
+--    `drop policy` ever named them. Because Postgres ORs permissive policies
+--    together, extras grant access past the new rules; and because restrictive
+--    policies are ANDed, a single leftover one refuses every write no matter
+--    how correct the new rules are.
+--
+--    Sweeping by catalogue rather than by name is what makes that impossible.
 -- ---------------------------------------------------------------------------
 do $$
 declare

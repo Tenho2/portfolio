@@ -1,19 +1,34 @@
 -- EV Multi-Tracker: read-only diagnosis for "42501 new row violates row-level
 -- security policy for table vehicles".
 --
--- Run this in the Supabase SQL editor and paste the whole output back.
--- It changes nothing: no DDL, no DML, no grants. Only SELECTs.
+-- It changes nothing: no DDL, no DML, no grants. Only SELECTs. Safe to run as
+-- often as you like.
+--
+-- RUN THESE ONE AT A TIME
+--   The Supabase SQL editor returns the result of the LAST statement in a
+--   pasted script and nothing else. Pasting this whole file therefore shows you
+--   only the final query, which is how several rounds of diagnosis went nowhere.
+--   Select one statement, run it, read it, then run the next.
+--
+--   If you only want the four that decide it, run these in order:
+--     section 0a  any RESTRICTIVE policy          (usually the whole answer)
+--     section 0b  the live body of stamp_row_owner
+--     section 3    vehicles with user_id IS NULL   (the usual answer)
+--     section 5    vehicle_role() per vehicle      (confirms it per row)
 --
 -- Why this exists
---   A 42501 on the vehicles table has three possible causes, and they look
+--   A 42501 on the vehicles table has four possible causes, and they look
 --   identical from the browser:
 --
 --     1. The session is dead, so auth.uid() is NULL.
---     2. The stamp trigger from 06 is missing, so user_id is whatever the client
---        sent and may not match auth.uid().
+--     2. The stamp trigger from 06 is missing, or its function body is not the
+--        one this repository ships, so user_id is whatever the client sent.
 --     3. The row already exists with user_id IS NULL. It came from before the
 --        policies were tightened, or from the Table Editor, where auth.uid() is
 --        NULL so the trigger deliberately declines to stamp it.
+--     4. A RESTRICTIVE policy sits over the permissive ones. Permissive
+--        policies are ORed, so extras widen access; restrictive ones are ANDed,
+--        so a single one refuses everything no matter how well the stamp worked.
 --
 --   Case 3 is the one that looks impossible and is not: "vehicles editable by
 --   owner or admin" resolves through vehicle_role, whose first branch is
