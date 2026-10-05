@@ -4800,6 +4800,11 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
          * @param {boolean} rotate  issue a fresh code instead of the current one
          * @returns {Promise<string>} the code, or "" when unavailable
          */
+        var shareCodeCache = {};
+        /* Why the last code request failed: "", "timeout", "unsupported",
+           "notOnServer" or "failed". Cleared on success. The panel reads it so a
+           failure explains itself instead of leaving a spinner running. */
+        var shareCodeProblem = "";
         function shareCode(vehicleId, rotate) {
           if (!syncOn() || !vehicleId) return Promise.resolve("");
           var fn = rotate ? "rotate_share_code" : "ensure_share_code";
@@ -4814,6 +4819,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               if (code) {
                 shareCodeCache[vehicleId] = code;
                 codesAvailable = true;
+                shareCodeProblem = "";
               }
               return code;
             })
@@ -4826,9 +4832,34 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               var missing =
                 /does not exist|404|not found|pgrst/i.test(msg);
               if (missing) codesAvailable = false;
+              /* Why the code is absent, so the panel can say it instead of
+                 spinning forever. ensure_share_code raises P0001 "vehicle does
+                 not belong to this user" both when the caller is not the owner
+                 and when the row is not on the server at all. The second case
+                 is the common one here: a vehicle whose insert was refused still
+                 looks owned on this device, so it passes the ownership check and
+                 then fails server-side for a reason that has nothing to do with
+                 ownership. Saying "not the owner" there would be a lie. */
+              shareCodeProblem = isTimeout(e)
+                ? "timeout"
+                : missing
+                  ? "unsupported"
+                  : /does not belong|p0001/.test(msg)
+                    ? "notOnServer"
+                    : "failed";
+              diag("share:code", {
+                vehicle: vehicleId,
+                fn: fn,
+                problem: shareCodeProblem,
+                code: (e && e.code) || "(none)",
+                message: (e && e.message) || "(none)",
+              });
               if (window.console && window.console.warn)
                 window.console.warn(
-                  "[share] code unavailable" + (isTimeout(e) ? " (timed out)" : ""),
+                  "[share] code unavailable (" +
+                    shareCodeProblem +
+                    ")" +
+                    (isTimeout(e) ? " (timed out)" : ""),
                   e,
                 );
               return "";
@@ -5018,10 +5049,18 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           go("settings");
           var first = $("shareBody").querySelector("input, button");
           if (first) first.focus();
-          /* Ask for the code so the panel is never briefly empty. */
+          /* Ask for the code so the panel is never briefly empty. Re-rendered
+             whichever way it settles: rendering only on success left the panel
+             showing "loading" forever whenever the request failed. */
           if (ownsVehicle(vehicleId) && !shareCodeCache[vehicleId])
             shareCode(vehicleId, false).then(function (code) {
-              if (code && shareTarget === vehicleId) renderShare();
+              if (shareTarget !== vehicleId) return;
+              if (code) renderShare();
+              else if (!shareCodeCache[vehicleId]) {
+                /* Leave the loading state and say why. */
+                sharesChecked = true;
+                renderShare();
+              }
             });
         }
         /**
@@ -5061,6 +5100,21 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           if (!sharesAvailable) {
             box.innerHTML =
               '<p class="mini">' + TXT("set.shareNoSupport") + "</p>";
+            return;
+          }
+          /* The code request failed. Say which failure, because the four mean
+             very different things and two of them are fixable by the user. */
+          if (shareCodeProblem) {
+            var key =
+              shareCodeProblem === "notOnServer"
+                ? "set.shareNotSaved"
+                : shareCodeProblem === "timeout"
+                  ? "set.shareTimeout"
+                  : shareCodeProblem === "unsupported"
+                    ? "set.shareNoSupport"
+                    : "set.shareFailed";
+            box.innerHTML =
+              '<p class="mini">' + TXT(key) + "</p>";
             return;
           }
           var list = shares[shareTarget] || [];

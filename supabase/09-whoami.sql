@@ -102,17 +102,31 @@ order by tgname;
 -- and would produce exactly this failure with the trigger still listed.
 
 -- And the live text of the one policy that matters, which no query so far has
--- actually shown:
+-- actually shown.
+--
+-- lower(cmd), not cmd: pg_policies.cmd holds UPPERCASE values ('INSERT'), and a
+-- case-sensitive `cmd = 'insert'` matches nothing and reports "no policies" when
+-- they are all there. That mistake produced a false negative here once.
 select policyname, cmd, permissive, roles,
        coalesce(qual, '(none)')       as using_expression,
        coalesce(with_check, '(none)') as check_expression
 from pg_policies
 where schemaname = 'public'
   and tablename = 'vehicles'
-  and cmd = 'insert';
+  and lower(cmd) = 'insert';
 
--- Expect one row, permissive 'PERMISSIVE', with_check (user_id = auth.uid()).
--- Anything else means the live schema is not what 04-roles.sql writes, and that
--- would explain every refusal without involving the client at all.
+-- Expect one row, permissive 'PERMISSIVE', roles {public}, with_check
+-- (user_id = auth.uid()). Anything else means the live schema is not what
+-- 04-roles.sql writes, and that would explain every refusal without involving
+-- the client at all.
+
+-- Every policy on the table, unfiltered, so nothing is missed by a bad filter.
+select policyname, cmd, permissive, roles,
+       coalesce(qual, '(none)')       as using_expression,
+       coalesce(with_check, '(none)') as check_expression
+from pg_policies
+where schemaname = 'public'
+  and tablename = 'vehicles'
+order by cmd, policyname;
 
 commit;

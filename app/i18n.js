@@ -518,6 +518,12 @@
       "set.shareNoSupport":
         "Sharing is not set up on the server yet. Run the sharing SQL in Supabase and reload.",
       "set.shareLoading": "Checking sharing…",
+      "set.shareNotSaved":
+        "This vehicle has not reached the server yet, so it has no code. Open the sync panel to see why the save is stuck.",
+      "set.shareTimeout":
+        "The server did not answer in time. Check your connection and try again.",
+      "set.shareFailed":
+        "Could not get a code for this vehicle. Copy diagnostics from Settings for the details.",
       "a11y.shareVeh": "Share vehicle: {v}",
       "a11y.unshare": "Remove access for {v}",
       "a11y.acceptShare": "Approve access for {v}",
@@ -1147,6 +1153,12 @@
       "set.shareNoSupport":
         "Jakaminen ei ole vielä käytössä palvelimella. Aja Supabasessa jakamisen SQL ja lataa sivu uudelleen.",
       "set.shareLoading": "Tarkistetaan jakamista…",
+      "set.shareNotSaved":
+        "Tämä ajoneuvo ei ole vielä tallentunut palvelimelle, joten sillä ei ole koodia. Avaa synkronointipaneeli ja katso, miksi tallennus on jumissa.",
+      "set.shareTimeout":
+        "Palvelin ei vastannut ajoissa. Tarkista yhteys ja yritä uudelleen.",
+      "set.shareFailed":
+        "Koodia ei saatu tälle ajoneuvolle. Kopioi vianmääritys tiedoista.",
       "a11y.shareVeh": "Jaa ajoneuvo: {v}",
       "a11y.unshare": "Poista käyttöoikeus: {v}",
       "a11y.acceptShare": "Hyväksy käyttöoikeus: {v}",
@@ -1773,6 +1785,12 @@
       "set.shareNoSupport":
         "Delning är inte installerad på servern än. Kör delnings-SQL i Supabase och ladda om sidan.",
       "set.shareLoading": "Kontrollerar delning…",
+      "set.shareNotSaved":
+        "Fordonet har inte nått servern än, så det har ingen kod. Öppna synkpanelen för att se varför sparandet fastnat.",
+      "set.shareTimeout":
+        "Servern svarade inte i tid. Kontrollera anslutningen och försök igen.",
+      "set.shareFailed":
+        "Kunde inte hämta en kod för fordonet. Kopiera diagnostiken från Inställningar.",
       "a11y.shareVeh": "Dela fordon: {v}",
       "a11y.unshare": "Ta bort åtkomst för {v}",
       "a11y.acceptShare": "Godkänn åtkomst för {v}",

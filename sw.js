@@ -25,10 +25,10 @@
  * because a navigation is network-first; an installed PWA launched from the
  * home screen can come straight out of the cache without any request at all.
  *
- * Last bumped: 2026-10-05, for the database identity probe (whoami) reported
- * in the diagnostics paste, and corrected set.build wording in Finnish.
+ * Last bumped: 2026-10-05, for the sharing panel explaining why a code could not
+ * be generated instead of spinning forever, plus the whoami probe in diagnostics.
  */
-const VERSION = "v16";
+const VERSION = "v17";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [
