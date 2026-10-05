@@ -25,10 +25,10 @@
  * because a navigation is network-first; an installed PWA launched from the
  * home screen can come straight out of the cache without any request at all.
  *
- * Last bumped: 2026-10-02, to repair a stale vehicle owner id once on a
- * Row Level Security rejection.
+ * Last bumped: 2026-10-02, for database-side owner stamping, session
+ * validation, refusal classification and the mobile header.
  */
-const VERSION = "v11";
+const VERSION = "v12";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [

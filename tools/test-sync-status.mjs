@@ -35,12 +35,14 @@ const build = new Function(
     `var vehicles = [], sessions = [], binned = { vehicles: [], sessions: [], favs: [] };`,
     `var online = true;`,
     `function syncOnline() { return online; }`,
+    `function TXT(k) { return k; }`,
     fnSource("vehicleAnywhere"),
     fnSource("sessionAnywhere"),
     fnSource("stalledCount"),
+    fnSource("classifyRefusal"),
     fnSource("unsyncedRows"),
     `return {
-       unsyncedRows, stalledCount,
+       unsyncedRows, stalledCount, classifyRefusal,
        get vehicles() { return vehicles; },
        setOnline: function (v) { online = v; },
        seed: function (state) {
@@ -186,6 +188,80 @@ group("a row that vanished from the device is labelled, not dropped", () => {
   const rows = t.unsyncedRows();
   is("still listed", rows.length, 1);
   is("says so", rows[0].label, "(no longer on this device)");
+});
+
+group("a permission refusal is classified as not-yet", () => {
+  /* This is the case that matters most: a driver whose request is still
+     pending is told they may not write yet. The row is a good charging session
+     and must never be discardable. */
+  is(
+    "our own trigger",
+    t.classifyRefusal({
+      code: "P0001",
+      message: "you do not have permission to add sessions to this vehicle",
+    }),
+    "notYet",
+  );
+  is(
+    "permission denied wording",
+    t.classifyRefusal({ message: "permission denied for table sessions" }),
+    "notYet",
+  );
+  is(
+    "granted wording",
+    t.classifyRefusal({ message: "not authorized to change this row" }),
+    "notYet",
+  );
+});
+
+group("a row-level security refusal is classified as a wrong row", () => {
+  is(
+    "42501",
+    t.classifyRefusal({
+      code: "42501",
+      message: 'new row violates row-level security policy for table "vehicles"',
+    }),
+    "wrong",
+  );
+  is(
+    "insufficient_privilege",
+    t.classifyRefusal({ code: "42501", message: "insufficient privilege" }),
+    "wrong",
+  );
+});
+
+group("anything else is reported verbatim", () => {
+  is(
+    "a missing column",
+    t.classifyRefusal({
+      code: "PGRST204",
+      message: "Could not find the 'deleted_at' column",
+    }),
+    "rejected",
+  );
+  is("no error at all", t.classifyRefusal(null), "rejected");
+});
+
+group("a held row is not discardable, a wrong row is", () => {
+  /* The Discard button is driven by `hard`. Offering it for a row that is only
+     waiting for approval would delete real data to fix a permission that
+     resolves on its own. */
+  t.seed({
+    syncDirty: { vehicles: {}, sessions: {} },
+    syncStalled: {
+      vehicles: { vHeld: { reason: "rejected", kind: "notYet" } },
+      sessions: { sBad: { reason: "rejected", kind: "wrong" } },
+    },
+    vehicles: [row("vHeld")],
+    sessions: [ses("sBad")],
+  });
+  const rows = t.unsyncedRows();
+  const held = rows.find((r) => r.id === "vHeld");
+  const bad = rows.find((r) => r.id === "sBad");
+  is("held row is flagged", held.held, true);
+  is("held row is NOT discardable", held.hard, false);
+  is("wrong row is not flagged as held", bad.held, false);
+  is("wrong row IS discardable", bad.hard, true);
 });
 
 group("stalledCount spans both tables", () => {

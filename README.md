@@ -45,16 +45,30 @@ repository, and no server-side code.
 
 Migrations must be pasted into the Supabase SQL editor **in numeric order**:
 
-| Order | File                          | What it does                                               |
-| ----- | ----------------------------- | ---------------------------------------------------------- |
-| 1     | `supabase/01-schema.sql`      | `vehicle_shares`, sharing helpers, RLS policies            |
-| 2     | `supabase/02-sharing-fix.sql` | Sessions trigger, lock vehicle edits to the owner          |
-| 3     | `supabase/03-share-codes.sql` | 6-character share codes                                    |
-| 4     | `supabase/04-roles.sql`       | Roles (viewer/driver/admin), owner approval, tightened RLS |
-| 5     | `supabase/05-trash.sql`       | `deleted_at` for the recoverable bin                       |
+| Order | File                          | What it does                                                 |
+| ----- | ----------------------------- | ------------------------------------------------------------ |
+| 1     | `supabase/01-schema.sql`      | `vehicle_shares`, sharing helpers, RLS policies              |
+| 2     | `supabase/02-sharing-fix.sql` | Sessions trigger, lock vehicle edits to the owner            |
+| 3     | `supabase/03-share-codes.sql` | 6-character share codes                                      |
+| 4     | `supabase/04-roles.sql`       | Roles (viewer/driver/admin), owner approval, tightened RLS   |
+| 5     | `supabase/05-trash.sql`       | `deleted_at` for the recoverable bin                         |
+| 6     | `supabase/06-owner-stamp.sql` | `BEFORE INSERT` trigger stamping `user_id` from `auth.uid()` |
 
 Every one is idempotent, so re-running is safe. Each ends with a query that
 confirms it worked.
+
+### Why 06 exists
+
+The client used to send `user_id` in every write. A stale or mismatched
+client-side identity produced a row the insert policy then refused with
+`42501 new row violates row-level security policy`, and there was no way to fix
+it from the browser: the only available "repair" was to resend the same wrong
+value. The trigger now overwrites `user_id` with `auth.uid()` on INSERT, so the
+client cannot get it wrong at all.
+
+Only INSERT is stamped, never UPDATE, so the original author of a charging
+session survives an owner or admin correcting it, and a shared driver logging a
+session is stamped with their own id exactly as before.
 
 ### Deploying
 
@@ -63,7 +77,18 @@ confirms it worked.
 makes the worker fetch a fresh shell. Skipping this is what leaves phones on an
 old build: the worker only re-runs when its own file changes.
 
-Check which build a device is on under **Settings → Data**.
+Check which build a device is on under **Settings → Data**. The stamp reads
+`Build 2.10.2026 · SW v12`; the SW half is the one that goes stale.
+
+### Resetting a device
+
+**Settings → Data → Sign out and clear this device** wipes this browser's copy
+of every account and signs out. Nothing on the server is deleted, so signing
+back in pulls the account's real data again. It is deliberately a separate
+button from ordinary sign-out, which keeps local data.
+
+It exists because a stale session is the one failure the app cannot recover
+from by itself.
 
 ### Forgotten passwords
 

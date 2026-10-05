@@ -431,6 +431,38 @@
         color: var(--danger);
         overflow-wrap: anywhere;
       }
+      /* Sits above the content and below the toast. Deliberately not
+         dismissible: it clears itself when the cause is resolved. */
+      .sync-banner {
+        position: fixed;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: 1rem;
+        z-index: 55;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        max-width: min(94vw, 34rem);
+        padding: 0.7rem 0.9rem;
+        border: 2px solid var(--danger);
+        border-radius: 10px;
+        background: var(--surface);
+        box-shadow: var(--sh-lg);
+        font-size: 0.88rem;
+        font-weight: 600;
+      }
+      .sync-banner-msg {
+        color: var(--text);
+        overflow-wrap: anywhere;
+      }
+      @media (max-width: 560px) {
+        .sync-banner {
+          left: 0.5rem;
+          right: 0.5rem;
+          transform: none;
+          max-width: none;
+        }
+      }
       .user-chip {
         display: flex;
         align-items: center;
@@ -1378,6 +1410,24 @@
         .side-nav button span:not(.ic) {
           display: none;
         }
+        /* The bin count is information, not a label, so it is exempt from the
+           rule above. It was invisible on every phone. */
+        .side-nav button .bin-count {
+          display: inline-block;
+        }
+        /* The brand word is what pushed the strip into a horizontal scroll: at
+           360px the six icons need about 320px of the 344px available, and the
+           name took another 200. The installed icon already carries the name, so
+           on a phone the strip is icons only. */
+        .side-brand {
+          font-size: 0;
+          padding: 0 0.25rem;
+          min-width: 0;
+        }
+        .side-brand .ic,
+        .side-brand > span:first-child {
+          font-size: 1.15rem;
+        }
         .side .badge {
           display: none;
         }
@@ -1396,63 +1446,100 @@
          were simply cut off rather than scrolling. Letting the title take its
          own row and shrinking the controls keeps every one of them reachable. */
       @media (max-width: 560px) {
+        /* One sticky bar instead of two.
+           Below 820px the nav strip is already sticky at the top and the header
+           sits under it and scrolls away, which is why the signed-in account
+           could not be seen on a phone and why a sync failure could go
+           unnoticed for a day. The strip now carries the sync state and the
+           account, so both are always on screen, and the header keeps only the
+           vehicle name. */
+        .side {
+          gap: 0.35rem;
+          padding: 0.35rem 0.4rem;
+        }
+        .side-brand {
+          display: none;
+        }
+        .side-nav {
+          flex: 1 1 auto;
+          justify-content: space-evenly;
+        }
+        .side-nav button {
+          padding: 0.45rem 0.55rem;
+        }
+        /* Fills whatever room is left after the nav icons. */
+        .side .who-mobile {
+          display: flex;
+          align-items: center;
+          gap: 0.3rem;
+          margin-left: auto;
+          min-width: 0;
+        }
         .top {
           flex-wrap: wrap;
           gap: 0.55rem;
           padding: 0.7rem 0.85rem;
         }
         .top h1 {
-          /* order:-1 plus a full-width basis puts the title on row one and
-             every control on row two, instead of the title being squeezed to
-             nothing by the buttons. */
           order: -1;
           flex: 1 1 100%;
           font-size: 1.05rem;
+          min-width: 0;
         }
+        /* Language, sign-out and the account chip now live in Settings, so the
+           header is just the vehicle name and the theme toggle. */
         .top-right {
-          flex: 1 1 100%;
-          flex-wrap: wrap;
-          justify-content: flex-start;
-          gap: 0.4rem;
+          flex: 0 0 auto;
         }
-        /* The visible "Language" word is redundant next to the picker, and the
-           accessible name is already carried by data-i18n-aria on the select. */
-        .lang-wrap > .mini {
+        .lang-wrap,
+        .top-right .user-chip,
+        .top-right .tgl-wide {
           display: none;
         }
-        #langSel {
-          flex: 0 0 auto;
-          padding: 0.3rem 1.5rem 0.3rem 0.45rem;
-          font-size: 0.8rem;
-        }
-        .sync-badge {
-          font-size: 0.72rem;
-          padding: 0.2rem 0.5rem;
-        }
-        .tgl-wide {
-          height: 34px;
-          padding: 0 0.6rem;
-          font-size: 0.78rem;
-        }
-        .tgl {
-          width: 34px;
-          height: 34px;
-          font-size: 1rem;
-        }
-        /* Reclaim width from the panels too; they are the widest fixed part of
-           the layout and were contributing to the overflow. */
         .wrap {
           padding: 0.7rem;
         }
         .panel {
           padding: 1rem 0.9rem;
         }
-        .top h1 {
-          min-width: 0;
-        }
         .stats {
           grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
         }
+      }
+      /* Shrunken controls for the theme toggle and the sync badge, which are the
+         two that stay in the header on a phone. The language picker and the
+         sign-out button are in Settings now, so they need no rules here. */
+      @media (max-width: 560px) {
+        .sync-badge {
+          font-size: 0.72rem;
+          padding: 0.2rem 0.5rem;
+        }
+        .tgl {
+          width: 34px;
+          height: 34px;
+          font-size: 1rem;
+        }
+      }
+      /* The strip's account cluster. Displayed only by the 560px block, which
+         turns it on; the base rule keeps it out of the way elsewhere. */
+      .who-mobile {
+        display: none;
+        align-items: center;
+        gap: 0.3rem;
+        min-width: 0;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--text-muted);
+      }
+      .who-mobile-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 8rem;
+      }
+      .sync-badge-mini {
+        font-size: 0.7rem;
+        padding: 0.15rem 0.4rem;
       }
       @media (prefers-reduced-motion: reduce) {
         .codebox {
@@ -1611,6 +1698,23 @@
           </li>
         </ul>
       </nav>
+      <!-- Phone only. Inside the sticky strip, so the signed-in account and the
+           sync state cannot scroll out of view, which is what made both
+           invisible on a phone. Hidden above 560px, where the header carries
+           them instead. -->
+      <div class="who-mobile" id="whoMobile" hidden>
+        <button
+          type="button"
+          class="sync-badge sync-badge-mini"
+          id="syncBadgeM"
+          data-kind=""
+          aria-expanded="false"
+          aria-controls="syncPanel"
+          data-i18n-aria="sync.open"
+          hidden
+        ></button>
+        <span class="who-mobile-name" id="whoMobileName"></span>
+      </div>
       <div class="badge" id="dbInfo"></div>
     </aside>
 
@@ -2032,6 +2136,35 @@
       </section>
 
       <section class="view" id="settings">
+        <!-- Appearance and account. On a phone the header holds only the
+             vehicle name and the theme toggle, so language, the signed-in
+             account and signing out live here where there is room to show
+             them properly. -->
+        <div class="panel">
+          <h2>
+            <span aria-hidden="true">👤</span>
+            <span data-i18n="set.account"></span>
+          </h2>
+          <div class="item" id="accountRow" hidden>
+            <span class="nm" id="accountName"></span>
+            <span class="mt" id="accountMeta"></span>
+            <button type="button" class="btn sm ghost" id="logoutBtn2">
+              <span class="ic" aria-hidden="true">⎋</span
+              ><span data-i18n="auth.logout"></span>
+            </button>
+          </div>
+          <p class="mini" id="accountSignedOut" data-i18n="set.accountOut"></p>
+          <div class="row">
+            <div class="f">
+              <label for="langSel2" data-i18n="lang"></label>
+              <select id="langSel2" data-i18n-aria="lang"></select>
+            </div>
+            <div class="f">
+              <label for="themeSel" data-i18n="set.theme"></label>
+              <select id="themeSel" data-i18n-aria="set.theme"></select>
+            </div>
+          </div>
+        </div>
         <div class="panel">
           <h2>
             <span aria-hidden="true">🚗</span>
@@ -2239,6 +2372,17 @@
             accept="application/json"
             hidden
           />
+          <!-- Kept well away from the ordinary sign-out, which sits at the top of
+               Settings. One button changes nothing on the server, the other
+               destroys this device's copy of everything; putting them side by
+               side invites the wrong one. -->
+          <div class="qa" style="margin-top: 1.25rem">
+            <button type="button" class="btn dgr" id="resetDeviceBtn">
+              <span class="ic" aria-hidden="true">🧨</span
+              ><span data-i18n="set.resetDevice"></span>
+            </button>
+          </div>
+          <div class="hint" data-i18n="set.resetDeviceHint"></div>
         </div>
         <div class="panel">
           <h2>
@@ -2799,6 +2943,16 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+    <!-- A small badge is easy to miss and impossible to act on. If the server
+         has been refusing something for a while, that stops being a background
+         detail: the user is losing data whether or not they know it. -->
+    <div id="syncBanner" class="sync-banner" role="alert" hidden>
+      <span class="sync-banner-msg" id="syncBannerMsg"></span>
+      <button type="button" class="btn sm ghost" id="syncBannerBtn">
+        <span data-i18n="sync.open"></span>
+      </button>
+    </div>
+
     <!-- Opened from the sync badge. Lists every row that is not on the server
          yet, says why, and offers a way out for the ones that never will make
          it. -->
@@ -3223,15 +3377,33 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "auth.exists":
               "That username is already registered. Sign in instead.",
             "auth.logoutQ": "Sign out of {u}?",
+            "auth.expired":
+              "Your session has expired, so nothing could be saved. Sign in again.",
             "auth.rate": "Too many attempts. Wait a minute and try again.",
             "auth.failed": "Something went wrong. Please try again.",
             "veh.default": "Vehicle 1",
             "sync.pending": "Saved locally · {n} change(s) waiting to sync",
             "sync.retryNow": "Retry now",
+            "sync.banner":
+              "{n} change(s) could not be saved to the server. Open to see why.",
             "sync.nextTry": "Next try in {n}s",
             "set.build": "Build",
             "set.sw": "SW",
             "set.swNone": "none (not installed)",
+            "set.account": "Account",
+            "set.accountOut":
+              "Not signed in. Your data stays on this device until you sign in.",
+            "set.accountMeta": "{n} vehicle(s) · {s} session(s) on this device",
+            "set.theme": "Appearance",
+            "set.themeLight": "Light",
+            "set.themeDark": "Dark",
+            "set.resetDevice": "Sign out and clear this device",
+            "set.resetDeviceHint":
+              "Removes this device's copy of every account, then signs you out. Nothing is deleted on the server.",
+            "set.resetContinue": "Continue",
+            "set.resetQ1":
+              "Clear all data on this device and sign out of {u}? Anything saved only here, and not yet on the server, will be lost.",
+            "set.resetQ2": "Type RESET to confirm",
             "set.defTitle": "Location defaults",
             "set.defLead":
               "Pre-fill the charging location when you add a session. It only ever fills an empty field, so you can always type something else.",
@@ -3265,10 +3437,15 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "sync.discard": "Discard",
             "sync.stalledHint":
               "The server refused these, so waiting will not help. The exact reason is shown under each one. Discard to remove it from this device, or open it and save again to try a fresh copy.",
+            "sync.heldHint":
+              "These are fine and will upload by themselves once the owner approves your access. Do not discard them: nothing is wrong with them.",
             "sync.reason.offline":
               "waiting for a connection",
             "sync.reason.queued": "waiting to be sent",
-            "sync.reason.rejected": "refused by the server",            "toast.legacyMoved":
+            "sync.reason.rejected": "refused by the server",
+            "sync.reason.notYet":
+              "waiting for the owner to approve your access",
+            "sync.reason.wrong": "this row is not yours to save",            "toast.legacyMoved":
               "{n} piece(s) of unsynced data from an earlier version were moved to the signed-out area. Sign out to see them.",
             "toast.discardQ": "Discard {v} and {n} item(s) from this device?",
             "toast.discarded": "Discarded from this device",
@@ -3378,6 +3555,9 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               "This cannot be undone. The item is deleted from this device and from the database for good.",
             "confirm.irreversibleDiscard":
               "This cannot be undone. The item never reached the server, so discarding it deletes it from this device for good.",
+            "confirm.resetDevice": "Clear this device",
+            "confirm.irreversibleReset":
+              "This cannot be undone. Everything stored in this browser is deleted, for every account. Anything already saved on the server is not affected and comes back when you sign in.",
             "ph.shareuser": "e.g. anna",
             "ph.favprice": "e.g. 0.30",
             "toast.favPrice": "Price set to {p} per kWh",
@@ -3781,6 +3961,8 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "auth.signIn": "Kirjaudu",
             "auth.createAccount": "Luo tili",
             "auth.logout": "Kirjaudu ulos",
+            "auth.expired":
+              "Istuntosi on vanhentunut, joten mitään ei voitu tallentaa. Kirjaudu uudelleen sisään.",
             "confirm.title": "Vahvista",
             "confirm.body": "Haluatko varmasti?",
             "confirm.ok": "Kyllä, jatka",
@@ -3818,10 +4000,26 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "sync.pending":
               "Tallennettu laitteelle · {n} muutosta odottaa synkronointia",
             "sync.retryNow": "Yritä nyt",
+            "sync.banner":
+              "{n} muutosta ei voitu tallentaa palvelimelle. Avaa nähdäksesi syyn.",
             "sync.nextTry": "Seuraava yritys {n} s kuluttua",
             "set.build": "Rakennus",
             "set.sw": "SW",
             "set.swNone": "ei (ei asennettu)",
+            "set.account": "Tili",
+            "set.accountOut":
+              "Et ole kirjautuneena. Tietosi pysyvät tällä laitteella, kunnes kirjaudut sisään.",
+            "set.accountMeta": "{n} ajoneuvo(a) · {s} latausta tällä laitteella",
+            "set.theme": "Ulkoasu",
+            "set.themeLight": "Vaalea",
+            "set.themeDark": "Tumma",
+            "set.resetDevice": "Kirjaudu ulos ja tyhjennä tämä laite",
+            "set.resetDeviceHint":
+              "Poistaa tämän laitteen kopion kaikista tileistä ja kirjaa ulos. Palvelimelta ei poisteta mitään.",
+            "set.resetContinue": "Jatka",
+            "set.resetQ1":
+              "Tyhjennetäänkö kaikki tämän laitteen tiedot ja kirjaudutaan ulos tilistä {u}? Mitään, mitä on vain tallennettu tänne eikä palvelimelle, menee hukkaan.",
+            "set.resetQ2": "Kirjoita RESET vahvistukseksi",
             "set.defTitle": "Sijaintien oletukset",
             "set.defLead":
               "Esitäytä latauspaikka, kun lisäät session. Se täyttää vain tyhjän kentän, joten voit aina kirjoittaa jotain muuta.",
@@ -3854,9 +4052,13 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "sync.discard": "Hylkää",
             "sync.stalledHint":
               "Palvelin hylkäsi nämä, joten odottaminen ei auta. Tarkka syy näytetään jokaisen kohdalla. Hylkää poistaa kohteen tältä laitteelta, tai avaa ja tallenna uudelleen, jotta kopio lähetettäisiin.",
+            "sync.heldHint":
+              "Nämä ovat kunnossa ja ladataan itsestään, kun omistaja hyväksyy käyttöoikeuden. Älä hylkää niitä: mitään niissä ei ole viallista.",
             "sync.reason.offline": "odottaa yhteyttä",
             "sync.reason.queued": "odottaa lähetystä",
             "sync.reason.rejected": "palvelin hylkäsi",
+            "sync.reason.notYet": "odottaa omistajan hyväksyntää",
+            "sync.reason.wrong": "tätä riviä ei ole sinun tallennettavaksi",
             "toast.legacyMoved":
               "{n} synkronointematonta tietoa vanhemmasta versiosta siirrettiin uloskirjautuneen tilaan. Kirjaudu ulos nähdäksesi ne.",
             "toast.discardQ": "Hylätäänkö {v} ja {n} kohdetta tältä laitteelta?",
@@ -3968,6 +4170,9 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               "Tätä ei voi perua. Kohde poistetaan tältä laitteelta ja tietokannasta pysyvästi.",
             "confirm.irreversibleDiscard":
               "Tätä ei voi perua. Kohde ei koskaan päässyt palvelimelle, joten hylkääminen poistaa sen tältä laitteelta pysyvästi.",
+            "confirm.resetDevice": "Tyhjennä tämä laite",
+            "confirm.irreversibleReset":
+              "Tätä ei voi perua. Kaikki tähän selaimeseen tallennettu data poistetaan kaikilta tileiltä. Palvelimella oleva data ei muutu, ja se tulee takaisin kirjautuessasi sisään.",
             "ph.shareuser": "esim. anna",
             "ph.favprice": "esim. 0,30",
             "toast.favPrice": "Hinnaksi asetettiin {p} per kWh",
@@ -4368,6 +4573,8 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "auth.signIn": "Logga in",
             "auth.createAccount": "Skapa konto",
             "auth.logout": "Logga ut",
+            "auth.expired":
+              "Din session har gått ut, så ingenting kunde sparas. Logga in igen.",
             "confirm.title": "Bekräfta",
             "confirm.body": "Är du säker?",
             "confirm.ok": "Ja, fortsätt",
@@ -4405,10 +4612,26 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "sync.pending":
               "Sparad lokalt · {n} ändring(ar) väntar på synkning",
             "sync.retryNow": "Försök nu",
+            "sync.banner":
+              "{n} ändring(ar) kunde inte sparas på servern. Öppna för att se varför.",
             "sync.nextTry": "Nästa försök om {n} s",
             "set.build": "Build",
             "set.sw": "SW",
             "set.swNone": "ingen (inte installerad)",
+            "set.account": "Konto",
+            "set.accountOut":
+              "Inte inloggad. Dina data stannar på den här enheten tills du loggar in.",
+            "set.accountMeta": "{n} fordon · {s} session(er) på den här enheten",
+            "set.theme": "Utseende",
+            "set.themeLight": "Ljust",
+            "set.themeDark": "Mörkt",
+            "set.resetDevice": "Logga ut och töm den här enheten",
+            "set.resetDeviceHint":
+              "Tar bort den här enhetens kopia av alla konton och loggar ut. Inget raderas på servern.",
+            "set.resetContinue": "Fortsätt",
+            "set.resetQ1":
+              "Tömma all data på den här enheten och logga ut från {u}? Allt som bara finns här och inte på servern går förlorat.",
+            "set.resetQ2": "Skriv RESET för att bekräfta",
             "set.defTitle": "Standardplatser",
             "set.defLead":
               "Fyller i laddplatsen när du lägger till en session. Den fyller bara ett tomt fält, så du kan alltid skriva något annat.",
@@ -4441,9 +4664,13 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "sync.discard": "Kasta",
             "sync.stalledHint":
               "Servern nekade dessa, så att vänta hjälper inte. Den exakta orsaken visas under varje post. Kasta för att ta bort den från enheten, eller öppna och spara igen för att skicka en ny kopia.",
+            "sync.heldHint":
+              "Dessa är fine och laddas upp av sig själva så snart ägaren godkänner din åtkomst. Kasta inte bort dem: ingenting är fel med dem.",
             "sync.reason.offline": "väntar på anslutning",
             "sync.reason.queued": "väntar på att skickas",
             "sync.reason.rejected": "nekad av servern",
+            "sync.reason.notYet": "väntar på att ägaren godkänner din åtkomst",
+            "sync.reason.wrong": "den här posten är inte din att spara",
             "toast.legacyMoved":
               "{n} osynkade datauppgifter från en äldre version flyttades till det utloggade området. Logga ut för att se dem.",
             "toast.discardQ": "Kasta {v} och {n} post(er) från den här enheten?",
@@ -4555,6 +4782,9 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               "Detta går inte att ångra. Posten raderas från den här enheten och från databasen för alltid.",
             "confirm.irreversibleDiscard":
               "Detta går inte att ångra. Posten nådde aldrig servern, så att kasta bort den raderar den från den här enheten för alltid.",
+            "confirm.resetDevice": "Töm den här enheten",
+            "confirm.irreversibleReset":
+              "Detta går inte att ångra. Allt som lagras i den här webbläsaren raderas, för alla konton. Data som redan sparats på servern påverkas inte och kommer tillbaka när du loggar in.",
             "ph.shareuser": "t.ex. anna",
             "ph.favprice": "t.ex. 0,30",
             "toast.favPrice": "Priset satt till {p} per kWh",
@@ -5015,9 +5245,16 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
         }
 
         /* Where this build came from, shown in Settings so a stale phone can be
-           spotted without DevTools. APP_BUILD is manual; the worker version is
-           asked for at runtime, so it can never drift out of step with sw.js. */
+           spotted without DevTools. Deliberately a fixed DD.MM.YYYY rather than
+           toLocaleDateString: it is read by whoever ends up doing support, and
+           a build stamp that changes shape with the interface language is
+           awkward to quote over a phone. */
         var APP_BUILD = "2026-10-02";
+        function buildStamp() {
+          var p = APP_BUILD.split("-");
+          if (p.length !== 3) return APP_BUILD;
+          return p[2] + "." + p[1] + "." + p[0];
+        }
         var swVersionCache = null;
         /**
          * Ask the active service worker which version it is.
@@ -5058,13 +5295,13 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           var row = $("buildRow");
           if (!row) return;
           row.textContent =
-            TXT("set.build") + " " + APP_BUILD + " · " + TXT("set.sw") + " …";
+            TXT("set.build") + " " + buildStamp() + " · " + TXT("set.sw") + " …";
           askSwVersion().then(function (v) {
             if (!row.isConnected) return;
             row.textContent =
               TXT("set.build") +
               " " +
-              APP_BUILD +
+              buildStamp() +
               " · " +
               TXT("set.sw") +
               " " +
@@ -5444,19 +5681,26 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
          * @param {string} [kind] "warn" tints it as a warning
          */
         function syncNote(text, kind) {
-          var b = $("syncBadge");
-          if (!b) return;
-          if (!text) {
-            b.hidden = true;
-            b.textContent = "";
-            return;
+          /* The same state appears twice: in the header on a wide screen, and in
+             the sticky strip on a phone. Both are written here so they cannot
+             disagree about whether anything is waiting. */
+          var targets = [$("syncBadge"), $("syncBadgeM")];
+          for (var i = 0; i < targets.length; i++) {
+            var el = targets[i];
+            if (!el) continue;
+            if (!text) {
+              el.hidden = true;
+              el.textContent = "";
+              continue;
+            }
+            el.hidden = false;
+            el.textContent = text;
+            el.dataset.kind = kind || "";
           }
-          b.hidden = false;
-          b.textContent = text;
-          b.dataset.kind = kind || "";
           /* The countdown changes as rows land, and the panel body has to agree
              with it whenever it happens to be open. */
-          if (!$("syncPanel").hidden) renderSyncPanel();        }
+          if (!$("syncPanel").hidden) renderSyncPanel();
+        }
         function openSyncPanel() {
           var p = $("syncPanel");
           if (!p) return;
@@ -5492,16 +5736,17 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
          * @param {Object} v
          * @returns {Object} snake_case row, including user_id from the session
          */
-        function vehicleRow(v, forceOwner) {
+        function vehicleRow(v) {
           /* Keep the ORIGINAL owner. A shared driver who renames the car or
              edits its odometer must not take ownership away from the user who
              created it, so v.userId wins over the signed-in user.
-             forceOwner is the one exception: it is used only for a retry of a
-             brand-new row this account is creating, where the stored id is
-             known to be stale. See syncVehicle. */
+
+             This is only advisory now. 06-owner-stamp.sql overwrites user_id
+             with auth.uid() on INSERT, so the value sent here is used for the
+             UPDATE path and ignored for a new row. */
           return {
             id: v.id,
-            user_id: forceOwner ? ownerId() : v.userId || ownerId(),
+            user_id: v.userId || ownerId(),
             name: String(v.name || ""),
             icon: String(v.icon || "\u{1F697}"),
             initial_odometer: isNum(v.initialOdometer)
@@ -5623,15 +5868,70 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
         function markStalled(kind, id, reason, err) {
           syncStalled[kind][id] = {
             reason: reason || "rejected",
+            kind: classifyRefusal(err),
             code: (err && (err.code || err.error_code)) || "",
             message: String((err && (err.message || err.msg)) || "").trim(),
             details: String((err && (err.details || err.hint)) || "").trim(),
             when: new Date().toISOString(),
           };
         }
+        /**
+         * Work out what kind of refusal this is, because the two cases need
+         * opposite handling and treating them alike is dangerous.
+         *
+         *   "notYet"  the row is fine, the account simply may not write it YET.
+         *              A driver whose request is still pending gets this. It is
+         *              held and retried, and must NOT offer Discard: the row is a
+         *              perfectly good charging session, and discarding it would
+         *              destroy real data to "fix" a permission that resolves on
+         *              its own the moment the owner approves.
+         *
+         *   "wrong"   the row itself is unacceptable, most often because it
+         *              carries another account's owner id. Discard is offered,
+         *              and so is nothing automatic: guessing is what caused this.
+         *
+         *   "rejected" anything else, shown verbatim with the server's message.
+         *
+         * @param {Object} [err]
+         * @returns {string} "notYet" | "wrong" | "rejected"
+         */
+        function classifyRefusal(err) {
+          var code = String((err && (err.code || err.error_code)) || "");
+          var msg = (
+            String((err && err.message) || "") +
+            " " +
+            String((err && err.details) || "")
+          ).toLowerCase();
+          /* An explicit SQLSTATE beats the wording. 42501 is Postgres's
+             insufficient_privilege, which is Row Level Security refusing the
+             row itself. P0001 is what our own sessions trigger raises, and every
+             message it can produce is about this account's permission rather
+             than about the row. */
+          if (code === "42501") return "wrong";
+          if (code === "P0001") return "notYet";
+          /* No usable code, so fall back to the wording. PostgREST does not
+             always report one. */
+          if (
+            /row-level security|row level security|insufficient[_ ]privileg/.test(
+              msg,
+            )
+          )
+            return "wrong";
+          if (
+            /do not have permission|not have been granted|permission denied|not authoris?z|not permitted/.test(
+              msg,
+            )
+          )
+            return "notYet";
+          return "rejected";
+        }
         function clearStalled(kind, id) {
           if (syncStalled[kind]) delete syncStalled[kind][id];
+          /* The banner is a count, so it has to be re-derived rather than just
+             hidden, or it would vanish while other refusals remained. */
+          if (typeof armStallBanner === "function") armStallBanner();
         }
+        /* How many rows the server has refused, for the failure banner. */
         function stalledCount() {
           return (
             Object.keys(syncStalled.vehicles).length +
@@ -5671,6 +5971,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           /* Recorded rather than forgotten, so the sync panel can name it and
              the user can decide whether to discard it. */
           markStalled(kind, id, "rejected", err);
+          armStallBanner();
           syncFail(what + " - giving up, the server will not accept this row");
           if (window.console && window.console.warn)
             window.console.warn(
@@ -5703,7 +6004,21 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           if (det && det.indexOf(msg) < 0) out += " (" + det + ")";
           return out;
         }
-        /* push one vehicle; "mode" is insert or update, both handled by upsert */
+        /* push one vehicle; "mode" is insert or update, both handled by upsert
+
+           There used to be a retry here that resent the row with the signed-in
+           account's id whenever Row Level Security refused it. It is gone. It
+           assumed the stored owner id was stale, which is unprovable from the
+           client: Postgres emits "new row violates row-level security policy"
+           for an UPDATE check as well as an INSERT one, so the same code path
+           covers a row that already belongs to somebody else. The retry then
+           sent the identical value, could never succeed, and cost an extra
+           round trip on every rejection.
+
+           Ownership is now settled in the database instead: 06-owner-stamp.sql
+           puts a BEFORE INSERT trigger on vehicles that overwrites user_id with
+           auth.uid(). Whatever the client sends is ignored, so this class of
+           refusal cannot happen any more. */
         function syncVehicle(v) {
           if (!syncOn() || !v) return Promise.resolve(false);
           if (!syncOnline()) {
@@ -5711,64 +6026,6 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             return Promise.resolve(false);
           }
           syncQueue.pending++;
-          /* True when the server objected because of Row Level Security rather
-             than because of anything about the network or the payload. */
-          function isPolicyRejection(err) {
-            var m =
-              String((err && err.message) || "") +
-              " " +
-              String((err && err.code) || "");
-            return /row-level security|42501|insufficient_privilege/i.test(m);
-          }
-          function onFailure(err, alreadyForced) {
-            /* Postgres says "new row violates row-level security policy", which
-               means the INSERT branch ran, so the row does not exist on the
-               server yet. This is therefore a row the signed-in account is
-               creating, and the only thing wrong with it is a stale owner id
-               left over from before storage was scoped per account. Retried
-               once with the session's own id.
-
-               If the retry is refused too, the row really does exist and belongs
-               to somebody else, and we stop rather than keep claiming it. That
-               is what stops this from ever taking a vehicle off another account. */
-            if (
-              isPolicyRejection(err) &&
-              !alreadyForced &&
-              v.userId &&
-              v.userId !== ownerId()
-            ) {
-              if (window.console && window.console.warn)
-                window.console.warn(
-                  "[sync] vehicle " +
-                    v.id +
-                    " carries a stale owner id; retrying as the signed-in account",
-                );
-              syncQueue.pending++;
-              return timed(
-                authClient
-                  .from("vehicles")
-                  .upsert(vehicleRow(v, true), { onConflict: "id" }),
-              )
-                .then(function (r2) {
-                  syncQueue.pending--;
-                  var e2 = r2 && r2.error;
-                  if (e2) return failPush("vehicles", v.id, "vehicle upsert", e2);
-                  /* Persist the corrected owner locally, or the next edit would
-                     send the stale id again. */
-                  v.userId = ownerId();
-                  clearDirty("vehicles", v.id);
-                  clearStalled("vehicles", v.id);
-                  forgetAttempts("vehicles", v.id);
-                  save();
-                  return true;
-                })
-                .catch(function (ce2) {
-                  syncQueue.pending--;
-                  return failPush("vehicles", v.id, "vehicle upsert", ce2);
-                });
-            }
-            return failPush("vehicles", v.id, "vehicle upsert", err);
-          }
           return timed(
             authClient
               .from("vehicles")
@@ -5777,7 +6034,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             .then(function (res) {
               syncQueue.pending--;
               var e = res && res.error;
-              if (e) return onFailure(e, false);
+              if (e) return failPush("vehicles", v.id, "vehicle upsert", e);
               clearDirty("vehicles", v.id);
               clearStalled("vehicles", v.id);
               forgetAttempts("vehicles", v.id);
@@ -5787,7 +6044,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               syncQueue.pending--;
               /* The thrown error is kept: a transport-level failure and a
                  policy rejection look identical from the outside otherwise. */
-              return onFailure(ce, false);
+              return failPush("vehicles", v.id, "vehicle upsert", ce);
             });
         }
         /**
@@ -6146,6 +6403,49 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               "</option>";
           return h + "</select>";
         }
+        /** A row is a live or a binned session belonging to this vehicle. */
+        function sessionsOf(vehicleId) {
+          var out = [];
+          var i;
+          for (i = 0; i < sessions.length; i++)
+            if (sessions[i].vehicleId === vehicleId) out.push(sessions[i]);
+          for (i = 0; i < binned.sessions.length; i++)
+            if (binned.sessions[i].vehicleId === vehicleId)
+              out.push(binned.sessions[i]);
+          return out;
+        }
+        /**
+         * Re-queue everything held back for this vehicle.
+         *
+         * Rows refused because the account was not permitted YET become
+         * writable the moment the owner approves, so there is no reason to make
+         * the driver wait for the backoff to expire. Called after any decision
+         * that changes this account's role.
+         *
+         * @param {string} vehicleId
+         * @returns {number} how many rows were released
+         */
+        function releaseHeldRows(vehicleId) {
+          if (!syncOn() || !vehicleId) return 0;
+          var rows = sessionsOf(vehicleId);
+          var released = 0;
+          for (var i = 0; i < rows.length; i++) {
+            var id = rows[i].id;
+            var wasHeld = syncStalled.sessions[id];
+            if (wasHeld && wasHeld.kind !== "notYet") continue;
+            if (wasHeld) {
+              clearStalled("sessions", id);
+              forgetAttempts("sessions", id);
+              released++;
+            }
+            /* Pushed straight away rather than only re-marked, so a driver who
+               has just been approved sees the session arrive now. */
+            markDirty("sessions", id);
+            syncSession(rows[i]);
+          }
+          if (released) renderSyncPanel();
+          return released;
+        }
         /**
          * Accept or reject a request. Only a rejection is confirmed, because
          * accepting can be undone from the member list but rejecting reads as
@@ -6170,9 +6470,10 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                   ),
                 );
                 render();
-                /* render() does not rebuild the share panel, so it is refreshed
-                   separately or the accepted row would linger until a reload. */
+                /* The panel does not rebuild itself from render(). */
                 if (shareTarget === vehicle) renderShare();
+                /* Anything held while this person was not permitted can go now. */
+                releaseHeldRows(vehicle);
               } else {
                 toast(TXT("toast.shareFail"));
               }
@@ -6207,6 +6508,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               );
               render();
               if (shareTarget === vehicleId) renderShare();
+              releaseHeldRows(vehicleId);
             } else {
               toast(TXT("toast.shareFail"));
               /* Put the dropdown back to what the server still believes. */
@@ -7454,6 +7756,26 @@ if (e) {
            signed-out local bucket. Distinct from lastSyncUser, which tracks
            when rows were last fetched. */
         var lastAccount = null;
+        /* Monotonic counter guarding the getSession() / sign-in-form race. See
+           the bootstrap in initAuth. */
+        var authTicket = 0;
+        /**
+         * The server rejected our token, so the local one is worthless. Drop it
+         * and put the user back on the sign-in form rather than leaving an app
+         * that looks signed in and cannot save anything.
+         */
+        async function expireSession() {
+          try {
+            if (authClient) await authClient.auth.signOut();
+          } catch (e) {
+            /* an offline sign-out still clears the local session below */
+          }
+          authMode = "in";
+          lastAccount = null;
+          $("authPass").value = "";
+          showApp(null);
+          authMsg(TXT("auth.expired"), "err");
+        }
         function authConfigured() {
           return !!(
             SUPABASE_URL &&
@@ -7622,7 +7944,11 @@ if (e) {
             lastAccount = who;
           }
           if (signed) {
-            $("userName").textContent = fromFakeEmail(user.email || "");
+            var who2 = fromFakeEmail(user.email || "");
+            $("userName").textContent = who2;
+            $("whoMobileName").textContent = who2;
+            var wm = $("whoMobile");
+            if (wm) wm.hidden = false;
             render();
             /* fetch the account's rows when a session first appears, and whenever the
    account actually changes, so switching users never shows stale data */
@@ -7630,6 +7956,8 @@ if (e) {
             if (user && user.id) lastSyncUser = user.id;
           } else {
             lastSyncUser = null;
+            $("whoMobile").hidden = true;
+            $("whoMobileName").textContent = "";
             syncQueue = { pending: 0, fail: 0 };
             syncDirty = { vehicles: {}, sessions: {} };
             syncDeleted = { vehicles: {}, sessions: {} };
@@ -7825,18 +8153,67 @@ if (e) {
               SUPABASE_URL,
               SUPABASE_ANON_KEY,
             );
-            authClient.auth.onAuthStateChange(function (_evt, session) {
+            authClient.auth.onAuthStateChange(function (evt, session) {
               var u = session && session.user ? session.user : null;
+              /* A token refresh is the one event that can arrive with a dead
+                 token, and getSession() will not tell us: it reads the local
+                 cache and never asks the server whether the token is still
+                 good. That is how an app ends up looking signed in while the
+                 database sees nobody, and every write is then refused. Asking
+                 getUser() actually validates it. */
+              if (u && evt === "TOKEN_REFRESHED") {
+                authClient.auth.getUser().then(
+                  function (r) {
+                    var real = r && r.data && r.data.user;
+                    if (!real) {
+                      expireSession();
+                      return;
+                    }
+                    showApp(real);
+                  },
+                  function () {
+                    expireSession();
+                  },
+                );
+                return;
+              }
               showApp(u);
             });
+            /* Monotonic, so a slow getSession() that resolves after the sign-in
+               form has already succeeded cannot drag the app back to the
+               previous account. Both paths claim a ticket; the older one is
+               ignored on arrival. */
+            var ticket = ++authTicket;
             authClient.auth
               .getSession()
               .then(function (res) {
+                if (ticket !== authTicket) return;
                 var s = res && res.data && res.data.session;
-                showApp(s ? s.user : null);
-                authReady = true;
+                if (!s || !s.user) {
+                  showApp(null);
+                  authReady = true;
+                  return;
+                }
+                /* Validated against the server rather than trusted from cache.
+                   A dead session is reported instead of quietly producing a
+                   signed-in shell that cannot write anything. */
+                authClient.auth
+                  .getUser()
+                  .then(function (r) {
+                    if (ticket !== authTicket) return;
+                    var real = r && r.data && r.data.user;
+                    showApp(real || null);
+                    if (!real) authMsg(TXT("auth.expired"), "err");
+                    authReady = true;
+                  })
+                  .catch(function () {
+                    if (ticket !== authTicket) return;
+                    showApp(null);
+                    authReady = true;
+                  });
               })
               .catch(function () {
+                if (ticket !== authTicket) return;
                 authReady = true;
               });
           }
@@ -8158,7 +8535,12 @@ if (e) {
           if (multi) {
             var h = "";
             for (var i = 0; i < vehicles.length; i++) {
-              var t = totals(ofVehicle(vehicles[i].id));
+              /* Filtered once. ofVehicle() walks the whole session array, and it
+                 was being called three times per card, so the cost grew with
+                 vehicles multiplied by sessions on every render. */
+              var mine2 = ofVehicle(vehicles[i].id);
+              var t = totals(mine2);
+              var nSessions = mine2.length;
               h +=
                 '<button class="vcard" type="button" data-v="' +
                 esc(vehicles[i].id) +
@@ -8174,9 +8556,9 @@ if (e) {
                 '<div class="s">' +
                 t.kwh.toFixed(1) +
                 " kWh · " +
-                ofVehicle(vehicles[i].id).length +
+                nSessions +
                 " session" +
-                (ofVehicle(vehicles[i].id).length === 1 ? "" : "s") +
+                (nSessions === 1 ? "" : "s") +
                 "</div>" +
                 (isPending(vehicles[i].id)
                   ? '<div class="s">' + TXT("set.pendingTag") + "</div>"
@@ -8187,7 +8569,8 @@ if (e) {
           }
           announceVehicle();
 
-          var T = totals(ofVehicle(v.id), v.initialOdometer);
+          var sel = ofVehicle(v.id);
+          var T = totals(sel, v.initialOdometer);
           $("sEnergy").textContent = T.kwh.toFixed(1) + " kWh";
           $("sDist").textContent = Math.round(T.km) + " km";
           /* Say so when the distance is measured between logged readings,
@@ -8207,112 +8590,120 @@ if (e) {
             T.km > 0 ? ((T.kwh / T.km) * 100).toFixed(1) : "—";
           $("sCost100").textContent =
             T.km > 0 ? fmtMoney((T.cost / T.km) * 100) : "—";
-          $("sSpeed").textContent = fmtKw(speedTotal(ofVehicle(v.id)));
-          var ad = avgDuration(ofVehicle(v.id));
+          $("sSpeed").textContent = fmtKw(speedTotal(sel));
+          var ad = avgDuration(sel);
           $("sDurAvg").textContent = ad === null ? "—" : hoursToHM(ad);
 
-          var list = sorted(ofVehicle(v.id));
-          $("logLead").textContent = list.length
-            ? TXT("log.for", { n: list.length, v: v.name })
-            : TXT("log.none", { v: v.name });
-          var tb = "";
-          for (var j = 0; j < list.length; j++) {
-            var s = list[j];
-            var c = fmtMoney(costOf(s));
-            var tags = "";
-            if (s.fast)
-              tags += '<span class="tag t-fast">' + TXT("tag.fast") + "</span>";
-            if (s.home)
-              tags += '<span class="tag t-home">' + TXT("tag.home") + "</span>";
-            if (s.fav)
-              tags += '<span class="tag t-fav">' + TXT("tag.fav") + "</span>";
-            if (!hasCost(s))
-              tags += '<span class="tag t-est">' + TXT("tag.est") + "</span>";
-            tb +=
-              "<tr><td>" +
-              esc(s.date) +
-              "</td><td>" +
-              esc(fmtTime(s.time)) +
-              "</td><td>" +
-              esc(hoursToHM(s.hours)) +
-              "</td>" +
-              "<td>" +
-              esc(s.location) +
-              "</td><td>" +
-              num(s.energy).toFixed(2) +
-              " kWh" +
-              fmtSoc(s) +
-              "</td><td>" +
-              fmtKw(chargeSpeed(s)) +
-              "</td>" +
-              "<td>" +
-              num(s.mileage).toFixed(1) +
-              " km</td>" +
-              "<td>" +
-              c +
-              "</td><td>" +
-              tags +
-              '</td><td class="wrapc">' +
-              esc(s.notes || "—") +
-              "</td>" +
-              /* The buttons are omitted rather than disabled: a viewer should
-                 not be offered an action the server would refuse, and an empty
-                 cell keeps the row height stable. */
-              (canEditSession(s)
-                ? '<td><button type="button" class="btn sm ghost" data-edit="' +
-                  esc(s.id) +
-                  '" aria-label="' +
-                  TXT("a11y.editSession", {
-                    v: esc(s.location),
-                    d: esc(s.date),
-                  }) +
-                  '"><span aria-hidden="true">✎</span></button> ' +
-                  '<button type="button" class="btn sm dgr" data-del="' +
-                  esc(s.id) +
-                  '" aria-label="' +
-                  TXT("a11y.deleteSession", {
-                    v: esc(s.location),
-                    d: esc(s.date),
-                  }) +
-                  '"><span aria-hidden="true">✕</span></button></td>'
-                : '<td class="mt">—</td>') +
-              "</tr>";
-          }
-          $("logBody").innerHTML =
-            tb ||
-            '<tr><td colspan="11" class="empty">' +
-              /* A pending requester can read nothing at all, so an empty table
-                 would read as lost data rather than as a request still waiting
-                 for the owner. */
-              TXT(
-                canView(v.id) && isPending(v.id)
-                  ? "set.pendingNoHistory"
-                  : "cl.none",
-              ) +
-              "</td></tr>";
+          /* The log table and its scope picker are only built while the log is
+             actually on screen. This was the most expensive thing in the app by
+             a distance: every row is nested markup, and it was rebuilt on each
+             view change, vehicle switch, add, delete and language switch. The
+             bin and the chart already have this guard. Exports read the scope
+             picker's value on demand, and it keeps the user's last choice. */
+          if (view === "view-data") {
+            var list = sorted(ofVehicle(v.id));
+            $("logLead").textContent = list.length
+              ? TXT("log.for", { n: list.length, v: v.name })
+              : TXT("log.none", { v: v.name });
+            var tb = "";
+            for (var j = 0; j < list.length; j++) {
+              var s = list[j];
+              var c = fmtMoney(costOf(s));
+              var tags = "";
+              if (s.fast)
+                tags += '<span class="tag t-fast">' + TXT("tag.fast") + "</span>";
+              if (s.home)
+                tags += '<span class="tag t-home">' + TXT("tag.home") + "</span>";
+              if (s.fav)
+                tags += '<span class="tag t-fav">' + TXT("tag.fav") + "</span>";
+              if (!hasCost(s))
+                tags += '<span class="tag t-est">' + TXT("tag.est") + "</span>";
+              tb +=
+                "<tr><td>" +
+                esc(s.date) +
+                "</td><td>" +
+                esc(fmtTime(s.time)) +
+                "</td><td>" +
+                esc(hoursToHM(s.hours)) +
+                "</td>" +
+                "<td>" +
+                esc(s.location) +
+                "</td><td>" +
+                num(s.energy).toFixed(2) +
+                " kWh" +
+                fmtSoc(s) +
+                "</td><td>" +
+                fmtKw(chargeSpeed(s)) +
+                "</td>" +
+                "<td>" +
+                num(s.mileage).toFixed(1) +
+                " km</td>" +
+                "<td>" +
+                c +
+                "</td><td>" +
+                tags +
+                '</td><td class="wrapc">' +
+                esc(s.notes || "—") +
+                "</td>" +
+                /* The buttons are omitted rather than disabled: a viewer should
+                   not be offered an action the server would refuse, and an empty
+                   cell keeps the row height stable. */
+                (canEditSession(s)
+                  ? '<td><button type="button" class="btn sm ghost" data-edit="' +
+                    esc(s.id) +
+                    '" aria-label="' +
+                    TXT("a11y.editSession", {
+                      v: esc(s.location),
+                      d: esc(s.date),
+                    }) +
+                    '"><span aria-hidden="true">✎</span></button> ' +
+                    '<button type="button" class="btn sm dgr" data-del="' +
+                    esc(s.id) +
+                    '" aria-label="' +
+                    TXT("a11y.deleteSession", {
+                      v: esc(s.location),
+                      d: esc(s.date),
+                    }) +
+                    '"><span aria-hidden="true">✕</span></button></td>'
+                  : '<td class="mt">—</td>') +
+                "</tr>";
+            }
+            $("logBody").innerHTML =
+              tb ||
+              '<tr><td colspan="11" class="empty">' +
+                /* A pending requester can read nothing at all, so an empty table
+                   would read as lost data rather than as a request still waiting
+                   for the owner. */
+                TXT(
+                  canView(v.id) && isPending(v.id)
+                    ? "set.pendingNoHistory"
+                    : "cl.none",
+                ) +
+                "</td></tr>";
 
-          var sl = $("scope"),
-            keep = sl.value;
-          sl.innerHTML =
-            '<option value="all">' +
-            TXT("set.allVehicles") +
-            "</option>" +
-            vehicles
-              .map(function (x) {
-                return (
-                  '<option value="' +
-                  esc(x.id) +
-                  '">' +
-                  esc(x.name) +
-                  "</option>"
-                );
-              })
-              .join("");
-          sl.value = vehicles.some(function (x) {
-            return x.id === keep;
-          })
-            ? keep
-            : "all";
+            var sl = $("scope"),
+              keep = sl.value;
+            sl.innerHTML =
+              '<option value="all">' +
+              TXT("set.allVehicles") +
+              "</option>" +
+              vehicles
+                .map(function (x) {
+                  return (
+                    '<option value="' +
+                    esc(x.id) +
+                    '">' +
+                    esc(x.name) +
+                    "</option>"
+                  );
+                })
+                .join("");
+            sl.value = vehicles.some(function (x) {
+              return x.id === keep;
+            })
+              ? keep
+              : "all";
+          }
 
           var vs = "";
           for (var k = 0; k < vehicles.length; k++) {
@@ -8384,7 +8775,10 @@ if (e) {
           $("vehSettings").innerHTML = vs;
           renderImportTarget();
           renderBin();
-          if (view === "settings") renderBuildRow();
+          if (view === "settings") {
+          renderBuildRow();
+          renderAccountPanel();
+        }
           renderRedeemPanel();
           syncCents();
           renderFavs();
@@ -8436,7 +8830,18 @@ if (e) {
                 : "(no longer on this device)",
               /* `stall` is the recorded server error, when there is one. */
               why: typeof why === "object" && why ? why.reason : why,
-              hard: !!hard,
+              /* Discard is only offered for a row that is itself wrong. A row
+                 held back by a pending approval is good data, and one button
+                 press must not be able to delete it. */
+              hard:
+                stall && stall.kind === "notYet"
+                  ? false
+                  : !!hard,
+              /* Surfaced separately from `hard` so the panel can explain the
+                 whole group in one line. */
+              held: !!(stall && stall.kind === "notYet"),
+              why2:
+                stall && stall.kind ? TXT("sync.reason." + stall.kind) : "",
               code: (stall && stall.code) || "",
               detail:
                 stall && (stall.message || stall.details)
@@ -8553,7 +8958,7 @@ if (e) {
               esc(r.label) +
               "</span>" +
                 '<span class="mt">' +
-                esc(TXT("sync.reason." + r.why)) +
+                esc(r.why2 || TXT("sync.reason." + r.why)) +
                 "</span>" +
                 /* The server's own words. Without this the panel can only say
                    that a write was refused, which is the least useful possible
@@ -8577,7 +8982,16 @@ if (e) {
               "</div>";
           }
           h += "</div>";
-          if (stalledCount())
+          /* Two different explanations, because a row held for approval and a
+             row that is genuinely wrong need opposite decisions from the user. */
+          var held = 0;
+          for (var q = 0; q < rows.length; q++) if (rows[q].held) held++;
+          if (held)
+            h +=
+              '<div class="hint" style="margin-top:0.6rem">' +
+              TXT("sync.heldHint") +
+              "</div>";
+          if (rows.length - held)
             h +=
               '<div class="hint" style="margin-top:0.6rem">' +
               TXT("sync.stalledHint") +
@@ -8676,6 +9090,150 @@ if (e) {
           if (syncOn() && syncOnline()) syncPull();
           else scheduleRetry();
           renderSyncPanel();
+        }
+              /* How long a refusal has to stand still before it is escalated from a
+         badge to a banner. Long enough that a single hiccup does not shout,
+         short enough that it never costs a day of unnoticed data loss. */
+      var STALL_BANNER_AFTER_MS = 10 * 60 * 1000;
+      var stallBannerTimer = null;
+      /**
+       * Show the failure banner once a refusal has been standing for a while.
+       * Held rows are excluded: a pending approval is not a failure and must
+       * never be escalated into one.
+       */
+      function armStallBanner() {
+        if (stallBannerTimer) {
+          clearTimeout(stallBannerTimer);
+          stallBannerTimer = null;
+        }
+        var show = function () {
+          stallBannerTimer = null;
+          var b = $("syncBanner");
+          if (!b) return;
+          var hard = 0;
+          var kinds = ["vehicles", "sessions"];
+          for (var i = 0; i < kinds.length; i++) {
+            var rows = syncStalled[kinds[i]];
+            for (var k in rows) if (rows[k].kind !== "notYet") hard++;
+          }
+          if (!hard) {
+            b.hidden = true;
+            return;
+          }
+          $("syncBannerMsg").textContent = TXT("sync.banner", { n: hard });
+          b.hidden = false;
+        };
+        if (stalledCount())
+          stallBannerTimer = setTimeout(show, STALL_BANNER_AFTER_MS);
+        else show();
+      }
+      function clearStallBanner() {
+        if (stallBannerTimer) clearTimeout(stallBannerTimer);
+        stallBannerTimer = null;
+        var b = $("syncBanner");
+        if (b) b.hidden = true;
+      }
+        /**
+         * Remove every trace of this account from THIS DEVICE, then sign out.
+         *
+         * Deliberately separate from the ordinary sign-out above, which keeps
+         * local data so signing back in restores it. This one is for the case
+         * where the local copy is itself the problem, which is exactly what a
+         * stale session left behind.
+         *
+         * Only the browser is touched. Nothing is deleted on the server, so a
+         * sign-in afterwards pulls the account's real data straight back. The
+         * danger is losing unsynced work, which is why it asks twice.
+         *
+         * @returns {Promise<boolean>}
+         */
+        async function resetThisDevice() {
+          var name = $("accountName").textContent || "";
+          var yes = await askConfirm(
+            TXT("set.resetQ1", { u: name || TXT("auth.logout") }),
+            {
+              heading: "confirm.resetDevice",
+              ok: "set.resetContinue",
+              irreversible: "confirm.irreversibleReset",
+            },
+          );
+          if (!yes) return false;
+          /* Second gate. The confirmation names the account, so the second one
+             asks for the word rather than another Yes. */
+          var typed = window.prompt(TXT("set.resetQ2"));
+          if (typed === null) return false;
+          if (String(typed).trim().toUpperCase() !== "RESET") return false;
+          var keys = [];
+          try {
+            for (var i = 0; i < localStorage.length; i++) {
+              var k = localStorage.key(i);
+              /* Everything this app owns, for any account, plus the pre-scoped
+                 leftovers. Theme and language are device preferences and are
+                 deliberately kept. */
+              if (k && k.indexOf("ev.") === 0 && k !== K_THEME && k !== K_LANG)
+                keys.push(k);
+            }
+            for (var j = 0; j < keys.length; j++) localStorage.removeItem(keys[j]);
+          } catch (e) {
+            /* Private browsing can refuse writes; the reload below still helps */
+          }
+          try {
+            if (authClient) await authClient.auth.signOut();
+          } catch (e) {
+            /* an offline sign-out still clears the in-memory session below */
+          }
+          authMode = "in";
+          lastAccount = null;
+          showApp(null);
+          location.reload();
+          return true;
+        }
+        /** Point the Settings controls at the current account and appearance. */
+        function renderAccountPanel() {
+          var signed = !!(authUser && authUser.id);
+          var row = $("accountRow");
+          if (row) row.hidden = !signed;
+          var out = $("accountSignedOut");
+          if (out) out.hidden = signed;
+          if (signed) {
+            $("accountName").textContent = fromFakeEmail(authUser.email || "");
+            $("accountMeta").textContent = TXT("set.accountMeta", {
+              n: vehicles.length,
+              s: sessions.length,
+            });
+          }
+          var th = $("themeSel");
+          if (th) {
+            th.innerHTML =
+              '<option value="light">' + TXT("set.themeLight") + "</option>" +
+              '<option value="dark">' + TXT("set.themeDark") + "</option>";
+            th.value = document.body.classList.contains("dark") ? "dark" : "light";
+          }
+          /* The language list lives inside the i18n module, which already fills
+             the header's select. Copying its options keeps one source of truth
+             without reaching across the module boundary, and the language still
+             changes by driving that select. */
+          var ls = $("langSel2");
+          var src = $("langSel");
+          if (ls && src && src.options.length && !ls.options.length) {
+            ls.innerHTML = Array.prototype.map
+              .call(src.options, function (o) {
+                return (
+                  '<option value="' +
+                  esc(o.value) +
+                  '">' +
+                  esc(o.textContent) +
+                  "</option>"
+                );
+              })
+              .join("");
+          }
+          if (ls) ls.value = lang;
+        }
+        /** Apply a theme chosen in Settings, reusing the existing toggle. */
+        function applyThemeSel(want) {
+          var isDark = document.body.classList.contains("dark");
+          if ((want === "dark") !== isDark) $("themeBtn").click();
         }
         function renderBin() {
           var n = binCount();
@@ -11512,6 +12070,20 @@ if (e) {
         $("favGeoBtn").addEventListener("click", function () {
           geocodeMissingFavs();
         });
+        $("logoutBtn2").addEventListener("click", function () {
+          return doLogout();
+        });
+        $("resetDeviceBtn").addEventListener("click", function () {
+          return resetThisDevice();
+        });
+        $("themeSel").addEventListener("change", function () {
+          applyThemeSel(this.value);
+        });
+        $("langSel2").addEventListener("change", function () {
+          var sel = $("langSel");
+          sel.value = this.value;
+          sel.dispatchEvent(new Event("change"));
+        });
         $("defLoc").addEventListener("change", function () {          locDefaults.loc = this.value || null;
           saveLocDefaults();
           toast(TXT("toast.defSaved"));
@@ -11726,6 +12298,12 @@ if (e) {
           return emptyBin();
         });
         $("syncBadge").addEventListener("click", function () {
+          openSyncPanel();
+        });
+        $("syncBadgeM").addEventListener("click", function () {
+          openSyncPanel();
+        });
+        $("syncBannerBtn").addEventListener("click", function () {
           openSyncPanel();
         });
         $("syncCloseBtn").addEventListener("click", function () {
