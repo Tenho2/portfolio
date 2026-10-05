@@ -59,9 +59,22 @@ alter table public.vehicle_shares
 -- closest real meaning is 'admin', so that is what it becomes.
 update public.vehicle_shares set role = 'admin' where role = 'owner';
 
--- The check constraint was created inline and so has a generated name. Drop
--- whichever check constraints exist on the column and add one named
--- explicitly, so this file can be re-run without tripping over itself.
+-- The check constraints were created inline and so have generated names. Drop
+-- whichever check constraints exist on those columns and add one named
+-- explicitly for each, so this file can be re-run without tripping over itself.
+--
+-- The status constraint has to be swept up too, and matching on the word "role"
+-- would miss it: its definition is check (status in ('pending', 'accepted',
+-- 'rejected')), which never mentions role. That is what made this file fail on
+-- a second run with
+--   42710 constraint "vehicle_shares_status_check" already exists
+-- while the role constraint dropped and re-added cleanly. Named constraints are
+-- dropped by name first, then anything left over that guards either column.
+alter table public.vehicle_shares
+  drop constraint if exists vehicle_shares_role_check;
+alter table public.vehicle_shares
+  drop constraint if exists vehicle_shares_status_check;
+
 do $$
 declare
   c record;
@@ -71,7 +84,8 @@ begin
     from pg_constraint
     where conrelid = 'public.vehicle_shares'::regclass
       and contype  = 'c'
-      and pg_get_constraintdef(oid) ilike '%role%'
+      and ( pg_get_constraintdef(oid) ilike '%role%'
+         or pg_get_constraintdef(oid) ilike '%status%' )
   loop
     execute format('alter table public.vehicle_shares drop constraint %I', c.conname);
   end loop;

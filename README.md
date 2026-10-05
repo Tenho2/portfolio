@@ -144,9 +144,16 @@ Migrations must be pasted into the Supabase SQL editor **in numeric order**:
 | 4     | `supabase/04-roles.sql`       | Roles (viewer/driver/admin), owner approval, tightened RLS   |
 | 5     | `supabase/05-trash.sql`       | `deleted_at` for the recoverable bin                         |
 | 6     | `supabase/06-owner-stamp.sql` | `BEFORE INSERT` trigger stamping `user_id` from `auth.uid()` |
+| —     | `supabase/07-diagnose.sql`    | Read-only. Tells apart the causes of a `42501` refusal.      |
 
 Every one is idempotent, so re-running is safe. Each ends with a query that
-confirms it worked.
+confirms it worked. `07-diagnose.sql` is the exception: it is only SELECTs and
+makes no changes, so it is safe to run at any time.
+
+**Run the diagnostic queries one at a time.** The Supabase SQL editor returns
+the result of the _last_ statement in a pasted script and nothing else, so
+pasting all nine at once shows you only the final query. `07b-one-at-a-time.sql`
+is the same four decisive queries split for that reason.
 
 ### Why 06 exists
 
@@ -160,6 +167,33 @@ client cannot get it wrong at all.
 Only INSERT is stamped, never UPDATE, so the original author of a charging
 session survives an owner or admin correcting it, and a shared driver logging a
 session is stamped with their own id exactly as before.
+
+### Diagnosing a `42501` refusal
+
+`42501 new row violates row-level security policy for table "vehicles"` has
+three causes that look identical in the browser:
+
+1. The access token has expired, so `auth.uid()` is NULL rather than wrong.
+2. `06-owner-stamp.sql` was never applied, so `user_id` is whatever the client
+   sent.
+3. **The row already exists with `user_id IS NULL`.**
+
+Cause 3 is the one that looks impossible and is not. `vehicle_role` resolves
+ownership with `when v.user_id = auth.uid() then 'owner'`. With `user_id` NULL
+that comparison yields NULL rather than true, so with no accepted share the role
+is NULL, the rank is 0, and **the server refuses the row to the account that
+actually owns it**. The SELECT policy refuses it too, so it never appears on a
+pull either — invisible on every device while still blocking writes to the id
+the app is holding.
+
+Such rows come from before the policies were tightened, or from the Table
+Editor, where `auth.uid()` is NULL and the trigger deliberately declines to
+stamp. `06` cannot repair them, because its trigger is `BEFORE INSERT` only: a
+row that already exists takes the UPDATE path and is never stamped.
+
+Run `supabase/07-diagnose.sql` and read query 3. Adopt a row only with the
+correct account id — a blanket `update` would attach somebody's car to the wrong
+person.
 
 ### Deploying
 
