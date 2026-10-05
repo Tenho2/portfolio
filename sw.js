@@ -25,10 +25,10 @@
  * because a navigation is network-first; an installed PWA launched from the
  * home screen can come straight out of the cache without any request at all.
  *
- * Last bumped: 2026-10-02, for the diagnostics report, the smaller mobile sync
- * banner, and corrected sync.reason.wrong wording in all three languages.
+ * Last bumped: 2026-10-05, for the database identity probe (whoami) reported
+ * in the diagnostics paste, and corrected set.build wording in Finnish.
  */
-const VERSION = "v15";
+const VERSION = "v16";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [

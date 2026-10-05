@@ -3889,6 +3889,12 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
          */
         function confirmSessionAlive(what, err) {
           if (!authClient) return Promise.resolve(null);
+          /* Asked first, and deliberately before getUser(). getUser() proves the
+             token is valid to the auth service; whoami() proves the token
+             actually reached the database on a normal request. Those are
+             different claims, and only the second one explains a policy refusal,
+             because auth.uid() is what the policy compares against. */
+          var who = askWhoAmI();
           return authClient.auth.getUser().then(
             function (r) {
               var real = r && r.data && r.data.user;
@@ -3902,7 +3908,8 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                       " refused by RLS while signed in as " +
                       real.id +
                       ": the session is valid, so the row itself is not yours. " +
-                      describeServerError(err),
+                      describeServerError(err) +
+                      " (database saw role=" + who.role + ")",
                   );
                 return real;
               }
@@ -3913,7 +3920,8 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                     " refused and getUser() found no signed-in user: the access " +
                     "token has expired, so auth.uid() is NULL server-side and no " +
                     "insert policy can ever be satisfied. " +
-                    describeServerError(err),
+                    describeServerError(err) +
+                    " (database saw role=" + who.role + ")",
                 );
               return expireSession();
             },
@@ -3929,6 +3937,59 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               return null;
             },
           );
+        }
+        /* What the database believes the caller is, for the diagnostics report.
+         *
+         * Populated by askWhoAmI() and read back out of it, because the failure
+         * handler is synchronous and the probe is not. Stays "unknown" when the
+         * function is not installed, which is itself worth seeing rather than
+         * guessing at. */
+        var whoAmI = { role: "unknown", uid: "unknown", error: "not probed" };
+        /**
+         * Ask the database who it thinks this request is from.
+         *
+         * This is the measurement that distinguishes the two remaining causes of
+         * a 42501 on vehicles. If it answers 'anon', the browser sent no user
+         * token with the request and auth.uid() is NULL, so the stamp trigger
+         * skipped and the insert policy could not be satisfied by anything the
+         * client sent. If it answers 'authenticated', the token arrived and the
+         * live schema is not what the migrations describe.
+         * @returns {Promise<Object>} never rejects
+         */
+        function askWhoAmI() {
+          if (!authClient || !syncOn()) return Promise.resolve(whoAmI);
+          return authClient.rpc
+            ? authClient
+                .rpc("whoami")
+                .then(function (r) {
+                  var row = r && r.data && r.data[0];
+                  if (r && r.error) {
+                    whoAmI = {
+                      role: "probe failed: " + r.error.code,
+                      uid: "unknown",
+                      error: r.error.message,
+                    };
+                  } else if (row) {
+                    whoAmI = {
+                      /* row.role_name, not row.role: "role" is a reserved word
+                         in some PostgREST shapes and reading it here returned
+                         undefined. */
+                      role: row.role_name || "(null)",
+                      uid: row.uid || "(null)",
+                      error: "",
+                    };
+                  }
+                  return whoAmI;
+                })
+                .catch(function (e) {
+                  whoAmI = {
+                    role: "probe threw",
+                    uid: "unknown",
+                    error: String((e && e.message) || e),
+                  };
+                  return whoAmI;
+                })
+            : Promise.resolve(whoAmI);
         }
         /**
          * Record a failed push: keep it queued while it might still succeed,
@@ -3960,6 +4021,11 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             provisional: kind === "vehicles" ? isProvisionalRow(id) : undefined,
             ownerOnDevice:
               kind === "vehicles" ? diagRowOwner(id) : undefined,
+            /* Filled in by askWhoAmI() a moment after this event is recorded, so
+               it reads "not probed" on the first failure of a session and the
+               real value on every one after. */
+            dbRoleSeen: whoAmI.role,
+            dbUidSeen: whoAmI.uid,
           });
           /* A 42501 is ambiguous from here, and the two causes need opposite
              responses, so it is resolved before anything else happens.
@@ -4112,6 +4178,13 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           lines.push("user agent: " + navigator.userAgent);
           lines.push("online: " + (syncOnline() ? "yes" : "no"));
           lines.push("sync configured: " + (syncConfiguredForDiag() ? "yes" : "no"));
+          lines.push(
+            "database sees caller as: role=" +
+              whoAmI.role +
+              " uid=" +
+              whoAmI.uid +
+              (whoAmI.error ? " (" + whoAmI.error + ")" : ""),
+          );
           lines.push("local vehicles: " + vehicles.length);
           lines.push("local sessions: " + sessions.length);
           lines.push("dirty rows: " + JSON.stringify(unsyncedSummaryForDiag()));
