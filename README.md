@@ -21,18 +21,76 @@ The five web files at the root reference each other by relative path and
 ## Development
 
 ```sh
-npm install     # prettier + html-validate, devDependencies only
-npm run check   # tests, formatting, HTML validity, inline JS syntax
-npm test        # 132 assertions on roles, storage, bin, sync and location
-npm run fmt     # format *.json and *.md
+npm install       # prettier, html-validate, jsdom — devDependencies only
+npm run check     # tests, formatting, HTML validity, inline JS syntax
+npm test          # 204 assertions
+npm run fmt       # format *.json and *.md
 npm run fmt:html  # reformat the HTML: rewrites ~480 lines, so opt-in
 ```
 
 There is no bundler and no build output. `ev-tracker.html` is served as-is.
 
-`tools/check-inline-js.mjs` exists because all the JavaScript is inline, so
-`node --check` and eslint have nothing to look at. It compiles each `<script>`
-block; it never executes anything.
+A pre-commit hook runs `npm run check` and also refuses a commit that changes
+`ev-tracker.html` without bumping `VERSION` in `sw.js`. Enable it once per
+clone:
+
+```sh
+git config core.hooksPath .githooks
+```
+
+### What the tests cover, and why each exists
+
+`tools/test-roles.mjs`
+: The permission ladder, extracted from the page and run against stub state.
+
+`tools/test-storage.mjs`
+: Per-account storage isolation. Guards the bug where signing out of one
+account carried its vehicles into another.
+
+`tools/test-bin.mjs`
+: The split between live and binned rows. A deleted row must never reappear in
+the live arrays, and no row may be lost in the process.
+
+`tools/test-sync-status.mjs`
+: Refusal classification. A row held for pending approval must never offer
+Discard, because discarding it would delete real data to fix a permission
+that resolves on its own.
+
+`tools/test-location.mjs`
+: Distance maths and the GPS accuracy gate.
+
+`tools/test-dom.mjs`
+: Renders the real page in jsdom and asks whether anything a person needs is
+: actually there: no blank translated text, no empty placeholders, no
+: unlabelled field, no dangling `label[for]`, no duplicate ids. This is the
+: suite that would have caught the missing-text reports.
+
+`tools/test-wiring.mjs`
+: Every id the script looks up exists, ids are unique, the file is valid UTF-8
+: with no BOM, non-English text is intact, line endings are consistent, the
+: precache list names files that exist, and the app script never references a
+: private of the i18n module — the cause of the `lang` and `LANGS` bugs.
+
+`tools/test-i18n-markup.mjs`
+: Every `data-i18n*` key in the markup has English text. A missing one renders
+: as a blank element with no error anywhere.
+
+`tools/check-inline-js.mjs`
+: Compiles each inline `<script>` block, because all the JavaScript is inline
+: and `node --check` has nothing to look at otherwise.
+
+### A note on file size
+
+`ev-tracker.html` is about 12,800 lines: ~1,500 CSS, ~1,900 i18n data and
+~9,400 application logic. At 119 KB gzipped it is small for a page with no
+framework, and the single file is a deliberate property — it works offline,
+from `file://`, with no waterfall.
+
+The cost is scope, not size: 9,400 lines share one lexical scope, and nothing
+enforces the boundary between modules. The test suite above detects the
+resulting mistakes. Eliminating the class properly means extracting the i18n
+data first, then splitting the app into real ES modules, where a cross-module
+reference becomes a load-time error instead of a runtime one.
 
 ## Database
 

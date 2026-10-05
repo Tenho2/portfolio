@@ -2915,6 +2915,27 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           <span id="confirmHeading" data-i18n="confirm.title"></span>
         </h3>
         <p id="confirmBody" data-i18n="confirm.body"></p>
+        <!-- Typed confirmation, used only by opts.expect. window.prompt cannot
+             be relied on here: it is reached after an await, by which point the
+             user activation has been consumed, and Chrome then suppresses it
+             without showing anything at all. An input in the dialog behaves the
+             same on every platform. -->
+        <div class="f" id="confirmExpect" hidden>
+          <label
+            for="confirmExpectInput"
+            id="confirmExpectLabel"
+            data-i18n="confirm.typeToConfirm"
+          ></label>
+          <input
+            type="text"
+            id="confirmExpectInput"
+            autocomplete="off"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck="false"
+          />
+          <div class="hint" id="confirmExpectHint"></div>
+        </div>
         <div class="addrow confirm-actions">
           <button
             class="btn dgr"
@@ -3567,6 +3588,8 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "confirm.irreversibleDiscard":
               "This cannot be undone. The item never reached the server, so discarding it deletes it from this device for good.",
             "confirm.resetDevice": "Clear this device",
+            "confirm.typeToConfirm": "Type the word to confirm",
+            "confirm.expectHint": "The button unlocks when you type {w} exactly.",
             "confirm.irreversibleReset":
               "This cannot be undone. Everything stored in this browser is deleted, for every account. Anything already saved on the server is not affected and comes back when you sign in.",
             "ph.shareuser": "e.g. anna",
@@ -4190,6 +4213,8 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "confirm.irreversibleDiscard":
               "Tätä ei voi perua. Kohde ei koskaan päässyt palvelimelle, joten hylkääminen poistaa sen tältä laitteelta pysyvästi.",
             "confirm.resetDevice": "Tyhjennä tämä laite",
+            "confirm.typeToConfirm": "Kirjoita vahvistus-sana",
+            "confirm.expectHint": "Painike aukeaa, kun kirjoitat {w} täsmälleen.",
             "confirm.irreversibleReset":
               "Tätä ei voi perua. Kaikki tähän selaimeseen tallennettu data poistetaan kaikilta tileiltä. Palvelimella oleva data ei muutu, ja se tulee takaisin kirjautuessasi sisään.",
             "ph.shareuser": "esim. anna",
@@ -4810,6 +4835,8 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "confirm.irreversibleDiscard":
               "Detta går inte att ångra. Posten nådde aldrig servern, så att kasta bort den raderar den från den här enheten för alltid.",
             "confirm.resetDevice": "Töm den här enheten",
+            "confirm.typeToConfirm": "Skriv ordet för att bekräfta",
+            "confirm.expectHint": "Knappen låses upp när du skriver {w} exakt.",
             "confirm.irreversibleReset":
               "Detta går inte att ångra. Allt som lagras i den här webbläsaren raderas, för alla konton. Data som redan sparats på servern påverkas inte och kommer tillbaka när du loggar in.",
             "ph.shareuser": "t.ex. anna",
@@ -4984,6 +5011,20 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             } else {
               el.textContent = t(k);
             }
+          }
+          /* Placeholders also appear on inputs that carry no data-i18n of their
+             own, because their visible text comes from the wrapping label. Those
+             were never visited by the loop above, so every one of them was left
+             with no placeholder at all: location, energy, mileage, the SoC
+             fields, notes, and the favourite name, address and price. */
+          var phs = scope.querySelectorAll("[data-i18n-ph]");
+          for (var p = 0; p < phs.length; p++) {
+            var pel = phs[p];
+            /* Anything the first pass handled is skipped, so a language switch
+               does not leave one group stale and the other current. */
+            if (pel.hasAttribute("data-i18n")) continue;
+            var pk = pel.getAttribute("data-i18n-ph");
+            if (pk) pel.setAttribute("placeholder", t(pk));
           }
           var rich = scope.querySelectorAll("[data-i18n-html]");
           for (var j = 0; j < rich.length; j++) {
@@ -6051,6 +6092,27 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           if (!syncOnline()) {
             markDirty("vehicles", v.id);
             return Promise.resolve(false);
+          }
+          /* A vehicle row is only ever written by its owner, or by an admin
+             editing the settings. Anything else is refused by
+             "vehicles editable by owner or admin", and refusing it repeatedly
+             is pure waste: it costs a round trip on every pull and holds the
+             sync panel open with a failure the user cannot act on.
+
+             This happens when the device is holding another account's vehicle,
+             which is what a switch without clearing leaves behind. The
+             server's copy is the authoritative one, so the right move is to
+             leave this local row alone rather than to argue with RLS about it. */
+          if (!mayWriteVehicle(v.id)) {
+            clearDirty("vehicles", v.id);
+            forgetAttempts("vehicles", v.id);
+            if (window.console && window.console.info)
+              window.console.info(
+                "[sync] not writing vehicle " +
+                  v.id +
+                  ": it belongs to another account on the server",
+              );
+            return Promise.resolve(true);
           }
           syncQueue.pending++;
           return timed(
@@ -9206,27 +9268,21 @@ if (e) {
          */
         async function resetThisDevice() {
           var name = $("accountName").textContent || "";
+          var keys = [];
+          /* Two gates in one dialog: the warning is the body, the typed word is
+             the button. The OK button stays disabled until the word matches
+             exactly, so there is nothing to get wrong after the prompt appears. */
           var yes = await askConfirm(
             TXT("set.resetQ1", { u: name || TXT("auth.logout") }),
             {
               heading: "confirm.resetDevice",
               ok: "set.resetContinue",
+              expect: "RESET",
+              expectLabel: "set.resetQ2",
               irreversible: "confirm.irreversibleReset",
             },
           );
           if (!yes) return false;
-          /* Second gate. The confirmation names the account, so the second one
-             asks for the word rather than another Yes. */
-          /* Exact match, deliberately case-sensitive. The instruction says
-             RESET, so RESET is the only thing accepted: someone who cannot
-             follow the instruction has not acknowledged what they are about to
-             destroy, and should not be able to do it. */
-          var typed = window.prompt(TXT("set.resetQ2"));
-          if (typed === null) return false;
-          if (typed !== "RESET") {
-            toast(TXT("set.resetMismatch"));
-            return false;
-          }
           var keys = [];
           try {
             for (var i = 0; i < localStorage.length; i++) {
@@ -9292,7 +9348,13 @@ if (e) {
               })
               .join("");
           }
-          if (ls) ls.value = lang;
+          if (ls) {
+            /* The active language is a variable inside the i18n module and is
+               not in scope here. The header's select is the reliable source:
+               the i18n module keeps it in step with the active language. */
+            var active = src && src.value ? src.value : "";
+            if (active) ls.value = active;
+          }
         }
         /** Apply a theme chosen in Settings, reusing the existing toggle. */
         function applyThemeSel(want) {
@@ -10242,8 +10304,12 @@ if (e) {
          * @returns {Promise<boolean>} resolves true when confirmed
          */
         var confirmState = null;
+        /* What the typed confirmation currently requires, or "" when the dialog
+           was opened without one. Read by the input handler. */
+        var confirmExpectWord = "";
         function askConfirm(message, opts) {
           opts = opts || {};
+          confirmExpectWord = opts.expect || "";
           var sheet = $("confirmSheet");
           if (!sheet) return Promise.resolve(window.confirm(message));
           /* A second request while the dialog is open resolves the first one
@@ -10271,6 +10337,29 @@ if (e) {
           if (ok) ok.textContent = TXT(opts.ok || "confirm.ok");
           var cancel = $("confirmCancel");
           if (cancel) cancel.textContent = TXT(opts.cancel || "confirm.cancel");
+          /* Typed confirmation. Exact and case-sensitive on purpose: if the
+             instruction says RESET, then someone who cannot type RESET exactly
+             has not acknowledged what they are about to destroy. */
+          var wrap = $("confirmExpect");
+          if (wrap) {
+            if (opts.expect) {
+              wrap.hidden = false;
+              var lab = $("confirmExpectLabel");
+              if (lab) lab.textContent = TXT(opts.expectLabel || "confirm.typeToConfirm");
+              var hint = $("confirmExpectHint");
+              if (hint) hint.textContent = TXT("confirm.expectHint", { w: opts.expect });
+              var field = $("confirmExpectInput");
+              if (field) {
+                field.value = "";
+                if (ok) ok.disabled = true;
+              }
+            } else {
+              wrap.hidden = true;
+              /* Left disabled by a previous typed confirm, so it must be
+                 explicitly re-enabled every time the dialog opens. */
+              if (ok) ok.disabled = false;
+            }
+          }
           /* opts.altKey names a third action, which resolves the promise with
              the string "alt" instead of true. Existing callers test for truth,
              so they are unaffected: only the dialogs that ask for this branch
@@ -12575,6 +12664,11 @@ if (e) {
         });
         $("confirmAlt").addEventListener("click", function () {
           closeConfirm("alt");
+        });
+        $("confirmExpectInput").addEventListener("input", function () {
+          var want = confirmExpectWord;
+          var ok = $("confirmOk");
+          if (ok) ok.disabled = !want || this.value !== want;
         });
         $("confirmSheet").addEventListener("click", function (e) {
           if (e.target === this) closeConfirm(false);

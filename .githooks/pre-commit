@@ -1,0 +1,33 @@
+#!/bin/sh
+# Runs the full check before anything is committed.
+#
+# Enabled once per clone with:
+#   git config core.hooksPath .githooks
+#
+# The suites are fast (a couple of seconds) and they exist because several real
+# bugs got past a careful review: a translation key with no text, an id typo
+# that silently emptied a panel, and an encoding round trip that mangled every
+# non-ASCII character in the file.
+#
+# Bypass for a genuine emergency with: git commit --no-verify
+set -e
+
+echo "pre-commit: running checks…"
+npm run --silent check
+
+# The service worker only updates devices when its own file changes, so a
+# deploy that edits ev-tracker.html without bumping VERSION leaves phones on
+# the old build. That has happened more than once, so it is checked here.
+if git diff --cached --name-only | grep -q '^ev-tracker\.html$'; then
+  if git diff --cached --name-only | grep -q '^sw\.js$'; then
+    :
+  else
+    echo ""
+    echo "pre-commit: ev-tracker.html changed but sw.js did not."
+    echo "            Bump VERSION in sw.js, or phones stay on the old build."
+    echo "            Commit with --no-verify to override."
+    exit 1
+  fi
+fi
+
+echo "pre-commit: ok"

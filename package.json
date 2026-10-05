@@ -4,16 +4,20 @@
   "private": true,
   "description": "Personal portfolio site. The EV tracker is a dependency-free, single-file app; these scripts are developer tooling only and produce no build output.",
   "scripts": {
-    "check": "npm run test && npm run fmt:check && npm run lint:html && npm run lint:js",
-    "test": "node tools/test-roles.mjs && node tools/test-storage.mjs && node tools/test-bin.mjs && node tools/test-sync-status.mjs && node tools/test-location.mjs && node tools/test-i18n-markup.mjs",
+    "check": "npm test && npm run fmt:check && npm run lint:html && npm run lint:js",
+    "test": "npm run test:unit && npm run test:markup",
+    "test:unit": "node tools/test-roles.mjs && node tools/test-storage.mjs && node tools/test-bin.mjs && node tools/test-sync-status.mjs && node tools/test-location.mjs",
+    "test:markup": "node tools/test-dom.mjs && node tools/test-wiring.mjs && node tools/test-i18n-markup.mjs",
     "fmt": "prettier --write \"*.{json,md}\"",
     "fmt:check": "prettier --check \"*.{json,md}\"",
     "fmt:html": "prettier --write \"*.html\"",
     "lint:html": "html-validate \"*.html\"",
-    "lint:js": "node tools/check-inline-js.mjs"
+    "lint:js": "node tools/check-inline-js.mjs",
+    "verify": "npm run check && npm run fmt"
   },
   "devDependencies": {
     "html-validate": "^9.7.1",
+    "jsdom": "^30.1.2",
     "prettier": "^3.4.2"
   },
   "engines": {
