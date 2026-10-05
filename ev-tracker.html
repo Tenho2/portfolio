@@ -2136,6 +2136,9 @@
       </section>
 
       <section class="view" id="settings">
+        <!-- Shown only if a panel throws. Better a visible complaint about one
+             panel than a silently half-rendered view. -->
+        <p class="res bad" id="panelError" role="alert" hidden></p>
         <!-- Appearance and account. On a phone the header holds only the
              vehicle name and the theme toggle, so language, the signed-in
              account and signing out live here where there is room to show
@@ -2867,7 +2870,9 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                 maxlength="40"
                 required
                 aria-required="true"
+                aria-describedby="vfNameHint"
               />
+              <div class="hint" id="vfNameHint" data-i18n="set.vehNameHelp"></div>
             </div>
             <div class="f">
               <label for="vfOdo" data-i18n="as.initialOdo"></label
@@ -2879,13 +2884,11 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                 data-i18n-ph="ph.initialodo"
                 aria-describedby="vfOdoHint"
               />
+              <!-- Visible, not screen-reader only. It was sr-only, so on a phone
+                   the field was an empty box with no explanation of what it does. -->
+              <div class="hint" id="vfOdoHint" data-i18n="set.initialOdoHelp"></div>
             </div>
           </fieldset>
-          <div
-            class="f sr-only"
-            id="vfOdoHint"
-            data-i18n="set.initialOdoLead"
-          ></div>
           <div class="addrow" style="margin-top: 1.25rem">
             <button class="btn" type="submit" data-i18n="ed.save"></button>
             <button
@@ -3390,6 +3393,12 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "set.build": "Build",
             "set.sw": "SW",
             "set.swNone": "none (not installed)",
+            "set.vehNameHelp":
+              "The name you see in the app and in the vehicle list.",
+            "set.initialOdoHelp":
+              "Distance is measured from this reading. Leave it at 0 if you do not know it.",
+            "set.panelError":
+              "Part of this page failed to load. The rest still works.",
             "set.account": "Account",
             "set.accountOut":
               "Not signed in. Your data stays on this device until you sign in.",
@@ -3404,6 +3413,8 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "set.resetQ1":
               "Clear all data on this device and sign out of {u}? Anything saved only here, and not yet on the server, will be lost.",
             "set.resetQ2": "Type RESET to confirm",
+            "set.resetMismatch":
+              "That did not match. Nothing was deleted — type RESET exactly, in capitals.",
             "set.defTitle": "Location defaults",
             "set.defLead":
               "Pre-fill the charging location when you add a session. It only ever fills an empty field, so you can always type something else.",
@@ -4006,6 +4017,12 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "set.build": "Rakennus",
             "set.sw": "SW",
             "set.swNone": "ei (ei asennettu)",
+            "set.vehNameHelp":
+              "Nimi, jonka näet sovelluksessa ja ajoneuvoluettelossa.",
+            "set.initialOdoHelp":
+              "Matka lasketaan tästä lukemasta. Jätä arvoksi 0, jos et tiedä sitä.",
+            "set.panelError":
+              "Osa tästä sivusta ei latautunut. Muu toimii edelleen.",
             "set.account": "Tili",
             "set.accountOut":
               "Et ole kirjautuneena. Tietosi pysyvät tällä laitteella, kunnes kirjaudut sisään.",
@@ -4020,6 +4037,8 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "set.resetQ1":
               "Tyhjennetäänkö kaikki tämän laitteen tiedot ja kirjaudutaan ulos tilistä {u}? Mitään, mitä on vain tallennettu tänne eikä palvelimelle, menee hukkaan.",
             "set.resetQ2": "Kirjoita RESET vahvistukseksi",
+            "set.resetMismatch":
+              "Ei täsmännyt mitään. Mitään ei poistettu — kirjoita RESET täsmälleen, isoilla kirjaimilla.",
             "set.defTitle": "Sijaintien oletukset",
             "set.defLead":
               "Esitäytä latauspaikka, kun lisäät session. Se täyttää vain tyhjän kentän, joten voit aina kirjoittaa jotain muuta.",
@@ -4618,6 +4637,12 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "set.build": "Build",
             "set.sw": "SW",
             "set.swNone": "ingen (inte installerad)",
+            "set.vehNameHelp":
+              "Namnet du ser i appen och i fordonslistan.",
+            "set.initialOdoHelp":
+              "Distansen räknas från den här avläsningen. Lämna 0 om du inte vet.",
+            "set.panelError":
+              "Del av den här sidan kunde inte laddas. Resten fungerar fortfarande.",
             "set.account": "Konto",
             "set.accountOut":
               "Inte inloggad. Dina data stannar på den här enheten tills du loggar in.",
@@ -4632,6 +4657,8 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             "set.resetQ1":
               "Tömma all data på den här enheten och logga ut från {u}? Allt som bara finns här och inte på servern går förlorat.",
             "set.resetQ2": "Skriv RESET för att bekräfta",
+            "set.resetMismatch":
+              "Det stämde inte. Inget raderades — skriv RESET exakt, med versaler.",
             "set.defTitle": "Standardplatser",
             "set.defLead":
               "Fyller i laddplatsen när du lägger till en session. Den fyller bara ett tomt fält, så du kan alltid skriva något annat.",
@@ -8503,6 +8530,32 @@ if (e) {
           renderBody();
           refreshAriaNames();
         }
+        /**
+         * Run one panel's renderer, containing any failure to that panel.
+         *
+         * renderBody fills a dozen independent panels in one pass. Without this,
+         * a single throw anywhere in it silently skipped every panel after that
+         * point, which presents as "half the view has no text in it" with
+         * nothing in the console to explain it. A panel that fails is reported
+         * on screen instead, so the next occurrence is diagnosable.
+         *
+         * @param {string} name  which panel, for the message
+         * @param {Function} fn
+         */
+        function tryPanel(name, fn) {
+          try {
+            fn();
+          } catch (e) {
+            if (window.console && window.console.warn)
+              window.console.warn("[render] " + name + " panel failed", e);
+            var host = $("panelError");
+            if (host) {
+              host.hidden = false;
+              host.textContent =
+                TXT("set.panelError") + " (" + name + ": " + (e && e.message) + ")";
+            }
+          }
+        }
         function renderBody() {
           var v = veh();
           $("who").textContent =
@@ -8706,6 +8759,7 @@ if (e) {
           }
 
           var vs = "";
+          tryPanel("vehicles", function () {
           for (var k = 0; k < vehicles.length; k++) {
             var c2 = ofVehicle(vehicles[k].id).length;
             var mine = ownsVehicle(vehicles[k].id);
@@ -8772,17 +8826,20 @@ if (e) {
                 : "") +
               "</div>";
           }
+          });
           $("vehSettings").innerHTML = vs;
-          renderImportTarget();
-          renderBin();
+          /* Each of these is an independent panel. Contained separately so one
+             of them failing cannot leave the rest of the view blank. */
+          tryPanel("import", renderImportTarget);
+          tryPanel("bin", renderBin);
           if (view === "settings") {
-          renderBuildRow();
-          renderAccountPanel();
-        }
-          renderRedeemPanel();
-          syncCents();
-          renderFavs();
-          renderChart();
+            tryPanel("build", renderBuildRow);
+            tryPanel("account", renderAccountPanel);
+          }
+          tryPanel("redeem", renderRedeemPanel);
+          tryPanel("price", syncCents);
+          tryPanel("favourites", renderFavs);
+          tryPanel("chart", renderChart);
         }
 
         /**
@@ -9160,9 +9217,16 @@ if (e) {
           if (!yes) return false;
           /* Second gate. The confirmation names the account, so the second one
              asks for the word rather than another Yes. */
+          /* Exact match, deliberately case-sensitive. The instruction says
+             RESET, so RESET is the only thing accepted: someone who cannot
+             follow the instruction has not acknowledged what they are about to
+             destroy, and should not be able to do it. */
           var typed = window.prompt(TXT("set.resetQ2"));
           if (typed === null) return false;
-          if (String(typed).trim().toUpperCase() !== "RESET") return false;
+          if (typed !== "RESET") {
+            toast(TXT("set.resetMismatch"));
+            return false;
+          }
           var keys = [];
           try {
             for (var i = 0; i < localStorage.length; i++) {
