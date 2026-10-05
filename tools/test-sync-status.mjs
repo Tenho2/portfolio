@@ -41,8 +41,9 @@ const build = new Function(
     fnSource("stalledCount"),
     fnSource("classifyRefusal"),
     fnSource("unsyncedRows"),
+    fnSource("pushableVehicle"),
     `return {
-       unsyncedRows, stalledCount, classifyRefusal,
+       unsyncedRows, stalledCount, classifyRefusal, pushableVehicle,
        get vehicles() { return vehicles; },
        setOnline: function (v) { online = v; },
        seed: function (state) {
@@ -270,6 +271,26 @@ group("stalledCount spans both tables", () => {
     syncStalled: { vehicles: { a: "rejected" }, sessions: { b: "rejected", c: "rejected" } },
   });
   is("three", t.stalledCount(), 3);
+});
+
+group("a provisional default vehicle is not pushable", () => {
+  /* Every account gets a default "Vehicle 1", so the one this device invents at
+     load time is almost always already on the server under a different id. The
+     insert can only be refused with 42501, and the owner-stamp trigger does not
+     help because it stamps user_id, not id.
+
+     This is why a signed-in user who reset on desktop still saw "Vehicle 1
+     refused" on the phone: the phone had invented its own copy. */
+  const provisional = { id: "local-1", name: "Vehicle 1", provisional: true };
+  const real = { id: "server-1", name: "Vehicle 1", userId: "u1" };
+  const untagged = { id: "old-1", name: "Car" };
+
+  is("a provisional vehicle is not pushable", t.pushableVehicle(provisional), false);
+  is("a real vehicle is pushable", t.pushableVehicle(real), true);
+  /* Rows that predate the flag must keep working. A boolean check would fail
+     here, which would silently un-sync every existing account. */
+  is("a vehicle with no flag is pushable", t.pushableVehicle(untagged), true);
+  is("null is not pushable", t.pushableVehicle(null), false);
 });
 
 console.log(`\n${pass} passed, ${failures.length} failed`);

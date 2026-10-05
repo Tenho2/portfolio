@@ -26,6 +26,23 @@ const file = "ev-tracker.html";
 const raw = readFileSync(file);
 const src = raw.toString("utf8");
 
+/* The app is being split into classic scripts under app/. Discover them from
+   the markup rather than listing them here, so a new file is covered the
+     moment its <script src> tag is added and a deleted one stops being checked
+     the moment its tag goes. The ordering assertion further down is what makes
+   the split safe rather than merely tidy.
+
+   Only same-origin paths are read from disk. Chart.js, Leaflet and the Supabase
+   client come from a CDN and are asserted separately to be absolute URLs. */
+const ALL_SCRIPT_SRC = [...src.matchAll(/<script[^>]*\ssrc="([^"]+)"/g)].map(
+  (m) => m[1],
+);
+const isRemote = (s) => /^(https?:)?\/\//i.test(s);
+const APP_SCRIPTS = ALL_SCRIPT_SRC.filter((s) => !isRemote(s));
+const REMOTE_SCRIPTS = ALL_SCRIPT_SRC.filter(isRemote);
+const readAppScripts = () =>
+  APP_SCRIPTS.map((name) => ({ name, text: readFileSync(name, "utf8") }));
+
 let pass = 0;
 const failures = [];
 function is(label, actual, expected) {
@@ -70,13 +87,25 @@ group("non-English text survived", () => {
     ["Quotes", "“{q}”"],
     ["Quotes", "“Add session”"],
   ];
-  for (const [lang, s] of samples) is(`${lang}: ${s}`, src.includes(s), true);
+  /* Checked across every file that ships as part of the page, not just the
+     HTML. The i18n module moved to app/i18n.js, and a check that only read
+     ev-tracker.html reported all twelve samples missing — which looked like
+     catastrophic data loss and was really just the text having moved. */
+  const files = readAppScripts();
+  is(`the page loads ${files.length} external script(s)`, files.length > 0, true);
+  for (const [lang, s] of samples) {
+    const where = files.find((f) => f.text.includes(s));
+    is(`${lang}: ${s}`, where ? where.name : "missing from every shipped file",
+      where ? where.name : "missing from every shipped file");
+  }
 });
 
 group("line endings are consistent", () => {
-  const crlf = (src.match(/\r\n/g) || []).length;
-  const bareLf = (src.match(/(?<!\r)\n/g) || []).length;
-  is(`no mixed endings (crlf=${crlf}, bare lf=${bareLf})`, bareLf, 0);
+  for (const name of [file, ...APP_SCRIPTS]) {
+    const text = readFileSync(name, "utf8");
+    const bareLf = (text.match(/(?<!\r)\n/g) || []).length;
+    is(`no mixed endings in ${name} (bare lf=${bareLf})`, bareLf, 0);
+  }
 });
 
 /* ------------------------------------------------------------------ */
@@ -117,40 +146,69 @@ group("no id is used twice", () => {
 
 group("the app module does not reach into the i18n module's scope", () => {
   /* Two bugs came from this: `lang is not defined` and, before it, `LANGS is
-     not defined`. Both are variables declared inside the i18n module's IIFE,
-     which the application script cannot see. They surface as a thrown
-     ReferenceError that blanks a panel rather than as a build error, so they
-     are worth asserting on directly. */
-  const i18nEnd = src.indexOf("window.EV_I18N =");
-  is("the i18n module boundary was found", i18nEnd > 0, true);
-  if (i18nEnd < 0) return;
+     not defined`. Both were variables declared inside the i18n IIFE, which the
+     application script could not see. They surface as a thrown ReferenceError
+     that blanks a panel rather than as a build error.
 
-  /* Everything after the i18n module is the application script. */
-  const app = src.slice(src.indexOf("<script>", i18nEnd));
-  /* Only names that are long enough to be unambiguous. Single letters like the
-     i18n module's `t` and `D` are useless here: they match ordinary local names
-     and string fragments throughout the app. */
+     Since the i18n module moved to app/i18n.js the two are in separate files,
+     so the boundary is now enforced by the file system. This test still earns
+     its place: it also catches the app script trying to load i18n in the wrong
+     order, and it keeps the private names listed below honest as the file is
+     edited. It should pass trivially. */
+  const i18n = readFileSync("app/i18n.js", "utf8");
+
+  /* Only names long enough to be unambiguous. Single letters like the i18n
+     module's `t` and `D` are useless here: they match ordinary local names and
+     string fragments throughout the app. */
   const privateNames = ["LANGS", "ORDER", "lang"];
-  const before = failures.length;
+
+  /* The private must exist in the i18n file, or this check is guarding a name
+     that no longer exists and would pass for the wrong reason. */
+  const declared = [];
+  for (const name of privateNames) {
+    if (new RegExp(`(?:var|function)\\s+${name}\\b`).test(i18n)) declared.push(name);
+  }
+  is(
+    `every guarded name is still private to app/i18n.js (${declared.length}/${privateNames.length})`,
+    declared.length,
+    privateNames.length,
+  );
+
+  /* The app script must not reference any of them. */
+  const appStart = src.indexOf("<script>");
+  is("the app script block was found", appStart > 0, true);
+  if (appStart < 0) return;
+  const app = src.slice(appStart);
+  let caught = 0;
   for (const name of privateNames) {
     /* A bare reference, not a property access or an object key. */
     const re = new RegExp(`(?<![.\\w"'])${name}\\b`, "g");
-    const hits = [...app.matchAll(re)];
-    for (const h of hits) {
+    for (const h of app.matchAll(re)) {
+      caught++;
       const line = app.slice(0, h.index).split("\n").length;
-      /* Inside the test file's own extraction helpers is fine; this is the
-         page, so anything here is a genuine reference. */
       fail(
-        `"${name}" is not visible to the app script`,
-        `referenced around app line ${line}`,
+        `"${name}" is private to app/i18n.js`,
+        `the app script references it around ev-tracker.html line ${appStart + line}`,
       );
     }
   }
-  if (failures.length === before) pass++;
-  else
-    failures.push(
-      `${failures.length - before} out-of-scope reference(s); see above`,
-    );
+  is(`no out-of-scope references in the app script (${caught} found)`, caught, 0);
+
+  /* And the app must load the i18n script before itself, or EV_I18N is
+     undefined at boot and every translated label is empty. */
+  const i18nTag = src.indexOf('src="app/i18n.js"');
+  is("the page loads app/i18n.js", i18nTag > 0, true);
+  is("app/i18n.js loads before the app script", i18nTag > 0 && i18nTag < appStart, true);
+
+  /* Every script the page pulls in must resolve: local paths must exist on
+     disk, and remote ones must be absolute URLs so they cannot silently become
+     a broken relative path. */
+  const missingFiles = APP_SCRIPTS.filter((s) => !existsSync(s));
+  is(`every local script exists (${missingFiles.length} missing)`, missingFiles.length, 0);
+  for (const s of missingFiles) fail("script tag points at a file that is not there", s);
+  is(`every remote script uses an absolute URL (${REMOTE_SCRIPTS.length})`,
+    REMOTE_SCRIPTS.filter((s) => /^https?:\/\//i.test(s)).length,
+    REMOTE_SCRIPTS.length);
 });
 
 group("the service worker precache list only names files that exist", () => {

@@ -46,15 +46,24 @@ const dom = new JSDOM(html, { runScripts: "outside-only", pretendToBeVisual: tru
 const { window } = dom;
 const { document } = window;
 
-/* The i18n module is a self-contained IIFE, so it can be run on its own with
-   the handful of globals it touches. It is the component that fills every
-   data-i18n attribute, so running it is the whole point of the test. */
-const i18nSrc = [...document.querySelectorAll("script:not([src])")]
-  .map((s) => s.textContent)
-  .find((s) => s.includes("window.EV_I18N"));
-
-if (!i18nSrc) {
-  console.error("Could not find the i18n module in ev-tracker.html");
+/* The i18n module now lives in app/i18n.js as a classic script. jsdom is
+   created with runScripts:"outside-only" and no resource loader, so nothing
+   fetches external files; read it and run it the same way a browser would run
+   the tag in ev-tracker.html. If the tag is missing or points somewhere else,
+   this must fail loudly rather than silently testing a stale copy. */
+const i18nTag = document.querySelector('script[src*="i18n"]');
+if (!i18nTag) {
+  console.error("ev-tracker.html does not load the i18n module");
+  process.exit(1);
+}
+const i18nPath = i18nTag.getAttribute("src");
+if (i18nPath !== "app/i18n.js") {
+  console.error(`Expected the i18n tag to load app/i18n.js, found ${i18nPath}`);
+  process.exit(1);
+}
+const i18nSrc = readFileSync(i18nPath, "utf8");
+if (!i18nSrc.includes("window.EV_I18N =")) {
+  console.error(`${i18nPath} does not define window.EV_I18N`);
   process.exit(1);
 }
 

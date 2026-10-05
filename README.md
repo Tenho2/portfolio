@@ -56,6 +56,13 @@ the live arrays, and no row may be lost in the process.
 Discard, because discarding it would delete real data to fix a permission
 that resolves on its own.
 
+Also covers `pushableVehicle`. Every account gets a default vehicle, so the one
+a device invents at load time collides with the row already on the server and
+its insert is refused with `42501`. A device-created vehicle is therefore marked
+provisional and never pushed until a pull confirms the account is genuinely
+empty. Rows saved before the flag existed have no property at all, so the check
+tests for the flag's absence rather than `=== false`.
+
 `tools/test-location.mjs`
 : Distance maths and the GPS accuracy gate.
 
@@ -71,6 +78,11 @@ that resolves on its own.
 : precache list names files that exist, and the app script never references a
 : private of the i18n module — the cause of the `lang` and `LANGS` bugs.
 
+Since the page was split it also discovers every `<script src>` from the
+markup and checks each one: that the file exists, that it is loaded before
+the application script, and that remote ones are absolute URLs. Adding a file
+to the page therefore brings it under test automatically.
+
 `tools/test-i18n-markup.mjs`
 : Every `data-i18n*` key in the markup has English text. A missing one renders
 : as a blank element with no error anywhere.
@@ -81,16 +93,30 @@ that resolves on its own.
 
 ### A note on file size
 
-`ev-tracker.html` is about 12,800 lines: ~1,500 CSS, ~1,900 i18n data and
-~9,400 application logic. At 119 KB gzipped it is small for a page with no
-framework, and the single file is a deliberate property — it works offline,
-from `file://`, with no waterfall.
+`ev-tracker.html` started as one 12,800-line file: ~1,500 CSS, ~1,900 i18n data
+and ~9,400 application logic, all sharing one lexical scope. The size was never
+the problem — 119 KB gzipped is small. The problem was that nothing enforced
+the boundary between modules, which is how `LANGS is not defined` and then
+`lang is not defined` both reached production as blank panels.
 
-The cost is scope, not size: 9,400 lines share one lexical scope, and nothing
-enforces the boundary between modules. The test suite above detects the
-resulting mistakes. Eliminating the class properly means extracting the i18n
-data first, then splitting the app into real ES modules, where a cross-module
-reference becomes a load-time error instead of a runtime one.
+The page is now being split into classic scripts under `app/`:
+
+| File              | Lines  | Contents                            |
+| ----------------- | ------ | ----------------------------------- |
+| `ev-tracker.html` | 10,700 | markup, CSS, application script     |
+| `app/i18n.js`     | 2,100  | translations for all four languages |
+
+Classic `<script src>` rather than ES modules on purpose: it keeps the page
+working from `file://` with no build step, and each file gets its own scope, so
+the i18n module's privates are unreachable from the application script rather
+than merely untested. `tools/test-wiring.mjs` asserts the load order, since
+loading it after the app would leave `EV_I18N` undefined at boot and every
+translated label blank.
+
+Remaining slices: sync and storage, then the UI. Each is verified by the suite
+above before the next one starts. The upgrade to `type="module"` — which would
+turn a cross-module reference into a load-time error instead of a separate
+scope — is a separate change and needs `file://` to stop working.
 
 ## Database
 
@@ -136,7 +162,7 @@ makes the worker fetch a fresh shell. Skipping this is what leaves phones on an
 old build: the worker only re-runs when its own file changes.
 
 Check which build a device is on under **Settings → Data**. The stamp reads
-`Build 2.10.2026 · SW v12`; the SW half is the one that goes stale.
+`Build 2.10.2026 · SW v14`; the SW half is the one that goes stale.
 
 ### Resetting a device
 

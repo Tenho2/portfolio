@@ -25,15 +25,16 @@
  * because a navigation is network-first; an installed PWA launched from the
  * home screen can come straight out of the cache without any request at all.
  *
- * Last bumped: 2026-10-02, for the settings crash fix, the in-dialog typed
- * confirmation, and refusing to write vehicles the account does not own.
+ * Last bumped: 2026-10-02, for the i18n module moving to app/i18n.js, and for
+ * the device-created default vehicle no longer being pushed to the server.
  */
-const VERSION = "v13";
+const VERSION = "v14";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [
   "./",
   "./ev-tracker.html",
+  "./app/i18n.js",
   "./manifest.json",
   "./icons/icon.svg",
   "./icons/icon-maskable.svg",
