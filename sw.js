@@ -25,11 +25,10 @@
  * because a navigation is network-first; an installed PWA launched from the
  * home screen can come straight out of the cache without any request at all.
  *
- * Last bumped: 2026-10-05, for pushing a device-created vehicle with a plain
- * insert instead of an upsert, plus restored vehicles keeping their owner and
- * spacing between a button icon and its label.
+ * Last bumped: 2026-10-05, for finding a binned vehicle through the bin as well
+ * as the live list, so binning survives the next sync.
  */
-const VERSION = "v19";
+const VERSION = "v20";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [

@@ -80,6 +80,7 @@ const build = new Function(
   "shares",
   "vehById",
   "ownerId",
+  "vehicleAnywhere",
   [
     constSource("ROLE_RANK"),
     ...NAMES.map(fnSource),
@@ -91,6 +92,10 @@ const api = build(
   SHARES,
   (id) => VEHICLES[id] || null,
   () => ME,
+  /* mayWriteVehicle resolves a row through vehicleAnywhere, so a binned vehicle
+     is still found after doRemoveVehicle has moved it out of the live array.
+     VEHICLES is flat here, so the same lookup serves both. */
+  (id) => VEHICLES[id] || null,
 );
 
 let pass = 0;

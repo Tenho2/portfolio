@@ -4669,12 +4669,26 @@ function rowVehicle(r) {
             server. A local-only vehicle has no userId yet and was made here,
             so it counts as theirs; a pending placeholder does not, because the
             insert policy would reject it on every pull. */
-        function mayWriteVehicle(vehicleId) {
-          var v = vehById(vehicleId);
-          if (!v) return false;
-          if (!v.userId) return true;
-          return ownsVehicle(vehicleId) || canEditVehicle(vehicleId);
-        }
+          function mayWriteVehicle(vehicleId) {
+            /* Anywhere, NOT only the live array.
+               doRemoveVehicle moves the row into the bin before pushing it, so a
+               lookup restricted to `vehicles` returned null for exactly the row
+               that needed writing. syncVehicle then read that as "this belongs to
+               somebody else", skipped the push and cleared the dirty flag, so the
+               server never learned the car was binned and the next pull brought
+               it straight back into the list. Binning appeared to work until the
+               next sync, which is why it looked intermittent.
+               vehicleAnywhere() exists for this: it checks live rows first and
+               then the bin. */
+            var v = vehicleAnywhere(vehicleId);
+            if (!v) return false;
+            /* Checked against the row itself rather than through ownsVehicle(),
+               which also looks only at the live array and would say no for the
+               same reason. A binned row still has exactly one owner. */
+            if (!v.userId) return true;
+            if (ownerId() && v.userId === ownerId()) return true;
+            return canEditVehicle(vehicleId);
+          }
         /* ---------- owner decisions ---------- */
         /**
          * Accept or reject a request.
