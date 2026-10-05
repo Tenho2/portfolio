@@ -3010,6 +3010,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
     </div>
 
     <script src="app/i18n.js"></script>
+    <script src="app/storage.js"></script>
     <script>
       (function () {
         "use strict";
@@ -3025,118 +3026,35 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
            offline survives a sign-out instead of being thrown away.
            Theme and language stay global: those are device preferences, not
            account data. */
-        var K_THEME = "theme";
+        /* ---------- storage ----------
+           Key naming, per-account bucket selection and the one-off move of
+           pre-scoped leftovers all live in app/storage.js. This module is
+           reachable only through window.EV_STORAGE.
+
+           The original explanation is kept here because it explains why the
+           module exists at all:
+
+           Keys are per account, never global. One shared set meant that signing
+           out of one account and into another carried the first account's
+           vehicles, sessions and favourites straight into the new one. They then
+           appeared labelled "shared vehicle", the sharing panel answered "you
+           are not the owner", and every pull tried to push rows the new account
+           was never allowed to write, which failed, retried, and left the sync
+           badge up.
+
+           "local" is the bucket used while nobody is signed in, so work done
+           offline survives a sign-out instead of being thrown away. Theme and
+           language stay global: those are device preferences, not account data. */
+        var STORAGE = window.EV_STORAGE;
+        /* A local alias, refreshed whenever the bucket changes. Cheaper than a
+           property lookup on every save, and refreshAccount() is the only place
+           that can move it. */
+        var K = STORAGE.current();
         var K_LANG = "ev.v1.lang";
-        function keysFor(userId) {
-          var pre = userId ? "ev.v1." + userId + "." : "ev.v1.local.";
-          return {
-            v: pre + "vehicles",
-            s: pre + "sessions",
-            /* The bin is stored under its own keys rather than inside the live
-               ones, so nothing that already reads vehicles/sessions has to
-               learn about it. */
-            bv: pre + "binVehicles",
-            bs: pre + "binSessions",
-            p: pre + "price",
-            /* Location defaults: which favourite to prefill, after what hour,
-               and whether to use device position. */
-            df: pre + "locDefaults",
-            f: pre + "favs",
-            /* usernames of people we invited, keyed by vehicle and user id.
-               The share table only stores ids, so this is what lets the owner
-               recognise "Anna" instead of a bare uuid. */
-            n: pre + "shareNames",
-            t: K_THEME,
-          };
-        }
-        var K = keysFor(null);
-        /* Keys from before storage was scoped per account. Everything written
-           before that landed in one global bucket for every account, which is
-           what let one account's vehicles appear under another. They are read
-           once and moved somewhere sensible, then left alone. */
-        var K_OLD = {
-          v: "ev.v1.vehicles",
-          s: "ev.v1.sessions",
-          f: "ev.v1.favs",
-          p: "ev.v1.price",
-          n: "ev.v1.shareNames",
-        };
-        var K_MIGRATED = "ev.v1.migratedToAccounts";
-        /**
-         * Move any leftover pre-scoped data into the signed-out local bucket.
-         *
-         * It deliberately does NOT guess an owner. That bucket could hold rows
-         * belonging to several different accounts, which is precisely the bug it
-         * came from, and quietly handing the lot to whoever signs in next would
-         * be the same mistake wearing a different hat. So it lands in "local",
-         * where it is visible when signed out and never claimed by an account
-         * that did not create it. Signed-in users get their data from the
-         * server, which is where it has been all along.
-         *
-         * Runs once, guarded by a flag, and never throws.
-         */
-        function migrateLegacyStorage() {
-          try {
-            if (localStorage.getItem(K_MIGRATED)) return;
-            var moved = 0;
-            /* Only adopt a slot if its new home is still empty, so this can
-               never overwrite real per-account data. */
-            function adopt(oldKey, newKey) {
-              var raw = localStorage.getItem(oldKey);
-              if (raw === null) return;
-              var existing = localStorage.getItem(newKey);
-              if (existing !== null && existing !== "[]" && existing !== "") return;
-              try {
-                var parsed = JSON.parse(raw);
-                if (!Array.isArray(parsed) || !parsed.length) return;
-                localStorage.setItem(newKey, raw);
-                moved++;
-              } catch (e) {
-                /* unparseable leftovers are left where they are */
-              }
-            }
-            adopt(K_OLD.v, keysFor(null).v);
-            adopt(K_OLD.s, keysFor(null).s);
-            adopt(K_OLD.f, keysFor(null).f);
-            var oldPrice = localStorage.getItem(K_OLD.p);
-            if (oldPrice !== null && localStorage.getItem(keysFor(null).p) === null) {
-              localStorage.setItem(keysFor(null).p, oldPrice);
-              moved++;
-            }
-            var oldNames = localStorage.getItem(K_OLD.n);
-            if (oldNames !== null && localStorage.getItem(keysFor(null).n) === null) {
-              localStorage.setItem(keysFor(null).n, oldNames);
-              moved++;
-            }
-            localStorage.setItem(K_MIGRATED, String(Date.now()));
-            if (moved) {
-              /* Say so rather than letting the data quietly reappear as a
-                 signed-out mystery. Anything that WAS synced is already coming
-                 back from the server; this is only what never made it up. */
-              if (window.console && window.console.info)
-                window.console.info(
-                  "[storage] moved " +
-                    moved +
-                    " pre-scoped slot(s) into the signed-out bucket",
-                );
-              try {
-                toast(TXT("toast.legacyMoved", { n: moved }));
-              } catch (e) {}
-            }
-          } catch (e) {
-            /* A migration failure must never stop the app booting. */
-          }
-        }
-        /**
-         * Point storage at one account's bucket. Must run before load().
-         * @param {?string} userId
-         * @returns {boolean} true when the bucket actually changed
-         */
         function useAccount(userId) {
-          var next = keysFor(userId);
-          var changed = next.v !== K.v;
-          K = next;
-          return changed;
+          var r = STORAGE.useAccount(userId);
+          K = r.keys;
+          return r.changed;
         }
         var $ = function (id) {
           return document.getElementById(id);
@@ -3927,6 +3845,63 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           delete pushAttempts[kind + ":" + id];
         }
         /**
+         * Ask the server who it thinks we are, after a policy refusal.
+         *
+         * A 42501 cannot be fixed by resending the same row. Either the token
+         * has expired, in which case nothing this device holds is any use, or
+         * the row really is not ours, in which case the refusal is correct and
+         * the only honest thing to do is leave the row alone.
+         *
+         * Nothing is retried here. Retrying is what turned one dead session into
+         * an endless loop of identical refusals.
+         *
+         * @param {string} what  short description for the console
+         * @param {Object} [err] the PostgREST error, for the console
+         */
+        function confirmSessionAlive(what, err) {
+          if (!authClient) return Promise.resolve(null);
+          return authClient.auth.getUser().then(
+            function (r) {
+              var real = r && r.data && r.data.user;
+              if (real) {
+                /* The token is good, so this is a genuine permission problem
+                   about the row rather than about us. */
+                if (window.console && window.console.warn)
+                  window.console.warn(
+                    "[sync] " +
+                      what +
+                      " refused by RLS while signed in as " +
+                      real.id +
+                      ": the session is valid, so the row itself is not yours. " +
+                      describeServerError(err),
+                  );
+                return real;
+              }
+              if (window.console && window.console.warn)
+                window.console.warn(
+                  "[sync] " +
+                    what +
+                    " refused and getUser() found no signed-in user: the access " +
+                    "token has expired, so auth.uid() is NULL server-side and no " +
+                    "insert policy can ever be satisfied. " +
+                    describeServerError(err),
+                );
+              return expireSession();
+            },
+            function () {
+              /* Offline, so the check could not run. That is not evidence either
+                 way and must not be mistaken for a dead session. */
+              if (window.console && window.console.info)
+                window.console.info(
+                  "[sync] could not check the session while offline; leaving " +
+                    what +
+                    " queued",
+                );
+              return null;
+            },
+          );
+        }
+        /**
          * Record a failed push: keep it queued while it might still succeed,
          * then give up on it so it cannot slow every future sync.
          *
@@ -3942,6 +3917,26 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
          * @param {Object} [err] the error PostgREST returned
          */
         function failPush(kind, id, what, err) {
+          /* A 42501 is ambiguous from here, and the two causes need opposite
+             responses, so it is resolved before anything else happens.
+
+             "vehicles insertable by owner" checks user_id = auth.uid(). If the
+             access token has expired, auth.uid() is NULL rather than wrong, the
+             check can never be satisfied, and every single write fails with this
+             same error. 06-owner-stamp.sql cannot rescue it either: its trigger
+             deliberately skips the stamp when auth.uid() IS NULL, because it must
+             not guess an owner for a row inserted on purpose.
+
+             So 42501 on an insert means one of exactly two things:
+
+               1. the session is dead, and the fix is to sign in again, or
+               2. the session is fine and this row genuinely is not ours.
+
+             The app can tell them apart, because only the first makes the token
+             unusable. Asking the server who we are is one request, and it turns
+             an unactionable "the server will not accept this row" into a
+             sentence the user can act on. */
+          if (classifyRefusal(err) === "wrong") confirmSessionAlive(what, err);
           if (bumpAttempt(kind, id) < MAX_PUSH_ATTEMPTS) {
             markDirty(kind, id);
             syncFail(what);
@@ -7238,7 +7233,7 @@ vehicles = splitBinned(
               /* Everything this app owns, for any account, plus the pre-scoped
                  leftovers. Theme and language are device preferences and are
                  deliberately kept. */
-              if (k && k.indexOf("ev.") === 0 && k !== K_THEME && k !== K_LANG)
+              if (k && k.indexOf("ev.") === 0 && k !== STORAGE.theme && k !== K_LANG)
                 keys.push(k);
             }
             for (var j = 0; j < keys.length; j++) localStorage.removeItem(keys[j]);
@@ -9807,6 +9802,11 @@ vehicles = splitBinned(
           v.name = n;
           v.initialOdometer =
             $("vfOdo").value === "" ? 0 : Math.max(0, num($("vfOdo").value));
+          /* Renaming the placeholder makes it real. Without this, syncPull still
+             treats the row as a guess and discards it on the next pull, which is
+             how renaming the default vehicle appeared to work for a moment and
+             then made it vanish. */
+          v.provisional = false;
           save();
           closeVeh();
           render();
@@ -10689,8 +10689,20 @@ vehicles = splitBinned(
           document.body.classList.add("dark");
           setThemeIcon("🌙");
         }
-        /* Before the first read, so the signed-out bucket is already whole. */
-        migrateLegacyStorage();
+        /* Before the first read, so the signed-out bucket is already whole. The
+           module reports how many slots it moved rather than showing a toast
+           itself, which keeps it free of any dependency on the interface. */
+        STORAGE.migrateLegacyStorage(function (n) {
+          if (window.console && window.console.info)
+            window.console.info(
+              "[storage] moved " +
+                n +
+                " pre-scoped slot(s) into the signed-out bucket",
+            );
+          try {
+            toast(TXT("toast.legacyMoved", { n: n }));
+          } catch (e) {}
+        });
         load();
         loadFavs();
         loadLocDefaults();

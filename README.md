@@ -103,20 +103,27 @@ The page is now being split into classic scripts under `app/`:
 
 | File              | Lines  | Contents                            |
 | ----------------- | ------ | ----------------------------------- |
-| `ev-tracker.html` | 10,700 | markup, CSS, application script     |
+| `ev-tracker.html` | 10,600 | markup, CSS, application script     |
 | `app/i18n.js`     | 2,100  | translations for all four languages |
+| `app/storage.js`  | 160    | per-account local storage keys      |
 
 Classic `<script src>` rather than ES modules on purpose: it keeps the page
 working from `file://` with no build step, and each file gets its own scope, so
 the i18n module's privates are unreachable from the application script rather
 than merely untested. `tools/test-wiring.mjs` asserts the load order, since
-loading it after the app would leave `EV_I18N` undefined at boot and every
-translated label blank.
+loading a module after the app would leave its global undefined at boot, and it
+now covers every `<script src>` the markup lists rather than a hard-coded pair.
 
-Remaining slices: sync and storage, then the UI. Each is verified by the suite
-above before the next one starts. The upgrade to `type="module"` — which would
-turn a cross-module reference into a load-time error instead of a separate
-scope — is a separate change and needs `file://` to stop working.
+`app/storage.js` owns key naming and bucket selection only. It never touches the
+vehicles or sessions arrays and never renders anything, which is what keeps the
+boundary real — there is no state in it to reach back into. Its tests run the
+real file in a sandbox with a fake `localStorage`, rather than re-assembling
+functions out of the HTML, so the module's own wiring is exercised too.
+
+Remaining slices: sync, then the UI. Each is verified by the suite above before
+the next one starts. The upgrade to `type="module"` — which would turn a
+cross-module reference into a load-time error instead of a separate scope — is a
+separate change and needs `file://` to stop working.
 
 ## Database
 

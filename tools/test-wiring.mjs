@@ -144,18 +144,19 @@ group("no id is used twice", () => {
   for (const d of [...new Set(dupes)].slice(0, 10)) fail("duplicate id", d);
 });
 
-group("the app module does not reach into the i18n module's scope", () => {
+group("the app module reaches other modules only through their public interface", () => {
   /* Two bugs came from this: `lang is not defined` and, before it, `LANGS is
      not defined`. Both were variables declared inside the i18n IIFE, which the
      application script could not see. They surface as a thrown ReferenceError
      that blanks a panel rather than as a build error.
 
-     Since the i18n module moved to app/i18n.js the two are in separate files,
-     so the boundary is now enforced by the file system. This test still earns
-     its place: it also catches the app script trying to load i18n in the wrong
-     order, and it keeps the private names listed below honest as the file is
-     edited. It should pass trivially. */
+     Since the page was split the two are in separate files, so the boundary is
+     enforced by the file system. This test still earns its place: it keeps the
+     private names listed below honest as those files are edited, and it catches
+     the application script loading a module in the wrong order or reaching for
+     a private instead of the published object. It should pass trivially. */
   const i18n = readFileSync("app/i18n.js", "utf8");
+  const storage = readFileSync("app/storage.js", "utf8");
 
   /* Only names long enough to be unambiguous. Single letters like the i18n
      module's `t` and `D` are useless here: they match ordinary local names and
@@ -174,31 +175,71 @@ group("the app module does not reach into the i18n module's scope", () => {
     privateNames.length,
   );
 
-  /* The app script must not reference any of them. */
+  /* Storage privates, which is the same mistake waiting to happen in the other
+     module. K_OLD and K_MIGRATED exist only inside app/storage.js. */
+  const storagePrivates = ["K_OLD", "K_MIGRATED", "K_THEME", "current"];
+  const declaredStorage = storagePrivates.filter((name) =>
+    new RegExp(`(?:var|function)\\s+${name}\\b`).test(storage),
+  );
+  is(
+    `every storage private is still declared (${declaredStorage.length}/${storagePrivates.length})`,
+    declaredStorage.length,
+    storagePrivates.length,
+  );
+
+  /* The app script must not reference any private of either module. */
   const appStart = src.indexOf("<script>");
   is("the app script block was found", appStart > 0, true);
   if (appStart < 0) return;
   const app = src.slice(appStart);
   let caught = 0;
-  for (const name of privateNames) {
+  for (const [name, owner] of [
+    ...privateNames.map((n) => [n, "app/i18n.js"]),
+    ...storagePrivates.map((n) => [n, "app/storage.js"]),
+  ]) {
+    /* A bare reference, not a property access or an object key. `current` is
+       excluded from the bare-name sweep below because it is an ordinary English
+       word that appears in comments and strings; only its call form is
+       meaningful. */
+    if (name === "current") continue;
     /* A bare reference, not a property access or an object key. */
     const re = new RegExp(`(?<![.\\w"'])${name}\\b`, "g");
     for (const h of app.matchAll(re)) {
       caught++;
       const line = app.slice(0, h.index).split("\n").length;
       fail(
-        `"${name}" is private to app/i18n.js`,
+        `"${name}" is private to ${owner}`,
         `the app script references it around ev-tracker.html line ${appStart + line}`,
       );
     }
   }
   is(`no out-of-scope references in the app script (${caught} found)`, caught, 0);
 
-  /* And the app must load the i18n script before itself, or EV_I18N is
-     undefined at boot and every translated label is empty. */
-  const i18nTag = src.indexOf('src="app/i18n.js"');
-  is("the page loads app/i18n.js", i18nTag > 0, true);
-  is("app/i18n.js loads before the app script", i18nTag > 0 && i18nTag < appStart, true);
+  /* And the app must load every module before itself, or the published object
+     is undefined at boot: EV_I18N leaves every translated label blank, and
+     EV_STORAGE means nothing can be read from or written to disk. */
+  for (const mod of APP_SCRIPTS) {
+    const tag = src.indexOf(`src="${mod}"`);
+    is(`the page loads ${mod}`, tag > 0, true);
+    is(`${mod} loads before the app script`, tag > 0 && tag < appStart, true);
+  }
+  /* The app must not read a module before its tag has appeared. */
+  const firstUse = Math.min(
+    ...APP_SCRIPTS.map((m) => {
+      const i = src.indexOf(m);
+      return i < 0 ? Infinity : i;
+    }),
+  );
+  is("every module tag precedes its first use", firstUse < appStart, true);
+
+  /* Each module must actually publish the global the page expects, or the app
+     script throws on its very first line. */
+  for (const [mod, global] of [
+    ["app/i18n.js", "window.EV_I18N"],
+    ["app/storage.js", "window.EV_STORAGE"],
+  ]) {
+    is(`${mod} publishes ${global}`, readFileSync(mod, "utf8").includes(global), true);
+  }
 
   /* Every script the page pulls in must resolve: local paths must exist on
      disk, and remote ones must be absolute URLs so they cannot silently become
