@@ -110,6 +110,54 @@ for (const m of src.matchAll(/\bTXT\(\s*"([^"${]+)"(?!\s*\+)/g)) {
 
 const codeMissing = [...usedInCode.keys()].filter((k) => !defined.has(k)).sort();
 
+/* ------------------------------------------------------------------
+ * fi and sv must be complete. se is deliberately partial and falls back.
+ *
+ * A missing key renders as the English text at runtime with no error anywhere,
+ * which is how the sign-out confirmation ended up in English inside an
+ * otherwise Finnish flow — the one dialog that names the account, to guard
+ * against signing out of the wrong one.
+ * ------------------------------------------------------------------ */
+const required = ["fi", "sv"];
+
+/* Both key forms are used in this file: most are quoted, a handful are not
+   (db:, foot:). The first version of this check only read quoted keys, so it
+   reported those as missing translations when they were present and correct. */
+function keysIn(start, end) {
+  const body = dict.slice(start, end);
+  const keys = new Set(
+    [...body.matchAll(/"([A-Za-z0-9_.]+)":/g)].map((m) => m[1]),
+  );
+  for (const m of body.matchAll(/^[ \t]{6}([A-Za-z0-9_.]+)\s*:/gm)) {
+    keys.add(m[1]);
+  }
+  return keys;
+}
+
+const enKeys = keysIn(langStart.find((m) => m[2] === "en").index, langStart[1].index);
+
+const incomplete = required.filter((L) => {
+  const start = langStart.find((m) => m[2] === L);
+  if (!start) return true;
+  const others = langStart
+    .filter((m) => m[2] !== L && m[0] > start[0])
+    .map((m) => m.index);
+  const end = others.length ? Math.min(...others) : dict.length;
+  const keys = keysIn(start.index, end);
+  const missing = [...enKeys].filter((k) => !keys.has(k));
+  if (missing.length)
+    console.error(`  ${L} is missing ${missing.length}: ${missing.slice(0, 12).join(", ")}`);
+  return missing.length > 0;
+});
+
+if (incomplete.length) {
+  console.error(
+    `\n${incomplete.join(", ")} must translate every key; missing entries fall back to English`,
+  );
+  process.exit(1);
+}
+console.log(`fi and sv are complete (${required.join(", ")}).`);
+
 console.log(
   `TXT() keys used: ${usedInCode.size} | computed (not checked): ${dynamicCodePrefixes.size}`,
 );

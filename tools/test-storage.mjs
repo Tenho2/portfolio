@@ -73,7 +73,10 @@ function loadModule(localStorage) {
 
 const A = "aaaaaaaa-1111-1111-1111-111111111111";
 const B = "bbbbbbbb-2222-2222-2222-222222222222";
-const SLOTS = ["v", "s", "p", "f", "n"];
+/* Every per-account slot, including the bin keys and the favourites bin. The
+   bin slots were left out originally, which is why a binned vehicle could be
+   lost and a binned favourite had no key to be stored under at all. */
+const SLOTS = ["v", "s", "p", "f", "n", "bv", "bs", "bf", "df"];
 
 group("the module publishes the interface the page uses", () => {
   const S = loadModule(fakeStorage());

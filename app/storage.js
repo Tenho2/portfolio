@@ -43,6 +43,11 @@
          whether to use device position. */
       df: pre + "locDefaults",
       f: pre + "favs",
+    /* The favourites bin. It was never persisted, so deleting a favourite
+       removed it from the only key that is written and it was gone on the next
+       load — and "start over", which promises everything is still recoverable,
+       unrecoverably emptied the whole favourites list. */
+    bf: pre + "binFavs",
       /* usernames of people we invited, keyed by vehicle and user id. The share
          table only stores ids, so this is what lets the owner recognise "Anna"
          instead of a bare uuid. */

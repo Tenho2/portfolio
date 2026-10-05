@@ -44,12 +44,27 @@
       defer
       id="supabaseLib"
     ></script>
-    <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
+<style>
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+        /* The HTML spec puts [hidden] { display: none } in the user-agent
+           stylesheet, so ANY author rule setting display defeats it, whatever the
+           specificity. Seven elements here carry `hidden` in markup or set it
+           from script while their class sets display: the sync banner and badges,
+           the bin count, the user chip, the log-out button, the account row and
+           the mobile user chip. The red "sync problem" banner was therefore on
+           screen permanently, empty, over the dashboard.
+
+           This is the one place !important is the right tool, because the
+           conflict is deliberate on both sides. It is placed first so any later
+           author rule still wins for elements that legitimately need to be shown
+           while hidden is absent. */
+        [hidden] {
+          display: none !important;
+        }
       :root {
         --primary: #2563eb;
         --primary-d: #1e40af;
@@ -1439,14 +1454,18 @@
           border-left: 0;
           border-bottom-color: var(--primary);
         }
-        .side-nav button span:not(.ic) {
-          display: none;
-        }
-        /* The bin count is information, not a label, so it is exempt from the
-           rule above. It was invisible on every phone. */
-        .side-nav button .bin-count {
-          display: inline-block;
-        }
+/* :not(.bin-count) rather than an exemption below, because the exemption
+             lost on specificity: the rule above counts as (0,2,2) and
+             `.side-nav button .bin-count` only as (0,2,1), so the count stayed
+             invisible on every phone despite the comment claiming otherwise. */
+          .side-nav button span:not(.ic):not(.bin-count) {
+            display: none;
+          }
+          /* The bin count is information, not a label, so it survives the rule
+             above. */
+          .side-nav button .bin-count {
+            display: inline-block;
+          }
         /* The brand word is what pushed the strip into a horizontal scroll: at
            360px the six icons need about 320px of the 344px available, and the
            name took another 200. The installed icon already carries the name, so
@@ -1573,16 +1592,23 @@
         font-size: 0.7rem;
         padding: 0.15rem 0.4rem;
       }
-      @media (prefers-reduced-motion: reduce) {
+/* These four rules were stranded INSIDE the prefers-reduced-motion block below,
+           where only the universal animation rule belongs. With reduced motion
+           off, which is the default, the share code rendered as ordinary body
+           text rather than the large monospaced block it is meant to be, and the
+           Shared/Pending pills in the settings vehicle list were unstyled inline
+           text. --soft and --muted are also not defined in this file; the muted
+           variable is --text-muted, so those two declarations were invalid even
+           when the block did apply. */
         .codebox {
           border: 1px dashed var(--line);
           border-radius: 10px;
           padding: 0.75rem;
           margin-bottom: 0.75rem;
-          background: var(--soft);
+          background: var(--surface-2, var(--surface));
         }
         /* The code is meant to be read aloud, so it is large and monospaced with
-         wide letter spacing to keep characters apart. */
+           wide letter spacing to keep characters apart. */
         .code {
           font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
           font-size: 1.9rem;
@@ -1598,19 +1624,16 @@
           padding: 0.05rem 0.4rem;
           border-radius: 999px;
           border: 1px solid var(--line);
-          color: var(--muted);
+          color: var(--text-muted);
           margin-left: 0.35rem;
           vertical-align: middle;
         }
-        .veh button[disabled] {
-          opacity: 0.55;
-          cursor: not-allowed;
+        @media (prefers-reduced-motion: reduce) {
+          * {
+            animation: none !important;
+            transition: none !important;
+          }
         }
-        * {
-          animation: none !important;
-          transition: none !important;
-        }
-      }
     </style>
   </head>
   <body class="need-auth">
@@ -3016,14 +3039,16 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
     <!-- Opened from the sync badge. Lists every row that is not on the server
          yet, says why, and offers a way out for the ones that never will make
          it. -->
-    <div
-      class="sheet"
-      id="syncPanel"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="syncPanelTitle"
-    >
-      <div class="sheet-box confirm-box">
+<!-- role/aria-modal live on the inner box, as in the other three sheets. On the
+           full-viewport overlay the dialog's accessible subtree included the
+           backdrop, so a screen reader announced it as part of the dialog. -->
+      <div class="sheet" id="syncPanel">
+        <div
+          class="sheet-box confirm-box"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="syncPanelTitle"
+        >
         <h3 id="syncPanelTitle">
           <span aria-hidden="true">🔄</span>
           <span data-i18n="sync.title"></span>
@@ -3100,6 +3125,8 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
         };
         window.renderI18n = function () {
           try {
+            /* After the text is swapped, so the labels read in the new language. */
+            syncNavButtonNames();
             render();
             syncDurHint();
             syncCents();
@@ -3591,17 +3618,42 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
              moved out of the live arrays and the delete itself still has to
              reach the server. Rows the server has already refused are skipped:
              retrying them would just fail again on every pull. */
-          for (var a = 0; a < vi.length; a++) {
-            if (syncStalled.vehicles[vi[a]]) continue;
-            var v = vehicleAnywhere(vi[a]);
-            if (v) syncVehicle(v);
+for (var a = 0; a < vi.length; a++) {
+              if (syncStalled.vehicles[vi[a]]) continue;
+              var v = vehicleAnywhere(vi[a]);
+              if (v) syncVehicle(v);
+              else forgetGoneRow("vehicles", vi[a]);
+            }
+            for (var b = 0; b < si.length; b++) {
+              if (syncStalled.sessions[si[b]]) continue;
+              var s = sessionAnywhere(si[b]);
+              if (s) syncSession(s);
+              else forgetGoneRow("sessions", si[b]);
+            }
           }
-          for (var b = 0; b < si.length; b++) {
-            if (syncStalled.sessions[si[b]]) continue;
-            var s = sessionAnywhere(si[b]);
-            if (s) syncSession(s);
+          /** Drop a queued row that is no longer on this device at all.
+           *
+           * Nothing else removed these. clearDirty runs only on a successful
+           * push, on the give-up path, and from the discard button, so an id that
+           * left the device by being purged from the bin stayed queued forever.
+           * pendingCount() therefore never reached zero, so a retry timer was
+           * armed permanently, and unsyncedRows listed the row as "no longer on
+           * this device" with no Discard button, leaving the sync panel unable to
+           * return to "all good".
+           * @param {string} kind "vehicles" or "sessions"
+           * @param {string} id
+           */
+          function forgetGoneRow(kind, id) {
+            clearDirty(kind, id);
+            forgetAttempts(kind, id);
+            if (window.console && window.console.info)
+              window.console.info(
+                "[sync] dropped a queued " +
+                  kind +
+                  " row that is no longer on this device: " +
+                  id,
+              );
           }
-        }
         /**
          * @returns {boolean} false only when the browser explicitly reports
          *                     offline; an unknown state is treated as online
@@ -3633,31 +3685,64 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           }
           /* The countdown changes as rows land, and the panel body has to agree
              with it whenever it happens to be open. */
-          if (!$("syncPanel").hidden) renderSyncPanel();
+          /* Checks the class, not the hidden attribute: nothing ever sets .hidden on
+             #syncPanel, openSyncPanel and closeSyncPanel only toggle "on". The
+             test was therefore permanently true and the panel body was rebuilt on
+             every status change, every pull and every retry tick, for a dialog
+             that was closed. */
+            if ($("syncPanel").classList.contains("on")) renderSyncPanel();
         }
-        function openSyncPanel() {
-          var p = $("syncPanel");
-          if (!p) return;
-          renderSyncPanel();
-          p.classList.add("on");
-          lockBackground(true);
-          $("syncBadge").setAttribute("aria-expanded", "true");
-          var c = $("syncCloseBtn");
-          if (c) c.focus();
-        }
-        function closeSyncPanel() {
-          var p = $("syncPanel");
-          if (!p || !p.classList.contains("on")) return;
-          p.classList.remove("on");
-          /* The badge is inside the header, which lockBackground makes inert,
-             so focus cannot simply go back to it while it is still inert. */
-          lockBackground(false);
-          var b = $("syncBadge");
-          if (b) {
-            b.setAttribute("aria-expanded", "false");
-            if (!b.hidden) b.focus();
+/* Which badge opened the panel. On a phone it is syncBadgeM, and returning
+               focus to syncBadge moved focus to a control that is not on screen
+               at that width. */
+          var syncPanelTrigger = null;
+          /** Both badges are the same control at different widths, so both carry
+           *  the expanded state; updating only the desktop one left the mobile
+           *  button announcing "collapsed" while its dialog was open. */
+          function syncBadges() {
+            return [$("syncBadge"), $("syncBadgeM")];
           }
-        }
+          function setSyncBadgesExpanded(on) {
+            syncBadges().forEach(function (b) {
+              if (b) b.setAttribute("aria-expanded", on ? "true" : "false");
+            });
+          }
+          function openSyncPanel(trigger) {
+            var p = $("syncPanel");
+            if (!p) return;
+            renderSyncPanel();
+            /* Recorded only if it is not already open, so a reopen from the
+               banner does not overwrite the badge that started it. */
+            if (!p.classList.contains("on")) {
+              syncPanelTrigger =
+                trigger && trigger.isConnected ? trigger : null;
+            }
+            p.classList.add("on");
+            lockBackground(true);
+            setSyncBadgesExpanded(true);
+            var c = $("syncCloseBtn");
+            if (c) c.focus();
+          }
+          function closeSyncPanel() {
+            var p = $("syncPanel");
+            if (!p || !p.classList.contains("on")) return;
+            p.classList.remove("on");
+            /* The badge is inside the header, which lockBackground makes inert,
+               so focus cannot simply go back to it while it is still inert. */
+            lockBackground(false);
+            setSyncBadgesExpanded(false);
+            var back = syncPanelTrigger;
+            syncPanelTrigger = null;
+            if (back && back.isConnected && !back.hidden) back.focus();
+            else {
+              /* No usable trigger, so fall back to whichever badge is on screen
+                 rather than dropping focus to the body. */
+              var vis = syncBadges().filter(function (b) {
+                return b && !b.hidden;
+              });
+              if (vis.length) vis[vis.length - 1].focus();
+            }
+          }
         /* camelCase -> snake_case, matching the SQL schema.
    user_id is stamped from the signed-in account on every write, so the column
    is never left to a client-supplied value. Row Level Security still enforces
@@ -3906,8 +3991,13 @@ function rowVehicle(r) {
              actually reached the database on a normal request. Those are
              different claims, and only the second one explains a policy refusal,
              because auth.uid() is what the policy compares against. */
-          var who = askWhoAmI();
-          return authClient.auth.getUser().then(
+/* Fired, not awaited: askWhoAmI resolves the shared whoAmI object, and the
+               handler below runs before that settles. The promise was assigned to
+               `who` and then read as who.role, which is undefined on a Promise,
+               so every 42501 log line read "(database saw role=undefined)" — the
+               one field the function exists to report. */
+            askWhoAmI();
+            return authClient.auth.getUser().then(
             function (r) {
               var real = r && r.data && r.data.user;
               if (real) {
@@ -3921,7 +4011,7 @@ function rowVehicle(r) {
                       real.id +
                       ": the session is valid, so the row itself is not yours. " +
                       describeServerError(err) +
-                      " (database saw role=" + who.role + ")",
+                      " (database saw role=" + whoAmI.role + ")",
                   );
                 return real;
               }
@@ -3933,7 +4023,7 @@ function rowVehicle(r) {
                     "token has expired, so auth.uid() is NULL server-side and no " +
                     "insert policy can ever be satisfied. " +
                     describeServerError(err) +
-                    " (database saw role=" + who.role + ")",
+                    " (database saw role=" + whoAmI.role + ")",
                 );
               return expireSession();
             },
@@ -4069,6 +4159,24 @@ function rowVehicle(r) {
              an unactionable "the server will not accept this row" into a
              sentence the user can act on. */
           if (classifyRefusal(err) === "wrong") confirmSessionAlive(what, err);
+          /* A transport failure is not a refusal, and must never spend one of the
+             three attempts.
+             MAX_PUSH_ATTEMPTS exists to tell "the server will never accept this
+             row" from "the network hiccuped". Spending an attempt on a dropped
+             connection defeats that: a phone on a captive portal reports
+             navigator.onLine === true, three consecutive "Failed to fetch" or
+             timed-out aborts trip the limit, and the row is then marked stalled
+             with kind "rejected" and offered a Discard button. That turns a
+             passing network problem into an apparent data-loss risk on a real
+             charging session.
+
+             So a timeout, a missing connection, or an error carrying no SQLSTATE
+             is re-queued without counting, and can never be given up on. */
+          if (isTimeout(err) || !err || !err.code) {
+            markDirty(kind, id);
+            syncFail(what);
+            return false;
+          }
           if (bumpAttempt(kind, id) < MAX_PUSH_ATTEMPTS) {
             markDirty(kind, id);
             syncFail(what);
@@ -4430,24 +4538,31 @@ function rowVehicle(r) {
             markDirty("sessions", s.id);
             return Promise.resolve(false);
           }
-          syncQueue.pending++;
-          return authClient
-            .from("sessions")
-            .upsert(sessionRow(s), { onConflict: "id" })
-            .then(function (res) {
-              syncQueue.pending--;
-              var e = res && res.error;
-              if (e) return failPush("sessions", s.id, "session upsert", e);
-              clearDirty("sessions", s.id);
-              clearStalled("sessions", s.id);
-              forgetAttempts("sessions", s.id);
-              return true;
-            })
-            .catch(function (ce) {
-              syncQueue.pending--;
-              return failPush("sessions", s.id, "session upsert", ce);
-            });
-        }
+syncQueue.pending++;
+            /* timed(), like syncVehicle. Without it a half-open connection on a
+               sleeping phone leaves this unsettled forever: the row stays dirty,
+               the backoff keeps re-issuing it, and the user watches "retrying"
+               with nothing to act on. */
+            return timed(
+              authClient
+                .from("sessions")
+                .upsert(sessionRow(s), { onConflict: "id" }),
+            )
+              .then(function (res) {
+                syncQueue.pending--;
+                var e = res && res.error;
+                if (e)
+                  return failPush("sessions", s.id, "session upsert", e);
+                clearDirty("sessions", s.id);
+                clearStalled("sessions", s.id);
+                forgetAttempts("sessions", s.id);
+                return true;
+              })
+              .catch(function (ce) {
+                syncQueue.pending--;
+                return failPush("sessions", s.id, "session upsert", ce);
+              });
+          }
         /* Deletes are recorded while offline too, otherwise a session deleted on a
    train would reappear on the next sync. */
         function markDeleted(table, id) {
@@ -4469,34 +4584,72 @@ function rowVehicle(r) {
           if (!syncOn() || !id) return Promise.resolve(false);
           markDeleted(table, id);
           if (!syncOnline()) return Promise.resolve(false);
-          syncQueue.pending++;
-          return authClient
-            .from(table)
-            .delete()
-            .eq("id", id)
-            .then(function (res) {
-              syncQueue.pending--;
-              var e = res && res.error;
-              if (e) {
+syncQueue.pending++;
+            /* timed(), like every other write. Without a deadline a half-open
+               connection on a sleeping phone leaves this promise unsettled
+               forever: the id stays in syncDeleted, no timer is armed, and the
+               delete is silently forgotten on the next reload. */
+            return timed(
+              authClient
+                .from(table)
+                .delete()
+                .eq("id", id),
+            )
+              .then(function (res) {
+                syncQueue.pending--;
+                var e = res && res.error;
+                if (e) {
+                  /* Recorded, unlike before: the error object was discarded
+                     entirely, so a refused delete produced only a generic console
+                     warning with no code and no way to diagnose it. The id stays
+                     in syncDeleted and is now counted, listed and retried. */
+                  diag("delete:" + table, {
+                    row: id,
+                    operation: table + " delete",
+                    code: (e && (e.code || e.error_code)) || "(none)",
+                    message: (e && e.message) || "(none)",
+                    details: (e && e.details) || "(none)",
+                    hint: (e && e.hint) || "(none)",
+                  });
+                  syncFail(table + " delete");
+                  armRetry();
+                  return false;
+                }
+                clearDeleted(table, id);
+                return true;
+              })
+              .catch(function (ce) {
+                syncQueue.pending--;
+                diag("delete:" + table, {
+                  row: id,
+                  operation: table + " delete (transport)",
+                  code: (ce && (ce.code || ce.error_code)) || "(none)",
+                  message: (ce && ce.message) || "(none)",
+                  timedOut: isTimeout(ce) ? "yes" : "no",
+                });
                 syncFail(table + " delete");
+                /* Keep it queued and schedule another try, rather than letting
+                   "delete forever" quietly revert on the next pull. */
+                armRetry();
                 return false;
-              }
-              clearDeleted(table, id);
-              return true;
-            })
-            .catch(function () {
-              syncQueue.pending--;
-              syncFail(table + " delete");
-              return false;
-            });
-        }
-        /** Re-issue deletes that could not reach the server while offline. */
-        function retryDeleted() {
-          for (var t in syncDeleted) {
-            var ids = Object.keys(syncDeleted[t]);
-            for (var i = 0; i < ids.length; i++) syncDelete(t, ids[i]);
+              });
           }
-        }
+        /** Re-issue deletes that could not reach the server while offline. */
+function retryDeleted() {
+            if (!syncOn()) return Promise.resolve(false);
+            var work = [];
+            for (var t in syncDeleted) {
+              if (!Object.prototype.hasOwnProperty.call(syncDeleted, t)) continue;
+              var ids = Object.keys(syncDeleted[t] || {});
+              for (var i = 0; i < ids.length; i++) work.push(syncDelete(t, ids[i]));
+            }
+            /* Returns a promise so flushOneDirty can await it. It used to return
+               undefined, which the caller treated as a resolved push and then
+               re-armed on a row that was never touched. */
+            return Promise.all(work).then(function (r) {
+              return r.some(Boolean);
+            });
+          }
         /* ---------- shared vehicles ----------
    Several people can log charging for the same car. Ownership stays with the
    user who created the vehicle; anyone listed in vehicle_shares may read and
@@ -4775,9 +4928,15 @@ function rowVehicle(r) {
             });
         }
         /** A <select> listing the three assignable roles. */
-        function roleSelect(vehicleId, userId, current, id) {
-          var h = '<select class="role-sel" id="' + id + '" data-role-set="' +
-            esc(vehicleId) + "|" + esc(userId) + '">';
+function roleSelect(vehicleId, userId, current, id, who) {
+            /* The accessible name is required. Without it a screen reader
+               announces "combo box, driver" with no indication of whose role is
+               being changed, and there is no visible label either. The static
+               markup check cannot see this, because the select is built in JS. */
+            var h = '<select class="role-sel" id="' + id + '" data-role-set="' +
+              esc(vehicleId) + "|" + esc(userId) + '" aria-label="' +
+              esc(TXT("a11y.setRole", { v: who || shareLabel(vehicleId, userId) })) +
+              '">';
           for (var i = 0; i < ROLES.length; i++)
             h +=
               '<option value="' +
@@ -4914,7 +5073,13 @@ function rowVehicle(r) {
         /* Why the last code request failed: "", "timeout", "unsupported",
            "notOnServer" or "failed". Cleared on success. The panel reads it so a
            failure explains itself instead of leaving a spinner running. */
-        var shareCodeProblem = "";
+        /* Keyed by vehicle id, not a single global. As one value it leaked across
+             cars: one failed request for car A left the panel for car B — whose
+             code was already cached, so no new request was made to clear it —
+             permanently showing the failure. That also hid B's pending-request
+             list, so Accept and Reject became unreachable and the invite field
+             never rendered, for the rest of the session. */
+        var shareCodeProblems = {};
         function shareCode(vehicleId, rotate) {
           if (!syncOn() || !vehicleId) return Promise.resolve("");
           var fn = rotate ? "rotate_share_code" : "ensure_share_code";
@@ -4926,11 +5091,11 @@ function rowVehicle(r) {
               var code = String((res && res.data) || "")
                 .trim()
                 .toUpperCase();
-              if (code) {
-                shareCodeCache[vehicleId] = code;
-                codesAvailable = true;
-                shareCodeProblem = "";
-              }
+if (code) {
+                  shareCodeCache[vehicleId] = code;
+                  codesAvailable = true;
+                  delete shareCodeProblems[vehicleId];
+                }
               return code;
             })
             .catch(function (e) {
@@ -4950,24 +5115,25 @@ function rowVehicle(r) {
                  looks owned on this device, so it passes the ownership check and
                  then fails server-side for a reason that has nothing to do with
                  ownership. Saying "not the owner" there would be a lie. */
-              shareCodeProblem = isTimeout(e)
-                ? "timeout"
-                : missing
-                  ? "unsupported"
-                  : /does not belong|p0001/.test(msg)
-                    ? "notOnServer"
-                    : "failed";
-              diag("share:code", {
-                vehicle: vehicleId,
-                fn: fn,
-                problem: shareCodeProblem,
-                code: (e && e.code) || "(none)",
-                message: (e && e.message) || "(none)",
-              });
+var problem = isTimeout(e)
+                  ? "timeout"
+                  : missing
+                    ? "unsupported"
+                    : /does not belong|p0001/.test(msg)
+                      ? "notOnServer"
+                      : "failed";
+                shareCodeProblems[vehicleId] = problem;
+                diag("share:code", {
+                  vehicle: vehicleId,
+                  fn: fn,
+                  problem: problem,
+                  code: (e && e.code) || "(none)",
+                  message: (e && e.message) || "(none)",
+                });
               if (window.console && window.console.warn)
                 window.console.warn(
                   "[share] code unavailable (" +
-                    shareCodeProblem +
+                    problem +
                     ")" +
                     (isTimeout(e) ? " (timed out)" : ""),
                   e,
@@ -5120,12 +5286,23 @@ function rowVehicle(r) {
         var shareCodeCache = {};
         var codesAvailable = false;
         var shareNames = {};
-        try {
-          shareNames = JSON.parse(localStorage.getItem(K.n) || "{}") || {};
-        } catch (err) {
-          /* a corrupt name cache is only cosmetic, so start over */
-          shareNames = {};
+        /** Read the invited-names cache for the CURRENT bucket.
+         *
+         * Called at boot and again from showApp whenever the account changes,
+         * because K.n moves with the bucket. Reading it once at IIFE evaluation
+         * bound it to the signed-out key, so inviting somebody as one account
+         * wrote every name it held into the next account's key.
+         */
+        function loadShareNames() {
+          try {
+            shareNames = JSON.parse(localStorage.getItem(K.n) || "{}") || {};
+          } catch (err) {
+            /* a corrupt name cache is only cosmetic, so start over */
+            shareNames = {};
+          }
+          return shareNames;
         }
+        loadShareNames();
         /** True when the signed-in user could have sharing controls at all. */
         function canShare() {
           return !!syncOn();
@@ -5212,21 +5389,27 @@ function rowVehicle(r) {
               '<p class="mini">' + TXT("set.shareNoSupport") + "</p>";
             return;
           }
-          /* The code request failed. Say which failure, because the four mean
-             very different things and two of them are fixable by the user. */
-          if (shareCodeProblem) {
-            var key =
-              shareCodeProblem === "notOnServer"
-                ? "set.shareNotSaved"
-                : shareCodeProblem === "timeout"
-                  ? "set.shareTimeout"
-                  : shareCodeProblem === "unsupported"
-                    ? "set.shareNoSupport"
-                    : "set.shareFailed";
-            box.innerHTML =
-              '<p class="mini">' + TXT(key) + "</p>";
-            return;
-          }
+/* The code request failed. Say which failure, because the four mean
+               very different things and two of them are fixable by the user.
+
+               Only relevant when there is no cached code. If a code was already
+               fetched the panel must still render it, because bailing out here
+               also hid the pending-request list, so Accept and Reject became
+               unreachable, and the invite-by-username field never appeared. */
+            var codeProblem = shareCodeProblems[shareTarget] || "";
+            if (codeProblem && !shareCodeCache[shareTarget]) {
+              var key =
+                codeProblem === "notOnServer"
+                  ? "set.shareNotSaved"
+                  : codeProblem === "timeout"
+                    ? "set.shareTimeout"
+                    : codeProblem === "unsupported"
+                      ? "set.shareNoSupport"
+                      : "set.shareFailed";
+              box.innerHTML =
+                '<p class="mini">' + TXT(key) + "</p>";
+              return;
+            }
           var list = shares[shareTarget] || [];
           /* The short code comes first, because passing it on is the easy path
              and needs no username from the other person. */
@@ -5277,12 +5460,13 @@ function rowVehicle(r) {
                 '<span class="nm">' +
                 esc(plabel) +
                 "</span>" +
-                roleSelect(
-                  shareTarget,
-                  pending[p].user_id,
-                  pending[p].role || "viewer",
-                  "roleSelP" + p,
-                ) +
+roleSelect(
+                    shareTarget,
+                    pending[p].user_id,
+                    pending[p].role || "viewer",
+                    "roleSelP" + p,
+                    plabel,
+                  ) +
                 '<button type="button" class="btn sm sec" data-accept="' +
                 esc(pending[p].user_id) +
                 '" aria-label="' +
@@ -5319,9 +5503,10 @@ function rowVehicle(r) {
                 roleSelect(
                   shareTarget,
                   accepted[i].user_id,
-                  accepted[i].role || "viewer",
-                  "roleSelM" + i,
-                ) +
+accepted[i].role || "viewer",
+                    "roleSelM" + i,
+                    mlabel,
+                  ) +
                 '<button type="button" class="btn sm dgr" data-unshare="' +
                 esc(accepted[i].user_id) +
                 '" aria-label="' +
@@ -5652,19 +5837,27 @@ if (e) {
           /* vres is declared out here on purpose. The vehicles response has to
              survive into the second .then, and a variable declared inside the
              first callback would not be in scope there. */
-          var vres = null;
-          return authClient
-            .from("vehicles")
-            .select("*")
-            .order("created_at", { ascending: true })
-            .then(function (r) {
-              vres = r;
-              if (vres && vres.error) throw vres.error;
-              return authClient
-                .from("sessions")
+var vres = null;
+            /* Both reads are deadline-bounded. This is the only place the panel
+               shows "Syncing…", and an unsettled promise left that text up for
+               good: syncNote was never cleared, syncQueue.pending was never
+               decremented, and every "Retry now" started another hung pull. */
+            return timed(
+              authClient
+                .from("vehicles")
                 .select("*")
-                .order("date", { ascending: false });
-            })
+                .order("created_at", { ascending: true }),
+            )
+              .then(function (r) {
+                vres = r;
+                if (vres && vres.error) throw vres.error;
+                return timed(
+                  authClient
+                    .from("sessions")
+                    .select("*")
+                    .order("date", { ascending: false }),
+                );
+              })
             .then(function (sres) {
               if (sres && sres.error) throw sres.error;
               var vrows = (vres && vres.data) || [],
@@ -5689,27 +5882,72 @@ if (e) {
                 pulledSessions.push(ps);
                 knownS[ps.id] = 1;
               }
-              /* Keep local rows the server does not have, and re-push them
-                 below so the two sides converge. */
-              var localOnlyVehicles = [];
-              for (var lv = 0; lv < vehicles.length; lv++) {
-                var lvr = vehicles[lv];
-                if (lvr && !known[lvr.id]) localOnlyVehicles.push(lvr);
-              }
-              var localOnlySessions = [];
-              for (var ls = 0; ls < sessions.length; ls++) {
-                var lsr = sessions[ls];
-                if (lsr && !knownS[lsr.id]) localOnlySessions.push(lsr);
-              }
-              /* The server deliberately keeps binned rows, because they have to stay
-                 restorable, so the pull separates them here in the same way
-                 load() does. */
-              binned.vehicles = [];
-              binned.sessions = [];
-vehicles = splitBinned(
-                  pulledVehicles.concat(localOnlyVehicles),
+/* Keep local rows the server does not have, and re-push them
+                   below so the two sides converge. */
+                var localOnlyVehicles = [];
+                for (var lv = 0; lv < vehicles.length; lv++) {
+                  var lvr = vehicles[lv];
+                  if (lvr && !known[lvr.id]) localOnlyVehicles.push(lvr);
+                }
+                var localOnlySessions = [];
+                for (var ls = 0; ls < sessions.length; ls++) {
+                  var lsr = sessions[ls];
+                  if (lsr && !knownS[lsr.id]) localOnlySessions.push(lsr);
+                }
+                /* The server deliberately keeps binned rows, because they have to stay
+                   restorable, so the pull separates them here in the same way
+                   load() does.
+                   The LOCAL bin is carried across as well, which it was not: only
+                   the live arrays were searched above, so resetting binned to []
+                   discarded every locally binned row the server had never seen. A
+                   session logged and then deleted while offline vanished from the
+                   device entirely, and one deleted offline that the server *did*
+                   know came back live, because the pulled copy has deleted_at
+                   null and overwrote the local bin stamp. The delete was then
+                   pushed back as live, so a local delete lost on the server too.
+                   A local row that has been binned wins over the server's copy. */
+                var localBinnedIds = {};
+                var keptBinnedVehicles = [];
+                for (var bv1 = 0; bv1 < binned.vehicles.length; bv1++) {
+                  var bvr = binned.vehicles[bv1];
+                  if (!bvr) continue;
+                  if (known[bvr.id]) {
+                    /* The server still has this row. Keep the local, binned copy
+                       so the delete stands, and drop the server's live version. */
+                    localBinnedIds[bvr.id] = 1;
+                    keptBinnedVehicles.push(bvr);
+                    known[bvr.id] = 0;
+                  } else keptBinnedVehicles.push(bvr);
+                }
+                var keptBinnedSessions = [];
+                for (var bs1 = 0; bs1 < binned.sessions.length; bs1++) {
+                  var bsr = binned.sessions[bs1];
+                  if (!bsr) continue;
+                  if (knownS[bsr.id]) {
+                    localBinnedIds[bsr.id] = 1;
+                    keptBinnedSessions.push(bsr);
+                    knownS[bsr.id] = 0;
+                  } else keptBinnedSessions.push(bsr);
+                }
+                var localOnlyBinnedVehicles = [];
+                for (var bv2 = 0; bv2 < keptBinnedVehicles.length; bv2++)
+                  if (!known[keptBinnedVehicles[bv2].id])
+                    localOnlyBinnedVehicles.push(keptBinnedVehicles[bv2]);
+                var localOnlyBinnedSessions = [];
+                for (var bs2 = 0; bs2 < keptBinnedSessions.length; bs2++)
+                  if (!knownS[keptBinnedSessions[bs2].id])
+                    localOnlyBinnedSessions.push(keptBinnedSessions[bs2]);
+                binned.vehicles = [];
+                binned.sessions = [];
+                vehicles = splitBinned(
+                  pulledVehicles
+                    .concat(localOnlyVehicles)
+                    .filter(function (r) {
+                      return !localBinnedIds[r.id];
+                    }),
                   binned.vehicles,
                 );
+                binned.vehicles = binned.vehicles.concat(localOnlyBinnedVehicles);
               /* A provisional vehicle was invented before the network could be
                  asked, so it is discarded now that the server has answered. If
                  the account genuinely has no vehicles, syncPull creates a real
@@ -5726,11 +5964,18 @@ vehicles = splitBinned(
                 if (hasLogs) vehicles[dv].provisional = false;
                 else vehicles.splice(dv, 1);
               }
-              sessions = splitBinned(
-                pulledSessions.concat(localOnlySessions),
-                binned.sessions,
-              );
-              if (!vehicles.length) {
+sessions = splitBinned(
+                  pulledSessions
+                    .concat(localOnlySessions)
+                    .filter(function (r) {
+                      return !localBinnedIds[r.id];
+                    }),
+                  binned.sessions,
+                );
+                binned.sessions = binned.sessions.concat(
+                  localOnlyBinnedSessions,
+                );
+                if (!vehicles.length) {
                 /* brand new account: give them a baseline vehicle straight away */
                 var first = {
                   id: uuid(),
@@ -5753,41 +5998,71 @@ vehicles = splitBinned(
               loadShares();
               retryDirty();
               retryDeleted();
-              /* Anything the server had never seen goes up now, so a row created
-                 on this device is not lost on the next refresh. */
-              /* A pending placeholder belongs to somebody else's vehicle, so the
-                 insert policy would reject it. Pushing it anyway would fail on
-                 every pull, mark it dirty again and leave the sync badge up for
-                 good, so it stays local until the request is accepted. */
-              for (var pv2 = 0; pv2 < localOnlyVehicles.length; pv2++)
-                if (
-                  mayWriteVehicle(localOnlyVehicles[pv2].id) &&
-                  !localOnlyVehicles[pv2].provisional
-                )
-                  syncVehicle(localOnlyVehicles[pv2]);
-              if (localOnlySessions.length) syncSessions(localOnlySessions);
-              return true;
+/* Anything the server had never seen goes up now, so a row created
+                   on this device is not lost on the next refresh.
+
+                   retryDirty() above already pushes every row in syncDirty, and a
+                   local-only row is by definition dirty if it has ever failed to
+                   save. Running both meant the same object was pushed twice in
+                   the same tick: two INSERTs for one id, one succeeding and the
+                   other returning 23505 and recursing back into syncVehicle for
+                   a third request. Two failures per pull also exhausted
+                   MAX_PUSH_ATTEMPTS in two pulls instead of three.
+
+                   Neither loop checked syncStalled, so a row that failPush had
+                   deliberately given up on was re-pushed on every pull anyway,
+                   which is the opposite of what giving up is for. Both guards are
+                   now applied, and the loops are kept because a row can be
+                   local-only without being dirty, having never been attempted. */
+                for (var pv2 = 0; pv2 < localOnlyVehicles.length; pv2++) {
+                  var lrow = localOnlyVehicles[pv2];
+                  if (syncStalled.vehicles[lrow.id]) continue;
+                  if (syncDirty.vehicles[lrow.id]) continue;
+                  if (mayWriteVehicle(lrow.id) && !lrow.provisional)
+                    syncVehicle(lrow);
+                }
+                if (localOnlySessions.length)
+                  syncSessions(
+                    localOnlySessions.filter(function (r) {
+                      return !syncStalled.sessions[r.id];
+                    }),
+                  );
+                return true;
             })
-            .catch(function (e) {
-              if (window.console && window.console.warn)
-                window.console.warn("[sync] pull failed", e);
-              /* A server error while the browser is online is not the same
-                 thing as being offline, and saying so was misleading. */
-              syncNote(
-                TXT(syncOnline() ? "sync.syncFailed" : "sync.offline"),
-                "warn",
-              );
-              return false;
-            });
+.catch(function (e) {
+                diag("pull", {
+                  operation: "pull",
+                  code: (e && (e.code || e.error_code)) || "(none)",
+                  message: (e && e.message) || "(none)",
+                  timedOut: isTimeout(e) ? "yes" : "no",
+                  online: syncOnline() ? "yes" : "no",
+                });
+                if (window.console && window.console.warn)
+                  window.console.warn("[sync] pull failed", e);
+                /* A server error while the browser is online is not the same
+                   thing as being offline, and saying so was misleading. */
+                syncNote(
+                  TXT(syncOnline() ? "sync.syncFailed" : "sync.offline"),
+                  "warn",
+                );
+                /* Something is queued, so keep trying on the backoff rather than
+                   waiting for a pull the user may never trigger again. */
+                if (pendingCount() + pendingDeleteCount()) armRetry();
+                return false;
+              });
         }
         /** Persist favourites to localStorage, reporting a failure to the user. */
-        function saveFavs() {
-          try {
-            localStorage.setItem(K.f, JSON.stringify(favs));
-          } catch (e) {
-            toast(TXT("toast.favSave"));
+function saveFavs() {
+            try {
+              localStorage.setItem(K.f, JSON.stringify(favs));
+              /* The bin half too. It used to be dropped, so a deleted favourite
+                 vanished on reload, and a wipe emptied the favourites list
+                 irrecoverably even though it promises the bin still holds it. */
+              localStorage.setItem(K.bf, JSON.stringify(binned.favs));
+            } catch (e) {
+              toast(TXT("toast.favSave"));
+            }
           }
-        }
         function uid() {
           return (
             Date.now().toString(36) + Math.random().toString(36).slice(2, 7)
@@ -5874,9 +6149,21 @@ vehicles = splitBinned(
                 deletedAt: f.deletedAt || null,
               });
           }
-          /* Favourites never leave the device, so their bin is device-local too. */
-          binned.favs = [];
-          favs = splitBinned(favs, binned.favs);
+/* Favourites never leave the device, so their bin is device-local too. Read
+               from storage rather than reset, so a deleted favourite is still
+               restorable after a reload. */
+            var binRaw = null;
+            try {
+              binRaw = JSON.parse(localStorage.getItem(K.bf) || "null");
+            } catch (e) {
+              binRaw = null;
+            }
+            binned.favs = Array.isArray(binRaw)
+              ? binRaw.filter(function (f) {
+                  return f && typeof f === "object" && f.id;
+                })
+              : [];
+            favs = splitBinned(favs, binned.favs);
         }
 
         /* ---------- helpers ---------- */
@@ -5906,11 +6193,21 @@ vehicles = splitBinned(
           var h = parseInt(p[0], 10),
             m = parseInt(p[1], 10),
             s = p.length === 3 ? parseInt(p[2], 10) : 0;
-          if (!isFinite(h) || !isFinite(m) || !isFinite(s)) return 0;
-          return h + m / 60 + s / 3600;
+if (!isFinite(h) || !isFinite(m) || !isFinite(s)) return 0;
+            /* Reject impossible components rather than returning them.
+               "-0:30" and "0:-30" both produced -0.5, which was accepted because
+               only NaN was checked: the row then SUBTRACTED from the Hours tile,
+               and hoursToHM rendered it as "0-1:-30" in the log and in every
+               subsequent CSV export. A charge longer than a day is not a
+               charging session either. */
+            if (m < 0 || m > 59 || s < 0 || s > 59) return NaN;
+            if (h < 0 || h > 48) return NaN;
+            return h + m / 60 + s / 3600;
         }
-        function hoursToHM(h, withSec) {
-          var t = Math.round((+h || 0) * 3600);
+function hoursToHM(h, withSec) {
+            /* Clamped as well, because this also formats rows restored from a
+               backup, which are not re-validated on the way in. */
+            var t = Math.max(0, Math.round((+h || 0) * 3600));
           var hh = Math.floor(t / 3600),
             mm = Math.floor((t % 3600) / 60),
             ss = t % 60;
@@ -6364,9 +6661,31 @@ vehicles = splitBinned(
              storage on those would reset the selected vehicle and throw away
              edits that have not been written yet, so state is only swapped when
              the account genuinely differs from the one in the current bucket. */
-                    if (who !== lastAccount) {
-            useAccount(who);
-            load();
+if (who !== lastAccount) {
+              useAccount(who);
+              load();
+              /* Every other bucket-scoped cache is reloaded here too. load() is
+                 not the only reader of K: favs, locDefaults and shareNames were
+                 each read once at boot, when K still pointed at the SIGNED-OUT
+                 bucket, because useAccount() runs only here. So a signed-in
+                 account's saved favourites and location defaults were never read
+                 at all (the Settings controls came up blank), and changing one
+                 wrote the signed-out bucket's values into the account's own key.
+                 shareNames was worse: the whole map was rewritten, copying
+                 another bucket's usernames into this account's namespace, which is
+                 exactly the cross-account leak app/storage.js exists to stop. */
+              loadFavs();
+              loadLocDefaults();
+              loadShareNames();
+              /* Sharing state is account-scoped too. Carrying it across left the
+                 new account's role checks answering from the previous account's
+                 rows, which is how a driver's add-session form was hidden. */
+              shares = {};
+              sharesChecked = false;
+              shareCodeCache = {};
+              shareCodeProblems = {};
+              codesAvailable = false;
+              shareTarget = null;
             /* The canvas keeps whatever was last drawn on it, so a chart built
                for the previous account stays on screen until something
                redraws it. renderChart only runs while the dashboard is the
@@ -6417,10 +6736,26 @@ vehicles = splitBinned(
             lastSyncUser = null;
             $("whoMobile").hidden = true;
             $("whoMobileName").textContent = "";
-            syncQueue = { pending: 0, fail: 0 };
-            syncDirty = { vehicles: {}, sessions: {} };
-            syncDeleted = { vehicles: {}, sessions: {} };
-            syncNote("");
+syncQueue = { pending: 0, fail: 0 };
+              syncDirty = { vehicles: {}, sessions: {} };
+              syncDeleted = { vehicles: {}, sessions: {} };
+              /* These two were not reset, so signing out of one account and into
+                 another carried the first account's refusals across: the sync
+                 panel listed rows the new account had never heard of, each with a
+                 Discard button that did nothing because the row was not on the
+                 device, and the red banner counted them. Worse,
+                 pushAttempts survived, so a row of the new account's that failed
+                 twice already gave up after a single further failure. */
+              syncStalled = { vehicles: {}, sessions: {} };
+              pushAttempts = {};
+              if (typeof clearStallBanner === "function") clearStallBanner();
+              /* The retry timer belongs to the previous account's queue too. */
+              if (retryTimer) clearTimeout(retryTimer);
+              retryTimer = null;
+              if (retryTick) clearInterval(retryTick);
+              retryTick = null;
+              retryStep = 0;
+              syncNote("");
           }
         }
         /* Renders the auth form in the current language. Called from initAuth so the
@@ -6473,13 +6808,19 @@ vehicles = splitBinned(
             authMsg(TXT("auth.shortPw"), "err");
             return;
           }
-          setAuthBusy(true);
-          authMsg("");
-          try {
-            var email = toFakeEmail(u),
-              res;
-            var registering = authMode === "up";
-            if (registering)
+setAuthBusy(true);
+            authMsg("");
+            /* Claims the same ticket the bootstrap uses. Without it that guard
+               could never fire, because nothing else incremented it: a slow
+               getSession() resolving after this sign-in succeeded would run
+               showApp for the *previous* account, switching the app back, or sign
+               the user straight out again if the stale token had expired. */
+            var ticket = ++authTicket;
+            try {
+              var email = toFakeEmail(u),
+                res;
+              var registering = authMode === "up";
+              if (registering)
               res = await authClient.auth.signUp({
                 email: email,
                 password: p,
@@ -6489,9 +6830,11 @@ vehicles = splitBinned(
                 email: email,
                 password: p,
               });
-            var err = res && res.error;
+var err = res && res.error;
+              /* A newer attempt, or a sign-out, has happened while we waited. */
+              if (ticket !== authTicket) return;
 
-            /* A name that is already taken is not a failure worth
+              /* A name that is already taken is not a failure worth
                            reporting: it means the account exists, so the useful
                            move is to sign in with the password just typed. */
             if (err && registering && authErrKey(err) === "auth.exists") {
@@ -6506,13 +6849,14 @@ vehicles = splitBinned(
             if (err) {
               authLogErr(registering ? "signUp" : "signIn", err);
               authMsg(authErrText(err), "err");
-            } else if (res.data && res.data.session) {
-              /* a session came straight back, so the project does
-                               not require email confirmation */
-              authMsg(TXT("auth.ok"), "ok");
-              $("authPass").value = "";
-              showApp(res.data.user);
-            } else if (registering) {
+} else if (res.data && res.data.session) {
+                /* a session came straight back, so the project does
+                                 not require email confirmation */
+                if (ticket !== authTicket) return;
+                authMsg(TXT("auth.ok"), "ok");
+                $("authPass").value = "";
+                showApp(res.data.user);
+              } else if (registering) {
               /* The account exists but no session was issued. With
                                confirmation enabled the sign-in below fails with
                                email_not_confirmed, and that reason is shown as is
@@ -6565,18 +6909,25 @@ vehicles = splitBinned(
           if (!authClient) return;
           /* Names the account on the way out. Signing out of the wrong account
              is how one account's data ends up looking like another's. */
-          var who = $("userName").textContent || TXT("auth.logout");
-          var yes = await askConfirm(TXT("auth.logoutQ", { u: who }), {
-            heading: "confirm.logout",
-            ok: "confirm.logout",
-          });
-          if (!yes) return;
-          try {
-            await authClient.auth.signOut();
-          } catch (e) {
-            /* an offline sign-out still clears the local session below */
-          }
-          authMode = "in";
+var who = $("userName").textContent || TXT("auth.logout");
+            /* Same ticket as the sign-in form, so a bootstrap still in flight
+               cannot showApp() the account the user just signed out of. */
+            var ticket = ++authTicket;
+            var yes = await askConfirm(TXT("auth.logoutQ", { u: who }), {
+              heading: "confirm.logout",
+              ok: "confirm.logout",
+            });
+            if (!yes) return;
+            if (ticket !== authTicket) return;
+            try {
+              await authClient.auth.signOut();
+            } catch (e) {
+              /* an offline sign-out still clears the local session below */
+            }
+            /* The user may have signed in as somebody else while the confirm
+               dialog was up, in which case this sign-out must not evict them. */
+            if (ticket !== authTicket) return;
+            authMode = "in";
           $("authPass").value = "";
           authMsg("");
           showApp(null);
@@ -6771,12 +7122,24 @@ vehicles = splitBinned(
           /* Chart.js cannot measure a hidden canvas, so only draw while the
      dashboard is the visible view */
           if (view !== "dashboard") return;
-          function say(msg) {
-            monthChart = null;
-            note.textContent = msg;
-            note.hidden = false;
-            box.hidden = true;
-          }
+function say(msg) {
+              /* Destroy, do not just drop the reference. Chart.js keeps a
+                 global registry and its constructor THROWS if a canvas already
+                 has a chart, so nulling the variable left an instance alive:
+                 switching to a vehicle with no sessions and back made the next
+                 render throw, the chart stayed blank for the rest of the
+                 session, and the raw Chart.js error was painted into the error
+                 box in Settings. */
+              if (monthChart) {
+                try {
+                  monthChart.destroy();
+                } catch (e) {}
+              }
+              monthChart = null;
+              note.textContent = msg;
+              note.hidden = false;
+              box.hidden = true;
+            }
           if (!window.Chart) return say(TXT("chart.offline"));
           var b = monthBuckets(veh().id);
           if (!b.length) return say(TXT("chart.empty"));
@@ -6990,13 +7353,17 @@ vehicles = splitBinned(
         }
         function renderBody() {
           var v = veh();
-          $("who").textContent =
-            view === "dashboard" || view === "view-data"
-              ? v.name
-              : {
-                  "add-session": "Add charging session",
-                  settings: "Settings",
-                }[view] || "Dashboard";
+/* Through TXT(). These were hard-coded English, so the page heading for two
+               whole views read in English next to translated nav buttons. The nav
+               keys are reused because they are what leads to each view. */
+            $("who").textContent =
+              view === "dashboard" || view === "view-data"
+                ? v.name
+                : view === "add-session"
+                  ? TXT("nav.add")
+                  : view === "settings"
+                    ? TXT("nav.set")
+                    : TXT("nav.dashboard");
           /* Say why the form is unusable instead of letting someone fill it in
              and then hit a refusal from the server. */
           $("formVeh").textContent = v.name;
@@ -7041,9 +7408,10 @@ vehicles = splitBinned(
                 '<div class="s">' +
                 t.kwh.toFixed(1) +
                 " kWh · " +
-                nSessions +
-                " session" +
-                (nSessions === 1 ? "" : "s") +
+                /* Through TXT(). The English plural rule was applied by
+                   concatenating "s" in code, which puts the word order and the
+                   plural form wrong in Finnish and Swedish. */
+                TXT("veh.sessions", { n: nSessions }) +
                 "</div>" +
                 (isPending(vehicles[i].id)
                   ? '<div class="s">' + TXT("set.pendingTag") + "</div>"
@@ -7166,29 +7534,8 @@ vehicles = splitBinned(
                 ) +
                 "</td></tr>";
 
-            var sl = $("scope"),
-              keep = sl.value;
-            sl.innerHTML =
-              '<option value="all">' +
-              TXT("set.allVehicles") +
-              "</option>" +
-              vehicles
-                .map(function (x) {
-                  return (
-                    '<option value="' +
-                    esc(x.id) +
-                    '">' +
-                    esc(x.name) +
-                    "</option>"
-                  );
-                })
-                .join("");
-            sl.value = vehicles.some(function (x) {
-              return x.id === keep;
-            })
-              ? keep
-              : "all";
-          }
+renderScopePicker();
+            }
 
           var vs = "";
           tryPanel("vehicles", function () {
@@ -7270,8 +7617,9 @@ vehicles = splitBinned(
           }
           tryPanel("redeem", renderRedeemPanel);
           tryPanel("price", syncCents);
-          tryPanel("favourites", renderFavs);
-          tryPanel("chart", renderChart);
+tryPanel("favourites", renderFavs);
+            tryPanel("scope", renderScopePicker);
+            tryPanel("chart", renderChart);
         }
 
         /**
@@ -7354,12 +7702,23 @@ vehicles = splitBinned(
             var st = syncStalled.vehicles[sv[c]];
             add("vehicles", sv[c], st, true, st);
           }
-          var ss = Object.keys(syncStalled.sessions);
-          for (var d = 0; d < ss.length; d++) {
-            var st2 = syncStalled.sessions[ss[d]];
-            add("sessions", ss[d], st2, true, st2);
-          }
-          return out;
+var ss = Object.keys(syncStalled.sessions);
+            for (var d = 0; d < ss.length; d++) {
+              var st2 = syncStalled.sessions[ss[d]];
+              add("sessions", ss[d], st2, true, st2);
+            }
+            /* Deletes waiting to be confirmed. They were listed nowhere and
+               counted nowhere, so a "delete forever" that failed was invisible
+               and silently reverted by the next pull. Not discardable: the row is
+               already gone from this device, so the only thing left is to finish
+               telling the server. */
+            var dv = Object.keys(syncDeleted.vehicles || {});
+            for (var e = 0; e < dv.length; e++)
+              add("vehicles", dv[e], offline ? "offline" : "delete queued", false);
+            var ds = Object.keys(syncDeleted.sessions || {});
+            for (var f = 0; f < ds.length; f++)
+              add("sessions", ds[f], offline ? "offline" : "delete queued", false);
+            return out;
         }
         /**
          * Throw away one row that will never reach the server. Because it never
@@ -7368,9 +7727,21 @@ vehicles = splitBinned(
          * @param {string} kind
          * @param {string} id
          */
-        function discardUnsynced(kind, id) {
-          var row = kind === "vehicles" ? vehicleAnywhere(id) : sessionAnywhere(id);
-          if (!row) return;
+function discardUnsynced(kind, id) {
+            var row = kind === "vehicles" ? vehicleAnywhere(id) : sessionAnywhere(id);
+            /* No row, but still clear the bookkeeping rather than returning. A
+               phantom entry here made this button a no-op: the guard fired
+               before anything was cleaned up, so the panel kept listing a
+               refusal for a row that no longer existed and could never be
+               dismissed. Nothing is lost by clearing, because there is nothing to
+               discard. */
+            if (!row) {
+              clearDirty(kind, id);
+              clearStalled(kind, id);
+              forgetAttempts(kind, id);
+              renderSyncPanel();
+              return Promise.resolve(true);
+            }
           var label =
             kind === "vehicles" ? row.name : row.location + " · " + row.date;
           var extra =
@@ -7491,33 +7862,68 @@ vehicles = splitBinned(
            through a failure catches up on its own shortly after waking, which
            is the case that used to leave the badge looking stuck. */
         var RETRY_STEPS_MS = [2000, 5000, 15000, 30000, 60000];
-        var retryTimer = null;
-        var retryStep = 0;
+var retryTimer = null;
+      var retryStep = 0;
+      /* The 1 Hz countdown ticker is kept at module scope so a re-arm can clear
+         it. It used to be a local inside armRetry(), reachable only by the
+         timeout callback, so every re-entry after an interval existed discarded
+         it without clearing: armRetry is re-entered from markDirty on every
+         failed push and from scheduleRetry on every connectivity change, leaving
+         a permanent 1 Hz timer per failure that woke the page once a second for
+         the rest of the session. */
+      var retryTick = null;
         /**
          * (Re)start the countdown to the next upload attempt.
          * Called after anything that changes the queue, so the number under the
          * badge is never a promise the app cannot keep.
          */
-        function scheduleRetry() {
-          if (retryTimer) clearTimeout(retryTimer);
-          retryTimer = null;
-          retryStep = 0;
-          armRetry();
-        }
-        function armRetry() {
-          if (retryTimer) clearTimeout(retryTimer);
-          retryTimer = null;
-          var pending = pendingCount();
+function scheduleRetry() {
+            if (retryTimer) clearTimeout(retryTimer);
+            retryTimer = null;
+            if (retryTick) {
+              clearInterval(retryTick);
+              retryTick = null;
+            }
+            retryStep = 0;
+            armRetry();
+          }
+          /** Deletes waiting to be confirmed by the server.
+           *
+           * syncDeleted was consulted only by retryDeleted(), which runs solely on
+           * a pull. A delete that failed was therefore counted by nothing and
+           * listed nowhere, so no timer was ever armed for it and the sync panel
+           * could not show it: "delete forever" on a bad connection silently
+           * un-did itself, because the row was already gone from the bin locally
+           * and the next pull put it back.
+           *
+           * @returns {number}
+           */
+          function pendingDeleteCount() {
+            var n = 0;
+            for (var t in syncDeleted)
+              if (Object.prototype.hasOwnProperty.call(syncDeleted, t))
+                n += Object.keys(syncDeleted[t] || {}).length;
+            return n;
+          }
+function armRetry() {
+            if (retryTimer) clearTimeout(retryTimer);
+            retryTimer = null;
+            if (retryTick) {
+              clearInterval(retryTick);
+              retryTick = null;
+            }
+            var pending = pendingCount() + pendingDeleteCount();
           if (!pending || !syncOn()) {
             renderRetryCountdown();
             return;
           }
-          var wait = RETRY_STEPS_MS[Math.min(retryStep, RETRY_STEPS_MS.length - 1)];
-          var tick = setInterval(renderRetryCountdown, 1000);
-          retryTimer = setTimeout(function () {
-            clearInterval(tick);
-            retryTimer = null;
-            retryStep++;
+var wait = RETRY_STEPS_MS[Math.min(retryStep, RETRY_STEPS_MS.length - 1)];
+            retryTick = setInterval(renderRetryCountdown, 1000);
+            retryTimer = setTimeout(function () {
+              clearInterval(retryTick);
+              retryTick = null;
+              retryTimer = null;
+              retryStep++;
             /* One row at a time, so a queue of ten does not fire ten RPCs the
                instant the tab wakes. */
             flushOneDirty();
@@ -7533,15 +7939,22 @@ vehicles = splitBinned(
             return !syncStalled.sessions[id];
           });
           var p = Promise.resolve(false);
-          if (vi.length) {
-            var v = vehicleAnywhere(vi[0]);
-            p = v ? syncVehicle(v) : Promise.resolve(false);
-          } else if (si.length) {
-            var s = sessionAnywhere(si[0]);
-            p = s ? syncSession(s) : Promise.resolve(false);
-          }
-          armRetry();
-          return p;
+if (vi.length) {
+              var v = vehicleAnywhere(vi[0]);
+              if (v) p = syncVehicle(v);
+              else forgetGoneRow("vehicles", vi[0]);
+            } else if (si.length) {
+              var s = sessionAnywhere(si[0]);
+              if (s) p = syncSession(s);
+              else forgetGoneRow("sessions", si[0]);
+            } else if (pendingDeleteCount()) {
+              /* Nothing else is queued, but a delete is. It used to have no retry
+                 driver at all, so a delete that failed silently un-did itself on
+                 the next pull. */
+              p = retryDeleted();
+            }
+            armRetry();
+            return p;
         }
         /** Rows waiting to be sent, ignoring the ones the server refused. */
         function pendingCount() {
@@ -7731,6 +8144,38 @@ vehicles = splitBinned(
           var isDark = document.body.classList.contains("dark");
           if ((want === "dark") !== isDark) $("themeBtn").click();
         }
+        /** Fill the export scope picker with the current vehicle list.
+         *
+         * This lived inside the log-view branch, but the select it fills lives in
+         * the Settings export panel. A user opening Settings directly saw only
+         * "All vehicles" and no way to scope an export, and the options that did
+         * appear were a side effect of having visited the log first — so they
+         * could name a vehicle that no longer existed, which silently exported an
+         * empty file.
+         */
+        function renderScopePicker() {
+          var sl = $("scope");
+          if (!sl) return;
+          var keep = sl.value;
+          sl.innerHTML =
+            '<option value="all">' +
+            TXT("set.allVehicles") +
+            "</option>" +
+            vehicles
+              .map(function (x) {
+                return (
+                  '<option value="' + esc(x.id) + '">' + esc(x.name) + "</option>"
+                );
+              })
+              .join("");
+          /* Only keep the selection if it still names a vehicle, otherwise the
+             stale id would export nothing while looking valid. */
+          sl.value = vehicles.some(function (x) {
+            return x.id === keep;
+          })
+            ? keep
+            : "all";
+        }
         function renderBin() {
           var n = binCount();
           var badge = $("binCount");
@@ -7892,30 +8337,41 @@ vehicles = splitBinned(
               irreversible: "confirm.irreversiblePurge",
             },
           ).then(function (yes) {
-            if (!yes) return false;
-            if (kind === "vehicles") {
-              binned.vehicles = binned.vehicles.filter(function (x) {
-                return x.id !== id;
-              });
-              var gone = binned.sessions.filter(function (s) {
-                return s.vehicleId === id;
-              });
-              binned.sessions = binned.sessions.filter(function (s) {
-                return s.vehicleId !== id;
-              });
-              for (var i = 0; i < gone.length; i++)
-                syncDelete("sessions", gone[i].id);
-              syncDelete("vehicles", id);
-            } else if (kind === "sessions") {
-              binned.sessions = binned.sessions.filter(function (x) {
-                return x.id !== id;
-              });
-              syncDelete("sessions", id);
-            } else {
-              binned.favs = binned.favs.filter(function (x) {
-                return x.id !== id;
-              });
-            }
+if (!yes) return false;
+              if (kind === "vehicles") {
+                binned.vehicles = binned.vehicles.filter(function (x) {
+                  return x.id !== id;
+                });
+                var gone = binned.sessions.filter(function (s) {
+                  return s.vehicleId === id;
+                });
+                binned.sessions = binned.sessions.filter(function (s) {
+                  return s.vehicleId !== id;
+                });
+                /* Every id removed from the device is also forgotten by the sync
+                   bookkeeping. Only discardUnsynced did this, so a row that had
+                   been refused three times kept its stalled entry after being
+                   purged: the panel kept listing a refusal for a row that no
+                   longer existed anywhere, its Discard button did nothing
+                   because the row lookup returned null, and the red banner
+                   counted a row the user had already deleted for good. */
+                for (var i = 0; i < gone.length; i++) {
+                  forgetGoneRow("sessions", gone[i].id);
+                  syncDelete("sessions", gone[i].id);
+                }
+                forgetGoneRow("vehicles", id);
+                syncDelete("vehicles", id);
+              } else if (kind === "sessions") {
+                binned.sessions = binned.sessions.filter(function (x) {
+                  return x.id !== id;
+                });
+                forgetGoneRow("sessions", id);
+                syncDelete("sessions", id);
+              } else {
+                binned.favs = binned.favs.filter(function (x) {
+                  return x.id !== id;
+                });
+              }
             save();
             saveFavs();
             render();
@@ -8131,17 +8587,30 @@ vehicles = splitBinned(
           for (i = 0; i < IMPORT_COLS.length; i++) {
             if (IMPORT_COLS[i].re.indexOf(h) >= 0) return IMPORT_COLS[i].key;
           }
-          for (i = 0; i < IMPORT_COLS.length; i++) {
-            for (q = 0; q < IMPORT_COLS[i].re.length; q++) {
-              var a = IMPORT_COLS[i].re[q];
-              if (h.indexOf(a) < 0) continue;
-              if (a.length > bestLen) {
-                bestLen = a.length;
-                best = IMPORT_COLS[i].key;
+for (i = 0; i < IMPORT_COLS.length; i++) {
+              for (q = 0; q < IMPORT_COLS[i].re.length; q++) {
+                var a = IMPORT_COLS[i].re[q];
+                if (h.indexOf(a) < 0) continue;
+/* The alias must also START the header. Without that,
+                     "vehicleid" matched the "vehicle" alias by containment, so a
+                     JSON export was read back as if the vehicle column held a
+                     NAME, and a new vehicle was invented whose name was a raw
+                     uuid - carrying every restored session and leaving the real
+                     cars empty. Containment is only safe as a fallback when the
+                     alias is a prefix. */
+                  if (h.indexOf(a) !== 0) continue;
+                /* Ties break towards the earlier column, so a header matching
+                   two lists of equal-length aliases cannot be decided by
+                   declaration order: "startdate" reached this loop with `start`
+                   (time) beating `date`, disagreeing with the intent. */
+                if (a.length > bestLen || (a.length === bestLen && best !== null)) {
+                  bestLen = a.length;
+                  best = IMPORT_COLS[i].key;
+                  if (bestLen >= h.length) return best;
+                }
               }
             }
-          }
-          return best;
+            return best;
         }
         function parseDelimited(text, delim) {
           var rows = [],
@@ -8366,7 +8835,15 @@ vehicles = splitBinned(
             errors.push(TXT("err.soc", { n: idx }));
             seRaw = "";
           }
-          var v = vehicleForImport(get("vehicle"));
+          /* The raw id wins over the name. vehicleId is what a JSON export writes, and
+               resolving it through the name path created a second vehicle named
+               with a uuid on every round trip: the real cars were restored with
+               no sessions and a junk car held all of them, with no owner, so it
+               rendered as a shared vehicle that could not even be logged
+               against. */
+var v = null;
+              if (o.vehicleId) v = vehById(o.vehicleId);
+              if (!v) v = vehicleForImport(get("vehicle"));
           return {
             id: uuid(),
             vehicleId: v.id,
@@ -8383,7 +8860,14 @@ vehicles = splitBinned(
             notes: get("notes"),
             fast: isYes(get("fast")),
             home: isYes(get("home")),
-            favourite: isYes(get("favourite")),
+            /* `fav`, not `favourite`. Every other reader of the flag — the log tag, the
+               edit checkbox, the submit handler and the CSV export — uses s.fav,
+               so writing a property nothing reads silently dropped the star on
+               every round trip: the file looked lossless and the session
+               re-exported as "no", and the favourite location was never
+               auto-created. The CSV header "Favourite" still resolves to the
+               `favourite` column and is read through this line. */
+              fav: isYes(get("favourite")),
             created: Date.now(),
           };
         }
@@ -8477,35 +8961,21 @@ vehicles = splitBinned(
             var head = rows[0].map(normHeader);
             var idxMap = {};
             var unknown = [];
-            for (var c = 0; c < head.length; c++) {
-              var hit = null;
-              if (head[c]) {
-                for (var q = 0; q < IMPORT_COLS.length; q++) {
-                  if (IMPORT_COLS[q].re.indexOf(head[c]) >= 0) {
-                    hit = IMPORT_COLS[q].key;
-                    break;
-                  }
-                }
-                if (!hit) {
-                  for (var q2 = 0; q2 < IMPORT_COLS.length; q2++) {
-                    for (var q3 = 0; q3 < IMPORT_COLS[q2].re.length; q3++) {
-                      var alias = IMPORT_COLS[q2].re[q3];
-                      if (head[c].indexOf(alias) < 0) continue;
-                      if (
-                        hit === null ||
-                        IMPORT_COLS[q2].re[0].length >
-                          IMPORT_COLS[hit].re[0].length
-                      )
-                        hit = IMPORT_COLS[q2].key;
-                      break;
-                    }
-                  }
-                }
+for (var c = 0; c < head.length; c++) {
+                /* resolveHead does this lookup, correctly. It was duplicated
+                   here with `hit` holding a canonical KEY and then used as an
+                   ARRAY INDEX to compare alias lengths, which is undefined.re
+                   and threw a TypeError the moment a header matched two column
+                   lists — "Start date" matches date and time, "Home address"
+                   matches location and home. The throw escaped importText into
+                   FileReader.onload, which has no try/catch, so the file
+                   appeared to do nothing at all: no panel, no toast, no error.
+                   Any third-party CSV with such a header was unimportable. */
+                var hit = resolveHead(head[c]);
+                if (hit) {
+                  if (idxMap[hit] === undefined) idxMap[hit] = c;
+                } else if (head[c]) unknown.push(rows[0][c]);
               }
-              if (hit) {
-                if (idxMap[hit] === undefined) idxMap[hit] = c;
-              } else if (head[c]) unknown.push(rows[0][c]);
-            }
             if (
               idxMap.date === undefined ||
               idxMap.time === undefined ||
@@ -8781,19 +9251,49 @@ vehicles = splitBinned(
           confirmState = null;
           if (st) {
             if (st.trigger && st.trigger.focus && st.trigger.isConnected)
-              try {
-                st.trigger.focus();
-              } catch (e) {}
-            st.resolve(!!result);
+/* Focusing a trigger inside a sheet that has just been closed is a silent
+                 no-op, and focus then falls to the body with the dialog still up.
+                 Walk up to something still on screen. */
+                try {
+                  if (
+                    st.trigger &&
+                    st.trigger.isConnected &&
+                    st.trigger.offsetParent !== null
+                  )
+                    st.trigger.focus();
+                  else if (st.trigger && st.trigger.isConnected) {
+                    var host =
+                      st.trigger.closest("tr, .item, .panel, .sheet-box") ||
+                      st.trigger;
+                    if (host && host.offsetParent !== null) host.focus();
+                  }
+                } catch (e) {}
+              /* The "alt" marker is preserved. !!result collapsed it to true, so a
+                 caller comparing against "alt" could never reach that branch and
+                 the third button silently took the primary action. Nothing passes
+                 altKey today, so this is latent rather than live, but the
+                 mechanism was documented as working. */
+              st.resolve(result === "alt" ? "alt" : !!result);
           }
         }
-        function lockBackground(on) {
-          var app = document.querySelector(".wrap"),
-            side = document.querySelector(".side"),
-            foot = document.querySelector("footer");
-          [app, side, foot].forEach(function (n) {
-            if (!n) return;
-            if (on) {
+/* Reference-counted. Two sheets can be open at once: the delete button on the
+               edit sheet opens the confirmation dialog, so askConfirm locks the
+               background and closeEdit then unlocks it unconditionally. The first
+               release wins and the page behind the dialog is left inert-off,
+               with focus restored to the sheet that is closing, so Tab walked out
+               of an open dialog. A counter makes the last close the one that
+               actually unlocks. */
+          var backgroundLocks = 0;
+          function lockBackground(on) {
+            backgroundLocks += on ? 1 : -1;
+            if (backgroundLocks < 0) backgroundLocks = 0;
+            var apply = backgroundLocks > 0;
+            var app = document.querySelector(".wrap"),
+              side = document.querySelector(".side"),
+              foot = document.querySelector("footer");
+            [app, side, foot].forEach(function (n) {
+              if (!n) return;
+              if (apply) {
               if (!n.hasAttribute("data-a11y-inert")) {
                 n.setAttribute("data-a11y-inert", "1");
                 n.setAttribute("aria-hidden", "true");
@@ -9461,9 +9961,17 @@ vehicles = splitBinned(
               attribution:
                 '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
             }).addTo(slot.map);
-            slot.map.on("click", function (e) {
-              pinAt(id, e.latlng.lat, e.latlng.lng, null, onDrag);
-            });
+slot.map.on("click", function (e) {
+                /* onDrag is fired here as well as from dragend. It used to be
+                   wired only to dragend, so tapping the map moved the pin and
+                   zoomed to it while the stored coordinates stayed at the old
+                   point: the submit handler then saved the previous location, or
+                   none at all on the favourites form where the change listeners
+                   only react to typed values. The map looked accepted and the row
+                   was wrong. */
+                pinAt(id, e.latlng.lat, e.latlng.lng, null, onDrag);
+                if (onDrag) onDrag(e.latlng.lat, e.latlng.lng);
+              });
             slot.marker = null;
             slot.onDrag = onDrag || null;
             return slot;
@@ -9485,7 +9993,11 @@ vehicles = splitBinned(
               var p = o.marker.getLatLng();
               if (o.onDrag) o.onDrag(p.lat, p.lng);
             });
-            if (label && o.marker.bindPopup) o.marker.bindPopup(esc(label));
+            /* Cleared before rebinding. A map click passes no label, and the previous
+               address stayed bound to the moved pin, so the popup showed one
+               place while the pin sat on another. */
+              if (o.marker.unbindPopup) o.marker.unbindPopup();
+              if (label && o.marker.bindPopup) o.marker.bindPopup(esc(label));
             o.map.setView([lat, lng], 16, { animate: false });
             o.map.invalidateSize();
             return true;
@@ -9987,12 +10499,25 @@ vehicles = splitBinned(
           var s = null;
           for (var i = 0; i < binned.sessions.length; i++)
             if (binned.sessions[i].id === id) s = binned.sessions[i];
-          if (!s) return;
-          binned.sessions = binned.sessions.filter(function (x) {
-            return x.id !== id;
-          });
-          s.deletedAt = null;
-          sessions.push(s);
+if (!s) return;
+            /* Idempotent. A restore from a backup taken before the delete can put
+               the same id back in the live array while its binned copy survives;
+               restoring again then pushed a second copy, double-counting it in
+               the totals, the chart and the export. */
+            if (vehById(id) || sessionAnywhere(id)) {
+              binned.sessions = binned.sessions.filter(function (x) {
+                return x.id !== id;
+              });
+              forgetGoneRow("sessions", id);
+              save();
+              render();
+              return;
+            }
+            binned.sessions = binned.sessions.filter(function (x) {
+              return x.id !== id;
+            });
+            s.deletedAt = null;
+            sessions.push(s);
           save();
           render();
           toast(TXT("toast.restored"));
@@ -10014,15 +10539,24 @@ vehicles = splitBinned(
           binned.vehicles = binned.vehicles.filter(function (x) {
             return x.id !== id;
           });
-          binned.sessions = still;
-          v.deletedAt = null;
-          vehicles.push(v);
-          for (var k = 0; k < back.length; k++) {
-            back[k].deletedAt = null;
-            sessions.push(back[k]);
-            markDirty("sessions", back[k].id);
-            syncSession(back[k]);
-          }
+binned.sessions = still;
+            /* Idempotent, for the same reason as restoreSession. A backup taken
+               before the delete can leave the id live while its binned copy
+               remains, and restoring again pushed a duplicate. */
+            if (!vehById(id)) {
+              v.deletedAt = null;
+              vehicles.push(v);
+            }
+            for (var k = 0; k < back.length; k++) {
+              if (sessionAnywhere(back[k].id)) {
+                forgetGoneRow("sessions", back[k].id);
+                continue;
+              }
+              back[k].deletedAt = null;
+              sessions.push(back[k]);
+              markDirty("sessions", back[k].id);
+              syncSession(back[k]);
+            }
           save();
           render();
           toast(TXT("toast.restored"));
@@ -10039,8 +10573,8 @@ vehicles = splitBinned(
           });
           if (editFav === id) clearFavForm();
           saveFavs();
-          renderFavs();
-          toast(TXT("toast.delFav"));
+            render();
+            toast(TXT("toast.delFav"));
         }
         /** Move every session to the bin, keeping vehicles and favourites. Reversible:
             the confirmation says so and the bin lists everything it took. */
@@ -10114,8 +10648,8 @@ vehicles = splitBinned(
           f.deletedAt = binStamp();
           binned.favs.push(f);
           saveFavs();
-          renderFavs();
-          toast(TXT("toast.favBinned"));
+            render();
+            toast(TXT("toast.favBinned"));
         }
         function restoreFav(id) {
           var f = null;
@@ -10151,10 +10685,20 @@ vehicles = splitBinned(
             saveFavs();
             render();
             toast(TXT("toast.binEmptied"));
-            /* Only now are these real deletes. */
-            for (var i = 0; i < goneSes.length; i++) syncDelete("sessions", goneSes[i].id);
-            for (var j = 0; j < goneVeh.length; j++) syncDelete("vehicles", goneVeh[j].id);
-            return true;
+/* Only now are these real deletes. The bookkeeping is cleared first, for the
+                 same reason as in binPurge: a refused row that is then deleted
+                 for good kept a stalled entry, so the sync panel kept reporting
+                 a refusal for a row that existed nowhere and offered a Discard
+                 button that did nothing. */
+              for (var i = 0; i < goneSes.length; i++) {
+                forgetGoneRow("sessions", goneSes[i].id);
+                syncDelete("sessions", goneSes[i].id);
+              }
+              for (var j = 0; j < goneVeh.length; j++) {
+                forgetGoneRow("vehicles", goneVeh[j].id);
+                syncDelete("vehicles", goneVeh[j].id);
+              }
+              return true;
           });
         }
         function addVehicle() {
@@ -10661,9 +11205,17 @@ vehicles = splitBinned(
           else toast(TXT("toast.defSaved"));
         });
         $("exCsv").addEventListener("click", doCSV);
-        $("exJson").addEventListener("click", function () {
-          var list = sorted(scopeList());
-          download(
+$("exJson").addEventListener("click", function () {
+            var list = sorted(scopeList());
+            /* Same guard as the CSV path. Without it a scope naming a deleted
+               vehicle produced a file containing zero sessions and reported
+               "JSON exported 0", which reads as a successful export of an empty
+               dataset rather than as nothing to export. */
+            if (!list.length) {
+              toast(TXT("toast.nothing"));
+              return;
+            }
+            download(
             "ev-sessions-" + now().y + pad(now().m) + pad(now().d) + ".json",
             JSON.stringify(
               {
@@ -10729,8 +11281,15 @@ vehicles = splitBinned(
                 !Array.isArray(d.vehicles) ||
                 !Array.isArray(d.sessions)
               )
-                throw 0;
-              vehicles = d.vehicles;
+throw 0;
+                /* The bin is replaced along with the data. It used to be left
+                   alone, so a backup taken after deleting a session restored that
+                   session as live while its binned copy stayed in the bin: the
+                   same charge appeared twice, totals and the chart double
+                   counted it, and restoring the stale bin row deleted the live one
+                   from the server. */
+                binned = { vehicles: [], sessions: [], favs: [] };
+                vehicles = d.vehicles;
               if (!vehicles.length)
                 vehicles = [
                   {
@@ -10844,15 +11403,15 @@ vehicles = splitBinned(
         $("emptyBinBtn").addEventListener("click", function () {
           return emptyBin();
         });
-        $("syncBadge").addEventListener("click", function () {
-          openSyncPanel();
-        });
-        $("syncBadgeM").addEventListener("click", function () {
-          openSyncPanel();
-        });
-        $("syncBannerBtn").addEventListener("click", function () {
-          openSyncPanel();
-        });
+$("syncBadge").addEventListener("click", function () {
+            openSyncPanel(this);
+          });
+          $("syncBadgeM").addEventListener("click", function () {
+            openSyncPanel(this);
+          });
+          $("syncBannerBtn").addEventListener("click", function () {
+            openSyncPanel(this);
+          });
         $("syncCloseBtn").addEventListener("click", function () {
           closeSyncPanel();
         });
@@ -11022,6 +11581,20 @@ vehicles = splitBinned(
         });
 
         /* only the decorative glyph changes; the accessible name stays on aria-label */
+        /* The nav labels are hidden with display:none at narrow widths, which also
+         removes them from the accessibility tree, so every nav button announced
+         as a bare "button". aria-label is set here from the button's own visible
+         label, after translation, so it can never drift from the text the user
+         sees and there is no second string to maintain in the markup. */
+        function syncNavButtonNames() {
+          var btns = document.querySelectorAll("[data-go]");
+          for (var i = 0; i < btns.length; i++) {
+            var b = btns[i];
+            var label = b.querySelector("span[data-i18n]:not(.ic)");
+            var text = label ? String(label.textContent || "").trim() : "";
+            if (text) b.setAttribute("aria-label", text);
+          }
+        }
         function setThemeIcon(icon) {
           var b = $("themeBtn");
           if (!b) return;
@@ -11041,12 +11614,16 @@ vehicles = splitBinned(
         });
         $("editForm").addEventListener("submit", saveEdit);
         $("eCancel").addEventListener("click", closeEdit);
-        $("eDelete").addEventListener("click", function () {
-          if (editId) {
-            delSession(editId);
+$("eDelete").addEventListener("click", function () {
+            if (!editId) return;
+            var id = editId;
+            /* Close the sheet first, then ask. The other order left the
+               confirmation dialog open while its trigger, the Delete button, was
+               inside a display:none sheet, so restoring focus on close was a
+               silent no-op and focus fell to the body with the dialog still up. */
             closeEdit();
-          }
-        });
+            delSession(id);
+          });
         $("editSheet").addEventListener("click", function (e) {
           if (e.target === this) closeEdit();
         });
@@ -11098,28 +11675,41 @@ vehicles = splitBinned(
               closeEdit();
               return;
             }
-            if ($("vehSheet").classList.contains("on")) {
-              closeVeh();
+if ($("vehSheet").classList.contains("on")) {
+                closeVeh();
+                return;
+              }
+              /* The sync panel was missing here. It is role="dialog"
+                 aria-modal="true", so Escape had to dismiss it; a keyboard user
+                 could only leave via the Close button or a backdrop click. */
+              if ($("syncPanel").classList.contains("on")) {
+                closeSyncPanel();
+                return;
+              }
               return;
             }
-            return;
-          }
-          /* Tab is confined to the open dialog. */
-          if (e.key === "Tab") {
-            if ($("confirmSheet").classList.contains("on")) {
-              trapFocus(e, $("confirmSheet"));
-              return;
+            /* Tab is confined to the open dialog. */
+            if (e.key === "Tab") {
+              if ($("confirmSheet").classList.contains("on")) {
+                trapFocus(e, $("confirmSheet"));
+                return;
+              }
+              if ($("editSheet").classList.contains("on")) {
+                trapFocus(e, $("editSheet"));
+                return;
+              }
+              if ($("vehSheet").classList.contains("on")) {
+                trapFocus(e, $("vehSheet"));
+                return;
+              }
+              /* Likewise: without a trap, Tab walked out of the sync panel and
+                 into the page behind it. */
+              if ($("syncPanel").classList.contains("on")) {
+                trapFocus(e, $("syncPanel"));
+                return;
+              }
             }
-            if ($("editSheet").classList.contains("on")) {
-              trapFocus(e, $("editSheet"));
-              return;
-            }
-            if ($("vehSheet").classList.contains("on")) {
-              trapFocus(e, $("vehSheet"));
-              return;
-            }
-          }
-        });
+          });
         window.addEventListener("hashchange", function () {
           var h = location.hash.slice(1);
           if (h && document.getElementById(h)) go(h);

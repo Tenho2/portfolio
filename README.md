@@ -66,6 +66,23 @@ tests for the flag's absence rather than `=== false`.
 `tools/test-location.mjs`
 : Distance maths and the GPS accuracy gate.
 
+`tools/test-ui.mjs`
+: Markup, CSS and call-order rules that no function-level test can see. Every
+one of these bugs produced no error at all.
+
+An element that should have been invisible was on screen permanently (any
+author `display` beats the user-agent `[hidden]` rule, which is why the red
+sync banner was always there); two accounts shared one storage key, because
+`favs`, `locDefaults` and `shareNames` were read once at boot when the bucket
+still pointed at signed-out; a dialog could not be closed with Escape; a
+restored backup duplicated a charge; and a CSV header matching two column lists
+threw inside `FileReader.onload`, which has no try/catch, so the file appeared
+to do nothing.
+
+Also covers the CSS specificity bug that kept the bin count invisible on every
+phone despite a comment saying it was fixed, and a check that `fi` and `sv`
+translate every key — a missing one renders as English with no error.
+
 `tools/test-dom.mjs`
 : Renders the real page in jsdom and asks whether anything a person needs is
 : actually there: no blank translated text, no empty placeholders, no
@@ -90,6 +107,27 @@ to the page therefore brings it under test automatically.
 `tools/check-inline-js.mjs`
 : Compiles each inline `<script>` block, because all the JavaScript is inline
 : and `node --check` has nothing to look at otherwise.
+
+`tools/check-sql.mjs`
+: Static checks for the migrations, because there is no PostgreSQL on the
+development machine and nothing else can tell whether one parses. Catches
+standalone `DROP CONSTRAINT` (not a PostgreSQL statement at all), `regprocedure`
+casts without parens, columns read from `auth.users` that do not exist,
+lowercase comparisons against `pg_policies.cmd` (which silently match nothing
+and report "no policies" when they are all there), reserved words used as
+column names, unbalanced `$$` quoting, unbalanced `begin`/`commit`, and
+references to migrations that are not in the folder.
+
+Verified by planting each of those defects and confirming it is reported. Five
+migrations shipped broken while `npm run check` was green; all five are caught
+here now.
+
+`tools/test-sw-bump.mjs`
+: Fails when the app shell changed but `VERSION` in `sw.js` did not. Devices
+serve the cached shell, so a change that is not accompanied by a version bump
+never reaches a phone — which is how a whole feature went missing while it
+looked present locally. It compares the `VERSION` value rather than merely
+noticing that `sw.js` was touched, since editing its comment is not a bump.
 
 ### A note on file size
 

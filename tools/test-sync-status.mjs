@@ -32,6 +32,8 @@ const build = new Function(
   [
     `var syncDirty = { vehicles: {}, sessions: {} };`,
     `var syncStalled = { vehicles: {}, sessions: {} };`,
+    /* unsyncedRows now also lists deletes that have not reached the server. */
+    `var syncDeleted = { vehicles: {}, sessions: {} };`,
     `var vehicles = [], sessions = [], binned = { vehicles: [], sessions: [], favs: [] };`,
     `var online = true;`,
     `function syncOnline() { return online; }`,
@@ -46,13 +48,14 @@ const build = new Function(
        unsyncedRows, stalledCount, classifyRefusal, pushableVehicle,
        get vehicles() { return vehicles; },
        setOnline: function (v) { online = v; },
-       seed: function (state) {
-         syncDirty = state.syncDirty;
-         syncStalled = state.syncStalled;
-         vehicles = state.vehicles || [];
-         sessions = state.sessions || [];
-         binned = state.binned || { vehicles: [], sessions: [], favs: [] };
-       },
+seed: function (state) {
+        syncDirty = state.syncDirty;
+        syncStalled = state.syncStalled;
+        syncDeleted = state.syncDeleted || { vehicles: {}, sessions: {} };
+        vehicles = state.vehicles || [];
+        sessions = state.sessions || [];
+        binned = state.binned || { vehicles: [], sessions: [], favs: [] };
+      },
      };`,
   ].join("\n\n"),
 );
@@ -263,6 +266,27 @@ group("a held row is not discardable, a wrong row is", () => {
   is("held row is NOT discardable", held.hard, false);
   is("wrong row is not flagged as held", bad.held, false);
   is("wrong row IS discardable", bad.hard, true);
+});
+
+group("a delete waiting to reach the server is shown, and is not discardable", () => {
+  /* They were listed nowhere and counted nowhere, so a "delete forever" that
+     failed was invisible and silently reverted by the next pull: the row was
+     already gone from the bin locally, so the server copy came back into it. */
+  t.seed({
+    syncDirty: { vehicles: {}, sessions: {} },
+    syncStalled: { vehicles: {}, sessions: {} },
+    syncDeleted: { vehicles: {}, sessions: { gone: 1 } },
+    sessions: [],
+    binned: { vehicles: [], sessions: [], favs: [] },
+  });
+  const rows = t.unsyncedRows();
+  const row = rows.find((r) => r.id === "gone");
+  is("the pending delete is listed", row !== undefined, true);
+  is("it is labelled as a queued delete", row.why, "delete queued");
+  /* The row is already gone from the device; all that remains is finishing the
+     request. Offering Discard would be meaningless. */
+  is("it is NOT discardable", row.hard, false);
+  is("it is not reported as held", row.held, false);
 });
 
 group("stalledCount spans both tables", () => {
