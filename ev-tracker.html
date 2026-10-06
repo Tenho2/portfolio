@@ -3675,8 +3675,19 @@ for (var a = 0; a < vi.length; a++) {
             var el = targets[i];
             if (!el) continue;
             if (!text) {
-              el.hidden = true;
-              el.textContent = "";
+              /* Not hidden. These badges are the only way to reach the sync panel,
+                 so hiding them when everything is fine made the panel
+                 unreachable exactly when a user might want to check it. It used
+                 to work only because a CSS bug kept them on screen as empty
+                 pills; fixing that bug removed the accidental affordance, so it
+                 is now made explicit with a quiet state.
+
+                 Still hidden when sync is not configured at all, since a
+                 local-only install has nothing to show. */
+              var quiet = syncOn();
+              el.hidden = !quiet;
+              el.textContent = quiet ? TXT("sync.allGoodShort") : "";
+              el.dataset.kind = "";
               continue;
             }
             el.hidden = false;
@@ -4284,8 +4295,20 @@ function rowVehicle(r) {
            is read out by copying it to the clipboard and pasting it into a
            conversation, which the user chooses to do. It holds no token, no
            password and no session, only ids a user already knows. */
-        var DIAG_MAX = 60;
-        var diagLog = [];
+var DIAG_MAX = 60;
+          var diagLog = [];
+          /* Timestamps of the last success of each kind. The log only ever holds
+             failures, so "no entries" could not be told apart from "nothing was
+             attempted" — which is precisely the mistake made when the 42501 was
+             wrongly declared fixed. These make an empty error log
+             self-explanatory. */
+          var lastPullAt = null;
+          var lastPushAt = null;
+          function stampSuccess(kind) {
+            var at = new Date().toISOString();
+            if (kind === "pull") lastPullAt = at;
+            else lastPushAt = at;
+          }
         /**
          * Record one event for the diagnostics report.
          * @param {string} kind short machine-ish label, e.g. "push:vehicles"
@@ -4332,9 +4355,16 @@ function rowVehicle(r) {
           lines.push("local vehicles: " + vehicles.length);
           lines.push("local sessions: " + sessions.length);
           lines.push("dirty rows: " + JSON.stringify(unsyncedSummaryForDiag()));
+          lines.push("last successful pull: " + (lastPullAt || "never"));
+          lines.push("last successful write: " + (lastPushAt || "none yet"));
           lines.push("");
-          lines.push("EVENTS (newest last, max " + DIAG_MAX + ")");
-          if (!diagLog.length) lines.push("  none recorded");
+          /* Named ERRORS, not EVENTS. This section only ever receives entries
+             from failure paths, and "EVENTS: none recorded" was read as "nothing
+             happened" rather than "nothing failed" — which is the opposite
+             reading, and the empty case is the good one. */
+          lines.push("RECORDED ERRORS (newest last, max " + DIAG_MAX + ")");
+          if (!diagLog.length)
+            lines.push("  none - every write the server accepted");
           for (var i = 0; i < diagLog.length; i++) {
             var e = diagLog[i];
             lines.push(
@@ -4498,6 +4528,7 @@ function rowVehicle(r) {
               clearDirty("vehicles", v.id);
               clearStalled("vehicles", v.id);
               forgetAttempts("vehicles", v.id);
+              stampSuccess("push");
               return true;
             })
             .catch(function (ce) {
@@ -4556,6 +4587,7 @@ syncQueue.pending++;
                 clearDirty("sessions", s.id);
                 clearStalled("sessions", s.id);
                 forgetAttempts("sessions", s.id);
+                stampSuccess("push");
                 return true;
               })
               .catch(function (ce) {
@@ -5989,10 +6021,11 @@ sessions = splitBinned(
                 vehicles.push(first);
                 syncVehicle(first);
               }
-              if (cur >= vehicles.length) cur = 0;
-              save();
-              render();
-              syncNote("");
+if (cur >= vehicles.length) cur = 0;
+                save();
+                render();
+                stampSuccess("pull");
+                syncNote("");
               /* Push anything that failed while offline. Records deleted in the meantime
      are re-applied after the rows land, so a local delete always wins. */
               loadShares();

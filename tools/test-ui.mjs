@@ -373,6 +373,32 @@ group("a local delete survives a pull", () => {
   ok("a locally binned id wins over the server copy", /localBinnedIds\[r\.id\]/.test(fn));
 });
 
+group("the sync panel stays reachable", () => {
+  /* These badges are the only way to open the sync panel. syncNote("") used to
+     hide them, which was invisible only because a CSS bug kept them on screen as
+     empty pills; fixing that bug therefore removed the sole affordance, and the
+     panel became unreachable exactly when a user might want to check it. */
+  const idx = code.indexOf("function syncNote");
+  const fn = code.slice(idx, idx + 1600);
+  ok(
+    "an empty note does not hide the badges while sync is on",
+    /if \(!text\)[\s\S]{0,500}?el\.hidden\s*=\s*!quiet/.test(fn),
+  );
+  ok("it shows a quiet label instead", /sync\.allGoodShort/.test(fn));
+  ok("a success is stamped", /function stampSuccess\(/.test(code));
+  ok("the report states the last successful pull", /last successful pull/.test(code));
+  ok("the report states the last successful write", /last successful write/.test(code));
+  /* And the empty case must read as success, not as silence. */
+  ok(
+    "an empty error log says so explicitly",
+    /none - every write the server accepted/.test(code),
+  );
+  ok(
+    "the section is labelled as errors, not events",
+    /RECORDED ERRORS/.test(code) && !/lines\.push\("EVENTS/.test(code),
+  );
+});
+
 group("the app can never fall back to a private of another module", () => {
   ok("the i18n module publishes EV_I18N", /window\.EV_I18N\s*=/.test(readFileSync("app/i18n.js","utf8")));
   ok("storage publishes only EV_STORAGE", /window\.EV_STORAGE\s*=/.test(storage));

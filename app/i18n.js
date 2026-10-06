@@ -471,6 +471,7 @@
         "The server did not answer in time. Check your connection and try the code again.",
       "sync.open": "Show sync details",
       "sync.title": "Sync status",
+      "sync.allGoodShort": "In sync",
       "sync.lead":
         "Everything here is saved on this device and has not reached the server yet.",
       "sync.allGood":
@@ -1111,6 +1112,7 @@
         "Palvelin ei vastannut ajoissa. Tarkista yhteys ja kokeile koodia uudelleen.",
       "sync.open": "Näytä synkronoinnin tiedot",
       "sync.title": "Synkronointi",
+      "sync.allGoodShort": "Synkassa",
       "sync.lead":
         "Kaikki tässä on tallennettu tälle laitteelle eikä ole vielä päässyt palvelimelle.",
       "sync.allGood": "Kaikki on palvelimella. Ei mitään odottamassa.",
@@ -1746,6 +1748,7 @@
         "Servern svarade inte i tid. Kontrollera din anslutning och försök koden igen.",
       "sync.open": "Visa synkdetaljer",
       "sync.title": "Synkstatus",
+      "sync.allGoodShort": "I synk",
       "sync.lead":
         "Allt här är sparat på den här enheten och har ännu inte nått servern.",
       "sync.allGood": "Allt finns på servern. Inget väntar på synkning.",
