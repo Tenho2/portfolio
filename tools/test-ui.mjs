@@ -465,7 +465,165 @@ group("the mobile sync badge cannot push the account name off screen", () => {
   ok("the header badge is not clipped", !/text-overflow/.test(base));
 });
 
+group("no async result can cross accounts", () => {
+  /* app/storage.js guarantees no localStorage KEY is shared between accounts.
+     These are the missing half: no RESULT may cross either. A pull started by
+     account A and finished after the user signed in as B appended A's vehicles
+     and sessions to B's arrays, then save()d them under B's key - A's whole
+     charging history on B's dashboard, persisted, and in B's export. */
+  ok("there is an account generation counter", /var acctGen = 0;/.test(code));
+  ok("it is checked through a helper", /function acctLive\(gen\)/.test(code));
+  const pull = between(code, "function syncPull", "function syncSession");
+  ok("the pull captures its generation before awaiting", /var gen = acctGen;/.test(pull));
+  ok(
+    "the pull re-checks before merging",
+    /if \(!acctLive\(gen\)\) return false;[\s\S]*?var vrows/.test(pull),
+  );
+  ok(
+    "the pull re-checks again immediately before save()",
+    /if \(!acctLive\(gen\)\) return false;\s*save\(\);/.test(pull),
+  );
+  ok("a stale pull failure is not filed under the new account", /catch\(function \(e\) \{[\s\S]{0,200}?if \(!acctLive\(gen\)\) return false;/.test(pull));
+  /* `shares` answers every permission question in the app. */
+  const sh = between(code, "function loadShares", "function shareAdd");
+  ok("loadShares is guarded", /if \(!acctLive\(gen\)\) return false;/.test(sh));
+  const rc = between(code, "function redeemShareCode", "function doRedeem");
+  ok("redeemShareCode is guarded", /if \(!acctLive\(gen\)\) return \{ status: "stale" \};/.test(rc));
+  /* TOKEN_REFRESHED claimed no ticket, so it could undo a completed sign-out:
+     the app re-opened itself as the account the user had just left. */
+  ok(
+    "the token refresh handler claims the auth ticket",
+    /evt === "TOKEN_REFRESHED"\) \{[\s\S]{0,200}?var rticket = \+\+authTicket;/.test(code),
+  );
+});
+
+group("an account switch tears down the previous account completely", () => {
+  /* A direct A-to-B switch is a real path: Supabase broadcasts its session
+     across same-origin tabs, so signing in as B in a second tab drives the first
+     tab straight across with no signed-out moment in between. The sync-queue
+     reset therefore used to be skipped entirely. */
+  ok("the queue reset is a named function", /function resetSyncQueues\(\)/.test(code));
+  const show = between(code, "if (who !== lastAccount) {", "lastAccount = who;");
+  ok("it runs on any account change", /resetSyncQueues\(\);/.test(show));
+  ok("the generation is bumped", /acctGen\+\+;/.test(show));
+  /* Sheets are body-level siblings of <main class="wrap">, so the signed-out
+     rule that hides the app does not touch them: signing out left the open Edit
+     sheet rendered over the login form, complete with that session's notes. */
+  for (const closer of ["closeEdit();", "closeVeh();", "closeSyncPanel();"])
+    ok(`the switch closes ${closer.replace(/[();]/g, "")}`, show.includes(closer));
+  ok("unsaved form values are cleared", /sf\.reset\(\)/.test(show));
+  ok("the map instances are dropped", /maps = \{\};/.test(show));
+  ok("the pinned coordinates are cleared", /locGeo = \{ lat: null, lng: null, label: "" \};/.test(show));
+  /* Diagnostics carry the account and the vehicle name, and the report prints
+     the probed uid - so they landed in the next account's support ticket. */
+  ok("the diagnostics log is cleared", /diagLog = \[\];/.test(show));
+  ok("the identity probe is reset", /whoAmI = \{ role: "unknown"/.test(show));
+  /* The share code is a credential, and renderShare() was the only thing that
+     hid the panel while every call site was guarded on the now-null target. */
+  ok("the share panel is re-rendered", /shareTarget = null;[\s\S]{0,200}?renderShare\(\);/.test(show));
+});
+
+group("destructive bulk actions respect roles", () => {
+  /* All of these were reachable by any signed-in account and touched every row,
+     including other people's sessions on vehicles shared with this user - who
+     then could not delete a single charge they had not written. */
+  const gates = [
+    ["doClearSessions", "canEditSession(sessions[ci])"],
+    ["doWipe", "mayWriteVehicle(vehicles[wj].id)"],
+    ["emptyBin", "mayWriteVehicle(binned.vehicles[ei].id)"],
+    ["binPurge", "!mayWriteVehicle(id)"],
+    ["restoreSession", "!canEditSession(s)"],
+    ["restoreVehicle", "!mayWriteVehicle(id)"],
+  ];
+  for (const [fn, guard] of gates) {
+    const body = between(code, `function ${fn}(`, "\n          function ");
+    ok(`${fn} checks permission`, body.includes(guard));
+    ok(`${fn} refuses rather than proceeding`, /toast\.notAllYours|toast\.noPermission/.test(body));
+  }
+  /* A driver could not fix a typo in, or delete, a charge they had just logged:
+     the add form never stamped an author, so the comparison was
+     undefined === "<uuid>". The RLS rule accepts it immediately. */
+  const can = between(code, "function canEditSession", "function mayWriteVehicle");
+  ok(
+    "a locally created row counts as the caller's own",
+    /r >= 2 && !!ownerId\(\)\) return !s\.userId \|\| s\.userId === ownerId\(\)/.test(can),
+  );
+});
+
+group("the JSON round trip keeps the session to vehicle link", () => {
+  /* The normaliser maps vehicleId onto the canonical key "vehicle", so after
+     normalisation the raw id was simply gone and the "raw id wins" branch was
+     dead code. Every round trip went down the name path instead, matched
+     nothing, and MANUFACTURED a vehicle named after a uuid - leaving the real
+     cars with empty histories and the history on ownerless phantom cars. */
+  ok("the raw id is carried past the normaliser", /norm\.rawVehicleId = o\.vehicleId \? String\(o\.vehicleId\) : "";/.test(code));
+  const sfo = between(code, "function sessionFromObject", "function importText");
+  ok("it is read from there", /var raw = o\.rawVehicleId \|\| "";/.test(sfo));
+  ok("the raw id is looked up", /if \(raw\) v = vehById\(raw\);/.test(sfo));
+  ok("the name path is only for files with no id", /if \(!v && !raw\) v = vehicleForImport/.test(sfo));
+  ok("an unresolvable id is refused, not invented", /if \(!v\) \{[\s\S]{0,120}?err\.noVehicle/.test(sfo));
+});
+
+group("a failed import destroys nothing", () => {
+  /* Price, vehicles and favourites were written before the sessions were
+     validated, so a file where every row failed still wiped the favourites list
+     and left phantom vehicles in memory, while reporting "nothing imported". */
+  const imp = between(code, "function importText", "function showImport");
+  const bail = imp.indexOf("err.noneImported");
+  const priceWrite = imp.indexOf("pendPrice !== null");
+  ok("the price is committed after the bail-out", priceWrite > bail);
+  ok("favourites are committed after the bail-out", imp.indexOf("if (pendFavs)") > bail);
+  ok("vehicles are committed after the bail-out", imp.indexOf("pendVehAdds.length") > bail);
+  ok("the pending values are collected, not applied", /var pendFavs = null;/.test(imp));
+  /* Replacing favourites must replace their bin too, or loadFavs() re-reads the
+     old one and a place ends up both live and binned. */
+  ok("the favourites bin key is replaced as well", /localStorage\.setItem\(K\.bf, JSON\.stringify\(\[\]\)\);/.test(imp));
+  /* The restore handler also accepts an Export JSON file, which has no
+     favourites key at all; writing [] for a missing key wiped every saved
+     charging location and every binned row, then synced the wipe. */
+  ok(
+    "a file without favourites cannot delete them",
+    /if \(Array\.isArray\(d\.favourites\)\)\s*try \{[\s\S]{0,120}?localStorage\.setItem\(\s*K\.f,/.test(code),
+  );
+});
+
+﻿group("an admin can edit a shared vehicle, but never reassign it", () => {
+  const sql = readFileSync("supabase/04-roles.sql", "utf8");
+  /* A with check only sees the NEW row, so `user_id = auth.uid()` there did not
+     mean "the owner may not change" - it meant "only the owner may write at
+     all". An admin editing somebody else's vehicle correctly leaves user_id as
+     the owner's, so every admin edit was refused with 42501. The UI offers the
+     control, so the rename saved, showed, and then offered to DISCARD the
+     vehicle and all its sessions after three retries. */
+  const pol = sql.slice(
+    sql.indexOf('create policy "vehicles editable by owner or admin"'),
+    sql.indexOf('create policy "vehicles removable by owner"'),
+  );
+  ok("the policy still admits rank >= 3", /using\s+\(public\.can_edit_vehicle\(id\)\)/.test(pol));
+  ok("the policy does not pin the owner to the caller", !/with check[^;]*auth\.uid\(\)/.test(pol));
+  /* Immutability has to move to a trigger: the only place the old row is still
+     readable. */
+  ok("there is an owner-immutability function", /create or replace function public\.vehicles_owner_is_immutable\(\)/.test(sql));
+  ok(
+    "it compares the new owner against the old one",
+    /if new\.user_id is distinct from old\.user_id then[\s\S]{0,200}?raise exception/.test(sql),
+  );
+  ok("it reports a refusal the client already classifies", /errcode = '42501'/.test(sql));
+  ok(
+    "it is attached before update on vehicles",
+    /create trigger vehicles_owner_immutable[\s\S]{0,60}?before update on public\.vehicles/.test(sql),
+  );
+  ok("attaching it is idempotent", /drop trigger if exists vehicles_owner_immutable/.test(sql));
+  /* 05-trash.sql claimed the with check held because user_id never changes. True
+     for the owner, false for the admin - which is the case that broke. */
+  ok(
+    "05-trash no longer asserts the old reasoning",
+    !/with check still holds/i.test(readFileSync("supabase/05-trash.sql", "utf8")),
+  );
+});
+
 group("the sync panel stays reachable", () => {
+
   /* These badges are the only way to open the sync panel. syncNote("") used to
      hide them, which was invisible only because a CSS bug kept them on screen as
      empty pills; fixing that bug therefore removed the sole affordance, and the
@@ -480,6 +638,18 @@ group("the sync panel stays reachable", () => {
   ok("a success is stamped", /function stampSuccess\(/.test(code));
   ok("the report states the last successful pull", /last successful pull/.test(code));
   ok("the report states the last successful write", /last successful write/.test(code));
+  /* buildStamp() is a date string compiled into the source, so it reads
+     identically on every build and cannot tell a support report which code is
+     actually running. Every fix ships with a VERSION bump precisely so that this
+     can be verified. */
+  const rep = between(code, "function diagnosticsReport", "function copyDiagnostics");
+  ok("the report names the service worker version", /service worker: " \+ \(swVersionCache/.test(rep));
+  ok(
+    "the version is asked for before the text is built",
+    /function copyDiagnostics\(\) \{[\s\S]{0,400}?askSwVersion\(\)[\s\S]{0,400}?copyText\(diagnosticsReport\(\)\)/.test(
+      code,
+    ),
+  );
   /* And the empty case must read as success, not as silence. */
   ok(
     "an empty error log says so explicitly",

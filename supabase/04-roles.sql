@@ -254,12 +254,27 @@ create policy "vehicles insertable by owner"
   on public.vehicles for insert
   with check (user_id = auth.uid());
 
--- owner and admin. Admin cannot change who owns it, because the with check
--- pins user_id to the caller.
+-- owner and admin. Ownership itself is immutable, enforced by the
+-- vehicles_owner_immutable trigger below rather than by this policy.
+--
+-- It used to be pinned here, as `with check (can_edit_vehicle(id) and user_id =
+-- auth.uid())`, which looked like it said "an admin may not change the owner" but
+-- did not. A with check expression only ever sees the NEW row, so there is no
+-- way to compare it against the old owner in a policy. Comparing the new row's
+-- user_id with auth.uid() instead says "only the owner may write this row at
+-- all" - and since an admin updating somebody else's vehicle correctly leaves
+-- user_id as the owner's, every single admin edit was refused with 42501. The
+-- admin rank was silently inert: it could read the vehicle and clear its history
+-- but never rename it or correct its odometer baseline.
+--
+-- That failure was nasty rather than obvious. The UI mirrors this policy
+-- (canEditVehicle is rank >= 3), so the rename sheet opened, saved, showed the
+-- new name, and the server refused three times - after which the sync panel
+-- offered to DISCARD that vehicle and all of its sessions from the device.
 create policy "vehicles editable by owner or admin"
   on public.vehicles for update
   using      (public.can_edit_vehicle(id))
-  with check (public.can_edit_vehicle(id) and user_id = auth.uid());
+  with check (public.can_edit_vehicle(id));
 
 -- Deleting the car itself stays owner-only. An admin can clear the history but
 -- cannot remove the vehicle.
@@ -362,6 +377,37 @@ drop trigger if exists sessions_vehicle_owner_check on public.sessions;
 create trigger sessions_vehicle_owner_check
   before insert or update on public.sessions
   for each row execute function public.sessions_vehicle_belongs_to_user();
+
+-- ---------------------------------------------------------------------------
+-- 4b. The vehicle ownership trigger
+--     This is what the vehicles update policy used to try to do, and could not.
+--     A RLS `with check` sees only the new row; a BEFORE UPDATE trigger sees both,
+--     which is the only place the old owner is still readable.
+--
+--     Deliberately NOT security definer: it compares two columns of the row being
+--     changed and raises, touching no other table, so it needs no elevated rights.
+--     The 42501 code is deliberate too - the client already classifies 42501 as a
+--     permission problem, so handing the vehicle to somebody else reads as the
+--     refusal it is rather than as an unexplained failure.
+-- ---------------------------------------------------------------------------
+create or replace function public.vehicles_owner_is_immutable()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if new.user_id is distinct from old.user_id then
+    raise exception 'the owner of a vehicle cannot be changed'
+      using errcode = '42501';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists vehicles_owner_immutable on public.vehicles;
+create trigger vehicles_owner_immutable
+  before update on public.vehicles
+  for each row execute function public.vehicles_owner_is_immutable();
 
 -- ---------------------------------------------------------------------------
 -- 5. Owner-initiated invite: grants immediately, with a chosen role.

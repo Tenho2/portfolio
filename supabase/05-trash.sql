@@ -63,10 +63,17 @@ create index if not exists sessions_vehicle_deleted_idx
 --    from 04-roles.sql already gate it:
 --
 --      vehicles  "vehicles editable by owner or admin"
---                USING     can_edit_vehicle(id)
---                WITH CHECK can_edit_vehicle(id) and user_id = auth.uid()
+--                USING/WITH CHECK can_edit_vehicle(id)
 --                -> the author or an admin can bin and restore a vehicle.
---                -> user_id is never changed, so the WITH CHECK still holds.
+--                -> ownership is unchanged by binning, and the separate
+--                   vehicles_owner_immutable trigger is what guarantees that:
+--                   it compares the new owner against the old one on every
+--                   UPDATE, which a policy cannot do because a WITH CHECK only
+--                   ever sees the new row. (The policy used to end with "and
+--                   user_id = auth.uid()", on the reasoning that user_id never
+--                   changes. That held for the owner and failed for the admin,
+--                   who is not the owner - so every admin edit, including
+--                   binning somebody else's vehicle, was refused with 42501.)
 --
 --      sessions  "sessions editable by author or admin"
 --                USING/WITH CHECK can_edit_session(vehicle_id, user_id)

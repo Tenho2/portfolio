@@ -4362,6 +4362,17 @@ var DIAG_MAX = 60;
           lines.push("EV Tracker diagnostics");
           lines.push("generated: " + new Date().toISOString());
           lines.push("build: " + buildStamp());
+            /* The service worker version, not just the build date. buildStamp() is
+               a date string baked into the source, so it looks identical on every
+               build and cannot tell a support report which code is actually
+               running. Every fix ships with a VERSION bump precisely so this can
+               be verified, and a report without it makes the one question that
+               matters - "are you on the build with the fix in it?" - unanswerable.
+               Cached, because this function is synchronous; copyDiagnostics primes
+               the cache before calling it. */
+            lines.push(
+              "service worker: " + (swVersionCache || "(not yet known)"),
+            );
           lines.push("user agent: " + navigator.userAgent);
           lines.push("online: " + (syncOnline() ? "yes" : "no"));
           lines.push("sync configured: " + (syncConfiguredForDiag() ? "yes" : "no"));
@@ -4423,9 +4434,19 @@ var DIAG_MAX = 60;
          * has to be pasted.
          * @returns {Promise<boolean>}
          */
-        function copyDiagnostics() {
-          var text = diagnosticsReport();
-          return copyText(text).then(
+function copyDiagnostics() {
+            /* Ask the active worker which version it is before building the text,
+               so the report can name it. The ask is already in flight after the
+               first page load, and is a postMessage round trip, so this normally
+               resolves from cache without delaying the copy at all. */
+            return askSwVersion()
+              .catch(function () {
+                return null;
+              })
+              .then(function () {
+                return copyText(diagnosticsReport());
+              })
+              .then(
             function () {
               toast(TXT("set.diagCopied"));
               return true;
@@ -4719,12 +4740,22 @@ function retryDeleted() {
          * Load who may drive each vehicle.
          * @returns {Promise<boolean>} true when the table answered
          */
-        function loadShares() {
-          if (!syncOn()) return Promise.resolve(false);
-          return authClient
-            .from("vehicle_shares")
-            .select("vehicle_id,user_id,role,status")
-            .then(function (res) {
+function loadShares() {
+            if (!syncOn()) return Promise.resolve(false);
+            /* `shares` answers every permission question in the app: myRole,
+               myRank, canView, canAddSession, canEditVehicle, canEditSession. It
+               was reset on an account switch, but a response already in flight
+               was not cancelled, so a late one repopulated it with the previous
+               account's rows. If the new account's own loadShares resolved first,
+               the OLD rows won, and a car shared with both accounts was rendered
+               with whichever role arrived last - an admin-only Rename button on a
+               viewer's screen, or a driver's add-session form gone missing. */
+            var gen = acctGen;
+            return authClient
+              .from("vehicle_shares")
+              .select("vehicle_id,user_id,role,status")
+              .then(function (res) {
+                if (!acctLive(gen)) return false;
               var e = res && res.error;
               if (e) {
                 /* 404 simply means the SQL has not been run yet */
@@ -4888,12 +4919,24 @@ function retryDeleted() {
          * @param {Object} s  a local session
          * @returns {boolean}
          */
-        function canEditSession(s) {
-          if (!s) return false;
-          var r = myRank(s.vehicleId);
-          if (r >= 3) return true;
-          return r >= 2 && !!ownerId() && s.userId === ownerId();
-        }
+function canEditSession(s) {
+            if (!s) return false;
+            var r = myRank(s.vehicleId);
+            if (r >= 3) return true;
+            /* A row created on this device has no author until it has been
+               pushed and pulled back: the add form never set userId, so the
+               comparison below was `undefined === "<uuid>"` and always false. The
+               RLS rule is "rank >= 2 AND row.user_id = auth.uid()", which the
+               server satisfies immediately because it stamps the author on
+               insert. So a driver could not fix a typo in, or delete, a charge
+               they had just logged on a shared vehicle - the edit and delete
+               buttons rendered as a dash - until a pull brought the row back
+               with its author. Invisible to the owner and admin, whose rank >= 3
+               branch hid it. `!s.userId` means "made here, not yet on the
+               server", which is exactly the case the server will accept. */
+            if (r >= 2 && !!ownerId()) return !s.userId || s.userId === ownerId();
+            return false;
+          }
         /** True when the signed-in user may write this vehicle row to the
             server. A local-only vehicle has no userId yet and was made here,
             so it counts as theirs; a pending placeholder does not, because the
@@ -5198,15 +5241,22 @@ var problem = isTimeout(e)
          * @param {string} code  the six character code
          * @returns {Promise<{status:string, vehicle?:Object}>}
          */
-        function redeemShareCode(code) {
-          if (!syncOn()) return Promise.resolve({ status: "signed-out" });
-          var clean = String(code || "")
-            .trim()
-            .toUpperCase();
-          if (!clean) return Promise.resolve({ status: "empty" });
-          return timed(authClient.rpc("redeem_share_code", { p_code: clean }))
-            .then(function (res) {
-              if (res && res.error) throw res.error;
+function redeemShareCode(code) {
+            if (!syncOn()) return Promise.resolve({ status: "signed-out" });
+            var clean = String(code || "")
+              .trim()
+              .toUpperCase();
+            if (!clean) return Promise.resolve({ status: "empty" });
+            /* Redeeming grants access to a vehicle, so the continuation appends
+               it to `vehicles`, sets it current and save()s. Guarded for the same
+               reason as the pull: redeeming, switching account and landing on a
+               stranger's car in your own namespace, where you can neither delete
+               it nor log against it. */
+            var gen = acctGen;
+            return timed(authClient.rpc("redeem_share_code", { p_code: clean }))
+              .then(function (res) {
+                if (res && res.error) throw res.error;
+                if (!acctLive(gen)) return { status: "stale" };
               var data = res && res.data;
               if (typeof data === "string") {
                 try {
@@ -5883,9 +5933,18 @@ if (e) {
         }
         /* Pull the account's rows and replace the local arrays. Vehicles first,
    because sessions reference them. */
-        function syncPull() {
-          if (!syncOn()) return Promise.resolve(false);
-          syncNote(TXT("sync.loading"));
+function syncPull() {
+            if (!syncOn()) return Promise.resolve(false);
+            /* Which account this pull is FOR. Without it the response is written
+               into whatever account is loaded when it arrives: signing out and
+               back in during the 15s window appended the old account's vehicles
+               and sessions to the new account's arrays and save()d them under the
+               new account's key, so the other account's charging history appeared
+               on this dashboard, persisted, and went into this account's export.
+               Checked again at the start of the merge, because the two awaits in
+               between are exactly where the account can change. */
+            var gen = acctGen;
+            syncNote(TXT("sync.loading"));
           /* vres is declared out here on purpose. The vehicles response has to
              survive into the second .then, and a variable declared inside the
              first callback would not be in scope there. */
@@ -5912,6 +5971,11 @@ var vres = null;
               })
             .then(function (sres) {
               if (sres && sres.error) throw sres.error;
+              /* The account this response belongs to must still be the loaded
+               account. Everything below mutates the shared arrays and then
+               save()s them under the current storage prefix, so this one
+               comparison is what stops a result crossing accounts. */
+              if (!acctLive(gen)) return false;
               var vrows = (vres && vres.data) || [],
                 srows = (sres && sres.data) || [];
               /* Merge rather than replace. A row that only exists on this
@@ -6042,10 +6106,15 @@ sessions = splitBinned(
                 syncVehicle(first);
               }
 if (cur >= vehicles.length) cur = 0;
-                save();
-                render();
-                stampSuccess("pull");
-                syncNote("");
+                  /* Re-checked immediately before the write. The merge above
+                     rebuilt the shared arrays in place, so a late return here
+                     would leave them holding the other account's rows for the
+                     next render() to paint, even if save() never happened. */
+                  if (!acctLive(gen)) return false;
+                  save();
+                  render();
+                  stampSuccess("pull");
+                  syncNote("");
               /* Push anything that failed while offline. Records deleted in the meantime
      are re-applied after the rows land, so a local delete always wins. */
               loadShares();
@@ -6091,8 +6160,14 @@ if (localOnlySessions.length)
                 return true;
             })
 .catch(function (e) {
-                diag("pull", {
-                  operation: "pull",
+                  /* A failure that belongs to an account which is no longer
+                     loaded must not be filed under this one: diag entries carry
+                     the account and the vehicle name, so a stale one would put the
+                     previous account's username and car into this account's
+                     support report. */
+                  if (!acctLive(gen)) return false;
+                  diag("pull", {
+                    operation: "pull",
                   code: (e && (e.code || e.error_code)) || "(none)",
                   message: (e && e.message) || "(none)",
                   timedOut: isTimeout(e) ? "yes" : "no",
@@ -6576,6 +6651,25 @@ function hoursToHM(h, withSec) {
         /* Monotonic counter guarding the getSession() / sign-in-form race. See
            the bootstrap in initAuth. */
         var authTicket = 0;
+          /* Monotonic counter identifying WHICH ACCOUNT an in-flight async result
+             belongs to. Bumped by showApp() whenever the account actually
+             changes, including on sign-out.
+
+             Every network call that produces data must capture this before its
+             first await and re-check it before writing anything back. Without it,
+             a pull started by account A and finished after the user signed in as
+             B appended A's vehicles and sessions to B's arrays, then save()d them
+             under B's storage prefix: A's full charging history on B's dashboard,
+             persisted, and included in B's export. The same hole put A's rows in
+             the signed-out bucket, which the next person to use the device sees.
+
+             app/storage.js already guarantees no KEY is shared between accounts.
+             This is the missing half: no RESULT may cross accounts either. */
+          var acctGen = 0;
+          /* True while the caller's captured generation is still the live one. */
+          function acctLive(gen) {
+            return gen === acctGen;
+          }
         /**
          * The server rejected our token, so the local one is worthless. Drop it
          * and put the user back on the sign-in form rather than leaving an app
@@ -6738,15 +6832,79 @@ if (who !== lastAccount) {
               loadFavs();
               loadLocDefaults();
               loadShareNames();
-              /* Sharing state is account-scoped too. Carrying it across left the
+/* Sharing state is account-scoped too. Carrying it across left the
                  new account's role checks answering from the previous account's
                  rows, which is how a driver's add-session form was hidden. */
-              shares = {};
-              sharesChecked = false;
-              shareCodeCache = {};
-              shareCodeProblems = {};
-              codesAvailable = false;
-              shareTarget = null;
+                shares = {};
+                sharesChecked = false;
+                shareCodeCache = {};
+                shareCodeProblems = {};
+                codesAvailable = false;
+shareTarget = null;
+              /* renderShare() is the only thing that hides or rewrites the share
+                 panel, and every call site was guarded on shareTarget, which is
+                 null now. So the panel was left exactly as the previous account
+                 left it: their share code - a credential - their member
+                 usernames and their vehicle name still in the DOM, with Copy,
+                 Rotate and Invite all silently dead because shareTarget is null.
+                 The one artefact here that grants access. */
+              renderShare();
+              /* Bumped for every account change, so any request still in flight
+                 from the previous account discards its result instead of writing
+                 it into this one. Placed before load() so a continuation that
+                 somehow runs during this block already sees the new generation. */
+              acctGen++;
+              /* The sync bookkeeping is per-account, and this used to be reset
+                 only on the signed-out path. A direct account A to account B
+                 switch - which is exactly what happens when another tab signs in,
+                 because Supabase broadcasts the session across same-origin tabs -
+                 skipped it entirely, so B inherited A's queued rows, A's RLS
+                 refusals with A's server messages still attached, A's attempt
+                 counters, and A's armed backoff timer. B's sync panel then listed
+                 rows that were not B's. */
+              resetSyncQueues();
+              /* Diagnostics are account-scoped too: each entry records the
+                 account and the vehicle name it failed on, and the report prints
+                 the probed uid. Copied into the next account's support ticket. */
+              diagLog = [];
+              whoAmI = { role: "unknown", uid: "unknown", error: "not probed" };
+              /* Anything the previous account had open stays open across a switch
+                 unless it is closed here. The sheets are body-level siblings of
+                 <main class="wrap">, so the signed-out rule that hides the app
+                 does not touch them: signing out left the open Edit sheet fully
+                 rendered on top of the login form, complete with that session's
+                 private notes. */
+              closeEdit();
+              closeVeh();
+              closeSyncPanel();
+              if ($("confirmSheet").classList.contains("on")) closeConfirm(false);
+              editFav = null;
+              editVehId = null;
+              lastFocus = null;
+              /* Neither are unsaved form fields, the map instances or the pinned
+                 coordinates. The session form kept the previous account's typed
+                 values and its map pin, so a new account could save the previous
+                 account's charger coordinates and notes into their own history. */
+              var sf = $("sForm");
+              if (sf) sf.reset();
+              /* The favourite form has no <form> element of its own, so its
+                 inputs are cleared by id. */
+              var favIds = ["fName", "fAddr", "fLat", "fLng", "fPrice"];
+              for (var fi = 0; fi < favIds.length; fi++) {
+                var fEl = $(favIds[fi]);
+                if (fEl) fEl.value = "";
+              }
+              clearPin("sessMap");
+              clearPin("map");
+              maps = {};
+              locGeo = { lat: null, lng: null, label: "" };
+              closeSuggest();
+              var lc = $("locStat");
+              if (lc) lc.textContent = "";
+              var rc = $("redeemCode");
+              if (rc) rc.value = "";
+              var su = $("shareUser");
+              if (su) su.value = "";
             /* The canvas keeps whatever was last drawn on it, so a chart built
                for the previous account stays on screen until something
                redraws it. renderChart only runs while the dashboard is the
@@ -6797,28 +6955,36 @@ if (who !== lastAccount) {
             lastSyncUser = null;
             $("whoMobile").hidden = true;
             $("whoMobileName").textContent = "";
-syncQueue = { pending: 0, fail: 0 };
-              syncDirty = { vehicles: {}, sessions: {} };
-              syncDeleted = { vehicles: {}, sessions: {} };
-              /* These two were not reset, so signing out of one account and into
-                 another carried the first account's refusals across: the sync
-                 panel listed rows the new account had never heard of, each with a
-                 Discard button that did nothing because the row was not on the
-                 device, and the red banner counted them. Worse,
-                 pushAttempts survived, so a row of the new account's that failed
-                 twice already gave up after a single further failure. */
-              syncStalled = { vehicles: {}, sessions: {} };
-              pushAttempts = {};
-              if (typeof clearStallBanner === "function") clearStallBanner();
-              /* The retry timer belongs to the previous account's queue too. */
-              if (retryTimer) clearTimeout(retryTimer);
-              retryTimer = null;
-              if (retryTick) clearInterval(retryTick);
-              retryTick = null;
-              retryStep = 0;
-              syncNote("");
+syncNote("");
+            }
           }
-        }
+          /* Every piece of per-account sync bookkeeping, in one place. Called on
+             ANY account change, not only on sign-out, because a direct A-to-B
+             switch is a real path: Supabase broadcasts its session across
+             same-origin tabs, so signing in as B in a second tab drives the
+             first tab straight from one account to the other with no signed-out
+             moment in between. */
+          function resetSyncQueues() {
+            syncQueue = { pending: 0, fail: 0 };
+            syncDirty = { vehicles: {}, sessions: {} };
+            syncDeleted = { vehicles: {}, sessions: {} };
+            /* These two are not per-queue, they are refusals keyed by row id.
+               Carrying them across made the sync panel list rows the new account
+               had never heard of, each with a Discard button that did nothing
+               because the row was not on the device, and the red banner counted
+               them. pushAttempts surviving meant a row of the new account's that
+               had already failed twice gave up after one more. */
+            syncStalled = { vehicles: {}, sessions: {} };
+            pushAttempts = {};
+            if (typeof clearStallBanner === "function") clearStallBanner();
+            /* The retry timer and its 1Hz ticker belong to the previous
+               account's queue. */
+            if (retryTimer) clearTimeout(retryTimer);
+            retryTimer = null;
+            if (retryTick) clearInterval(retryTick);
+            retryTick = null;
+            retryStep = 0;
+          }
         /* Renders the auth form in the current language. Called from initAuth so the
                    buttons are filled before the deferred language boot finishes,
                    and again whenever the mode or language changes. */
@@ -7032,22 +7198,32 @@ var who = $("userName").textContent || TXT("auth.logout");
                  good. That is how an app ends up looking signed in while the
                  database sees nobody, and every write is then refused. Asking
                  getUser() actually validates it. */
-              if (u && evt === "TOKEN_REFRESHED") {
-                authClient.auth.getUser().then(
-                  function (r) {
-                    var real = r && r.data && r.data.user;
-                    if (!real) {
+if (u && evt === "TOKEN_REFRESHED") {
+                  /* Claims the ticket, like every other continuation in this
+                     file. Without it this one is a way to UNDO a sign-out: the
+                     token refreshes, getUser() goes off, the user finishes
+                     signing out, and then this resolves and calls showApp again -
+                     the app re-opening itself as the account they just left,
+                     dashboard and all, with syncOn() true while the Supabase
+                     session is already gone so every write is refused. */
+                  var rticket = ++authTicket;
+                  authClient.auth.getUser().then(
+                    function (r) {
+                      if (rticket !== authTicket) return;
+                      var real = r && r.data && r.data.user;
+                      if (!real) {
+                        expireSession();
+                        return;
+                      }
+                      showApp(real);
+                    },
+                    function () {
+                      if (rticket !== authTicket) return;
                       expireSession();
-                      return;
-                    }
-                    showApp(real);
-                  },
-                  function () {
-                    expireSession();
-                  },
-                );
-                return;
-              }
+                    },
+                  );
+                  return;
+                }
               showApp(u);
             });
             /* Monotonic, so a slow getSession() that resolves after the sign-in
@@ -8379,13 +8555,25 @@ function retryNow() {
           var row = null;
           for (var i = 0; i < list.length; i++)
             if (list[i].id === id) row = list[i];
-          if (!row) return;
-          var label =
-            kind === "vehicles"
-              ? row.name
-              : kind === "sessions"
-                ? row.location
-                : row.name;
+if (!row) return;
+            /* A permanent DELETE, so the same permission question as the row
+               itself. Without it a shared vehicle someone else wrote sessions
+               for could be purged from this device's copy of a shared history -
+               for them too, since the server row goes with it. */
+            if (kind === "vehicles" && !mayWriteVehicle(id)) {
+              toast(TXT("toast.noPermission"));
+              return;
+            }
+            if (kind === "sessions" && !canEditSession(row)) {
+              toast(TXT("toast.noPermission"));
+              return;
+            }
+            var label =
+              kind === "vehicles"
+                ? row.name
+                : kind === "sessions"
+                  ? row.location
+                  : row.name;
           /* Purging a vehicle takes everything binned with it, which would
              otherwise leave orphaned sessions in the bin. */
           var orphans = 0;
@@ -8903,16 +9091,24 @@ for (i = 0; i < IMPORT_COLS.length; i++) {
             errors.push(TXT("err.soc", { n: idx }));
             seRaw = "";
           }
-          /* The raw id wins over the name. vehicleId is what a JSON export writes, and
-               resolving it through the name path created a second vehicle named
-               with a uuid on every round trip: the real cars were restored with
-               no sessions and a junk car held all of them, with no owner, so it
-               rendered as a shared vehicle that could not even be logged
-               against. */
-var v = null;
-              if (o.vehicleId) v = vehById(o.vehicleId);
-              if (!v) v = vehicleForImport(get("vehicle"));
-          return {
+/* The raw id wins over the name, because it is unambiguous and the name is
+                 not. A JSON export writes vehicleId; a CSV export writes only the
+                 name, and a rename between the two splits the history. See the
+                 rawVehicleId handoff in the import loop for why this cannot be
+                 read straight off the normalised object. */
+  var v = null;
+                var raw = o.rawVehicleId || "";
+                if (raw) v = vehById(raw);
+                /* Only fall through to the name when the file had no id at all. A
+                   file that HAD an id which resolves to nothing is a broken
+                   reference: silently creating a vehicle named after a uuid is
+                   what emptied the real cars in the first place. */
+                if (!v && !raw) v = vehicleForImport(get("vehicle"));
+                if (!v) {
+                  errors.push(TXT("err.noVehicle", { n: idx }));
+                  return null;
+                }
+            return {
             id: uuid(),
             vehicleId: v.id,
             date: d,
@@ -8955,49 +9151,33 @@ var v = null;
               ]);
               return;
             }
-            if (data && !Array.isArray(data) && Array.isArray(data.sessions)) {
-              if (isNum(data.pricePerKwh)) {
-                price = Math.max(0, data.pricePerKwh);
-                persist();
-                $("ppk").value = price;
-              }
-              if (Array.isArray(data.vehicles)) {
-                for (var vi = 0; vi < data.vehicles.length; vi++) {
-                  var bv = data.vehicles[vi];
-                  if (bv && bv.id && !vehById(bv.id))
-                    vehicles.push({
-                      id: bv.id,
-                      name: String(bv.name || "Vehicle"),
-                      icon: String(bv.icon || "🚗"),
-                      /* Stamped, or the restored car belongs to nobody as far as
-                         this device is concerned. ownsVehicle() compares
-                         userId with the signed-in id, so a vehicle without one
-                         resolves to no role at all and the interface reported
-                         the owner's own restored car as "waiting for the owner
-                         to approve your access" — which is a request for
-                         something nobody had asked for.
-
-                         It also made the row look writable to everybody:
-                         mayWriteVehicle() treats a missing owner as "not yet
-                         claimed", so an imported vehicle was pushed under an id
-                         the server may already attribute to another account. */
-                      userId: ownerId() || null,
-                      initialOdometer: isNum(bv.initialOdometer)
-                        ? num(bv.initialOdometer)
-                        : 0,
-                    });
+if (data && !Array.isArray(data) && Array.isArray(data.sessions)) {
+  /* Nothing is written here. Price, vehicles and favourites are all
+                   collected and applied only after the sessions have been
+                   validated and at least one has been accepted: a file where
+                   every row fails used to leave the favourites list overwritten,
+                   the price changed and phantom vehicles in memory, all while
+                   reporting "nothing was imported". The next unrelated save from
+                   any edit then made those permanent. */
+                var pendFavs = null;
+                var pendPrice = null;
+                var pendVehAdds = [];
+                if (Array.isArray(data.favourites)) {
+                  pendFavs = data.favourites;
                 }
-              }
-              if (Array.isArray(data.favourites)) {
-                try {
-                  localStorage.setItem(K.f, JSON.stringify(data.favourites));
-                } catch (err) {
-                  /* favourites are a convenience; a failed write must not abort the restore */
+                if (isNum(data.pricePerKwh)) {
+                  pendPrice = Math.max(0, data.pricePerKwh);
                 }
-                loadFavs();
+                if (Array.isArray(data.vehicles)) {
+                  for (var va = 0; va < data.vehicles.length; va++) {
+                    var bv = data.vehicles[va];
+                    if (!bv || typeof bv !== "object" || !bv.name) continue;
+                    if (vehById(bv.id)) continue;
+                    pendVehAdds.push(bv);
+                  }
+                }
+                data = data.sessions;
               }
-              data = data.sessions;
-            }
             if (!Array.isArray(data)) {
               showImport("bad", TXT("err.json"), [TXT("err.jsonShape")]);
               return;
@@ -9008,13 +9188,26 @@ var v = null;
                 errors.push(TXT("err.rowObj", { n: i + 1 }));
                 continue;
               }
-              var norm = {};
-              for (var k in o) {
-                var ck = resolveHead(normHeader(k));
-                if (ck) norm[ck] = o[k];
-              }
-              var s = sessionFromObject(norm, i + 1, errors);
-              if (s) made.push(s);
+var norm = {};
+                for (var k in o) {
+                  var ck = resolveHead(normHeader(k));
+                  if (ck) norm[ck] = o[k];
+                }
+                /* The raw vehicleId is carried alongside, never through
+                   normalise(): vehicleId maps to the canonical key "vehicle",
+                   whose value is written as a NAME by toCSV and read as a name by
+                   the resolver, so after normalisation the raw id is simply gone.
+                   sessionFromObject's "raw id wins over the name" branch was
+                   therefore dead code and every JSON round trip went down the name
+                   path instead - matching nothing, because no vehicle is named
+                   after a uuid. It then MANUFACTURED a second vehicle per real
+                   one, named with the raw uuid, and put every session on it: the
+                   real cars came back with empty histories and the history lived
+                   on ownerless phantom cars that could not even be logged
+                   against. Kept here, beside the normaliser that dropped it. */
+                norm.rawVehicleId = o.vehicleId ? String(o.vehicleId) : "";
+                var s = sessionFromObject(norm, i + 1, errors);
+                if (s) made.push(s);
             }
           } else {
             var delim =
@@ -9073,26 +9266,73 @@ for (var c = 0; c < head.length; c++) {
               errors.push(TXT("err.ignored", { c: unknown.join(", ") }));
             }
           }
-          vehiclesAdded = vehicles.length - before;
-          if (!made.length) {
+vehiclesAdded = vehicles.length - before;
+            if (!made.length) {
+              showImport(
+                "bad",
+                TXT("err.noneImported", { n: errors.length }),
+                errors,
+              );
+              return;
+            }
+            /* Past the bail-out: at least one row survived, so the rest of the
+               file's intent is now worth applying. */
+            if (pendPrice !== null && pendPrice !== undefined) {
+              price = pendPrice;
+              persist();
+              $("ppk").value = price;
+            }
+            if (pendFavs) {
+              /* Replaced, so the bin they were split out of has to go too.
+                 loadFavs() re-reads the bin key, and it was left pointing at the
+                 OLD contents: importing the same backup twice after binning a
+                 favourite put that place back live while its binned copy stayed,
+                 so one place existed in two states and appeared in the bin
+                 forever. Every favourite the file did not mention was destroyed
+                 outright, with no bin entry and no undo. */
+              try {
+                localStorage.setItem(K.f, JSON.stringify(pendFavs));
+                localStorage.setItem(K.bf, JSON.stringify([]));
+              } catch (err) {
+                /* favourites are a convenience; a failed write must not abort the restore */
+              }
+              loadFavs();
+              binned.favs = [];
+            }
+            for (var pv = 0; pv < pendVehAdds.length; pv++) {
+              var pa = pendVehAdds[pv];
+              if (vehById(pa.id)) continue;
+              vehicles.push({
+                id: pa.id,
+                name: String(pa.name || "Vehicle"),
+                icon: String(pa.icon || "\u{1F697}"),
+                /* Stamped, or the restored car belongs to nobody as far as this
+                   device is concerned. ownsVehicle() compares userId with the
+                   signed-in id, so a vehicle without one resolves to no role at
+                   all and the interface reported the owner's own restored car as
+                   "waiting for the owner to approve your access" - a request for
+                   something nobody had asked for. It also made the row look
+                   writable to everybody: mayWriteVehicle() treats a missing owner
+                   as "not yet claimed", so an imported vehicle was pushed under
+                   an id the server may already attribute to another account. */
+                userId: ownerId() || null,
+                initialOdometer: isNum(pa.initialOdometer)
+                  ? num(pa.initialOdometer)
+                  : 0,
+              });
+              vehiclesAdded++;
+            }
+            for (var m = 0; m < made.length; m++) sessions.push(made[m]);
+            save();
+            render();
+            syncSessions(made);
             showImport(
-              "bad",
-              TXT("err.noneImported", { n: errors.length }),
+              made.length && errors.length ? "warn" : "ok",
+              TXT("imp.note", { n: made.length }),
               errors,
             );
-            return;
+            toast(TXT("toast.imported", { n: made.length }));
           }
-          for (var m = 0; m < made.length; m++) sessions.push(made[m]);
-          save();
-          render();
-          syncSessions(made);
-          showImport(
-            made.length && errors.length ? "warn" : "ok",
-            TXT("imp.note", { n: made.length }),
-            errors,
-          );
-          toast(TXT("toast.imported", { n: made.length }));
-        }
         function showImport(kind, headline, list) {
           var box = $("impResult");
           box.hidden = false;
@@ -10581,8 +10821,16 @@ function restoreSession(id) {
             var s = null;
             for (var i = 0; i < binned.sessions.length; i++)
               if (binned.sessions[i].id === id) s = binned.sessions[i];
-            if (!s) return;
-              /* The LIVE array only. sessionAnywhere() spans live AND bin, and
+if (!s) return;
+              /* A restore is a real UPDATE, so it is refused by the same rules
+                 as the delete that put the row in the bin. Ungated, this handed
+                 every signed-in account a way to un-delete other people's
+                 sessions. */
+              if (!canEditSession(s)) {
+                toast(TXT("toast.noPermission"));
+                return;
+              }
+                /* The LIVE array only. sessionAnywhere() spans live AND bin, and
                  the row being restored is still in the bin at this point, so it
                  found the row itself: the guard was always true, the row was
                  removed from the bin, the restore branch below was dead code,
@@ -10617,8 +10865,12 @@ function restoreSession(id) {
           var v = null;
           for (var i = 0; i < binned.vehicles.length; i++)
             if (binned.vehicles[i].id === id) v = binned.vehicles[i];
-          if (!v) return;
-          var back = [];
+if (!v) return;
+            if (!mayWriteVehicle(id)) {
+              toast(TXT("toast.noPermission"));
+              return;
+            }
+            var back = [];
           var still = [];
           for (var j = 0; j < binned.sessions.length; j++) {
             if (binned.sessions[j].vehicleId === id) back.push(binned.sessions[j]);
@@ -10666,25 +10918,56 @@ binned.sessions = still;
         }
         /** Move every session to the bin, keeping vehicles and favourites. Reversible:
             the confirmation says so and the bin lists everything it took. */
-        function doClearSessions() {
-          var at = binStamp();
-          var gone = sessions.slice();
-          sessions = [];
-          for (var i = 0; i < gone.length; i++) {
-            gone[i].deletedAt = at;
-            binned.sessions.push(gone[i]);
-            markDirty("sessions", gone[i].id);
-            syncSession(gone[i]);
+function doClearSessions() {
+            /* This and the wipe below were reachable by ANY signed-in account and
+               touched EVERY row, including other people's sessions on vehicles
+               shared with this user. A viewer or a driver - who cannot delete a
+               single charge they did not write - could empty a shared car's whole
+               history with one button. The bin then keeps those rows binned even
+               though the server still has them live, so the history was gone from
+               the device permanently and the refusals arrived as P0001, which is
+               classified "waiting for the owner to approve" - held silently, with
+               no banner and no way to undo. Refuse instead of binning. */
+            var notMine = [];
+            for (var ci = 0; ci < sessions.length; ci++)
+              if (!canEditSession(sessions[ci])) notMine.push(sessions[ci]);
+            if (notMine.length) {
+              toast(TXT("toast.notAllYours", { n: notMine.length }));
+              return;
+            }
+            var at = binStamp();
+            var gone = sessions.slice();
+            sessions = [];
+            for (var i = 0; i < gone.length; i++) {
+              gone[i].deletedAt = at;
+              binned.sessions.push(gone[i]);
+              markDirty("sessions", gone[i].id);
+              syncSession(gone[i]);
+            }
+            save();
+            render();
+            toast(TXT("toast.cleared"));
           }
-          save();
-          render();
-          toast(TXT("toast.cleared"));
-        }
         /** Move everything to the bin and start again with a fresh baseline.
             Still recoverable: the bin keeps every row, and emptying it is the
             only step that cannot be undone. */
-        function doWipe() {
-          var at = binStamp();
+function doWipe() {
+            /* Same gate as doClearSessions, plus the vehicles themselves. Binning
+               a vehicle shared with someone else issues an UPDATE they will
+               refuse, which strands their shared car in this account's Bin,
+               restorable only by another refused write and purgeable only by a
+               refused DELETE. */
+            var wSess = [];
+            for (var wi = 0; wi < sessions.length; wi++)
+              if (!canEditSession(sessions[wi])) wSess.push(sessions[wi]);
+            var wVeh = [];
+            for (var wj = 0; wj < vehicles.length; wj++)
+              if (!mayWriteVehicle(vehicles[wj].id)) wVeh.push(vehicles[wj]);
+            if (wSess.length || wVeh.length) {
+              toast(TXT("toast.notAllYours", { n: wSess.length + wVeh.length }));
+              return;
+            }
+            var at = binStamp();
           var goneV = vehicles.slice();
           var goneS = sessions.slice();
           var goneF = favs.slice();
@@ -10757,10 +11040,23 @@ binned.sessions = still;
          * Empty the bin for good. This is the only genuinely irreversible action
          * left in the app, and it says so.
          */
-        function emptyBin() {
-          var n = binCount();
-          if (!n) return Promise.resolve(false);
-          return askConfirm(TXT("toast.emptyBinQ", { n: n }), {
+function emptyBin() {
+            var n = binCount();
+            if (!n) return Promise.resolve(false);
+            /* These are permanent server DELETEs, and the bin can hold rows the
+               current account was never allowed to write - anything that reached
+               the bin through one of the ungated bulk actions above. Purging
+               someone else's charge for good is not recoverable by anyone. */
+            var notMine = 0;
+            for (var ei = 0; ei < binned.vehicles.length; ei++)
+              if (!mayWriteVehicle(binned.vehicles[ei].id)) notMine++;
+            for (var ej = 0; ej < binned.sessions.length; ej++)
+              if (!canEditSession(binned.sessions[ej])) notMine++;
+            if (notMine) {
+              toast(TXT("toast.notAllYours", { n: notMine }));
+              return Promise.resolve(false);
+            }
+            return askConfirm(TXT("toast.emptyBinQ", { n: n }), {
             heading: "confirm.emptyBin",
             ok: "confirm.deleteForever",
             irreversible: "confirm.irreversibleEmptyBin",
@@ -11444,28 +11740,33 @@ throw 0;
                 $("ppk").value = price;
                 persist();
               }
-try {
-                  localStorage.setItem(
-                    K.f,
-                    JSON.stringify(
-                      Array.isArray(d.favourites) ? d.favourites : [],
-                    ),
-                  );
-                  /* The favourites bin has its own key, so clearing the bin
-                     above did not touch it and loadFavs() below re-read it. The
-                     deleted favourites therefore survived the restore and
-                     could be restored afterwards, resurrecting a place the
-                     backup did not contain. The bin is replaced, so its source
-                     is replaced too. */
-                  localStorage.setItem(K.bf, JSON.stringify([]));
-                } catch (e) {
-                  /* favourites are optional here; sessions are the part being restored */
-                }
-                loadFavs();
-                /* loadFavs() splits the bin out of the favourites list, so the
-                   in-memory copy has to be dropped again to match the storage
-                   just written. */
-                binned.favs = [];
+/* Only when the file actually carries the key. This handler also accepts an
+                   "Export JSON" file, which is the same shape minus
+                   `favourites`; writing [] for a missing key wiped every saved
+                   charging location and every binned row, unrecoverably, and then
+                   synced the wipe to the server. A file that says nothing about
+                   favourites must not be allowed to delete them. */
+                  if (Array.isArray(d.favourites))
+                    try {
+                      localStorage.setItem(
+                        K.f,
+                        JSON.stringify(d.favourites),
+                      );
+/* The favourites bin has its own key, so clearing the bin
+                       above did not touch it and loadFavs() below re-read it. The
+                       deleted favourites therefore survived the restore and
+                       could be restored afterwards, resurrecting a place the
+                       backup did not contain. The bin is replaced, so its source
+                       is replaced too. */
+                      localStorage.setItem(K.bf, JSON.stringify([]));
+                    } catch (e) {
+                      /* favourites are optional here; sessions are the part being restored */
+                    }
+                    loadFavs();
+                    /* loadFavs() splits the bin out of the favourites list, so the
+                       in-memory copy has to be dropped again to match the storage
+                       just written. */
+                    binned.favs = [];
               render();
               /* Report what was restored, including any session that referenced a
                  vehicle the file did not contain and had to be dropped. */
