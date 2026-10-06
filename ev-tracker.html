@@ -420,15 +420,16 @@
         width: 100%;
         margin-top: 0.6rem;
       }
-      .sync-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-        font-size: 0.8rem;
-        color: var(--text-muted);
-        background: var(--surface-2);
-        border: 1px solid var(--line);
-        border-radius: 20px;
+.sync-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      white-space: nowrap;
         padding: 0.25rem 0.65rem;
         white-space: nowrap;
       }
@@ -1390,6 +1391,15 @@
         align-items: flex-start;
         justify-content: center;
       }
+      /* The confirmation dialog must paint ABOVE every other sheet, not merely
+         be opened last. Both are body children with the same z-index, so
+         document order decided the winner and #syncPanel came after
+         #confirmSheet: a confirmation raised from inside the sync panel was
+         hidden underneath it. Its buttons were unclickable and Escape closed the
+         dialog the user could not see, leaving the visible one in place. */
+      #confirmSheet {
+        z-index: 90;
+      }
       .sheet-box {
         background: var(--surface);
         border: 1px solid var(--line);
@@ -1588,9 +1598,19 @@
         white-space: nowrap;
         max-width: 8rem;
       }
-      .sync-badge-mini {
-        font-size: 0.7rem;
-        padding: 0.15rem 0.4rem;
+.sync-badge-mini {
+      font-size: 0.7rem;
+      padding: 0.15rem 0.4rem;
+      /* Only here, never on the header badge, which is allowed to grow because
+         it carries the full refusal text and the ellipsised server detail. This
+         one sits in the nowrap, scrollable nav strip, so its text is a hard
+         minimum for that row's width. It held an empty string before, costing
+         about two pixels; now that it reads "In sync" it added roughly 55px to a
+         strip six icons already fill, which scrolled the account name - the one
+         thing the narrow layout exists to keep visible - out of view. */
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
       }
 /* These four rules were stranded INSIDE the prefers-reduced-motion block below,
            where only the universal animation rule belongs. With reduced motion
@@ -6054,12 +6074,20 @@ if (cur >= vehicles.length) cur = 0;
                   if (mayWriteVehicle(lrow.id) && !lrow.provisional)
                     syncVehicle(lrow);
                 }
-                if (localOnlySessions.length)
-                  syncSessions(
-                    localOnlySessions.filter(function (r) {
-                      return !syncStalled.sessions[r.id];
-                    }),
-                  );
+if (localOnlySessions.length)
+                    syncSessions(
+                      localOnlySessions.filter(function (r) {
+                        /* Both guards, as the vehicle loop above. retryDirty()
+                           has already queued every dirty session and
+                           syncSessions bulk-upserts them in this same tick, so
+                           without the dirty check an offline-logged session was
+                           pushed twice per pull. A refused push spends an
+                           attempt each time, which burned MAX_PUSH_ATTEMPTS in
+                           half the expected pulls. */
+                        if (syncStalled.sessions[r.id]) return false;
+                        return !syncDirty.sessions[r.id];
+                      }),
+                    );
                 return true;
             })
 .catch(function (e) {
@@ -8018,10 +8046,17 @@ if (vi.length) {
           el.textContent = TXT("sync.nextTry", { n: left });
         }
         /** Forget the backoff and try right now, then start again gently. */
-        function retryNow() {
-          if (retryTimer) clearTimeout(retryTimer);
-          retryTimer = null;
-          retryStep = 0;
+function retryNow() {
+            if (retryTimer) clearTimeout(retryTimer);
+            retryTimer = null;
+            /* The interval too, not just the timeout. armRetry armed both, and
+               the path that follows a manual retry re-arms neither: the pull
+               succeeds, so armRetry and scheduleRetry are never called and the
+               countdown keeps firing once a second for the rest of the session,
+               re-hiding an element that is already hidden. */
+            if (retryTick) clearInterval(retryTick);
+            retryTick = null;
+            retryStep = 0;
           if (syncOn() && syncOnline()) syncPull();
           else scheduleRetry();
           renderSyncPanel();
@@ -9203,7 +9238,21 @@ for (var c = 0; c < head.length; c++) {
           if (!sheet) return Promise.resolve(window.confirm(message));
           /* A second request while the dialog is open resolves the first one
              as cancelled, so a pending promise is never left dangling. */
-          if (confirmState) confirmState.resolve(false);
+          /* A second request while the dialog is open resolves the first one
+               as cancelled, so a pending promise is never left dangling.
+
+               The existing lock is RELEASED first. Replacing the dialog in place
+               means the number of locks must not grow: the incoming call locks
+               again further down, and only one close ever runs, so every repeat
+               left backgroundLocks permanently above zero. `.wrap`, `.side` and
+               `footer` would stay inert and aria-hidden for the rest of the
+               session — every nav button and form dead, recoverable only by
+               reloading. Discard inside the sync panel was the one reachable
+               trigger, because the sheets are not themselves inert. */
+            if (confirmState) {
+              confirmState.resolve(false);
+              lockBackground(false);
+            }
           var body = $("confirmBody");
           var heading = $("confirmHeading");
           if (body) {
@@ -10528,24 +10577,30 @@ slot.map.on("click", function (e) {
          * preserved because the row is never rebuilt, only moved.
          * @param {string} id
          */
-        function restoreSession(id) {
-          var s = null;
-          for (var i = 0; i < binned.sessions.length; i++)
-            if (binned.sessions[i].id === id) s = binned.sessions[i];
-if (!s) return;
-            /* Idempotent. A restore from a backup taken before the delete can put
-               the same id back in the live array while its binned copy survives;
-               restoring again then pushed a second copy, double-counting it in
-               the totals, the chart and the export. */
-            if (vehById(id) || sessionAnywhere(id)) {
-              binned.sessions = binned.sessions.filter(function (x) {
-                return x.id !== id;
-              });
-              forgetGoneRow("sessions", id);
-              save();
-              render();
-              return;
-            }
+function restoreSession(id) {
+            var s = null;
+            for (var i = 0; i < binned.sessions.length; i++)
+              if (binned.sessions[i].id === id) s = binned.sessions[i];
+            if (!s) return;
+              /* The LIVE array only. sessionAnywhere() spans live AND bin, and
+                 the row being restored is still in the bin at this point, so it
+                 found the row itself: the guard was always true, the row was
+                 removed from the bin, the restore branch below was dead code,
+                 and Restore did nothing but delete the entry and re-import it on
+                 the next pull. The test used is whether the id is already LIVE,
+                 which is what "would duplicate" actually means. */
+              var alreadyLive = false;
+              for (var li = 0; li < sessions.length; li++)
+                if (sessions[li].id === id) alreadyLive = true;
+              if (alreadyLive) {
+                binned.sessions = binned.sessions.filter(function (x) {
+                  return x.id !== id;
+                });
+                forgetGoneRow("sessions", id);
+                save();
+                render();
+                return;
+              }
             binned.sessions = binned.sessions.filter(function (x) {
               return x.id !== id;
             });
@@ -11389,17 +11444,28 @@ throw 0;
                 $("ppk").value = price;
                 persist();
               }
-              try {
-                localStorage.setItem(
-                  K.f,
-                  JSON.stringify(
-                    Array.isArray(d.favourites) ? d.favourites : [],
-                  ),
-                );
-              } catch (e) {
-                /* favourites are optional here; sessions are the part being restored */
-              }
-              loadFavs();
+try {
+                  localStorage.setItem(
+                    K.f,
+                    JSON.stringify(
+                      Array.isArray(d.favourites) ? d.favourites : [],
+                    ),
+                  );
+                  /* The favourites bin has its own key, so clearing the bin
+                     above did not touch it and loadFavs() below re-read it. The
+                     deleted favourites therefore survived the restore and
+                     could be restored afterwards, resurrecting a place the
+                     backup did not contain. The bin is replaced, so its source
+                     is replaced too. */
+                  localStorage.setItem(K.bf, JSON.stringify([]));
+                } catch (e) {
+                  /* favourites are optional here; sessions are the part being restored */
+                }
+                loadFavs();
+                /* loadFavs() splits the bin out of the favourites list, so the
+                   in-memory copy has to be dropped again to match the storage
+                   just written. */
+                binned.favs = [];
               render();
               /* Report what was restored, including any session that referenced a
                  vehicle the file did not contain and had to be dropped. */

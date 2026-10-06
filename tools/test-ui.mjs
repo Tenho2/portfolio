@@ -49,6 +49,18 @@ const code = html
   /* JS block comments, so prose naming a variable is not read as a reference. */
   .replace(/\/\*[\s\S]*?\*\//g, "");
 
+/**
+ * The text between two markers, so an assertion describes one function's body
+ * rather than the whole file. A missing marker yields an empty string and the
+ * assertion fails loudly instead of silently matching somewhere else.
+ */
+function between(source, from, to) {
+  const a = source.indexOf(from);
+  if (a < 0) return "";
+  const b = source.indexOf(to, a + from.length);
+  return source.slice(a, b < 0 ? source.length : b);
+}
+
 group("the hidden attribute is not defeated by an author display rule", () => {
   /* The HTML spec puts [hidden] { display: none } in the user-agent stylesheet,
      so ANY author rule that sets display wins regardless of specificity. Seven
@@ -228,8 +240,8 @@ group("restoring a backup cannot leave a row live and binned at once", () => {
   ok("the restore handler exists", idx > 0);
   const block = code.slice(idx, idx + 2600);
   ok("the bin is reset before the arrays are replaced", /binned\s*=\s*\{\s*vehicles:\s*\[\],\s*sessions:\s*\[\],\s*favs:\s*\[\]\s*\}/.test(block));
-  ok("restoreSession is idempotent", /function restoreSession[\s\S]{0,700}sessionAnywhere\(id\)/.test(code));
-  ok("restoreVehicle is idempotent", /function restoreVehicle[\s\S]{0,1400}vehById\(id\)/.test(code));
+ok("restoreSession is idempotent", /function restoreSession[\s\S]{0,900}alreadyLive/.test(code));
+    ok("restoreVehicle is idempotent", /function restoreVehicle[\s\S]{0,1400}vehById\(id\)/.test(code));
 });
 
 group("CSV header resolution uses the tested helper", () => {
@@ -371,6 +383,86 @@ group("a local delete survives a pull", () => {
   ok("local binned vehicles are kept", /localOnlyBinnedVehicles/.test(fn));
   ok("local binned sessions are kept", /localOnlyBinnedSessions/.test(fn));
   ok("a locally binned id wins over the server copy", /localBinnedIds\[r\.id\]/.test(fn));
+});
+
+group("restoring a binned session actually restores it", () => {
+  /* The idempotency guard tested sessionAnywhere(), which spans live AND bin,
+     while the row being restored was still in the bin. It therefore always
+     found the row itself: the restore branch was dead code, Restore deleted
+     the bin entry, and the next pull re-imported it. Forever. */
+  const fn = between(code, "function restoreSession", "function restoreVehicle");
+  ok("it does not consult the live+bin helper", !/sessionAnywhere\(/.test(fn));
+  ok("it does not look a session id up in vehicles", !/vehById\(/.test(fn));
+  ok(
+    "it tests the live session array instead",
+    /for \(var li = 0; li < sessions\.length; li\+\+\)/.test(fn) &&
+      /if \(sessions\[li\]\.id === id\) alreadyLive = true/.test(fn),
+  );
+  ok(
+    "the restore branch is reachable",
+    /if \(alreadyLive\) \{[\s\S]*?return;[\s\S]*?s\.deletedAt = null;/.test(fn),
+  );
+});
+
+group("the confirm dialog is reachable above the sheet that raised it", () => {
+  /* Both sheets were body children at z-index 80, so document order decided the
+     winner and #syncPanel came second. A confirmation raised from inside the
+     sync panel painted underneath it: its buttons were unclickable, and Escape
+     closed the invisible one while the visible panel stayed put. */
+  ok(
+    "the confirm sheet stacks above the others",
+    /#confirmSheet \{\s*z-index: 90;/.test(style),
+  );
+  /* Repeat confirmations must not accumulate background locks. The sheets are
+     not themselves inert, so Discard inside the sync panel could raise a second
+     askConfirm and leave backgroundLocks permanently above zero, stranding
+     .wrap/.side/footer on inert for the session with only a reload recovering. */
+  const ask = between(code, "function askConfirm", "function closeConfirm");
+  ok(
+    "a repeat request releases the lock it is replacing",
+    /if \(confirmState\) \{[\s\S]*?confirmState\.resolve\(false\);[\s\S]*?lockBackground\(false\);[\s\S]*?\}/.test(
+      ask,
+    ),
+  );
+  ok(
+    "lockBackground clamps at zero",
+    /backgroundLocks < 0\) backgroundLocks = 0/.test(code),
+  );
+});
+
+group("a pull never pushes the same row twice", () => {
+  /* The vehicle loop gained a dirty guard; the session loop did not. retryDirty()
+     had already queued every dirty session, so an offline-logged session was
+     bulk-upserted twice per pull, and a refusal spends an attempt each time. */
+  const pull = between(code, "localOnlySessions", "return true;\n            })\n              .catch");
+  ok(
+    "the session filter checks both stalled and dirty",
+    /syncStalled\.sessions\[r\.id\]\) return false/.test(pull) &&
+      /return !syncDirty\.sessions\[r\.id\]/.test(pull),
+  );
+  /* retryNow cleared the timeout but not the interval, and the successful-pull
+     path re-arms neither, so the countdown woke the page once a second for the
+     rest of the session. */
+  const now = between(code, "function retryNow", "function renderRetryCountdown");
+  ok("retryNow clears the interval as well", /clearInterval\(retryTick\)/.test(now));
+});
+
+group("restoring a backup replaces the whole bin, favourites included", () => {
+  /* binned was reset, then loadFavs() re-read the untouched bin key and put the
+     deleted favourites back, so the bin was only half-replaced. */
+  const restore = between(code, "K.f,", "loadFavs();\n                render();");
+  ok("the favourites bin key is cleared too", /K\.bf, JSON\.stringify\(\[\]\)/.test(restore));
+  ok("the in-memory bin is re-cleared after loadFavs", /binned\.favs = \[\];/.test(restore));
+});
+
+group("the mobile sync badge cannot push the account name off screen", () => {
+  /* The badge now reads "In sync" instead of an empty string, inside a nowrap
+     scrollable strip. It must be the thing that shrinks, and never the header
+     badge, which carries the full refusal text. */
+  ok("the mini badge is allowed to shrink", /\.sync-badge-mini \{[^}]*min-width: 0/.test(style));
+  ok("it ellipsises rather than overflowing", /\.sync-badge-mini \{[^}]*text-overflow: ellipsis/.test(style));
+  const base = between(style, ".sync-badge {", ".sync-badge[data-kind");
+  ok("the header badge is not clipped", !/text-overflow/.test(base));
 });
 
 group("the sync panel stays reachable", () => {
