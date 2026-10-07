@@ -4557,6 +4557,38 @@ function copyDiagnostics() {
                     );
                   return syncVehicle(v);
                 }
+                /* An update refused on permissions, retried once as an insert.
+
+                   `confirmed` is a latch: it is set when a write succeeds and
+                   persisted with the row, and nothing ever clears it. So a
+                   vehicle that was pushed once and later hard-deleted on the
+                   server - cleaned up by hand, or purged from another device -
+                   kept taking the update path forever against a row that no
+                   longer existed, retried three times, escalated to the red
+                   banner, and offered a Discard button that would have taken
+                   the vehicle and all of its sessions with it. Verified: four
+                   rows reported `confirmed: yes` while a direct query for those
+                   ids returned nothing.
+
+                   An upsert should create a missing row anyway, but it does not
+                   get the chance, because the INSERT branch of an upsert is still
+                   evaluated as an insert the moment anything refuses it. Trying
+                   the insert path outright distinguishes the two cases: if it
+                   succeeds the row was genuinely absent and is now back; if it
+                   fails the same way, the row is there and is not writable, and
+                   that is a real permission problem the user should be told
+                   about rather than retried. */
+                if (!isCreate && !v.confirmedRetry && e.code === "42501") {
+                  v.confirmedRetry = true;
+                  v.confirmed = false;
+                  if (window.console && window.console.info)
+                    window.console.info(
+                      "[sync] vehicle " + v.id +
+                        " refused as an update; retrying as an insert in case " +
+                        "the server no longer has it",
+                    );
+                  return syncVehicle(v);
+                }
                 return failPush(
                   "vehicles",
                   v.id,

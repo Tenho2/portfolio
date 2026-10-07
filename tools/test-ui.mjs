@@ -622,6 +622,30 @@ group("a failed import destroys nothing", () => {
   );
 });
 
+group("a row the server has forgotten is not written as an update forever", () => {
+  /* `confirmed` is a latch: set when a write succeeds, persisted with the row,
+     and never cleared. A vehicle pushed once and later hard-deleted on the
+     server - cleaned up by hand, or purged from another device - therefore kept
+     taking the update path against a row that no longer existed: three retries,
+     the red banner, and a Discard button that would have taken the vehicle and
+     every session under it. Observed live: four rows reported `confirmed: yes`
+     while a direct query for those ids returned no rows. */
+  const sv = between(code, "function syncVehicle", "function syncSession");
+  ok(
+    "a 42501 on the update path is retried once as an insert",
+    /!isCreate && !v\.confirmedRetry && e\.code === "42501"/.test(sv),
+  );
+  ok("the latch is cleared for that retry", /v\.confirmed = false;/.test(sv));
+  ok(
+    "the retry cannot recurse",
+    /v\.confirmedRetry = true;[\s\S]{0,400}?return syncVehicle\(v\);/.test(sv),
+  );
+  ok(
+    "the fallback runs before the row is reported as refused",
+    /v\.confirmedRetry[\s\S]{0,700}?failPush\(/.test(sv),
+  );
+});
+
 group("the sync panel stays reachable", () => {
 
   /* These badges are the only way to open the sync panel. syncNote("") used to
