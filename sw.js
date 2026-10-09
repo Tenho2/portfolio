@@ -34,7 +34,7 @@
  * Last bumped: 2026-10-07, for the split into app/app.css + app/app.js and the
  * second layout page.
  */
-const VERSION = "v36";
+const VERSION = "v37";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [
