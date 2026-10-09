@@ -6601,9 +6601,7 @@ vehiclesAdded = vehicles.length - before;
           confirmExpectWord = opts.expect || "";
           var sheet = $("confirmSheet");
           if (!sheet) return Promise.resolve(window.confirm(message));
-          /* A second request while the dialog is open resolves the first one
-             as cancelled, so a pending promise is never left dangling. */
-          /* A second request while the dialog is open resolves the first one
+/* A second request while the dialog is open resolves the first one
                as cancelled, so a pending promise is never left dangling.
 
                The existing lock is RELEASED first. Replacing the dialog in place
@@ -6819,19 +6817,35 @@ vehiclesAdded = vehicles.length - before;
             closeEdit();
             return;
           }
-          if (!$("editForm").reportValidity()) return;
+if (!$("editForm").reportValidity()) return;
           var v = veh();
+          /* Same warning as the add form, and the same shape: three actions via
+             the confirm dialog, with "use the previous reading" as the primary.
+             The row being edited is excluded from the comparison, because asking
+             "is 92,000 less than the 92,000 this row already holds?" is not a
+             useful question - it is how a mistyped odometer gets corrected. */
+          confirmMileage(
+            { target: $("editForm"), mileage: $("eMileage"), date: $("eDate") },
+            null,
+            function () {
+              commitEdit(s, v);
+            },
+            editId,
+          );
+        }
+        function commitEdit(s, v) {
           s.date = $("eDate").value;
           s.time = fmtTime($("eTime").value);
           s.duration = $("eDuration").value;
           s.hours = hmToHours($("eDuration").value);
           s.location = $("eLocation").value.trim();
           s.energy = num($("eEnergy").value);
-          s.mileage = num($("eMileage").value);
+          /* An absent reading stays absent, as on the add form. */
+          s.mileage = $("eMileage").value === "" ? null : num($("eMileage").value);
           s.cost =
             $("eCost").value === "" ? null : Math.max(0, num($("eCost").value));
-          s.socStart = soc($("eSocStart") ? $("eSocStart").value : null);
-          s.socEnd = soc($("eSocEnd") ? $("eSocEnd").value : null);
+          s.socStart = soc($("eSocStart") ? soc($("eSocStart").value) : null);
+          s.socEnd = soc($("eSocEnd") ? soc($("eSocEnd").value) : null);
           s.notes = $("eNotes").value.trim();
           s.fast = $("eFast").checked;
           s.home = $("eHome").checked;
@@ -6855,7 +6869,7 @@ vehiclesAdded = vehicles.length - before;
               matched ? matched.lng : null,
             );
           }
-          closeEdit();
+closeEdit();
           render();
           toast(TXT("toast.updated"));
         }
@@ -9336,7 +9350,122 @@ $("syncBadge").addEventListener("click", function () {
           var f = e.target,
             d = f.elements;
           if (!f.reportValidity()) return;
+          /* The one rule that can legitimately hold up a save, and only that.
+             Everything below this point runs unconditionally once it passes. */
+          confirmMileage(e, d, function () {
+            commitSession(f, d);
+          });
+        });
+        /**
+         * Ask about a mileage that reads lower than the vehicle's own history.
+         *
+         * Date-relative, not a global maximum. The odometer is cumulative, so a
+         * reading lower than everything on record means one of two things: a
+         * mistake, or a session being backdated into a gap that predates the rows
+         * already stored. A global maximum cannot tell those apart and would
+         * forbid filling in a session you forgot last week. So the comparison is
+         * against the highest reading among sessions dated EARLIER than this one,
+         * which is the case the mistake actually shows up in: 9 Oct at 1,000 km
+         * followed by 10 Oct at 100 km.
+         *
+         * A warning rather than a refusal. The user decides; a hard block here
+         * would make the bin and the import paths the only ways to fix a real
+         * typo, which is not a trade anyone asked for.
+         *
+         * @param {function(): void} onOk runs when the save may proceed.
+         */
+        function confirmMileage(e, d, onOk, excludeId) {
+          var raw = d.mileage ? d.mileage.value : "";
           var v = veh();
+          /* Absent is not a mistake, it is an unknown. Refusing to save a charge
+             because the odometer was not written down would lose the whole
+             session over a field the app has never required to be accurate. */
+          if (!raw || raw.trim() === "") {
+            if (typeof onOk === "function") onOk();
+            return Promise.resolve(true);
+          }
+          var val = num(raw);
+          var floor = mileageFloor(v ? v.id : null, d.date ? d.date.value : "", excludeId);
+          if (!(val < floor.value)) {
+            if (typeof onOk === "function") onOk();
+            return Promise.resolve(true);
+          }
+          return askConfirm(
+            TXT("odo.lowerThanHistory", {
+              v: floor.label,
+              d: num(raw).toLocaleString(LOCALE),
+              f: floor.value.toLocaleString(LOCALE),
+            }),
+            {
+              heading: "odo.title",
+              /* Primary is "correct it": fills the field with the last reading so
+                 the user can accept or adjust it, then saves. */
+              ok: "odo.usePrevious",
+              /* The second action resolves the string "alt", which the older
+                 callers never see because they only test truthiness. */
+              altKey: "odo.keepAnyway",
+              cancel: "confirm.cancel",
+            },
+          ).then(function (choice) {
+            if (choice === "alt") {
+              if (typeof onOk === "function") onOk();
+              return true;
+            }
+            if (choice === true) {
+              if (d.mileage) d.mileage.value = String(floor.value);
+              if (typeof onOk === "function") onOk();
+              return true;
+            }
+            /* Cancelled, or the dialog was replaced by another request. The
+               save does not happen, which is the safe reading of both. */
+            return false;
+          });
+        }
+        /**
+         * The lowest reading that makes sense for a session on `date`.
+         *
+         * Highest mileage among sessions for this vehicle dated strictly before
+         * `date`, or the vehicle's initial odometer, or 0. `excludeId` lets an
+         * edit pass without comparing a row against itself, so correcting a
+         * mistyped odometer is not asking "is 92,000 less than 92,000?".
+         *
+         * @returns {{value: number, label: string}}
+         */
+        function mileageFloor(vehicleId, date, excludeId) {
+          var floor = 0,
+            label = "";
+          var base = 0;
+          for (var vi = 0; vi < vehicles.length; vi++)
+            if (vehicles[vi] && vehicles[vi].id === vehicleId)
+              base = Math.max(0, num(vehicles[vi].initialOdometer));
+          var when = validDate(date || "");
+          var best = -1;
+          for (var i = 0; i < sessions.length; i++) {
+            var s = sessions[i];
+            if (!s || s.deletedAt) continue;
+            if (excludeId && s.id === excludeId) continue;
+            if (s.vehicleId !== vehicleId) continue;
+            var m = num(s.mileage);
+            /* Only rows with a real reading constrain anything. A reading of 0
+               means "not written down", not "the car was new". */
+            if (!(m > 0)) continue;
+            /* A row has to genuinely predate this one to be a floor, and an
+               undated row cannot be shown to do either. Counting it anyway let
+               a session imported without dates outrank every real reading and
+               demand a nonsensical correction. */
+            var sd = validDate(s.date);
+            if (!when || !sd || sd >= when) continue;
+            if (m > best) {
+              best = m;
+              label = s.date || "";
+            }
+          }
+          if (best > 0 && best >= base) return { value: best, label: label };
+          return { value: base, label: "" };
+        }
+        function commitSession(f, d) {
+          var v = veh();
+          var hadMileage = d.mileage.value.trim() !== "";
           /* Viewers and anyone still awaiting approval cannot log sessions.
              The insert policy would refuse the row anyway; catching it here
              keeps the reason visible instead of surfacing a sync error. */
@@ -9357,7 +9486,11 @@ $("syncBadge").addEventListener("click", function () {
             hours: hmToHours(d.duration.value),
             location: d.location.value.trim(),
             energy: num(d.energy.value),
-            mileage: num(d.mileage.value),
+            /* An absent reading stays absent rather than becoming a zero.
+               num() would turn "" into 0, which is indistinguishable from "the
+               car had done zero kilometres" and silently changes the distance
+               total for that vehicle. */
+            mileage: d.mileage.value === "" ? null : num(d.mileage.value),
             cost: d.cost.value === "" ? null : Math.max(0, num(d.cost.value)),
             socStart: soc(d.socStart ? soc(d.socStart.value) : null),
             socEnd: soc(d.socEnd ? soc(d.socEnd.value) : null),
@@ -9402,12 +9535,20 @@ $("syncBadge").addEventListener("click", function () {
           $("sessMapBox").hidden = true;
           setLocStatus("");
           go("dashboard");
+          /* A session saved with no reading is a legitimate outcome, so it is
+             said plainly rather than left to look like a dropped field. Captured
+             before f.reset() above, because by now the field is empty again and
+             the evidence of what the user actually typed is gone. Kept local
+             rather than stored on the row: an extra property would be pushed to
+             a table that has no such column and the insert would be refused. */
           toast(
-            TXT(s.fav ? "toast.savedFav" : "toast.saved", {
-              v: v.name,
-            }),
+            s.mileage === null && hadMileage
+              ? TXT("odo.savedWithout")
+              : TXT(s.fav ? "toast.savedFav" : "toast.saved", {
+                  v: v.name,
+                }),
           );
-        });
+        }
         $("fav").addEventListener("change", function () {
           $("favNameWrap").hidden = !this.checked;
           if (this.checked) {
