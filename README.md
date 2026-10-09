@@ -208,6 +208,56 @@ checks the wide shell is doing the arranging it claims to, and that it never
 restyles a shared component or hides content — a layout that silently drops
 information is a bug, not a preference.
 
+## Charging stations
+
+**Find station**, on the dashboard directly after Add session, maps the real
+chargers near you. There is no station database: OpenStreetMap tags chargers as
+`amenity=charging_station`, and **Overpass** is a free public query endpoint for
+exactly that — no key, no account, nothing to maintain.
+
+Two facts were established by calling the API, not by reading about it, and both
+would have shipped as silent failures:
+
+- **The connector tags are `socket:*`, not `connector:*`.** Written from memory,
+  `connector:type2` matches nothing and every station comes back with an empty
+  connector list — which reads as correct data rather than a wrong key.
+  `socket:<type>:output` is that connector's _rating_ and is filtered out rather
+  than listed as another type.
+- **Not every endpoint can be trusted with an empty answer.** The primary
+  returned 504 once and 200 twice; a mirror returned HTTP 200 with **zero**
+  elements for a query the primary answered with eleven. "No chargers within
+  2 km" and "I asked a server with no data for that area" are otherwise
+  indistinguishable, so a fallback endpoint that finds nothing is reported as a
+  **failed lookup**, never as a confirmed absence.
+
+Overpass is a free service with no SLA, so every path fails soft: the worst case
+is one line of status text and the manual entry the user already had. Two
+endpoints are tried in turn, each with a 20-second deadline. The service worker
+does not cache any of it — it is cross-origin and bypassed.
+
+The accuracy gate (`LOC_MAX_ACCURACY_M`, 50 m) applies here too. The geolocation
+button skips it, which is how a charger a kilometre away can end up written into
+the log as though it were certain; picking a station from such a reading would be
+the same mistake with extra steps.
+
+A chosen station fills the name and coordinates and leaves the **price alone**:
+OpenStreetMap has no price, and guessing one is exactly what the existing
+ambiguity logic exists to avoid.
+
+### Diagnostics
+
+Lookups are recorded under **`STATION LOOKUPS`**, deliberately _not_ in the error
+log. `diagLog` renders under a heading that reads ERRORS and its empty line says
+_"none — every write the server accepted"_, so a successful lookup filed there
+would print as a fault — the same misreading that got a `42501` wrongly declared
+fixed in the first place.
+
+Each entry records the endpoint, elapsed ms, byte count, element count, whether
+it came from a fallback, and the **raw response body**, truncated at 4 KB with the
+true size stated. That is what lets the real response shape be read off a report
+instead of guessed at. Ten entries, separately capped, so the raw bodies can never
+crowd out the error log.
+
 ## Database
 
 Supabase project: `ztzsyklfaqxurbtvsvtz`. Credentials are in

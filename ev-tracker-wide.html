@@ -429,8 +429,9 @@
                   class="btn ghost"
                   type="button"
                   id="locGeo"
-                  data-i18n="as.myloc"
-                ></button>
+                ><span class="ic" aria-hidden="true">🧭</span
+                ><span data-i18n="as.myloc"></span>
+                </button>
               </div>
               <ul class="suggest" id="locSuggest" role="listbox" hidden></ul>
               <div class="chips" id="favQuick" hidden></div>
@@ -1206,8 +1207,17 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           <!-- Proximity matching can only use places that have coordinates.
                This fills in the ones that have none and leaves everything else
                untouched, so it cannot move a pin that is already right. -->
+          <!-- Without coordinates a place cannot be matched to your position,
+               cannot be ranked by distance, and cannot be suggested. This is the
+               one bit of housekeeping that keeps those working, so it is marked
+               as recommended rather than left looking like every other secondary
+               button. -->
           <div class="qa" style="margin-top: 0">
-            <button type="button" class="btn ghost" id="favGeoBtn">
+            <button
+              type="button"
+              class="btn ghost recommended"
+              id="favGeoBtn"
+            >
               <span class="ic" aria-hidden="true">🛰️</span
               ><span data-i18n="fav.geoMissing"></span>
             </button>

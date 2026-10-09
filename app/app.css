@@ -849,6 +849,22 @@
         color: var(--primary);
         border: 2px solid var(--primary);
       }
+      /* A nudge, not a shout.
+         "Look up missing coordinates" in Favourites is the one maintenance
+         action that quietly stops the app working well: without coordinates a
+         place cannot be matched to your position, cannot be ranked, and cannot
+         be suggested. It looked like every other secondary button next to it.
+         A tinted fill and a heavier edge mark it as recommended; it stays a
+         secondary action and does not compete with the primary submit. */
+      .btn.recommended {
+        background: var(--surface-2);
+        border-color: var(--primary);
+        border-width: 2px;
+        font-weight: 600;
+      }
+      .btn.recommended:hover {
+        background: var(--surface-3);
+      }
       .btn.dgr {
         background: var(--danger);
       }

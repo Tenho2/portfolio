@@ -66,7 +66,7 @@
       "as.mileage": "Mileage (km)",
       "as.location": "Location / station",
       "as.find": "📍 Find",
-      "as.myloc": "🧭 My location",
+      "as.myloc": "Near me",
       "as.mapDrag":
         "Drag the pin to adjust the position, or click the map.",
       "as.mapOff":
@@ -715,7 +715,7 @@
       "as.mileage": "Matkamittarilukema (km)",
       "as.location": "Paikka / laturi",
       "as.find": "📍 Etsi",
-      "as.myloc": "🧭 Oma sijainti",
+      "as.myloc": "Lähellä",
       "as.mapDrag":
         "Vedä nappia säätääksesi sijaintia tai napsauta karttaa.",
       "as.mapOff":
@@ -1371,7 +1371,7 @@
       "as.mileage": "Mätarställning (km)",
       "as.location": "Plats / laddare",
       "as.find": "📍 Sök",
-      "as.myloc": "🧭 Min plats",
+      "as.myloc": "Near mig",
       "as.mapDrag":
         "Dra nålen för att justera platsen, eller klicka på kartan.",
       "as.mapOff":
