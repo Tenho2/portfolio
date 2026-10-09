@@ -350,6 +350,7 @@
                   type="time"
                   id="time"
                   name="time"
+                  step="1"
                   required
                   aria-required="true"
                 />
@@ -359,20 +360,21 @@
               <legend class="sr-only" data-i18n="grp.duration"></legend>
               <div class="f">
                 <label for="duration" data-i18n="as.dur"></label>
+                <!-- step="1" is what makes the native picker draw its third
+                     wheel. It used to be switched between 1 and 60 by an "add
+                     seconds" checkbox, and the state was a module global that
+                     the edit sheet also read - so the granularity of this
+                     field silently depended on a control in another view. -->
                 <input
                   type="time"
                   id="duration"
                   name="duration"
-                  step="60"
+                  step="1"
                   required
                   aria-required="true"
                   aria-describedby="durHint"
                 />
-                <div class="hint" id="durHint"></div>
-                <div class="chk" style="margin: 0.5rem 0 0">
-                  <input type="checkbox" id="durSec" />
-                  <label for="durSec" data-i18n="as.durSec"></label>
-                </div>
+                <div class="hint" id="durHint" data-i18n="as.durHint"></div>
               </div>
               <div class="f">
                 <label for="mileage" data-i18n="as.mileage"></label
@@ -1203,7 +1205,13 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             </div>
             <div class="f">
               <label for="eTime" data-i18n="as.time"></label
-              ><input type="time" id="eTime" required aria-required="true" />
+              ><input
+                type="time"
+                id="eTime"
+                step="1"
+                required
+                aria-required="true"
+              />
             </div>
           </fieldset>
           <fieldset class="row">
@@ -1213,12 +1221,12 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               ><input
                 type="time"
                 id="eDuration"
-                step="60"
+                step="1"
                 required
                 aria-required="true"
                 aria-describedby="eDurHint"
               />
-              <div class="hint" id="eDurHint"></div>
+              <div class="hint" id="eDurHint" data-i18n="as.durHint"></div>
             </div>
             <div class="f">
               <label for="eMileage" data-i18n="as.mileage"></label

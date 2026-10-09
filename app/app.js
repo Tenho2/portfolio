@@ -61,7 +61,6 @@
             /* After the text is swapped, so the labels read in the new language. */
             syncNavButtonNames();
             render();
-            syncDurHint();
             syncCents();
             syncHints();
           } catch (e) {
@@ -3349,10 +3348,18 @@ function saveFavs() {
             .trim()
             .split(":");
           if (p.length < 2 || p.length > 3) return 0;
+          /* Each component must be digits only. The bounds checks below catch
+             60 minutes and a negative hour, but they cannot catch a SIGN: in
+             JavaScript `-0 < 0` is false, so "-0:30" sailed past
+             `h < 0` and returned 0.5 hours - a malformed string quietly accepted
+             as thirty minutes. Worth rejecting properly, since this function
+             decides whether a row's duration is a real number at all. */
+          for (var q = 0; q < p.length; q++)
+            if (!/^\d+$/.test(p[q].trim())) return NaN;
           var h = parseInt(p[0], 10),
             m = parseInt(p[1], 10),
             s = p.length === 3 ? parseInt(p[2], 10) : 0;
-if (!isFinite(h) || !isFinite(m) || !isFinite(s)) return 0;
+          if (!isFinite(h) || !isFinite(m) || !isFinite(s)) return 0;
             /* Reject impossible components rather than returning them.
                "-0:30" and "0:-30" both produced -0.5, which was accepted because
                only NaN was checked: the row then SUBTRACTED from the Hours tile,
@@ -3363,7 +3370,7 @@ if (!isFinite(h) || !isFinite(m) || !isFinite(s)) return 0;
             if (h < 0 || h > 48) return NaN;
             return h + m / 60 + s / 3600;
         }
-function hoursToHM(h, withSec) {
+function hoursToHM(h, alwaysSeconds) {
             /* Clamped as well, because this also formats rows restored from a
                backup, which are not re-validated on the way in. */
             var t = Math.max(0, Math.round((+h || 0) * 3600));
@@ -3371,7 +3378,14 @@ function hoursToHM(h, withSec) {
             mm = Math.floor((t % 3600) / 60),
             ss = t % 60;
           var out = pad(hh) + ":" + pad(mm);
-          if (withSec || ss > 0) out += ":" + pad(ss);
+          /* Two modes, and the distinction is deliberate.
+             alwaysSeconds is for the INPUT fields, which now offer second
+             precision and so must be able to display it. Without it, for the
+             READ paths - the average tile, the log rows, every CSV export -
+             seconds appear only when the duration actually has them, so a
+             hundred rows of whole-minute sessions stay "01:30" rather than
+             becoming "01:30:00". */
+          if (alwaysSeconds || ss > 0) out += ":" + pad(ss);
           return out;
         }
         /* mean length of the stored sessions, rounded to a whole minute */
@@ -3392,10 +3406,31 @@ function hoursToHM(h, withSec) {
         function fmtTime(v) {
           var s = String(v == null ? "" : v).trim();
           if (!s) return "";
+          /* Seconds are kept. This matched the optional third group and then
+             returned only hours and minutes, so a time of 12:30:45 came back
+             as "12:30" and every edit-save silently rewrote the clock of every
+             row that had seconds on it. That was unreachable while the only
+             seconds-capable field was the duration, which this function never
+             touches; giving the time field the same precision made it a real
+             path, so the truncation had to go with it. */
           var m = s.match(/^(\d{1,2})\D{0,2}(\d{1,2})(?:\D{1,2}(\d{1,2}))?$/);
-          if (m) return pad(parseInt(m[1], 10)) + ":" + pad(parseInt(m[2], 10));
-          var t = s.match(/(\d{1,2}):(\d{2})/);
-          if (t) return pad(parseInt(t[1], 10)) + ":" + t[2];
+          if (m) {
+            var out = pad(parseInt(m[1], 10)) + ":" + pad(parseInt(m[2], 10));
+            /* Only emitted when there is something to emit. Every input now
+               offers seconds, but a value that arrived without them is still
+               valid and turning every historical row into 12:30:00 would be a
+               diff on data nobody asked to change. */
+            if (m[3] !== undefined && parseInt(m[3], 10) > 0)
+              out += ":" + pad(parseInt(m[3], 10));
+            return out;
+          }
+          var t = s.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+          if (t) {
+            var out2 = pad(parseInt(t[1], 10)) + ":" + t[2];
+            if (t[3] !== undefined && parseInt(t[3], 10) > 0)
+              out2 += ":" + t[3];
+            return out2;
+          }
           return s;
         }
         function num(v) {
@@ -5979,12 +6014,23 @@ for (i = 0; i < IMPORT_COLS.length; i++) {
         function validTime(v) {
           var m = String(v == null ? "" : v)
             .trim()
-            .match(/^(\d{1,2})[:.\-h]?(\d{2})$/);
+            /* Seconds are optional, and a file that carries them keeps them.
+               The time field offers second precision now, so an export made
+               from this app has HH:MM:SS in it, and a regex that only accepted
+               two groups rejected every row of such a file - or, had it been
+               looser, silently truncated the seconds on the way in. */
+            .match(/^(\d{1,2})[:.\-h]?(\d{2})(?:[:.\-s]?(\d{2}))?$/);
           if (!m) return null;
           var h = +m[1],
-            mi = +m[2];
-          if (h > 23 || mi > 59) return null;
-          return pad(h) + ":" + pad(mi);
+            mi = +m[2],
+            se = m[3] === undefined ? 0 : +m[3];
+          if (h > 23 || mi > 59 || se > 59) return null;
+          var out = pad(h) + ":" + pad(mi);
+          /* Emitted only when non-zero, so importing an HH:MM file and an
+             HH:MM:SS file both produce the value the author meant, and a round
+             trip does not add ":00" to every historical row. */
+          if (se > 0) out += ":" + pad(se);
+          return out;
         }
         /**
          * The vehicle rows without their own Vehicle column should land in. With only
@@ -6681,12 +6727,11 @@ vehiclesAdded = vehicles.length - before;
           });
           $("eDate").value = s.date || "";
           $("eTime").value = fmtTime(s.time);
-          $("eDuration").value = hoursToHM(s.hours, durShowSec);
-          $("eDuration").step = durShowSec ? "1" : "60";
-          if ($("eDurHint"))
-            $("eDurHint").textContent = durShowSec
-              ? TXT("ed.durHintSec")
-              : TXT("ed.durHint");
+          /* The editor always offers seconds, and always shows them. It used to
+             read the add form's checkbox, so the granularity of this field
+             depended on a control in a different view that the user may not
+             have visited since the last reload. */
+          $("eDuration").value = hoursToHM(s.hours, true);
           $("eLocation").value = s.location || "";
           $("eMileage").value = s.mileage;
           $("eEnergy").value = s.energy;
@@ -8429,10 +8474,6 @@ function emptyBin() {
         });
         $("cost").addEventListener("input", recalcFromCost);
         $("energy").addEventListener("input", recalcFromEnergy);
-        $("durSec").addEventListener("change", function () {
-          durShowSec = this.checked;
-          applyDurStep();
-        });
         function syncCents() {
           var c = Math.round(price * 100);
           if ($("ppkCents")) $("ppkCents").value = c;
@@ -8448,42 +8489,26 @@ function emptyBin() {
             });
         }
 
-        /* ---------- duration input ---------- */
-        var durShowSec = false;
-        function durSecondsOn() {
-          return !!($("durSec") && $("durSec").checked);
-        }
-        function applyDurStep() {
-          var el = $("duration");
-          if (!el) return;
-          el.step = durShowSec ? "1" : "60";
-          syncDurHint();
-          var v = el.value;
-          if (!v) return;
-          if (durShowSec) {
-            if (v.length === 5) el.value = v + ":00";
-          } else if (v.length === 8) {
-            el.value = v.slice(0, 5);
-          }
-        }
-        function syncDurHint() {
-          if ($("durHint"))
-            $("durHint").textContent = durShowSec
-              ? TXT("as.durHintSec")
-              : TXT("as.durHint");
-        }
-        /* prefill the duration with the average of the stored sessions */
+        /* ---------- duration input ----------
+           Every time field offers seconds now: step="1" in the markup, which is
+           what makes the browser's picker draw its third wheel. The "add
+           seconds" checkbox, the durShowSec global and applyDurStep() are gone
+           with it.
+
+           That global was more than redundant. openEdit() read it to decide the
+           edit sheet's step, so ticking the box while adding one session
+           silently changed the granularity of the editor for every later edit -
+           a setting that lived in the DOM of a different view and was never
+           saved anywhere. */
         function defaultDuration() {
           var el = $("duration");
           if (!el) return;
           var ad = avgDuration(sessions);
-          var secs = durShowSec ? 1 : 60;
+          /* avgDuration already rounds to a whole minute, so the mean of
+             minute-resolution sessions stays minute-resolution and the
+             prefill is not full of ":00" the user did not ask for. */
           var h = ad === null ? 0.5 : ad;
-          var snapped = Math.max(
-            secs / 3600,
-            Math.round((h * 3600) / secs) * (secs / 3600),
-          );
-          el.value = hoursToHM(snapped, durShowSec);
+          el.value = hoursToHM(h, true);
         }
 
         /* ---------- two-way price / total ---------- */
@@ -9197,8 +9222,6 @@ if ($("vehSheet").classList.contains("on")) {
             stampDefaults();
         }, 60000);
         enhancePickers();
-        durShowSec = false;
-        applyDurStep();
         defaultDuration();
         syncCents();
         syncHints();

@@ -7,7 +7,7 @@
     "check": "npm test && npm run fmt:check && npm run lint:html && npm run lint:js",
     "test": "npm run test:unit && npm run test:markup",
     "test:unit": "node tools/test-roles.mjs && node tools/test-storage.mjs && node tools/test-bin.mjs && node tools/test-sync-status.mjs && node tools/test-location.mjs",
-    "test:markup": "node tools/test-dom.mjs && node tools/test-wiring.mjs && node tools/test-i18n-markup.mjs && node tools/test-ui.mjs && node tools/test-layouts.mjs && node tools/test-layout-wide.mjs && node tools/test-guard.mjs && node tools/test-sw-bump.mjs",
+    "test:markup": "node tools/test-dom.mjs && node tools/test-wiring.mjs && node tools/test-i18n-markup.mjs && node tools/test-ui.mjs && node tools/test-time-fields.mjs && node tools/test-layouts.mjs && node tools/test-layout-wide.mjs && node tools/test-guard.mjs && node tools/test-sw-bump.mjs",
     "build:pages": "node tools/emit-pages.mjs",
     "fmt": "prettier --write \"*.{json,md}\"",
     "fmt:check": "prettier --check \"*.{json,md}\"",

@@ -29,7 +29,6 @@
   var D = {
     en: {
       "ed.for": "Vehicle {n} - created {d}",
-      "ed.durHintSec": "Seconds shown",
       "fav.update": "Update favourite",
       "toast.looking": "Looking up “{q}”…",
       "toast.found": "Found: {v}",
@@ -63,11 +62,7 @@
       "as.date": "Date",
       "as.time": "Time",
       "as.dur": "Session duration",
-      "as.durHint":
-        "1-minute steps. Defaults to your average session length.",
-      "as.durHintSec":
-        "Seconds shown, starting from 00. Defaults to your average session length.",
-      "as.durSec": "Show seconds (default 00)",
+      "as.durHint": "Hour, minute and second. Defaults to your average session length.",
       "as.mileage": "Mileage (km)",
       "as.location": "Location / station",
       "as.find": "📍 Find",
@@ -165,7 +160,7 @@
       "set.tplCsv": "CSV template",
       "set.tplJson": "JSON template",
       "set.data": "Data",
-      "set.dataLead": "Backup, restore and cleanup.",
+      "set.dataLead": "Backup, restore and cleanup.",
     "set.layout": "Layout",
     "set.layoutHint": "Two arrangements of the same app. Nothing is moved or re-imported when you switch, and your data and account are the same in both.",
     "set.layoutClassic": "Classic (side rail)",
@@ -219,7 +214,7 @@
       "how.n3":
         "Rows that are missing a date, time, location or a numeric energy value are skipped and listed with the reason, so nothing is imported silently.",
       "ed.title": "Edit charging session",
-      "ed.durHint": "1-minute steps",
+      "ed.durHint": "Hour, minute and second.",
       "ed.cost": "Cost (€)",
       "ed.fav": "Saved as favourite location",
       "ed.save": "Save changes",
@@ -666,7 +661,6 @@
     },
     fi: {
       "ed.for": "Ajoneuvo {n} - luotu {d}",
-      "ed.durHintSec": "Sekunnit näkyvät",
       "fav.update": "Päivitä suosikki",
       "toast.looking": "Haetaan “{q}”…",
       "toast.found": "Löytyi: {v}",
@@ -700,11 +694,7 @@
       "as.date": "Päivämäärä",
       "as.time": "Aika",
       "as.dur": "Latausaika",
-      "as.durHint":
-        "1 minuutin tarkkuudella. Oletuksena keskimääräinen latausaika.",
-      "as.durHintSec":
-        "Sekunnit näkyvät, alkavat 00:sta. Oletuksena keskimääräinen latausaika.",
-      "as.durSec": "Näytä sekunnit (oletus 00)",
+      "as.durHint": "Tunti, minuutti ja sekunti. Oletuksena keskimääräinen latausaika.",
       "as.mileage": "Matkamittarilukema (km)",
       "as.location": "Paikka / laturi",
       "as.find": "📍 Etsi",
@@ -803,7 +793,7 @@
       "set.tplCsv": "CSV-malli",
       "set.tplJson": "JSON-malli",
       "set.data": "Data",
-      "set.dataLead": "Varmuuskopioi, palauta ja siivoa.",
+      "set.dataLead": "Varmuuskopioi, palauta ja siivoa.",
     "set.layout": "Asettelu",
     "set.layoutHint": "Sama sovellus kahdessa asettelussa. Vaihdettaessa mitään ei siirretä eikä tuoda uudelleen, ja tietosi sekä tilisi ovat molemmissa samat.",
     "set.layoutClassic": "Klassinen (sivupalkki)",
@@ -858,7 +848,7 @@
       "how.n3":
         "Rivit, joista puuttuu päivämäärä, aika, paikka tai numeerinen energia-arvo, ohitetaan ja luetellaan syineen, joten mitään ei tuoda huomaamatta.",
       "ed.title": "Muokkaa latausta",
-      "ed.durHint": "1 minuutin tarkkuudella",
+      "ed.durHint": "Tunti, minuutti ja sekunti.",
       "ed.cost": "Kustannus (€)",
       "ed.fav": "Tallennettu suosikkipaikaksi",
       "ed.save": "Tallenna muutokset",
@@ -1311,7 +1301,6 @@
     },
     sv: {
       "ed.for": "Fordon {n} - skapad {d}",
-      "ed.durHintSec": "Sekunder visas",
       "fav.update": "Uppdatera favorit",
       "toast.looking": "Söker ”{q}”…",
       "toast.found": "Hittade: {v}",
@@ -1344,11 +1333,7 @@
       "as.date": "Datum",
       "as.time": "Tid",
       "as.dur": "Sessionstid",
-      "as.durHint":
-        "1 minuters steg. Förvalet är din genomsnittliga sessionstid.",
-      "as.durHintSec":
-        "Sekunder visas, börjar på 00. Förvalet är din genomsnittliga sessionstid.",
-      "as.durSec": "Visa sekunder (förval 00)",
+      "as.durHint": "Timme, minut och sekund. Förvalet är din genomsnittliga sessionstid.",
       "as.mileage": "Mätarställning (km)",
       "as.location": "Plats / laddare",
       "as.find": "📍 Sök",
@@ -1447,7 +1432,7 @@
       "set.tplCsv": "CSV-mall",
       "set.tplJson": "JSON-mall",
       "set.data": "Data",
-      "set.dataLead": "Säkerhetskopiera, återställ och städa.",
+      "set.dataLead": "Säkerhetskopiera, återställ och städa.",
     "set.layout": "Layout",
     "set.layoutHint": "Samma app i två layouter. Ingenting flyttas eller importeras om när du byter, och dina data och ditt konto är desamma i båda.",
     "set.layoutClassic": "Klassisk (sidopanel)",
@@ -1502,7 +1487,7 @@
       "how.n3":
         "Rader som saknar datum, tid, plats eller ett numeriskt energivärde hoppas över och listas med skälet, så ingenting importeras i smyg.",
       "ed.title": "Redigera laddningssession",
-      "ed.durHint": "1 minuters steg",
+      "ed.durHint": "Timme, minut och sekund.",
       "ed.cost": "Kostnad (€)",
       "ed.fav": "Sparad som favoritplats",
       "ed.save": "Spara ändringar",
