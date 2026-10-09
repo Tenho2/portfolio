@@ -28,7 +28,7 @@
  * Last bumped: 2026-10-05, for finding a binned vehicle through the bin as well
  * as the live list, so binning survives the next sync.
  */
-const VERSION = "v31";
+const VERSION = "v32";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [
