@@ -4373,6 +4373,16 @@ var DIAG_MAX = 60;
             lines.push(
               "service worker: " + (swVersionCache || "(not yet known)"),
             );
+            /* Which account produced this. Without it the report cannot answer the
+               question it most often has to answer - "is this row count the right
+               account's?" - because nothing else names the account unless an
+               error happened to fire. Two accounts can hold wildly different
+               histories, and a report that does not say which is which makes the
+               counts unverifiable. */
+            lines.push(
+              "account: " +
+                ((authUser && (authUser.email || authUser.id)) || "signed out"),
+            );
           lines.push("user agent: " + navigator.userAgent);
           lines.push("online: " + (syncOnline() ? "yes" : "no"));
           lines.push("sync configured: " + (syncConfiguredForDiag() ? "yes" : "no"));
@@ -4435,14 +4445,21 @@ var DIAG_MAX = 60;
          * @returns {Promise<boolean>}
          */
 function copyDiagnostics() {
-            /* Ask the active worker which version it is before building the text,
-               so the report can name it. The ask is already in flight after the
-               first page load, and is a postMessage round trip, so this normally
-               resolves from cache without delaying the copy at all. */
-            return askSwVersion()
-              .catch(function () {
+            /* Ask the active worker which version it is, and who the database
+               thinks we are, before building the text, so the report can state
+               both. The identity probe otherwise runs once after sign-in and only
+               reports if it completed before the report was built - so a clean
+               report claimed "not probed" even when a token was perfectly valid,
+               which reads as a fault rather than as a race. Both normally resolve
+               from cache without delaying the copy. */
+            return Promise.all([
+              askSwVersion().catch(function () {
                 return null;
-              })
+              }),
+              askWhoAmI().catch(function () {
+                return null;
+              }),
+            ])
               .then(function () {
                 return copyText(diagnosticsReport());
               })

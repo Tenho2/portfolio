@@ -674,6 +674,18 @@ group("the sync panel stays reachable", () => {
       code,
     ),
   );
+  /* Nothing else in the report names the account unless an error fired, so two
+     accounts' wildly different row counts could not be told apart. */
+  ok("the report names the signed-in account", /lines\.push\(\s*"account: " \+/.test(rep));
+  /* askWhoAmI() runs once after sign-in and only fills whoAmI if it completed,
+     so a clean report said "not probed" - which reads as a fault rather than a
+     race. Priming it here makes the identity line trustworthy. */
+  ok(
+    "the identity probe is primed before the text is built",
+    /function copyDiagnostics\(\) \{[\s\S]{0,600}?askWhoAmI\(\)[\s\S]{0,400}?copyText\(diagnosticsReport\(\)\)/.test(
+      code,
+    ),
+  );
   /* And the empty case must read as success, not as silence. */
   ok(
     "an empty error log says so explicitly",
