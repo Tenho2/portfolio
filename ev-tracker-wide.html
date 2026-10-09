@@ -260,6 +260,14 @@
               <span class="ic" aria-hidden="true">📝</span
               ><span data-i18n="nav.add"></span>
             </button>
+            <!-- The second most useful thing to do here, so it sits directly
+                 after Add session rather than down in Settings. It opens a map
+                 of real chargers near you, searched from OpenStreetMap - there
+                 is no station database to keep in step. -->
+            <button type="button" data-go="stations">
+              <span class="ic" aria-hidden="true">🛰️</span
+              ><span data-i18n="st.find"></span>
+            </button>
             <button type="button" data-go="view-data">
               <span class="ic" aria-hidden="true">📄</span
               ><span data-i18n="nav.log"></span>
@@ -1040,6 +1048,31 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
           </div>
           <div class="hint" style="margin-top: 0.5rem" data-i18n="bin.emptyHint"></div>
           <div id="binBody"></div>
+        </div>
+      </section>
+
+      <section class="view" id="stations">
+        <div class="panel">
+          <h2>
+            <span aria-hidden="true">🛰️</span>
+            <span data-i18n="st.title"></span>
+          </h2>
+          <p class="lead" data-i18n="st.lead"></p>
+          <div class="qa" style="margin-top: 0">
+            <button type="button" class="btn" id="stationFindBtn" data-station-find>
+              <span class="ic" aria-hidden="true">📍</span
+              ><span data-i18n="st.findNear"></span>
+            </button>
+          </div>
+          <div class="hint" role="status" aria-live="polite" id="stationStat"></div>
+          <!-- Leaflet cannot measure an element that is display:none, so the box
+               is revealed by runStationSearch only when there is something to
+               draw in it. -->
+          <div class="mapbox" id="stationMapBox" hidden>
+            <div id="stationMap"></div>
+          </div>
+          <div class="list" id="stationList"></div>
+          <p class="mini" data-i18n="st.source"></p>
         </div>
       </section>
 

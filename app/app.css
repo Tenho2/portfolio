@@ -1216,6 +1216,19 @@
       #sessMapBox {
         margin-bottom: 1.5rem;
       }
+      /* The station map. Taller than the session map because the result list is
+         the decision and the map is the confirmation, so the map gets the space
+         to show a neighbourhood rather than a single pin. */
+      #stationMapBox {
+        margin: 1rem 0;
+      }
+      #stationMap {
+        height: 320px;
+        border: 2px solid var(--line);
+        border-radius: 10px;
+        background: var(--surface-2);
+        overflow: hidden;
+      }
       #sessMap {
         height: 240px;
         border: 2px solid var(--line);

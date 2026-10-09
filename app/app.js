@@ -1290,6 +1290,44 @@ function rowVehicle(r) {
            password and no session, only ids a user already knows. */
 var DIAG_MAX = 60;
           var diagLog = [];
+          /* A SECOND buffer, for things that succeeded.
+             diagLog renders under a heading that says ERRORS, and its empty line
+             reads "none - every write the server accepted". Filing a successful
+             external lookup there would print it as a fault - the same
+             misreading that made an empty log look like nothing had happened and
+             got a 42501 wrongly declared fixed. Successes and neutral events get
+             their own bounded list with their own heading.
+
+             Capped separately and lower: this carries raw response bodies, and
+             the error log is the part that must never be crowded out. */
+          var EVENT_MAX = 10;
+          var eventLog = [];
+          /* The raw body is truncated hard. A fifty-station response is tens of
+             kilobytes, and the report exists to be pasted into a conversation. */
+          var EVENT_BODY_MAX = 4000;
+          function stationEvent(outcome, data) {
+            try {
+              var d = data || {};
+              if (typeof d.body === "string" && d.body.length > EVENT_BODY_MAX)
+                d =
+                  Object.assign({}, d, {
+                    body:
+                      d.body.slice(0, EVENT_BODY_MAX) +
+                      "\n      …[truncated, " +
+                      d.body.length +
+                      " bytes total]",
+                  });
+              eventLog.push({
+                at: new Date().toISOString(),
+                kind: "station-lookup",
+                outcome: outcome,
+                data: d,
+              });
+              while (eventLog.length > EVENT_MAX) eventLog.shift();
+            } catch (e) {
+              /* Diagnostics must never be the reason something breaks. */
+            }
+          }
           /* Timestamps of the last success of each kind. The log only ever holds
              failures, so "no entries" could not be told apart from "nothing was
              attempted" — which is precisely the mistake made when the 42501 was
@@ -1371,6 +1409,23 @@ var DIAG_MAX = 60;
           lines.push("dirty rows: " + JSON.stringify(unsyncedSummaryForDiag()));
           lines.push("last successful pull: " + (lastPullAt || "never"));
           lines.push("last successful write: " + (lastPushAt || "none yet"));
+          /* Its own section, above the errors. Successful external lookups are
+             not errors, and putting them under a heading that says ERRORS is how
+             a working feature reads as a broken one. */
+          lines.push("");
+          lines.push(
+            "STATION LOOKUPS (newest last, max " + EVENT_MAX + ")",
+          );
+          if (!eventLog.length)
+            lines.push("  none recorded - no search has been run on this device");
+          for (var v = 0; v < eventLog.length; v++) {
+            var ev = eventLog[v];
+            lines.push("  " + ev.at + "  " + ev.kind + "  " + ev.outcome);
+            for (var f in ev.data) {
+              if (Object.prototype.hasOwnProperty.call(ev.data, f))
+                lines.push("      " + f + ": " + ev.data[f]);
+            }
+          }
           lines.push("");
           /* Named ERRORS, not EVENTS. This section only ever receives entries
              from failure paths, and "EVENTS: none recorded" was read as "nothing
@@ -7782,6 +7837,379 @@ slot.map.on("click", function (e) {
           );
         }
 
+        /* ---------- charging stations from OpenStreetMap ----------
+           No database of our own. OSM tags chargers as amenity=charging_station,
+           and Overpass is a free public query endpoint for exactly that - no key,
+           no account, no setup. Everything the map knows about chargers comes
+           from there.
+
+           Two things about it that were verified by calling it, not assumed:
+
+           1. The connector tags are `socket:*`, not `connector:*`. Written from
+              memory as `connector:type2` they match nothing at all and every
+              station comes back with an empty connector list - which looks like
+              correct data rather than a wrong key. Real keys, from a live
+              response: socket:chademo, socket:type2, socket:type2_combo,
+              socket:schuko, socket:CCS, and `socket:<type>:output` carrying the
+              power as a string such as "50 kW".
+
+           2. Not every endpoint is trustworthy with an empty answer. The primary
+              returned 504 on the first attempt and 200 on the next two; a
+              mirror returned HTTP 200 with ZERO elements for a query that the
+              primary answered with eleven. A stale mirror is worse than no
+              mirror, because "no chargers within 2 km" and "I asked a server
+              with no data for that area" look identical to the user. So a result
+              that came from a fallback endpoint and found nothing is reported as
+              a failed lookup, never as a confirmed absence.
+
+           Overpass is a free service with no SLA. Everything here assumes it can
+           fail: the worst case is one line of status text and the manual path
+           the user already had. */
+        var OVERPASS_ENDPOINTS = [
+          "https://overpass-api.de/api/interpreter",
+          "https://overpass.kumi.systems/api/interpreter",
+        ];
+        var STATION_RADIUS_M = 2000;
+        var stationResults = [];
+        var stationCentre = null;
+        function overpassUrl(lat, lng, radius) {
+          var q =
+            "[out:json][timeout:20];(" +
+            'node["amenity"="charging_station"](around:' +
+            Math.round(radius) +
+            "," +
+            lat.toFixed(5) +
+            "," +
+            lng.toFixed(5) +
+            ");" +
+            'way["amenity"="charging_station"](around:' +
+            Math.round(radius) +
+            "," +
+            lat.toFixed(5) +
+            "," +
+            lng.toFixed(5) +
+            ");" +
+            ");out center 40;";
+          return OVERPASS_ENDPOINTS[0] + "?data=" + encodeURIComponent(q);
+        }
+        /**
+         * A display name. OSM is inconsistent - plenty of chargers carry only a
+         * brand or an operator, and some carry no name at all, so all three are
+         * tried rather than rendering an empty row.
+         */
+        function stationName(tags) {
+          return (
+            tags.name ||
+            tags.brand ||
+            tags.operator ||
+            TXT("st.unnamed")
+          );
+        }
+        /**
+         * Connector types and their power, from the socket:* tags.
+         *
+         * A key is a connector only when it has exactly one colon after
+         * "socket" - `socket:type2` is a connector, `socket:type2:output` is
+         * that connector's rating. Including both would list every charger with
+         * a column of "output" entries.
+         */
+        function stationSockets(tags) {
+          var types = [],
+            power = {};
+          for (var k in tags) {
+            if (!Object.prototype.hasOwnProperty.call(tags, k)) continue;
+            if (k.indexOf("socket:") !== 0) continue;
+            var rest = k.slice(7);
+            var bits = rest.split(":");
+            if (bits.length === 1) {
+              types.push(bits[0].replace(/_/g, " "));
+            } else if (bits.length === 2 && bits[1] === "output") {
+              power[bits[0]] = tags[k];
+            }
+          }
+          types.sort();
+          var out = [];
+          for (var i = 0; i < types.length; i++) {
+            var p = power[types[i].replace(/ /g, "_")];
+            out.push(types[i] + (p ? " " + p : ""));
+          }
+          return out;
+        }
+        function stationFromElement(el, lat, lng, origin) {
+          var tags = el.tags || {};
+          /* A way carries no lat/lon of its own; `out center` puts the centroid
+             on `center`. Reading el.lat directly would give undefined, and
+             Leaflet would throw on it. */
+          var la = isNum(el.lat) ? +el.lat : isNum(el.center && el.center.lat) ? +el.center.lat : null;
+          var ln = isNum(el.lon) ? +el.lon : isNum(el.center && el.center.lon) ? +el.center.lon : null;
+          if (!isNum(la) || !isNum(ln)) return null;
+          return {
+            id: "osm-" + el.type + "-" + el.id,
+            name: stationName(tags),
+            operator: tags.operator || tags.brand || "",
+            capacity: tags.capacity || "",
+            fee: tags.fee || "",
+            website: tags.website || "",
+            sockets: stationSockets(tags),
+            lat: la,
+            lng: ln,
+            dist: origin ? Math.round(metresBetween(origin.lat, origin.lng, la, ln)) : null,
+          };
+        }
+        function setStationStatus(t) {
+          var el = $("stationStat");
+          if (el) el.textContent = t || "";
+        }
+        function renderStations() {
+          var box = $("stationList");
+          if (!box) return;
+          if (!stationResults.length) {
+            box.innerHTML =
+              '<p class="empty">' + TXT("st.none") + "</p>";
+            return;
+          }
+          var h = "";
+          for (var i = 0; i < stationResults.length; i++) {
+            var s = stationResults[i];
+            var meta = [];
+            if (s.dist !== null) meta.push(s.dist + " m");
+            if (s.operator) meta.push(s.operator);
+            if (s.capacity) meta.push(TXT("st.plugs", { n: +s.capacity }));
+            if (s.fee === "yes") meta.push(TXT("st.paid"));
+            if (s.fee === "no") meta.push(TXT("st.free"));
+            if (s.sockets.length) meta.push(s.sockets.join(", "));
+            h +=
+              '<div class="item"><div><div class="nm">' +
+              esc(s.name) +
+              '</div><div class="s">' +
+              esc(meta.join(" · ")) +
+              '</div></div>' +
+              '<button type="button" class="btn sm" data-station-use="' +
+              esc(s.id) +
+              '">' +
+              TXT("st.use") +
+              "</button>" +
+              "</div>";
+          }
+          box.innerHTML = h;
+        }
+        /**
+         * Markers for the results. Separate from pinAt(), which owns ONE draggable
+         * pin for the session location - reusing it would make the last station
+         * visited the only one on the map.
+         */
+        function drawStationPins(list) {
+          var slot = maps["stationMap"];
+          if (!slot || !slot.map || !window.L) return;
+          if (slot.stationPins) {
+            for (var i = 0; i < slot.stationPins.length; i++) {
+              try {
+                slot.map.removeLayer(slot.stationPins[i]);
+              } catch (e) {}
+            }
+          }
+          slot.stationPins = [];
+          for (var j = 0; j < list.length; j++) {
+            var s = list[j];
+            var m = L.circleMarker([s.lat, s.lng], {
+              radius: 7,
+              color: "#10b981",
+              weight: 2,
+              fillColor: "#10b981",
+              fillOpacity: 0.85,
+            }).addTo(slot.map);
+            m.bindPopup(
+              "<strong>" + esc(s.name) + "</strong><br>" + esc(s.dist + " m"),
+            );
+            slot.stationPins.push(m);
+          }
+        }
+        function stationFromId(id) {
+          for (var i = 0; i < stationResults.length; i++)
+            if (stationResults[i].id === id) return stationResults[i];
+          return null;
+        }
+        /**
+         * Look up chargers around a point. Tries each endpoint in turn, and says
+         * which one answered, because a fallback's silence is not evidence.
+         */
+        function queryStations(lat, lng, radius) {
+          var url = overpassUrl(lat, lng, radius || STATION_RADIUS_M);
+          var i = 0;
+          function attempt() {
+            if (i >= OVERPASS_ENDPOINTS.length)
+              return Promise.resolve({ ok: false, error: "no endpoint answered" });
+            var ep = OVERPASS_ENDPOINTS[i];
+            var mine = i;
+            i++;
+            var u =
+              url.indexOf(ep) === 0 ? url : ep + url.slice(url.indexOf("?"));
+            var started = Date.now();
+            return timed(
+              fetch(u, { headers: { Accept: "application/json" } }),
+              20000,
+            )
+              .then(function (r) {
+                if (!r.ok) throw new Error("HTTP " + r.status);
+                return r.text();
+              })
+              .then(function (body) {
+                var parsed = null;
+                try {
+                  parsed = JSON.parse(body);
+                } catch (e) {
+                  /* Not JSON at all - a rate-limit page or a proxy error. */
+                  stationEvent("bad-body", {
+                    endpoint: ep,
+                    ms: Date.now() - started,
+                    bytes: body.length,
+                    head: body.slice(0, 120),
+                  });
+                  throw new Error("response was not JSON");
+                }
+                var els = (parsed && parsed.elements) || [];
+                var list = [];
+                for (var k = 0; k < els.length; k++) {
+                  var s = stationFromElement(els[k], lat, lng, {
+                    lat: lat,
+                    lng: lng,
+                  });
+                  if (s) list.push(s);
+                }
+                list.sort(function (a, b) {
+                  return a.dist - b.dist;
+                });
+                stationEvent(mine === 0 ? "primary" : "fallback", {
+                  endpoint: ep,
+                  ms: Date.now() - started,
+                  bytes: body.length,
+                  elements: els.length,
+                  usable: list.length,
+                  fallback: mine > 0 ? "yes" : "no",
+                  body: body,
+                });
+                /* An empty answer from a fallback is NOT a confirmed absence -
+                   that mirror returned zero for a query the primary answered
+                   with eleven. Say so rather than telling the user there is
+                   nothing nearby. */
+                if (!list.length && mine > 0)
+                  return {
+                    ok: false,
+                    error: "fallback returned no data for this area",
+                  };
+                return { ok: true, list: list, fallback: mine > 0 };
+              })
+              .catch(function (err) {
+                if (mine === 0)
+                  stationEvent("error", {
+                    endpoint: ep,
+                    ms: Date.now() - started,
+                    error: String((err && err.message) || err),
+                  });
+                return attempt();
+              });
+          }
+          return attempt();
+        }
+        function findStationsNearMe() {
+          if (!navigator.geolocation) {
+            setStationStatus(TXT("toast.geoNone"));
+            return;
+          }
+          if (!navigator.onLine) {
+            setStationStatus(TXT("toast.offline2"));
+            return;
+          }
+          setStationStatus(TXT("st.searching"));
+          var btn = $("stationFindBtn");
+          if (btn) btn.disabled = true;
+          navigator.geolocation.getCurrentPosition(
+            function (pos) {
+              if (btn) btn.disabled = false;
+              var acc = pos.coords.accuracy;
+              /* The accuracy gate the auto-fill path already applies, and the
+                 geolocation button skips. A charger chosen from a reading that is
+                 a kilometre out is written into the log as though it were certain,
+                 so the gate belongs here too. */
+              if (!isNum(acc) || acc > LOC_MAX_ACCURACY_M) {
+                setStationStatus(
+                  TXT("set.geoTooCoarse", { n: isNum(acc) ? Math.round(acc) : 0 }),
+                );
+                return;
+              }
+              stationCentre = {
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude,
+              };
+              runStationSearch(stationCentre.lat, stationCentre.lng);
+            },
+            function (err) {
+              if (btn) btn.disabled = false;
+              setStationStatus(
+                TXT("st.geoFail", {
+                  n: err && err.code === 1 ? "denied" : err && err.code === 2 ? "unavailable" : "error",
+                }),
+              );
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 },
+          );
+        }
+        function runStationSearch(lat, lng) {
+          queryStations(lat, lng, STATION_RADIUS_M).then(function (res) {
+            if (!res.ok) {
+              setStationStatus(TXT("st.lookupFailed", { e: res.error || "" }));
+              stationResults = [];
+              renderStations();
+              return;
+            }
+            stationResults = res.list;
+            renderStations();
+            if (!stationResults.length) {
+              setStationStatus(TXT("st.noneNear", { n: Math.round(STATION_RADIUS_M / 1000) }));
+              return;
+            }
+            setStationStatus(
+              TXT("st.found", {
+                n: stationResults.length,
+                r: Math.round(STATION_RADIUS_M / 1000),
+              }),
+            );
+            /* Leaflet needs a laid-out element or it measures zero and renders
+               into nothing; the box is only unhidden now that there is something
+               to show. */
+            var box = $("stationMapBox");
+            if (box) box.hidden = false;
+            loadLeaflet(function () {
+              var slot = getMap("stationMap");
+              if (!slot) return;
+              slot.map.setView([lat, lng], 14, { animate: false });
+              setTimeout(function () {
+                try {
+                  slot.map.invalidateSize();
+                } catch (e) {}
+              }, 80);
+              drawStationPins(stationResults);
+            });
+          });
+        }
+        /**
+         * Send the chosen station into the add-session form. The price is left
+         * alone: OpenStreetMap has no price, and guessing one is the thing the
+         * existing ambiguity logic exists to avoid.
+         */
+        function useStation(id) {
+          var s = stationFromId(id);
+          if (!s) return;
+          go("add-session");
+          var input = $("location");
+          if (input) input.value = s.name;
+          locGeo = { lat: s.lat, lng: s.lng, label: s.name };
+          var box = $("sessMapBox");
+          if (box) box.hidden = false;
+          setLocStatus(TXT("st.chosen", { v: s.name }));
+          showPin("sessMap", s.lat, s.lng, s.name, sessPinDragged);
+        }
+
         /* ---------- routing ---------- */
         function go(id) {
           view = id;
@@ -7810,6 +8238,22 @@ slot.map.on("click", function (e) {
                     /* the map may not be ready yet; Leaflet recovers on the next resize */
                   }
                 }, 80);
+            });
+          }
+          /* Same problem on the station map: Leaflet measures the element it is
+             given, and a hidden one measures zero, so the map comes up blank with
+             no error. Only drawn when there are already results - the box itself
+             stays hidden until a search produces some. */
+          if (id === "stations" && stationResults.length) {
+            loadLeaflet(function () {
+              var slot = maps["stationMap"];
+              if (!slot || !slot.map) return;
+              setTimeout(function () {
+                try {
+                  slot.map.invalidateSize();
+                  drawStationPins(stationResults);
+                } catch (e) {}
+              }, 80);
             });
           }
           window.scrollTo(0, 0);
@@ -8346,7 +8790,7 @@ function emptyBin() {
         /* ---------- events ---------- */
         document.addEventListener("click", function (e) {
           var t = e.target.closest(
-            "[data-go],[data-v],[data-del],[data-edit],[data-ren],[data-rm],[data-use],[data-fedit],[data-fdel],[data-share],[data-unshare],[data-accept],[data-reject],[data-bin-restore],[data-bin-purge],[data-discard]",
+            "[data-go],[data-v],[data-del],[data-edit],[data-ren],[data-rm],[data-use],[data-fedit],[data-fdel],[data-share],[data-unshare],[data-accept],[data-reject],[data-bin-restore],[data-bin-purge],[data-discard],[data-station-use],[data-station-find]",
           );
           if (!t) return;
           if (t.hasAttribute("data-go")) {
@@ -8422,7 +8866,13 @@ function emptyBin() {
           if (t.hasAttribute("data-discard")) {
             var dc = (t.getAttribute("data-discard") || "").split(":");
             if (dc[0] && dc[1]) discardUnsynced(dc[0], dc[1]);
+            return;
           }
+          if (t.hasAttribute("data-station-use")) {
+            useStation(t.getAttribute("data-station-use"));
+            return;
+          }
+          if (t.hasAttribute("data-station-find")) findStationsNearMe();
         });
         /* The role dropdown carries its target in one attribute because the
            share panel is rebuilt from scratch on every render and cannot keep
