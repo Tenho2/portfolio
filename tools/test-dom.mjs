@@ -22,7 +22,19 @@
 import { readFileSync } from "node:fs";
 import { JSDOM } from "jsdom";
 
-const html = readFileSync("ev-tracker.html", "utf8");
+/**
+ * Which page this run checks.
+ *
+ * Only one page needs the full DOM suite, and ev-tracker.html is it - but only
+ * because the two are byte-identical apart from the body attribute and the
+ * layout stylesheet href. That is asserted below rather than assumed: if someone
+ * edits one page's markup by hand, this suite silently stops covering the other
+ * and the edit lands on whichever page was not in the loop.
+ *
+ * Override with EV_PAGE=ev-tracker-wide.html to check the other one directly.
+ */
+const PAGE = process.env.EV_PAGE || "ev-tracker.html";
+const html = readFileSync(PAGE, "utf8");
 
 let pass = 0;
 const failures = [];
@@ -32,6 +44,13 @@ function is(label, actual, expected) {
 }
 function fail(label, detail) {
   failures.push(`${label}\n      ${detail}`);
+}
+/** A boolean assertion. Not `is(cond, true)` - that compares undefined to true
+    and reports "expected undefined", which reads like a bug in the test rather
+    than a real failure. */
+function ok(label, condition) {
+  if (condition) pass++;
+  else failures.push(label);
 }
 function group(name, fn) {
   const before = failures.length;
@@ -53,7 +72,7 @@ const { document } = window;
    this must fail loudly rather than silently testing a stale copy. */
 const i18nTag = document.querySelector('script[src*="i18n"]');
 if (!i18nTag) {
-  console.error("ev-tracker.html does not load the i18n module");
+  console.error(`${PAGE} does not load the i18n module`);
   process.exit(1);
 }
 const i18nPath = i18nTag.getAttribute("src");
@@ -191,13 +210,36 @@ group("ids are unique", () => {
 group("no element is left invisible by a stray CSS rule", () => {
   /* A guard on the class of damage that cost us time: a display:none or a
      zero-opacity rule that was meant for one breakpoint leaking everywhere. */
-  const css = document.querySelector("style").textContent;
-  is("no leftover .mini display:none in a bare rule", /^\s*\.mini\s*\{[^}]*display:\s*none/m.test(css), false);
-  is("no global .user-chip display:none", /^\s*\.user-chip\s*\{[^}]*display:\s*none/m.test(css), false);
-  /* Braces must balance, or everything after the mistake is dropped. */
-  const open = (css.match(/\{/g) || []).length;
-  const close = (css.match(/\}/g) || []).length;
-  is(`css braces balance (${open}/${close})`, open, close);
+  /* Read from the linked stylesheets rather than from an inline <style>, which
+     no longer exists: the design system lives in app/app.css and each page adds
+     one layout sheet. querySelector("style") returns null and every assertion
+     below threw, which is a louder failure than a wrong answer but not a
+     useful one. The shared sheet is checked on both pages, since a rule in it
+     that defeats `hidden` is a rule that defeats it everywhere. */
+  const sheets = [
+    "app/app.css",
+    `app/layout-${(document.body.getAttribute("data-layout") || "classic").trim()}.css`,
+  ];
+  for (const path of sheets) {
+    const css = readFileSync(path, "utf8");
+    is(
+      `${path}: no leftover .mini display:none in a bare rule`,
+      /^\s*\.mini\s*\{[^}]*display:\s*none/m.test(css),
+      false,
+    );
+    is(`${path}: no global .user-chip display:none`, /^\s*\.user-chip\s*\{[^}]*display:\s*none/m.test(css), false);
+    /* Braces must balance, or everything after the mistake is dropped. */
+    const open = (css.match(/\{/g) || []).length;
+    const close = (css.match(/\}/g) || []).length;
+    is(`${path}: css braces balance (${open}/${close})`, open, close);
+  }
+  /* The [hidden] guard has to survive the move to an external sheet, or every
+     element that relies on it comes back. */
+  is(
+    "the hidden guard is still in the shared stylesheet",
+    /\[hidden\]\s*\{\s*display:\s*none\s*!important/.test(readFileSync("app/app.css", "utf8")),
+    true,
+  );
 });
 
 group("the vehicle editor explains both of its fields", () => {
@@ -244,8 +286,85 @@ group("the reset button is present and unmistakable", () => {
   is("the settings sign-out exists separately", !!document.getElementById("logoutBtn2"), true);
 });
 
+group("the layout switcher is on this page", () => {
+  /* Present on both pages, because it is how you reach the other one. It has to
+     be a real labelled select and it has to sit in the settings panel, not in a
+     corner of the shell - the whole feature is unreachable if it is not. */
+  const sel = document.getElementById("layoutSel");
+  is("the picker exists", !!sel, true);
+  if (!sel) return;
+  is("it is a select", sel.tagName.toLowerCase(), "select");
+  const settings = document.getElementById("settings");
+  const label = settings ? settings.querySelector(`label[for="layoutSel"]`) : null;
+  is("it has a label inside the settings panel", !!(label && text(label)), true);
+  /* The hint is what tells a user this is safe to press: the wording has to say
+     that nothing moves, or it reads as a risky migration. */
+  const hint = document.querySelector('[data-i18n="set.layoutHint"]');
+  is("it explains that nothing is moved", !!(hint && text(hint)), true);
+  is("this page declares its layout", !!document.body.getAttribute("data-layout"), true);
+});
+
+group("switching layout is a navigation and nothing more", () => {
+  /* The risk this guards: a switcher that is implemented as a data operation
+     would be a migration. Two layouts that are the same application must move
+     between each other by changing the URL, so nothing can be written, copied
+     or dropped on the way. It also has to carry the current view, or switching
+     from the middle of the log lands you on the dashboard. */
+  const appJs = readFileSync("app/app.js", "utf8");
+  ok(
+    "the handler navigates with location.href",
+    /location\.href = target\.file \+ location\.hash/.test(appJs),
+  );
+  ok("it carries the current view across", /location\.hash/.test(appJs));
+  /* No storage write of any kind may be reachable from the switcher: switching
+     must not be able to touch the user's data.
+     Sliced by function name and checked for length first, because a negative
+     assertion against an empty string is always true - which is how three
+     suites in a row reported "0 failed" while testing nothing at all after the
+     application moved out of the page. tools/test-guard.mjs covers this
+     generally; the length check here is the local reminder. */
+  const picker = appJs.slice(
+    appJs.indexOf("function renderLayoutPicker"),
+    appJs.indexOf("function renderBuildRow"),
+  );
+  ok("the picker slice found real source", picker.length > 200);
+  ok("the picker writes nothing to storage", !/localStorage/.test(picker));
+  ok("the picker saves no preference", !/setItem/.test(picker));
+  ok("the picker deletes nothing", !/removeItem/.test(picker));
+  /* Both pages must carry it, or one of them has no way to reach the other. */
+  ok(
+    "both pages carry the picker",
+    ["ev-tracker.html", "ev-tracker-wide.html"].every((f) =>
+      readFileSync(f, "utf8").includes('id="layoutSel"'),
+    ),
+  );
+});
+
+group("both pages are covered by this run", () => {
+  /* The suite only renders one page. That is sufficient only while the two
+     markups are identical, so the precondition is checked here: if a hand edit
+     ever diverges them, this fails loudly instead of the second page quietly
+     losing its coverage. tools/test-layouts.mjs asserts the same thing in
+     detail; this is the local reminder. */
+  const other = readFileSync("ev-tracker-wide.html", "utf8");
+  const markup = (src) =>
+    src
+      .split(/\r?\n/)
+      .slice(
+        src.split(/\r?\n/).findIndex((l) => /<body/.test(l)),
+        src.split(/\r?\n/).findIndex((l) => /scripts:begin/.test(l)),
+      )
+      .join("\n")
+      .replace(/\s*data-layout="[^"]*"/g, "");
+  is(
+    "the other layout page has identical markup, so this run covers it",
+    markup(readFileSync(PAGE, "utf8")) === markup(other),
+    true,
+  );
+});
+
 /* ------------------------------------------------------------------ */
-console.log(`\n${pass} passed, ${failures.length} failed`);
+console.log(`\n${pass} passed, ${failures.length} failed  (${PAGE})`);
 if (failures.length) {
   console.error("");
   for (const f of failures) console.error(`  FAIL ${f}`);

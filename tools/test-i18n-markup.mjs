@@ -10,7 +10,16 @@
  */
 import { readFileSync } from "node:fs";
 
-const src = readFileSync("ev-tracker.html", "utf8");
+/* Both layout pages, and the application script.
+   The markup used to carry the TXT() calls inline, so reading only the page was
+   enough. Now the calls live in app/app.js and the markup only carries the
+   data-i18n attributes - which is why the TXT() count collapsed to zero and this
+   suite quietly stopped checking every toast, hint and panel title. */
+const src = [
+  readFileSync("ev-tracker.html", "utf8"),
+  readFileSync("ev-tracker-wide.html", "utf8"),
+  readFileSync("app/app.js", "utf8"),
+].join("\n");
 /* The English block moved to app/i18n.js when the page was split. Indentation
    is derived from the match rather than hard-coded, so re-indenting that file
    cannot silently turn this check into a no-op. */

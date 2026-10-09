@@ -19,15 +19,29 @@
  *   node tools/test-sw-bump.mjs
  */
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 
 /* Anything the precache list serves as the shell. Changing any of these without
    a new VERSION leaves devices on the old build. */
+/**
+ * Everything whose contents the service worker caches.
+ *
+ * Both layout pages are listed, plus the four shared modules they load and the
+ * layout stylesheets. A file missing from this list is invisible to the stale-
+ * version check and to `cache.addAll`: change it, ship, and a device keeps
+ * serving the old copy from cache without anything noticing. That is the whole
+ * bug this suite exists to prevent, so the list is explicit rather than derived.
+ */
 const SHELL = [
   "ev-tracker.html",
+  "ev-tracker-wide.html",
   "index.html",
   "sw.js",
   "manifest.json",
+  "app/app.css",
+  "app/app.js",
+  "app/layout-classic.css",
+  "app/layout-wide.css",
   "app/i18n.js",
   "app/storage.js",
 ];
@@ -83,11 +97,15 @@ if (changedAll === null || untracked === null) {
       ? true
       : committedVersion[1] !== workingVersion[1];
 
-  /* A new shell file only counts if the page actually loads it, otherwise an
-     unrelated scratch file would demand a version bump. */
-  const pageText = touched.has("ev-tracker.html")
-    ? readFileSync("ev-tracker.html", "utf8")
-    : "";
+  /* An added file under app/ only counts once some page actually loads it,
+     otherwise an unrelated scratch file would demand a version bump. Both
+     layout pages are consulted, because either one may be the page that
+     references a shared module - checking only ev-tracker.html would call
+     app/app.js unreferenced whenever the wide page were the one touched. */
+  const pageText = ["ev-tracker.html", "ev-tracker-wide.html"]
+    .filter((f) => existsSync(f))
+    .map((f) => readFileSync(f, "utf8"))
+    .join("\n");
 
   const shellTouched = SHELL.filter((f) => {
     if (!touched.has(f)) return false;

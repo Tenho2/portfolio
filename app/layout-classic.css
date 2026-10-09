@@ -1,0 +1,17 @@
+/* EV Tracker layout shell.
+
+ * The classic arrangement, moved out of the shared design system.
+
+ * app/app.css describes this layout in its base rules: a fixed 250px rail on
+ * the left, which becomes a sticky icon strip below 820px and a single bar below
+ * 560px. Nothing here needs to restate any of that, so this file is deliberately
+ * almost empty - it exists so that both pages are assembled the same way and a
+ * future divergence in the classic layout has somewhere to live, rather than
+ * being forked back into app.css where the wide layout would inherit it.
+ *
+ * Everything a component needs - colour, spacing, borders, focus rings - belongs
+ * in app/app.css, which both layouts share. Anything here may only rearrange
+ * those pieces: position, size, order, and what is shown at which width.
+ *
+ * Kept in sync with app/layout-wide.css by tools/test-layouts.mjs.
+ */

@@ -15,7 +15,7 @@
  */
 
 /*
- * BUMP THIS ON EVERY DEPLOY THAT CHANGES ev-tracker.html.
+ * BUMP THIS ON EVERY DEPLOY THAT CHANGES ANY FILE IN THE SHELL LIST BELOW.
  *
  * The cache name is derived from it, so a new value makes the install handler
  * fetch a fresh shell and the activate handler delete the old one. Leaving it
@@ -25,15 +25,26 @@
  * because a navigation is network-first; an installed PWA launched from the
  * home screen can come straight out of the cache without any request at all.
  *
- * Last bumped: 2026-10-05, for finding a binned vehicle through the bin as well
- * as the live list, so binning survives the next sync.
+ * The list grew when the app was split: there are now two layout pages, and both
+ * the CSS and the application logic are separate files that two pages share. A
+ * file missing from this list is served stale and nothing complains - so
+ * tools/test-sw-bump.mjs asserts that every shell file was touched, and that the
+ * version moved with it.
+ *
+ * Last bumped: 2026-10-07, for the split into app/app.css + app/app.js and the
+ * second layout page.
  */
-const VERSION = "v32";
+const VERSION = "v33";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [
   "./",
   "./ev-tracker.html",
+  "./ev-tracker-wide.html",
+  "./app/app.css",
+  "./app/app.js",
+  "./app/layout-classic.css",
+  "./app/layout-wide.css",
   "./app/i18n.js",
   "./app/storage.js",
   "./manifest.json",
@@ -95,18 +106,55 @@ async function cacheFirst(request) {
   return response;
 }
 
+/*
+ * Which cached page a given navigation falls back to.
+ *
+ * There are two pages, and an offline navigation has to be answered with the one
+ * that was actually asked for. A single hardcoded ./ev-tracker.html was fine
+ * while there was one page; with two, a cached fallback to the wrong one shows
+ * the classic layout when the user asked for the wide one, which looks like the
+ * setting silently not sticking.
+ *
+ * ignoreSearch because the page is reached as "#log" - the fragment is not part
+ * of the request, but a query string on some hosts is, and a miss here means no
+ * offline shell at all.
+ */
+const PAGES = ["./ev-tracker.html", "./ev-tracker-wide.html"];
+
+function fallbackFor(url) {
+  const path = url.pathname.replace(/\/$/, "");
+  for (const page of PAGES) {
+    if (path.endsWith(page.replace(/^\.\//, ""))) return page;
+  }
+  /* An unknown path under this origin - "/" and anything else. The classic page
+     is the default, because it is the one the home screen and the manifest
+     point at. */
+  return PAGES[0];
+}
+
 async function networkFirstShell(request) {
+  const url = new URL(request.url);
+  const page = fallbackFor(url);
   try {
     const response = await fetch(request);
     if (isCacheable(response)) {
       const cache = await caches.open(CACHE);
-      cache.put("./ev-tracker.html", response.clone());
+      /* Keyed by the page that was requested, so the cache mirrors the URLs
+         rather than one slot overwritten by whichever page loaded last. */
+      cache.put(page, response.clone());
     }
     return response;
   } catch (err) {
-    const shell = await caches.match("./ev-tracker.html", {
-      ignoreSearch: true,
-    });
+    /* Offline. Prefer the requested page, then any other page, then the home
+       page: being shown a working shell in the wrong layout beats a browser
+       error page, and the picker is reachable from either. */
+    const shell =
+      (await caches.match(page, { ignoreSearch: true })) ||
+      (await caches.match(page, { ignoreSearch: true, cacheName: CACHE })) ||
+      (await Promise.all(
+        PAGES.map((p) => caches.match(p, { ignoreSearch: true })),
+      ).then((hits) => hits.find(Boolean))) ||
+      (await caches.match("./", { ignoreSearch: true }));
     if (shell) return shell;
     throw err;
   }

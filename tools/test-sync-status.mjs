@@ -7,24 +7,7 @@
  *
  *   node tools/test-sync-status.mjs
  */
-import { readFileSync } from "node:fs";
-
-const html = readFileSync("ev-tracker.html", "utf8");
-
-function fnSource(name) {
-  const start = html.indexOf(`function ${name}(`);
-  if (start < 0) throw new Error(`function ${name} not found in ev-tracker.html`);
-  let i = html.indexOf("{", start);
-  let depth = 0;
-  for (; i < html.length; i++) {
-    if (html[i] === "{") depth++;
-    else if (html[i] === "}") {
-      depth--;
-      if (depth === 0) return html.slice(start, i + 1);
-    }
-  }
-  throw new Error(`unbalanced braces extracting ${name}`);
-}
+import { fnSource } from "./app-source.mjs";
 
 /* vehById is not self-contained, so it is injected rather than extracted. */
 const build = new Function(

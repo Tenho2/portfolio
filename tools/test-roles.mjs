@@ -8,30 +8,11 @@
  *
  *   node tools/test-roles.mjs        (or: npm test)
  */
-import { readFileSync } from "node:fs";
-
-const html = readFileSync("ev-tracker.html", "utf8");
-
-/** Extract one function declaration by brace matching, so the test uses the
-    real source rather than a copy that can drift. */
-function fnSource(name) {
-  const start = html.indexOf(`function ${name}(`);
-  if (start < 0) throw new Error(`function ${name} not found in ev-tracker.html`);
-  let i = html.indexOf("{", start);
-  let depth = 0;
-  for (; i < html.length; i++) {
-    if (html[i] === "{") depth++;
-    else if (html[i] === "}") {
-      depth--;
-      if (depth === 0) return html.slice(start, i + 1);
-    }
-  }
-  throw new Error(`unbalanced braces extracting ${name}`);
-}
+import { appSource, fnSource } from "./app-source.mjs";
 
 /** The role ladder constants, which are a var literal rather than a function. */
 function constSource(name) {
-  const m = html.match(new RegExp(`var ${name}\\s*=\\s*\\{[^}]*\\}`));
+  const m = appSource().match(new RegExp(`var ${name}\\s*=\\s*\\{[^}]*\\}`));
   if (!m) throw new Error(`var ${name} not found`);
   return m[0];
 }

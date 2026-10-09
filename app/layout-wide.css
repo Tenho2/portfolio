@@ -1,0 +1,182 @@
+/* EV Tracker layout shell: the wide arrangement.
+
+ * The alternative to the classic rail. A permanent top bar with the navigation
+ * laid out horizontally, and a content column capped at a comfortable reading
+ * width instead of stretching to the edge of a monitor.
+ *
+ * Why this exists
+ *   The classic layout collapses its navigation to bare icons below 820px and
+ *   drops the labels entirely below 560px, because a 250px rail cannot fit a
+ *   phone. That is the right trade on a phone held close, and the wrong one on a
+ *   tablet on a desk, a monitor, or a head unit read from further away than an
+ *   arm's length. There the labels fit comfortably and staying legible is worth
+ *   more than reclaiming the width.
+ *
+ * So this layout never collapses. The bar is always a full row of labelled
+ * targets, they get larger rather than smaller as space allows, and the content
+ * is centred and capped so a line of text never runs the full width of a large
+ * display.
+ *
+ * The rules here only rearrange what app/app.css defines - position, size, order,
+ * flex direction, and what is visible at which width. Colour, spacing, borders
+ * and focus rings are shared and must not be forked here, because the two pages
+ * are meant to be the same application wearing different clothes.
+ *
+ * This file is scoped to body[data-layout="wide"], which every selector below
+ * leans on: it means none of it can leak into the classic page even if the
+ * stylesheets are loaded in the wrong order.
+ */
+
+body[data-layout="wide"] {
+  --wide-bar-h: 3.5rem;
+}
+
+/* The rail becomes a bar ---------------------------------------------------- */
+
+body[data-layout="wide"] .side {
+  position: sticky;
+  inset: 0 0 auto 0;
+  width: auto;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 1.25rem;
+  border-right: 0;
+  border-bottom: 1px solid var(--line);
+  overflow: visible;
+  z-index: 30;
+}
+
+body[data-layout="wide"] .side-brand {
+  flex: 0 0 auto;
+  font-size: 1rem;
+  padding: 0.35rem 0.5rem;
+  border: 0;
+  white-space: nowrap;
+}
+
+/* Horizontal, and the labels stay. The classic sheet hides them under 820px;
+   here they are the point of the layout, so that rule is undone rather than
+   left to compete with it. */
+body[data-layout="wide"] .side-nav {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 0.25rem;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+body[data-layout="wide"] .side-nav button {
+  border-left: 0;
+  border-bottom: 3px solid transparent;
+  border-radius: 8px;
+  padding: 0.5rem 0.8rem;
+  width: auto;
+  white-space: nowrap;
+  font-size: 0.95rem;
+}
+
+body[data-layout="wide"] .side-nav button[aria-current="page"] {
+  border-left-color: transparent;
+  border-bottom-color: var(--primary);
+}
+
+body[data-layout="wide"] .side-nav button span:not(.ic):not(.bin-count) {
+  display: inline;
+}
+
+/* The account and the sync state move into the bar. In the classic layout they
+   live in the rail below 560px and in the page header above it; here there is
+   only one place, so the header copy of each is redundant and is hidden. The
+   mobile cluster is always shown, which is also what keeps the signed-in
+   account from ever scrolling out of view. */
+body[data-layout="wide"] .who-mobile {
+  display: flex;
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+/* The row-count badge stays. In the classic layout it sits at the foot of the
+   rail, where there is room for it; in the bar it has to make space for the
+   account name, so it shrinks to its smallest useful form rather than being
+   hidden. It is the only place the app says how much it holds, and a layout
+   that quietly drops it is a layout that loses information. */
+body[data-layout="wide"] .side .badge {
+  font-size: 0.72rem;
+  padding: 0.15rem 0.4rem;
+  flex: 0 0 auto;
+}
+
+body[data-layout="wide"] .wrap,
+body[data-layout="wide"] footer {
+  margin-left: 0;
+}
+
+/* A capped, centred column ---------------------------------------------- */
+
+body[data-layout="wide"] .wrap {
+  padding: 1.5rem 1.25rem 3rem;
+  max-width: 76rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+body[data-layout="wide"] footer {
+  padding: 1.25rem;
+  text-align: center;
+}
+
+body[data-layout="wide"] footer > * {
+  max-width: 76rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* The per-view heading row sits inside the content column. */
+body[data-layout="wide"] .top {
+  max-width: 76rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Two columns for the stat tiles, and a wider table. Neither changes a
+   component - only how many of them fit in a row. */
+body[data-layout="wide"] .stats {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+body[data-layout="wide"] .tbl-wrap table {
+  font-size: 0.95rem;
+}
+
+/* The chart gets the room it deserves on a large display. */
+body[data-layout="wide"] .chartbox {
+  max-height: 22rem;
+}
+
+/* Smaller screens: keep the bar usable but stop it crowding the content. The
+   labels stay; only the padding and the type size give way, so the bar never
+   turns back into the icon-only strip this layout exists to avoid. */
+@media (max-width: 900px) {
+  body[data-layout="wide"] .side {
+    padding: 0.4rem 0.75rem;
+    gap: 0.5rem;
+  }
+
+  body[data-layout="wide"] .side-nav button {
+    padding: 0.45rem 0.6rem;
+    font-size: 0.88rem;
+  }
+
+  body[data-layout="wide"] .side-brand {
+    font-size: 0.9rem;
+  }
+
+  body[data-layout="wide"] .wrap {
+    padding: 1rem 0.75rem 2.5rem;
+  }
+}
+
+/* Reduced motion is honoured globally in app/app.css; nothing here animates, so
+   there is deliberately no local override to get out of step with it. */

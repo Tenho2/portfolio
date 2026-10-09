@@ -56,6 +56,12 @@
       "short_name": "Open",
       "url": "./ev-tracker.html",
       "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "EV Multi-Tracker (wide layout)",
+      "short_name": "Wide",
+      "url": "./ev-tracker-wide.html",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
     }
   ]
 }

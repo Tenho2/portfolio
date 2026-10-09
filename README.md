@@ -8,12 +8,14 @@ Personal projects. Two pages, no build step: `index.html` is the home page and
 | Path                      | What it is                                                                      |
 | ------------------------- | ------------------------------------------------------------------------------- |
 | `index.html`              | Home page. Served at the domain root, so it has to stay here.                   |
-| `ev-tracker.html`         | The whole tracker: markup, styles and JavaScript in one file, by choice.        |
+| `ev-tracker.html`         | The tracker in the classic layout. See "The two layouts".                       |
+| `ev-tracker-wide.html`    | The same tracker in the wide layout.                                            |
+| `app/`                    | Shared by both layouts: logic, design system, i18n, storage.                    |
 | `sw.js`                   | Service worker. Caches the app shell; Supabase and map tiles stay network-only. |
 | `manifest.json`, `icons/` | PWA install metadata.                                                           |
 | `i18n/`                   | Northern Sámi translation template. The app's other languages are inline.       |
 | `supabase/`               | Database migrations. Not run automatically — see below.                         |
-| `tools/`                  | Test harnesses and the inline-JS syntax check.                                  |
+| `tools/`                  | Test harnesses, the page generator and the syntax checks.                       |
 
 The five web files at the root reference each other by relative path and
 `index.html` has to be at the branch root for GitHub Pages, so they stay flat.
@@ -137,20 +139,27 @@ the problem — 119 KB gzipped is small. The problem was that nothing enforced
 the boundary between modules, which is how `LANGS is not defined` and then
 `lang is not defined` both reached production as blank panels.
 
-The page is now being split into classic scripts under `app/`:
+The split is complete. Nothing is generated into `dist/`; the pages are plain
+files that a static host can serve as they are.
 
-| File              | Lines  | Contents                            |
-| ----------------- | ------ | ----------------------------------- |
-| `ev-tracker.html` | 10,600 | markup, CSS, application script     |
-| `app/i18n.js`     | 2,100  | translations for all four languages |
-| `app/storage.js`  | 160    | per-account local storage keys      |
+| File                     | Lines | Contents                            |
+| ------------------------ | ----- | ----------------------------------- |
+| `ev-tracker.html`        | 1,508 | markup, classic layout              |
+| `ev-tracker-wide.html`   | 1,508 | markup, wide layout                 |
+| `app/app.js`             | 9,259 | application logic                   |
+| `app/app.css`            | 1,616 | the shared design system            |
+| `app/layout-classic.css` | 17    | the classic navigation shell        |
+| `app/layout-wide.css`    | 182   | the wide navigation shell           |
+| `app/i18n.js`            | 2,177 | translations for all four languages |
+| `app/storage.js`         | 173   | per-account local storage keys      |
+| `app/shell.mjs`          | 79    | how the two pages are assembled     |
 
 Classic `<script src>` rather than ES modules on purpose: it keeps the page
 working from `file://` with no build step, and each file gets its own scope, so
 the i18n module's privates are unreachable from the application script rather
 than merely untested. `tools/test-wiring.mjs` asserts the load order, since
 loading a module after the app would leave its global undefined at boot, and it
-now covers every `<script src>` the markup lists rather than a hard-coded pair.
+covers every `<script src>` the markup lists rather than a hard-coded pair.
 
 `app/storage.js` owns key naming and bucket selection only. It never touches the
 vehicles or sessions arrays and never renders anything, which is what keeps the
@@ -158,10 +167,46 @@ boundary real — there is no state in it to reach back into. Its tests run the
 real file in a sandbox with a fake `localStorage`, rather than re-assembling
 functions out of the HTML, so the module's own wiring is exercised too.
 
-Remaining slices: sync, then the UI. Each is verified by the suite above before
-the next one starts. The upgrade to `type="module"` — which would turn a
-cross-module reference into a load-time error instead of a separate scope — is a
-separate change and needs `file://` to stop working.
+The remaining slice is the sync engine, which is still inline in `app/app.js`.
+The upgrade to `type="module"` — which would turn a cross-module reference into a
+load-time error instead of a separate scope — is a separate change and needs
+`file://` to stop working.
+
+### The two layouts
+
+`ev-tracker.html` is the original: a fixed 250 px rail on the left, which becomes
+a sticky strip of icons below 820 px and a single bar below 560 px.
+`ev-tracker-wide.html` is the same application arranged differently — a permanent
+top bar with the navigation labels always visible, and a content column capped so
+a line of text never runs the width of a large display. It suits a tablet, a desk
+or a head unit read from further away than a phone.
+
+**They are the same application, not two builds.** Identical markup, the same
+`app/app.js`, the same storage keys and the same account; only the arrangement
+differs, and only in CSS. That matters because `app/app.js` looks up roughly 170
+element ids while wiring its handlers with no per-page guard, so a layout with its
+own markup would have to reproduce every one of them exactly — and any divergence
+would be a page that throws before the application starts.
+
+Switch with **Settings → Data → Layout**, or from the home page. It is a
+navigation, not a migration: nothing is moved, re-imported or copied, and your
+data and account are the same either way. The current view is carried in the
+fragment, so switching from the middle of the log lands you in the log.
+
+The choice is deliberately **not remembered** between the two pages. Whichever
+one you are on when you close the tab is the one you return to, because a stored
+preference would need one page to override the other — and the picker is on both
+pages, so there is nothing to remember it for.
+
+`npm run build:pages` regenerates both pages from `app/shell.mjs` and the checked-in
+markup. Run it after editing the `<head>` or the shared markup; it is idempotent,
+and it refuses to leave a page half-written if its output is not stable.
+`tools/test-layouts.mjs` asserts the two markups stay byte-identical apart from
+the `<body>` attribute and the layout `href`, that neither page re-inlines CSS or
+JS, and that the generator is a no-op on a second run. `tools/test-layout-wide.mjs`
+checks the wide shell is doing the arranging it claims to, and that it never
+restyles a shared component or hides content — a layout that silently drops
+information is a bug, not a preference.
 
 ## Database
 

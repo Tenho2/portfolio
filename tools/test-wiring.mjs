@@ -26,6 +26,17 @@ const file = "ev-tracker.html";
 const raw = readFileSync(file);
 const src = raw.toString("utf8");
 
+/**
+ * The page plus the application source, as one searchable string.
+ *
+ * `fnBody` and the module-boundary checks below look for function bodies and for
+ * a module's first use of another module's public interface. Those live in
+ * app/app.js now, not in the page, so matching against the markup alone found
+ * nothing: syncVehicle "was found" reported false and every assertion about its
+ * body passed vacuously against an empty string.
+ */
+const code = [src, readFileSync("app/app.js", "utf8")].join("\n");
+
 /* The app is being split into classic scripts under app/. Discover them from
    the markup rather than listing them here, so a new file is covered the
      moment its <script src> tag is added and a deleted one stops being checked
@@ -183,15 +194,18 @@ group("the app module reaches other modules only through their public interface"
 
 /** The body of a top-level function, by brace matching. */
 function fnBody(name) {
-  const i = src.indexOf(`function ${name}(`);
+  /* `code`, not `src`: the function lives in app/app.js now, so searching the
+     markup returned an empty string and every assertion about the body below
+     passed against nothing. */
+  const i = code.indexOf(`function ${name}(`);
   if (i < 0) return "";
-  const start = src.indexOf("{", i);
+  const start = code.indexOf("{", i);
   let depth = 0;
-  for (let j = start; j < src.length; j++) {
-    if (src[j] === "{") depth++;
-    else if (src[j] === "}") {
+  for (let j = start; j < code.length; j++) {
+    if (code[j] === "{") depth++;
+    else if (code[j] === "}") {
       depth--;
-      if (depth === 0) return src.slice(start, j + 1);
+      if (depth === 0) return code.slice(start, j + 1);
     }
   }
   return "";
@@ -221,11 +235,13 @@ function fnBody(name) {
     storagePrivates.length,
   );
 
-  /* The app script must not reference any private of either module. */
-  const appStart = src.indexOf("<script>");
-  is("the app script block was found", appStart > 0, true);
-  if (appStart < 0) return;
-  const app = src.slice(appStart);
+  /* The application must not reference any private of either module. It lives in
+     app/app.js now, so it is read from there rather than sliced out of the page:
+     the page has no inline script left to slice, and searching for "<script>"
+     returned -1, which failed the assertion and then skipped every check below
+     it - a silent loss of coverage dressed as a pass. */
+  const app = readFileSync("app/app.js", "utf8");
+  is("the application script exists", app.length > 0, true);
   let caught = 0;
   for (const [name, owner] of [
     ...privateNames.map((n) => [n, "app/i18n.js"]),
@@ -243,28 +259,24 @@ function fnBody(name) {
       const line = app.slice(0, h.index).split("\n").length;
       fail(
         `"${name}" is private to ${owner}`,
-        `the app script references it around ev-tracker.html line ${appStart + line}`,
+        `the app script references it around app/app.js line ${line}`,
       );
     }
   }
   is(`no out-of-scope references in the app script (${caught} found)`, caught, 0);
 
-  /* And the app must load every module before itself, or the published object
-     is undefined at boot: EV_I18N leaves every translated label blank, and
-     EV_STORAGE means nothing can be read from or written to disk. */
-  for (const mod of APP_SCRIPTS) {
+  /* And the app must load every module before itself, or the published object is
+     undefined at boot: EV_I18N leaves every translated label blank, and
+     EV_STORAGE means nothing can be read from or written to disk.
+
+     The reference point is the app's own <script src>, not an inline block. */
+  const appTag = src.indexOf('src="app/app.js"');
+  is("the page loads the application script", appTag > 0, true);
+  for (const mod of APP_SCRIPTS.filter((m) => m !== "app/app.js")) {
     const tag = src.indexOf(`src="${mod}"`);
     is(`the page loads ${mod}`, tag > 0, true);
-    is(`${mod} loads before the app script`, tag > 0 && tag < appStart, true);
+    is(`${mod} loads before the app script`, tag > 0 && tag < appTag, true);
   }
-  /* The app must not read a module before its tag has appeared. */
-  const firstUse = Math.min(
-    ...APP_SCRIPTS.map((m) => {
-      const i = src.indexOf(m);
-      return i < 0 ? Infinity : i;
-    }),
-  );
-  is("every module tag precedes its first use", firstUse < appStart, true);
 
   /* Each module must actually publish the global the page expects, or the app
      script throws on its very first line. */
