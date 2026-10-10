@@ -8,6 +8,9 @@ import { readFileSync, writeFileSync } from "node:fs";
  */
 const FILE = process.argv[2] || "app/app.js";
 const buf = readFileSync(FILE);
+/* The list is useful when fixing one file and unreadable when this runs over
+   four of them, so it only prints when asked. */
+const VERBOSE = !!process.env.VERBOSE;
 
 const bare = [];
 let line = 1;
@@ -19,11 +22,13 @@ for (let i = 0; i < buf.length; i++) {
 }
 
 console.log(`${FILE}: ${bare.length} bare LF line(s)`);
-for (const b of bare) {
-  const start = buf.lastIndexOf(0x0a, b.at - 1) + 1;
-  const end = buf.indexOf(0x0a, b.at);
-  const text = buf.slice(start, end).toString("utf8");
-  console.log(`  line ${b.line}: ${text.replace(/\r$/, "").trim().slice(0, 100)}`);
+if (VERBOSE) {
+  for (const b of bare) {
+    const start = buf.lastIndexOf(0x0a, b.at - 1) + 1;
+    const end = buf.indexOf(0x0a, b.at);
+    const text = buf.slice(start, end).toString("utf8");
+    console.log(`  line ${b.line}: ${text.replace(/\r$/, "").trim().slice(0, 100)}`);
+  }
 }
 
 if (bare.length) {

@@ -210,39 +210,113 @@ information is a bug, not a preference.
 
 ## Charging stations
 
-**Find station**, on the dashboard directly after Add session, maps the real
-chargers near you. There is no station database: OpenStreetMap tags chargers as
-`amenity=charging_station`, and **Overpass** is a free public query endpoint for
-exactly that — no key, no account, nothing to maintain.
+**Find station**, on the dashboard directly after Add session, lists the real
+chargers near you. The data layer is `app/stations.js`; the screen is in
+`app/app.js`.
 
-Two facts were established by calling the API, not by reading about it, and both
-would have shipped as silent failures:
+### Two sources, chosen by where you are
 
-- **The connector tags are `socket:*`, not `connector:*`.** Written from memory,
-  `connector:type2` matches nothing and every station comes back with an empty
-  connector list — which reads as correct data rather than a wrong key.
-  `socket:<type>:output` is that connector's _rating_ and is filtered out rather
-  than listed as another type.
-- **Not every endpoint can be trusted with an empty answer.** The primary
-  returned 504 once and 200 twice; a mirror returned HTTP 200 with **zero**
-  elements for a query the primary answered with eleven. "No chargers within
-  2 km" and "I asked a server with no data for that area" are otherwise
-  indistinguishable, so a fallback endpoint that finds nothing is reported as a
-  **failed lookup**, never as a confirmed absence.
+| Where           | Source                                                       | Why                                                                                                                                              |
+| --------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Inside Finland  | **Digitraffic** (Fintraffic), the official national registry | 3,840 stations, operator-fed, every EVSE with connector type and power, plus live status. OpenStreetMap has thin coverage inside Finnish cities. |
+| Outside Finland | **Overpass**                                                 | Digitraffic is Finnish only.                                                                                                                     |
 
-Overpass is a free service with no SLA, so every path fails soft: the worst case
-is one line of status text and the manual entry the user already had. Two
-endpoints are tried in turn, each with a 20-second deadline. The service worker
-does not cache any of it — it is cross-origin and bypassed.
+Both return the same row shape, so nothing in the UI knows which one answered.
 
-The accuracy gate (`LOC_MAX_ACCURACY_M`, 50 m) applies here too. The geolocation
-button skips it, which is how a charger a kilometre away can end up written into
-the log as though it were certain; picking a station from such a reading would be
-the same mistake with extra steps.
+### What the Digitraffic API actually does
 
-A chosen station fills the name and coordinates and leaves the **price alone**:
-OpenStreetMap has no price, and guessing one is exactly what the existing
-ambiguity logic exists to avoid.
+Every one of these was established by calling the endpoint, not by reading its
+documentation, and each differs from what the documentation implies:
+
+- **`limit` accepts only `500` or `ALL`.** `?limit=2` is a 400, not a short page.
+- **The payload is GeoJSON** — `features[]`, not `result[]` — and coordinates are
+  **`[lng, lat]`**. The other order drops every Finnish station into the Baltic
+  and returns an empty map with no error anywhere.
+- **`maxElectricPower` is in watts.** 12800 is a 12.8 kW charger; read as kilowatts
+  the app would advertise a 12.8 MW one.
+- **Status lives at `locations/statuses`**, not `statuses` (a 404). Tariffs are
+  top-level at `tariffs`.
+- **`evseStatus=AVAILABLE` is accepted and then ignored.** The response still
+  contains everything, so filtering has to be done locally or not at all.
+- **Tariffs mix five kinds of price component.** Only `ENERGY` is a price per kWh;
+  `PARKING_TIME` is per hour of standing still and is 8× higher. `stepSize` is the
+  unit the operator quotes in — 1000 means per MWh, which must be divided before
+  display. The feed carries **nine currencies**, so the currency travels with the
+  price rather than being assumed to be euros.
+
+The raw response is 23.5 MB. Status is 20,000 rows that changes by the minute, and
+tariffs 4,000 — so **only the station list is cached**, and status and tariffs are
+fetched when a station is opened.
+
+### The cache is packed and compressed, because the quota is shared
+
+The station cache lives in `localStorage` beside the user's own sessions, vehicles
+and favourites. If it tips the quota over, the write that fails is somebody's
+charge history — not the station list. Measured for the full registry:
+
+| Form                             | Size       |
+| -------------------------------- | ---------- |
+| one named JSON object per pole   | 2,125 KB   |
+| packed positional rows           | 1,511 KB   |
+| **packed and gzipped (shipped)** | **441 KB** |
+
+Poles are stored positionally rather than by name, with a per-station plug lookup
+instead of a repeated string per pole. `CompressionStream` is a browser built-in,
+so this costs no library; a browser without it falls back to packed JSON under a
+different marker, and a cache written by either version is readable by the other.
+
+A site with 219 poles is real, and 219 rows of connector detail is not information
+anyone can use. Only the first 12 poles keep their detail, and the panel says how
+many were not listed — but **every EVSE id is kept**, because live status is
+counted from it, and a truncated list would report "3 of 12 free" at a site with
+two hundred poles.
+
+### Showing five, not hundreds
+
+A 10 km search in a city centre returns hundreds. The nearest five are shown and
+the rest sit behind a button that states the remaining count — a wall of rows
+buries the one you came for. The count in the status line is the true total, not
+the number on screen.
+
+### Overpass is still unreliable, and treated that way
+
+Measured over one afternoon:
+
+| Endpoint                  | Behaviour                                                        |
+| ------------------------- | ---------------------------------------------------------------- |
+| `overpass-api.de`         | 504 under load; 406 to a client sending no meaningful User-Agent |
+| `overpass.kumi.systems`   | 429 under load                                                   |
+| `overpass.private.coffee` | 429 under load                                                   |
+
+`overpass.osm.ch` is deliberately **not** in the list: it answered HTTP 200 with
+**zero** elements for a Stockholm query where Stockholm has hundreds of chargers.
+A stale mirror is indistinguishable from an absence unless you know which endpoint
+answered, so an empty answer from a non-primary endpoint is reported as a
+**failed lookup**, never as a confirmed absence.
+
+> Every public instance refuses or rate-limits a request from a **Node script** —
+> `overpass-api.de` answers 406 at the Apache layer because undici will not let the
+> script replace its User-Agent. In a browser the request carries an ordinary
+> browser User-Agent. The browser path therefore **could not be verified from the
+> command line**; `tools/check-stations.mjs` reports this rather than claiming a
+> result it did not get.
+
+### Nothing is invented
+
+A chosen station fills the name and coordinates and **leaves the price alone**.
+Digitraffic does publish real tariffs, but they are per-operator, change weekly,
+and a wrong one is worse than none — the existing ambiguity logic exists precisely
+to avoid that. The same reasoning applies to the 10 km radius: OpenStreetMap rows
+outside Finland carry no power rating, so that field is empty rather than guessed.
+
+### Cameras
+
+`https://tie.digitraffic.fi/api/weathercam/v1/stations` lists **813 road-weather
+cameras**. These are road-condition cameras, not enforcement or speed cameras, and
+the screen says so. Images come from
+`https://weathercam.digitraffic.fi/{presetId}.jpg`, about 15 KB with
+`?thumbnail=true` and 158 KB full. The list is fetched fresh when opened and the
+capture time is shown, because a stale road camera is worse than no camera.
 
 ### Diagnostics
 

@@ -7851,379 +7851,367 @@ slot.map.on("click", function (e) {
           );
         }
 
-        /* ---------- charging stations from OpenStreetMap ----------
-           No database of our own. OSM tags chargers as amenity=charging_station,
-           and Overpass is a free public query endpoint for exactly that - no key,
-           no account, no setup. Everything the map knows about chargers comes
-           from there.
+        /* ---------- charging stations ----------
+           The data work lives in app/stations.js. What remains here is the
+           screen: ask for a position, ask the module, draw the answer.
 
-           Two things about it that were verified by calling it, not assumed:
-
-           1. The connector tags are `socket:*`, not `connector:*`. Written from
-              memory as `connector:type2` they match nothing at all and every
-              station comes back with an empty connector list - which looks like
-              correct data rather than a wrong key. Real keys, from a live
-              response: socket:chademo, socket:type2, socket:type2_combo,
-              socket:schuko, socket:CCS, and `socket:<type>:output` carrying the
-              power as a string such as "50 kW".
-
-           2. Not every endpoint is trustworthy with an empty answer. The primary
-              returned 504 on the first attempt and 200 on the next two; a
-              mirror returned HTTP 200 with ZERO elements for a query that the
-              primary answered with eleven. A stale mirror is worse than no
-              mirror, because "no chargers within 2 km" and "I asked a server
-              with no data for that area" look identical to the user. So a result
-              that came from a fallback endpoint and found nothing is reported as
-              a failed lookup, never as a confirmed absence.
-
-           Overpass is a free service with no SLA. Everything here assumes it can
-           fail: the worst case is one line of status text and the manual path
-           the user already had. */
-        var OVERPASS_ENDPOINTS = [
-          "https://overpass-api.de/api/interpreter",
-          "https://overpass.kumi.systems/api/interpreter",
-        ];
-        var STATION_RADIUS_M = 2000;
+           Inside Finland the answer comes from Digitraffic's cached registry,
+           which lists 3,840 stations with connector type, power, operator and
+           live status. Outside Finland it comes from Overpass, because
+           Digitraffic is Finnish only. Both paths return the same row shape, so
+           nothing below this point knows or cares which one answered. */
+var STATION_RADIUS_M = 10000;
+        /* How many are shown before the "show more" button. Five is what fits
+           above the fold on a phone, which is where this is usually used. */
+        var STATION_NEAREST = 5;
+var STATION_PAGE = 10;
+        /* The full ranked answer, kept so "show more" can page through it
+           without re-querying. `stationResults` is only what is on screen. */
+        var stationAll = [];
         var stationResults = [];
         var stationCentre = null;
-        function overpassUrl(lat, lng, radius) {
-          var q =
-            "[out:json][timeout:20];(" +
-            'node["amenity"="charging_station"](around:' +
-            Math.round(radius) +
-            "," +
-            lat.toFixed(5) +
-            "," +
-            lng.toFixed(5) +
-            ");" +
-            'way["amenity"="charging_station"](around:' +
-            Math.round(radius) +
-            "," +
-            lat.toFixed(5) +
-            "," +
-            lng.toFixed(5) +
-            ");" +
-            ");out center 40;";
-          return OVERPASS_ENDPOINTS[0] + "?data=" + encodeURIComponent(q);
-        }
-        /**
-         * A display name. OSM is inconsistent - plenty of chargers carry only a
-         * brand or an operator, and some carry no name at all, so all three are
-         * tried rather than rendering an empty row.
-         */
-        function stationName(tags) {
-          return (
-            tags.name ||
-            tags.brand ||
-            tags.operator ||
-            TXT("st.unnamed")
-          );
-        }
-        /**
-         * Connector types and their power, from the socket:* tags.
-         *
-         * A key is a connector only when it has exactly one colon after
-         * "socket" - `socket:type2` is a connector, `socket:type2:output` is
-         * that connector's rating. Including both would list every charger with
-         * a column of "output" entries.
-         */
-        function stationSockets(tags) {
-          var types = [],
-            power = {};
-          for (var k in tags) {
-            if (!Object.prototype.hasOwnProperty.call(tags, k)) continue;
-            if (k.indexOf("socket:") !== 0) continue;
-            var rest = k.slice(7);
-            var bits = rest.split(":");
-            if (bits.length === 1) {
-              types.push(bits[0].replace(/_/g, " "));
-            } else if (bits.length === 2 && bits[1] === "output") {
-              power[bits[0]] = tags[k];
-            }
-          }
-          types.sort();
-          var out = [];
-          for (var i = 0; i < types.length; i++) {
-            var p = power[types[i].replace(/ /g, "_")];
-            out.push(types[i] + (p ? " " + p : ""));
-          }
-          return out;
-        }
-        function stationFromElement(el, lat, lng, origin) {
-          var tags = el.tags || {};
-          /* A way carries no lat/lon of its own; `out center` puts the centroid
-             on `center`. Reading el.lat directly would give undefined, and
-             Leaflet would throw on it. */
-          var la = isNum(el.lat) ? +el.lat : isNum(el.center && el.center.lat) ? +el.center.lat : null;
-          var ln = isNum(el.lon) ? +el.lon : isNum(el.center && el.center.lon) ? +el.center.lon : null;
-          if (!isNum(la) || !isNum(ln)) return null;
-          return {
-            id: "osm-" + el.type + "-" + el.id,
-            name: stationName(tags),
-            operator: tags.operator || tags.brand || "",
-            capacity: tags.capacity || "",
-            fee: tags.fee || "",
-            website: tags.website || "",
-            sockets: stationSockets(tags),
-            lat: la,
-            lng: ln,
-            dist: origin ? Math.round(metresBetween(origin.lat, origin.lng, la, ln)) : null,
-          };
-        }
+        var stationPage = 0;
+        var stationOpen = null;
+
         function setStationStatus(t) {
           var el = $("stationStat");
-          if (el) el.textContent = t || "";
+          if (el) el.textContent = t;
         }
+
+        /**
+         * The nearest five, always.
+         *
+         * The full list can run to hundreds within 10 km in a city, and a
+         * scrolling wall of them buries the one the user wanted. Five is what
+         * fits above the fold, and the rest are a deliberate second step.
+         */
+        function stationSlice(list) {
+          if (list.length <= STATION_NEAREST) return list;
+          return list.slice(0, STATION_NEAREST);
+        }
+
         function renderStations() {
           var box = $("stationList");
           if (!box) return;
           if (!stationResults.length) {
-            box.innerHTML =
-              '<p class="empty">' + TXT("st.none") + "</p>";
+            box.innerHTML = "";
             return;
           }
-          var h = "";
-          for (var i = 0; i < stationResults.length; i++) {
-            var s = stationResults[i];
-            var meta = [];
-            if (s.dist !== null) meta.push(s.dist + " m");
-            if (s.operator) meta.push(s.operator);
-            if (s.capacity) meta.push(TXT("st.plugs", { n: +s.capacity }));
-            if (s.fee === "yes") meta.push(TXT("st.paid"));
-            if (s.fee === "no") meta.push(TXT("st.free"));
-            if (s.sockets.length) meta.push(s.sockets.join(", "));
-            h +=
-              '<div class="item"><div><div class="nm">' +
-              esc(s.name) +
-              '</div><div class="s">' +
-              esc(meta.join(" · ")) +
-              '</div></div>' +
-              '<button type="button" class="btn sm" data-station-use="' +
-              esc(s.id) +
-              '">' +
-              TXT("st.use") +
-              "</button>" +
-              "</div>";
+var shown = stationResults;
+          var out = [];
+          for (var i = 0; i < shown.length; i++) {
+            var s = shown[i];
+            var bits = [];
+            if (s.power) bits.push(esc(s.power));
+            if (s.plugs && s.plugs.length) bits.push(esc(s.plugs.join(", ")));
+            /* One row per station. The pole count is a single number here
+               because a station with 200 connectors otherwise renders as a
+               paragraph nobody reads; the detail sheet lists them. */
+            if (s.polesTotal > 1) bits.push(TXT("st.poles", { n: s.polesTotal }));
+out.push(
+              '<li class="station-row' +
+                (stationOpen === s.id ? " on" : "") +
+                '"><div>' +
+                '<button type="button" class="station-name" data-station-detail="' +
+                esc(s.id) +
+                '">' +
+                esc(s.name || TXT("st.unnamed")) +
+                (s.operator ? ' <span class="station-meta">' + esc(s.operator) + "</span>" : "") +
+                "</button>" +
+                (bits.length ? '<div class="station-meta">' + bits.join(" · ") + "</div>" : "") +
+                (s.address ? '<div class="station-meta">' + esc(s.address) + "</div>" : "") +
+                '</div><div class="station-end"><span class="station-meta">' +
+                Math.round(s.dist / 10) / 100 +
+                " km</span>" +
+                '<button type="button" class="btn sm" data-station-use="' +
+                esc(s.id) +
+                '">' +
+                TXT("st.use") +
+                "</button></div></li>",
+            );
           }
-          box.innerHTML = h;
+var rest = stationAll.length - shown.length;
+          box.innerHTML = '<ul class="station-list">' + out.join("") + "</ul>";
+          /* The rest is never hidden behind a scroll: it is a button, so the
+             count is stated and the user chooses to see it. */
+          var more = $("stationMore");
+          if (more) {
+            more.hidden = rest <= 0;
+            var lab = $("stationMoreLabel");
+            if (lab) lab.textContent = TXT("st.moreCount", { n: rest });
+          }
         }
-        /**
-         * Markers for the results. Separate from pinAt(), which owns ONE draggable
-         * pin for the session location - reusing it would make the last station
-         * visited the only one on the map.
-         */
+
         function drawStationPins(list) {
           var slot = maps["stationMap"];
-          if (!slot || !slot.map || !window.L) return;
+          if (!slot || !slot.map) return;
           if (slot.stationPins) {
-            for (var i = 0; i < slot.stationPins.length; i++) {
-              try {
-                slot.map.removeLayer(slot.stationPins[i]);
-              } catch (e) {}
-            }
+            for (var i = 0; i < slot.stationPins.length; i++)
+              slot.map.removeLayer(slot.stationPins[i]);
           }
           slot.stationPins = [];
-          for (var j = 0; j < list.length; j++) {
-            var s = list[j];
+          for (var k = 0; k < list.length; k++) {
+            var s = list[k];
             var m = L.circleMarker([s.lat, s.lng], {
-              radius: 7,
+              radius: 5,
               color: "#10b981",
               weight: 2,
               fillColor: "#10b981",
-              fillOpacity: 0.85,
-            }).addTo(slot.map);
+              fillOpacity: 0.75,
+            });
             m.bindPopup(
-              "<strong>" + esc(s.name) + "</strong><br>" + esc(s.dist + " m"),
+              "<b>" +
+                esc(s.name || TXT("st.unnamed")) +
+                "</b><br>" +
+                esc(s.power || "") +
+                (s.dist != null
+                  ? "<br>" + TXT("st.away", { d: Math.round(s.dist) }) + " m"
+                  : ""),
             );
+            m.addTo(slot.map);
             slot.stationPins.push(m);
           }
         }
+
         function stationFromId(id) {
           for (var i = 0; i < stationResults.length; i++)
             if (stationResults[i].id === id) return stationResults[i];
           return null;
         }
+
         /**
-         * Look up chargers around a point. Tries each endpoint in turn, and says
-         * which one answered, because a fallback's silence is not evidence.
+         * Run a search and put the answer on screen.
+         *
+         * Every failure mode here has been observed in the wild rather than
+         * imagined, and each is reported instead of shown as "no stations":
+         * a mirror answering 200 with zero rows, a non-JSON rate-limit page, a
+         * cache older than a week, and a quota that refused the write.
          */
-        function queryStations(lat, lng, radius) {
-          var url = overpassUrl(lat, lng, radius || STATION_RADIUS_M);
-          var i = 0;
-          function attempt() {
-            if (i >= OVERPASS_ENDPOINTS.length)
-              return Promise.resolve({ ok: false, error: "no endpoint answered" });
-            var ep = OVERPASS_ENDPOINTS[i];
-            var mine = i;
-            i++;
-            var u =
-              url.indexOf(ep) === 0 ? url : ep + url.slice(url.indexOf("?"));
-            var started = Date.now();
-            return timed(
-              fetch(u, { headers: { Accept: "application/json" } }),
-              20000,
-            )
-              .then(function (r) {
-                if (!r.ok) throw new Error("HTTP " + r.status);
-                return r.text();
-              })
-              .then(function (body) {
-                var parsed = null;
-                try {
-                  parsed = JSON.parse(body);
-                } catch (e) {
-                  /* Not JSON at all - a rate-limit page or a proxy error. */
-                  stationEvent("bad-body", {
-                    endpoint: ep,
-                    ms: Date.now() - started,
-                    bytes: body.length,
-                    head: body.slice(0, 120),
-                  });
-                  throw new Error("response was not JSON");
-                }
-                var els = (parsed && parsed.elements) || [];
-                var list = [];
-                for (var k = 0; k < els.length; k++) {
-                  var s = stationFromElement(els[k], lat, lng, {
-                    lat: lat,
-                    lng: lng,
-                  });
-                  if (s) list.push(s);
-                }
-                list.sort(function (a, b) {
-                  return a.dist - b.dist;
-                });
-                stationEvent(mine === 0 ? "primary" : "fallback", {
-                  endpoint: ep,
-                  ms: Date.now() - started,
-                  bytes: body.length,
-                  elements: els.length,
-                  usable: list.length,
-                  fallback: mine > 0 ? "yes" : "no",
-                  body: body,
-                });
-                /* An empty answer from a fallback is NOT a confirmed absence -
-                   that mirror returned zero for a query the primary answered
-                   with eleven. Say so rather than telling the user there is
-                   nothing nearby. */
-                if (!list.length && mine > 0)
-                  return {
-                    ok: false,
-                    error: "fallback returned no data for this area",
-                  };
-                return { ok: true, list: list, fallback: mine > 0 };
-              })
-              .catch(function (err) {
-                if (mine === 0)
-                  stationEvent("error", {
-                    endpoint: ep,
-                    ms: Date.now() - started,
-                    error: String((err && err.message) || err),
-                  });
-                return attempt();
+        function runStationSearch(lat, lng) {
+          setStationStatus(TXT("st.searching"));
+          StationData.findStations({ lat: lat, lng: lng }, STATION_RADIUS_M, {
+            onCache: function (at, stale, total) {
+              if (stale) setStationStatus(TXT("st.cacheStale", { n: total }));
+            },
+            onAttempt: function (info) {
+              stationEvent(info.which, {
+                endpoint: info.endpoint,
+                ok: info.ok,
+                elements: info.elements,
+                error: info.error,
               });
-          }
-          return attempt();
+            },
+          })
+.then(function (res) {
+              /* Both lists are replaced, not appended to: a second search from a
+                 different place must not leave the old results behind. */
+              stationAll = res.rows;
+              stationResults = res.rows.slice(0, STATION_NEAREST);
+              stationCentre = { lat: lat, lng: lng };
+              var box = $("stationMapBox");
+              if (box) box.hidden = false;
+              var list = $("stationList");
+              if (!stationResults.length) {
+                setStationStatus(TXT("st.noneNear", { n: STATION_RADIUS_M / 1000 }));
+                if (list) list.innerHTML = "";
+                var more = $("stationMore");
+                if (more) more.hidden = true;
+                return;
+              }
+              /* The true total, not the five on screen. Saying "5 stations" when the search
+                 found 84 would be a different lie from the one the map tells. */
+              var n = stationAll.length;
+              setStationStatus(
+                TXT(res.cached ? "st.foundCached" : "st.found", {
+                  n: n,
+                  r: STATION_RADIUS_M / 1000,
+                }),
+              );
+              renderStations();
+              loadLeaflet(function () {
+                var slot = getMap("stationMap");
+                if (!slot || !slot.map) return;
+                try {
+                  slot.map.setView([lat, lng], 13);
+                  drawStationPins(stationSlice(stationResults));
+                } catch (e) {}
+              });
+            })
+            .catch(function (err) {
+              setStationStatus(
+                TXT("st.lookupFailed", {
+                  e: err && err.message ? err.message : "network",
+                }),
+              );
+            });
         }
+
         function findStationsNearMe() {
-          if (!navigator.geolocation) {
-            setStationStatus(TXT("toast.geoNone"));
+          var btn = $("stationFindBtn");
+          var out = $("stationOut");
+          if (out) out.innerHTML = "";
+          if (!navigator.onLine) {
+            setStationStatus(TXT("st.offline"));
             return;
           }
-          if (!navigator.onLine) {
-            setStationStatus(TXT("toast.offline2"));
+          if (!navigator.geolocation) {
+            setStationStatus(TXT("st.geoUnavailable"));
             return;
           }
           setStationStatus(TXT("st.searching"));
-          var btn = $("stationFindBtn");
-          if (btn) btn.disabled = true;
+          var acc = null;
           navigator.geolocation.getCurrentPosition(
-            function (pos) {
-              if (btn) btn.disabled = false;
-              var acc = pos.coords.accuracy;
-              /* The accuracy gate the auto-fill path already applies, and the
-                 geolocation button skips. A charger chosen from a reading that is
-                 a kilometre out is written into the log as though it were certain,
-                 so the gate belongs here too. */
-              if (!isNum(acc) || acc > LOC_MAX_ACCURACY_M) {
-                setStationStatus(
-                  TXT("set.geoTooCoarse", { n: isNum(acc) ? Math.round(acc) : 0 }),
-                );
+            function (p) {
+              acc = p.coords.accuracy;
+              /* The same gate the favourites lookup uses. A position accurate to
+                 a kilometre would place the pin in the wrong district and read
+                 as certain, so it is refused rather than used. */
+              if (acc > LOC_MAX_ACCURACY_M) {
+                setStationStatus(TXT("set.geoTooCoarse", { n: Math.round(acc) }));
                 return;
               }
-              stationCentre = {
-                lat: pos.coords.latitude,
-                lng: pos.coords.longitude,
-              };
-              runStationSearch(stationCentre.lat, stationCentre.lng);
+              runStationSearch(p.coords.latitude, p.coords.longitude);
             },
-            function (err) {
-              if (btn) btn.disabled = false;
-              setStationStatus(
-                TXT("st.geoFail", {
-                  n: err && err.code === 1 ? "denied" : err && err.code === 2 ? "unavailable" : "error",
-                }),
-              );
+            function () {
+              setStationStatus(TXT("st.geoFail", { n: "" }));
             },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 },
+            { enableHighAccuracy: true, timeout: 12000, maximumAge: 120000 },
           );
+          if (btn) btn.disabled = true;
         }
-        function runStationSearch(lat, lng) {
-          queryStations(lat, lng, STATION_RADIUS_M).then(function (res) {
-            if (!res.ok) {
-              setStationStatus(TXT("st.lookupFailed", { e: res.error || "" }));
-              stationResults = [];
-              renderStations();
-              return;
-            }
-            stationResults = res.list;
-            renderStations();
-            if (!stationResults.length) {
-              setStationStatus(TXT("st.noneNear", { n: Math.round(STATION_RADIUS_M / 1000) }));
-              return;
-            }
-            setStationStatus(
-              TXT("st.found", {
-                n: stationResults.length,
-                r: Math.round(STATION_RADIUS_M / 1000),
-              }),
-            );
-            /* Leaflet needs a laid-out element or it measures zero and renders
-               into nothing; the box is only unhidden now that there is something
-               to show. */
-            var box = $("stationMapBox");
-            if (box) box.hidden = false;
-            loadLeaflet(function () {
-              var slot = getMap("stationMap");
-              if (!slot) return;
-              slot.map.setView([lat, lng], 14, { animate: false });
-              setTimeout(function () {
-                try {
-                  slot.map.invalidateSize();
-                } catch (e) {}
-              }, 80);
-              drawStationPins(stationResults);
-            });
-          });
-        }
+
         /**
-         * Send the chosen station into the add-session form. The price is left
-         * alone: OpenStreetMap has no price, and guessing one is the thing the
-         * existing ambiguity logic exists to avoid.
+         * Open one station: its poles, and live status if it has any.
+         *
+         * Status is fetched here rather than with the station list because it is
+         * 20,000 rows that changes by the minute; the list itself is public,
+         * static and cached for days. The tariff list is fetched at the same
+         * time, once, on the first open of any station.
          */
+        function openStationDetail(id) {
+          var s = stationFromId(id);
+          if (!s) return;
+          stationOpen = id;
+          var box = $("stationDetail");
+          if (!box) return;
+          var poles = [];
+            for (var i = 0; i < (s.poles || []).length; i++) {
+              var p = s.poles[i];
+              poles.push(
+                "<li>" +
+                  esc(p.plugs.join(", ") || TXT("st.poleUnknown")) +
+                  (p.watts ? " · " + esc(StationData.powerText(p.watts)) : "") +
+                  "</li>",
+              );
+            }
+            /* The cached registry keeps every pole's id but only the first few
+               poles' connector detail, so a site with two hundred of them would
+               otherwise appear to have a dozen. Saying so is the difference
+               between a truncated list and a wrong one. */
+            var total = s.polesTotal || poles.length;
+            if (total > poles.length)
+              poles.push('<li class="station-meta">' + TXT("st.polesMore", { n: total - poles.length }) + "</li>");
+            box.innerHTML =
+              "<h3>" +
+              esc(s.name || TXT("st.unnamed")) +
+              "</h3>" +
+              (s.operator ? '<p class="station-meta">' + esc(s.operator) + "</p>" : "") +
+              (s.address ? '<p class="station-meta">' + esc(s.address) + "</p>" : "") +
+              (poles.length
+                ? "<h4>" +
+                  TXT("st.polesTitle", { n: total }) +
+                  '</h4><ul class="station-poles">' +
+                  poles.join("") +
+                  "</ul>"
+                : "") +
+              '<p class="station-meta" id="stationLive"></p>' +
+              '<button type="button" class="btn sm" data-station-close="1">' +
+              TXT("confirm.close") +
+              "</button>";
+          box.hidden = false;
+          /* OpenStreetMap rows have no evse ids, so there is nothing to ask
+             about; saying so plainly beats a spinner that never stops. */
+          if (s.source !== "digitraffic") {
+            var live = $("stationLive");
+            if (live) live.textContent = TXT("st.noLive");
+            return;
+          }
+          var live2 = $("stationLive");
+          if (live2) live2.textContent = TXT("st.liveLoading");
+          StationData.loadStatuses()
+            .then(function (map) {
+              /* Every id on site, not just the ones whose connector detail was
+                 kept in the cache. A count drawn from a truncated list would
+                 report "3 of 12 free" at a site with two hundred poles. */
+              var ids = s.evseIds && s.evseIds.length ? s.evseIds : (s.poles || []).map(function (p) { return p.id; });
+              var counts = {};
+              var n = 0;
+              for (var k = 0; k < ids.length; k++) {
+                if (!ids[k] || !map[ids[k]]) continue;
+                counts[map[ids[k]]] = (counts[map[ids[k]]] || 0) + 1;
+                n++;
+              }
+              if (!n) {
+                if (live2) live2.textContent = TXT("st.liveNone");
+                return;
+              }
+              var free = counts.AVAILABLE || 0;
+              if (live2) {
+                live2.textContent = TXT("st.live", {
+                  n: n,
+                  a: free,
+                  rest: TXT("st.liveRest", { c: statusWord(counts) }),
+                });
+              }
+            })
+            .catch(function () {
+              if (live2) live2.textContent = TXT("st.liveFail");
+            });
+        }
+
+        /** "AVAILABLE 2, CHARGING 1", most common first, in the UI language. */
+        function statusWord(counts) {
+          var names = Object.keys(counts);
+          var out = [];
+          for (var i = 0; i < names.length; i++) {
+            out.push(
+              TXT("st.status_" + names[i].toLowerCase(), { n: counts[names[i]] }),
+            );
+          }
+          return out.join(", ");
+        }
+
+        function closeStationDetail() {
+          stationOpen = null;
+          var box = $("stationDetail");
+          if (box) {
+            box.hidden = true;
+            box.innerHTML = "";
+          }
+          renderStations();
+        }
+
         function useStation(id) {
           var s = stationFromId(id);
           if (!s) return;
           go("add-session");
           var input = $("location");
-          if (input) input.value = s.name;
-          locGeo = { lat: s.lat, lng: s.lng, label: s.name };
+          if (input) input.value = s.name || TXT("st.unnamed");
+          locGeo = { lat: s.lat, lng: s.lng, label: s.name || "" };
           var box = $("sessMapBox");
           if (box) box.hidden = false;
-          setLocStatus(TXT("st.chosen", { v: s.name }));
-          showPin("sessMap", s.lat, s.lng, s.name, sessPinDragged);
+          loadLeaflet(function () {
+            showPin("sessMap", s.lat, s.lng, s.name || "");
+          });
+          /* No price is invented. Digitraffic has real tariffs, but they are
+             per-operator, change weekly, and a wrong one is worse than none:
+             the existing ambiguity logic exists precisely to avoid this. */
+          if (s.address) {
+            var hint = $("favName");
+            if (hint && !hint.value.trim()) hint.value = s.name || "";
+          }
+          setLocStatus(TXT("st.chosen", { v: s.name || TXT("st.unnamed") }));
         }
-
         /* ---------- routing ---------- */
         function go(id) {
           view = id;
@@ -8804,7 +8792,7 @@ function emptyBin() {
         /* ---------- events ---------- */
         document.addEventListener("click", function (e) {
           var t = e.target.closest(
-            "[data-go],[data-v],[data-del],[data-edit],[data-ren],[data-rm],[data-use],[data-fedit],[data-fdel],[data-share],[data-unshare],[data-accept],[data-reject],[data-bin-restore],[data-bin-purge],[data-discard],[data-station-use],[data-station-find]",
+            "[data-go],[data-v],[data-del],[data-edit],[data-ren],[data-rm],[data-use],[data-fedit],[data-fdel],[data-share],[data-unshare],[data-accept],[data-reject],[data-bin-restore],[data-bin-purge],[data-discard],[data-station-use],[data-station-detail],[data-station-close],[data-station-find]",
           );
           if (!t) return;
           if (t.hasAttribute("data-go")) {
@@ -8886,7 +8874,29 @@ function emptyBin() {
             useStation(t.getAttribute("data-station-use"));
             return;
           }
+          if (t.hasAttribute("data-station-detail")) {
+            openStationDetail(t.getAttribute("data-station-detail"));
+            return;
+          }
+          if (t.hasAttribute("data-station-close")) {
+            closeStationDetail();
+            return;
+          }
           if (t.hasAttribute("data-station-find")) findStationsNearMe();
+        });
+        /* "Show the rest" is on the button in the markup rather than in the
+           delegated list above: it is one fixed element that survives every
+           re-render of the results, so a plain listener cannot be lost when the
+           list is rebuilt underneath it. */
+        $("stationMore").addEventListener("click", function () {
+          /* Ten more each time, from the full ranked list, and never past its
+             end. The button hides itself in renderStations once everything is
+             showing, so it cannot be clicked into an empty state. */
+          if (stationResults.length >= stationAll.length) return;
+          var next = stationResults.length + STATION_PAGE;
+          stationResults = stationAll.slice(0, next);
+          renderStations();
+          drawStationPins(stationSlice(stationResults));
         });
         /* The role dropdown carries its target in one attribute because the
            share panel is rebuilt from scratch on every render and cannot keep

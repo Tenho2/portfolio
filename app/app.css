@@ -1627,19 +1627,98 @@
           word-break: break-all;
           user-select: all;
         }
-        .shared-tag {
-          display: inline-block;
-          font-size: 0.72rem;
-          padding: 0.05rem 0.4rem;
-          border-radius: 999px;
-          border: 1px solid var(--line);
-          color: var(--text-muted);
-          margin-left: 0.35rem;
-          vertical-align: middle;
+.shared-tag {
+        display: inline-block;
+        font-size: 0.72rem;
+        padding: 0.05rem 0.4rem;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        color: var(--text-muted);
+        margin-left: 0.35rem;
+        vertical-align: middle;
+      }
+      /* ---------- charging stations ----------
+         The station list is a list of rows rather than .item cards: a search in
+         a city returns hundreds, and a card per station makes the page scroll
+         faster than anyone can read. Rows are denser and set in columns that
+         collapse on a phone. */
+      .station-list {
+        list-style: none;
+        margin: 0.8rem 0 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      /* A border between rows rather than a border on each: one box around the
+         group reads as one thing, and it is one pixel of paint instead of n. */
+      .station-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.6rem 0.8rem;
+        background: var(--surface-2);
+      }
+      .station-row + .station-row {
+        border-top: 1px solid var(--line);
+      }
+      .station-row.on {
+        background: var(--surface-3);
+      }
+      .station-row > div:first-child {
+        flex: 1;
+        min-width: 0;
+      }
+      .station-end {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        flex: 0 0 auto;
+      }
+      /* The name is the whole point of the row, so it is the only control that
+         looks like a link. Power, plugs and address are metadata and are set
+         flat underneath. */
+      .station-name {
+        font-weight: 600;
+        text-align: left;
+        color: var(--text);
+        overflow-wrap: anywhere;
+      }
+      .station-meta {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        overflow-wrap: anywhere;
+      }
+      .station-poles {
+        margin: 0.3rem 0 0;
+        padding-left: 1.1rem;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+      }
+      /* The detail panel sits inside the station panel, so it takes the inset
+         treatment rather than another full-weight card. */
+      .panel.sub {
+        margin-top: 1rem;
+        border-style: dashed;
+        background: transparent;
+      }
+      @media (max-width: 560px) {
+        /* Stacked on a phone: the distance and the Use button are separate
+           lines, because side by side they leave the name about ten
+           characters wide. */
+        .station-row {
+          flex-wrap: wrap;
         }
-        @media (prefers-reduced-motion: reduce) {
-          * {
-            animation: none !important;
-            transition: none !important;
-          }
-        }
+        .station-end {
+          width: 100%;
+          justify-content: space-between;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation: none !important;
+          transition: none !important;
+        }
+      }

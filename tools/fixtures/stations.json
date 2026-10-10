@@ -1,0 +1,647 @@
+{
+ "pagination": {
+  "limit": 3840
+ },
+ "modifiedAt": "2026-10-09T20:37:37.945Z",
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     19.944657,
+     60.099303
+    ]
+   },
+   "properties": {
+    "id": "FI001L0APRZBZA",
+    "name": "Sittkoff",
+    "chargingWhenClosed": true,
+    "operator": {
+     "id": "FI*001",
+     "partyId": "001",
+     "countryCode": "FI",
+     "details": {
+      "name": "Liikennevirta"
+     }
+    },
+    "address": {
+     "street": "Österleden 165",
+     "city": "Mariehamn",
+     "postalCode": "22100",
+     "countryCode": "FIN"
+    },
+    "createdAt": "2025-08-11T12:41:13.716Z",
+    "modifiedAt": "2026-08-15T00:05:18.664Z",
+    "evses": [
+     {
+      "id": "FI*001*E26176",
+      "capabilities": [
+       "REMOTE_START_STOP_CAPABLE",
+       "RFID_READER",
+       "CREDIT_CARD_PAYABLE"
+      ],
+      "acceptedServiceProviders": null,
+      "floorLevel": null,
+      "geometry": null,
+      "physicalReference": "",
+      "directions": null,
+      "createdAt": "2025-08-11T12:41:13.859Z",
+      "modifiedAt": "2025-11-07T00:57:06.778Z",
+      "connectors": [
+       {
+        "powerType": "AC_3_PHASE",
+        "standard": "IEC_62196_T2",
+        "format": "SOCKET",
+        "capabilities": null,
+        "maxVoltage": 230,
+        "maxAmperage": 32,
+        "maxElectricPower": 7360,
+        "tariffIds": [
+         "FI001TMIYYLHLMX8EK2ZPW9JJ2KUHYTMVCNL"
+        ],
+        "createdAt": "2025-08-11T12:41:14.141Z",
+        "modifiedAt": "2025-08-27T13:08:40.683Z"
+       }
+      ]
+     },
+     {
+      "id": "FI*001*E26175",
+      "capabilities": [
+       "REMOTE_START_STOP_CAPABLE",
+       "RFID_READER",
+       "CREDIT_CARD_PAYABLE"
+      ],
+      "acceptedServiceProviders": null,
+      "floorLevel": null,
+      "geometry": null,
+      "physicalReference": "",
+      "directions": null,
+      "createdAt": "2025-08-11T12:41:13.859Z",
+      "modifiedAt": "2025-11-07T00:57:06.778Z",
+      "connectors": [
+       {
+        "powerType": "DC",
+        "standard": "CHADEMO",
+        "format": "CABLE",
+        "capabilities": null,
+        "maxVoltage": 500,
+        "maxAmperage": 40,
+        "maxElectricPower": 20000,
+        "tariffIds": [
+         "FI001TWVZFXLFU2YJMVQHNK2IAJ6P9JF5QK9"
+        ],
+        "createdAt": "2025-08-11T12:41:14.141Z",
+        "modifiedAt": "2025-08-27T13:08:40.683Z"
+       },
+       {
+        "powerType": "DC",
+        "standard": "IEC_62196_T2_COMBO",
+        "format": "CABLE",
+        "capabilities": null,
+        "maxVoltage": 500,
+        "maxAmperage": 40,
+        "maxElectricPower": 20000,
+        "tariffIds": [
+         "FI001TWVZFXLFU2YJMVQHNK2IAJ6P9JF5QK9"
+        ],
+        "createdAt": "2025-08-11T12:41:14.141Z",
+        "modifiedAt": "2025-08-27T13:08:40.683Z"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     25.663783,
+     61.005431
+    ]
+   },
+   "properties": {
+    "id": "FI001LAGEGKHZN",
+    "name": "Keskusportti - Isku",
+    "chargingWhenClosed": true,
+    "operator": {
+     "id": "FI*001",
+     "partyId": "001",
+     "countryCode": "FI",
+     "details": {
+      "name": "Liikennevirta"
+     }
+    },
+    "address": {
+     "street": "Mukkulankatu 19",
+     "city": "Lahti",
+     "postalCode": "15210",
+     "countryCode": "FIN"
+    },
+    "createdAt": "2025-08-11T12:41:17.423Z",
+    "modifiedAt": "2026-08-15T00:04:49.808Z",
+    "evses": [
+     {
+      "id": "FI*001*E6431",
+      "capabilities": [
+       "REMOTE_START_STOP_CAPABLE",
+       "RFID_READER",
+       "CREDIT_CARD_PAYABLE"
+      ],
+      "acceptedServiceProviders": null,
+      "floorLevel": null,
+      "geometry": null,
+      "physicalReference": "",
+      "directions": null,
+      "createdAt": "2025-08-11T12:41:17.672Z",
+      "modifiedAt": "2025-11-07T00:46:20.962Z",
+      "connectors": [
+       {
+        "powerType": "AC_3_PHASE",
+        "standard": "IEC_62196_T2",
+        "format": "SOCKET",
+        "capabilities": null,
+        "maxVoltage": 230,
+        "maxAmperage": 32,
+        "maxElectricPower": 7360,
+        "tariffIds": [
+         "FI001TMIYYLHLMX8EK2ZPW9JJ2KUHYTMVCNL"
+        ],
+        "createdAt": "2025-08-11T12:41:18.289Z",
+        "modifiedAt": "2025-08-27T13:08:44.843Z"
+       }
+      ]
+     },
+     {
+      "id": "FI*001*E4972",
+      "capabilities": [
+       "REMOTE_START_STOP_CAPABLE",
+       "RFID_READER",
+       "CREDIT_CARD_PAYABLE"
+      ],
+      "acceptedServiceProviders": null,
+      "floorLevel": null,
+      "geometry": null,
+      "physicalReference": "",
+      "directions": null,
+      "createdAt": "2025-08-11T12:41:17.672Z",
+      "modifiedAt": "2025-11-07T00:46:20.962Z",
+      "connectors": [
+       {
+        "powerType": "AC_3_PHASE",
+        "standard": "IEC_62196_T2",
+        "format": "SOCKET",
+        "capabilities": null,
+        "maxVoltage": 230,
+        "maxAmperage": 32,
+        "maxElectricPower": 7360,
+        "tariffIds": [
+         "FI001TMIYYLHLMX8EK2ZPW9JJ2KUHYTMVCNL"
+        ],
+        "createdAt": "2025-08-11T12:41:18.289Z",
+        "modifiedAt": "2025-08-27T13:08:44.843Z"
+       }
+      ]
+     },
+     {
+      "id": "FI*001*E4959",
+      "capabilities": [
+       "REMOTE_START_STOP_CAPABLE",
+       "RFID_READER",
+       "CREDIT_CARD_PAYABLE"
+      ],
+      "acceptedServiceProviders": null,
+      "floorLevel": null,
+      "geometry": null,
+      "physicalReference": "",
+      "directions": null,
+      "createdAt": "2025-08-11T12:41:17.672Z",
+      "modifiedAt": "2025-11-07T00:46:20.962Z",
+      "connectors": [
+       {
+        "powerType": "AC_3_PHASE",
+        "standard": "IEC_62196_T2",
+        "format": "SOCKET",
+        "capabilities": null,
+        "maxVoltage": 230,
+        "maxAmperage": 32,
+        "maxElectricPower": 7360,
+        "tariffIds": [
+         "FI001TMIYYLHLMX8EK2ZPW9JJ2KUHYTMVCNL"
+        ],
+        "createdAt": "2025-08-11T12:41:18.289Z",
+        "modifiedAt": "2025-08-27T13:08:44.843Z"
+       }
+      ]
+     },
+     {
+      "id": "FI*001*E6427",
+      "capabilities": [
+       "REMOTE_START_STOP_CAPABLE",
+       "RFID_READER",
+       "CREDIT_CARD_PAYABLE"
+      ],
+      "acceptedServiceProviders": null,
+      "floorLevel": null,
+      "geometry": null,
+      "physicalReference": "",
+      "directions": null,
+      "createdAt": "2025-08-11T12:41:17.672Z",
+      "modifiedAt": "2025-11-07T00:46:20.962Z",
+      "connectors": [
+       {
+        "powerType": "AC_3_PHASE",
+        "standard": "IEC_62196_T2",
+        "format": "SOCKET",
+        "capabilities": null,
+        "maxVoltage": 230,
+        "maxAmperage": 32,
+        "maxElectricPower": 7360,
+        "tariffIds": [
+         "FI001TMIYYLHLMX8EK2ZPW9JJ2KUHYTMVCNL"
+        ],
+        "createdAt": "2025-08-11T12:41:18.289Z",
+        "modifiedAt": "2025-08-27T13:08:44.843Z"
+       }
+      ]
+     },
+     {
+      "id": "FI*001*E4964",
+      "capabilities": [
+       "REMOTE_START_STOP_CAPABLE",
+       "RFID_READER",
+       "CREDIT_CARD_PAYABLE"
+      ],
+      "acceptedServiceProviders": null,
+      "floorLevel": null,
+      "geometry": null,
+      "physicalReference": "",
+      "directions": null,
+      "createdAt": "2025-08-11T12:41:17.672Z",
+      "modifiedAt": "2025-11-07T00:46:20.962Z",
+      "connectors": [
+       {
+        "powerType": "AC_3_PHASE",
+        "standard": "IEC_62196_T2",
+        "format": "SOCKET",
+        "capabilities": null,
+        "maxVoltage": 230,
+        "maxAmperage": 32,
+        "maxElectricPower": 7360,
+        "tariffIds": [
+         "FI001TMIYYLHLMX8EK2ZPW9JJ2KUHYTMVCNL"
+        ],
+        "createdAt": "2025-08-11T12:41:18.289Z",
+        "modifiedAt": "2025-08-27T13:08:44.843Z"
+       }
+      ]
+     },
+     {
+      "id": "FI*001*E6428",
+      "capabilities": [
+       "REMOTE_START_STOP_CAPABLE",
+       "RFID_READER",
+       "CREDIT_CARD_PAYABLE"
+      ],
+      "acceptedServiceProviders": null,
+      "floorLevel": null,
+      "geometry": null,
+      "physicalReference": "",
+      "directions": null,
+      "createdAt": "2025-08-11T12:41:17.672Z",
+      "modifiedAt": "2025-11-07T00:46:20.962Z",
+      "connectors": [
+       {
+        "powerType": "AC_3_PHASE",
+        "standard": "IEC_62196_T2",
+        "format": "SOCKET",
+        "capabilities": null,
+        "maxVoltage": 230,
+        "maxAmperage": 32,
+        "maxElectricPower": 7360,
+        "tariffIds": [
+         "FI001TMIYYLHLMX8EK2ZPW9JJ2KUHYTMVCNL"
+        ],
+        "createdAt": "2025-08-11T12:41:18.289Z",
+        "modifiedAt": "2025-08-27T13:08:44.843Z"
+       }
+      ]
+     },
+     {
+      "id": "FI*001*E4960",
+      "capabilities": [
+       "REMOTE_START_STOP_CAPABLE",
+       "RFID_READER",
+       "CREDIT_CARD_PAYABLE"
+      ],
+      "acceptedServiceProviders": null,
+      "floorLevel": null,
+      "geometry": null,
+      "physicalReference": "",
+      "directions": null,
+      "createdAt": "2025-08-11T12:41:17.672Z",
+      "modifiedAt": "2025-11-07T00:46:20.962Z",
+      "connectors": [
+       {
+        "powerType": "AC_3_PHASE",
+        "standard": "IEC_62196_T2",
+        "format": "SOCKET",
+        "capabilities": null,
+        "maxVoltage": 230,
+        "maxAmperage": 32,
+        "maxElectricPower": 7360,
+        "tariffIds": [
+         "FI001TMIYYLHLMX8EK2ZPW9JJ2KUHYTMVCNL"
+        ],
+        "createdAt": "2025-08-11T12:41:18.289Z",
+        "modifiedAt": "2025-08-27T13:08:44.843Z"
+       }
+      ]
+     },
+     {
+      "id": "FI*001*E6430",
+      "capabilities": [
+       "REMOTE_START_STOP_CAPABLE",
+       "RFID_READER",
+       "CREDIT_CARD_PAYABLE"
+      ],
+      "acceptedServiceProviders": null,
+      "floorLevel": null,
+      "geometry": null,
+      "physicalReference": "",
+      "directions": null,
+      "createdAt": "2025-08-11T12:41:17.672Z",
+      "modifiedAt": "2025-11-07T00:46:20.962Z",
+      "connectors": [
+       {
+        "powerType": "AC_3_PHASE",
+        "standard": "IEC_62196_T2",
+        "format": "SOCKET",
+        "capabilities": null,
+        "maxVoltage": 230,
+        "maxAmperage": 32,
+        "maxElectricPower": 7360,
+        "tariffIds": [
+         "FI001TMIYYLHLMX8EK2ZPW9JJ2KUHYTMVCNL"
+        ],
+        "createdAt": "2025-08-11T12:41:18.289Z",
+        "modifiedAt": "2025-08-27T13:08:44.843Z"
+       }
+      ]
+     },
+     {
+      "id": "FI*001*E6433",
+      "capabilities": [
+       "REMOTE_START_STOP_CAPABLE",
+       "RFID_READER",
+       "CREDIT_CARD_PAYABLE"
+      ],
+      "acceptedServiceProviders": null,
+      "floorLevel": null,
+      "geometry": null,
+      "physicalReference": "",
+      "directions": null,
+      "createdAt": "2025-08-11T12:41:17.672Z",
+      "modifiedAt": "2025-11-07T00:46:20.962Z",
+      "connectors": [
+       {
+        "powerType": "AC_3_PHASE",
+        "standard": "IEC_62196_T2",
+        "format": "SOCKET",
+        "capabilities": null,
+        "maxVoltage": 230,
+        "maxAmperage": 32,
+        "maxElectricPower": 7360,
+        "tariffIds": [
+         "FI001TMIYYLHLMX8EK2ZPW9JJ2KUHYTMVCNL"
+        ],
+        "createdAt": "2025-08-11T12:41:18.289Z",
+        "modifiedAt": "2025-08-27T13:08:44.843Z"
+       }
+      ]
+     },
+     {
+      "id": "FI*001*E4966",
+      "capabilities": [
+       "REMOTE_START_STOP_CAPABLE",
+       "RFID_READER",
+       "CREDIT_CARD_PAYABLE"
+      ],
+      "acceptedServiceProviders": null,
+      "floorLevel": null,
+      "geometry": null,
+      "physicalReference": "",
+      "directions": null,
+      "createdAt": "2025-08-11T12:41:17.672Z",
+      "modifiedAt": "2025-11-07T00:46:20.962Z",
+      "connectors": [
+       {
+        "powerType": "AC_3_PHASE",
+        "standard": "IEC_62196_T2",
+        "format": "SOCKET",
+        "capabilities": null,
+        "maxVoltage": 230,
+        "maxAmperage": 32,
+        "maxElectricPower": 7360,
+        "tariffIds": [
+         "FI001TMIYYLHLMX8EK2ZPW9JJ2KUHYTMVCNL"
+        ],
+        "createdAt": "2025-08-11T12:41:18.289Z",
+        "modifiedAt": "2025-08-27T13:08:44.843Z"
+       }
+      ]
+     },
+     {
+      "id": "FI*001*E6429",
+      "capabilities": [
+       "REMOTE_START_STOP_CAPABLE",
+       "RFID_READER",
+       "CREDIT_CARD_PAYABLE"
+      ],
+      "acceptedServiceProviders": null,
+      "floorLevel": null,
+      "geometry": null,
+      "physicalReference": "",
+      "directions": null,
+      "createdAt": "2025-08-11T12:41:17.672Z",
+      "modifiedAt": "2025-11-07T00:46:20.962Z",
+      "connectors": [
+       {
+        "powerType": "AC_3_PHASE",
+        "standard": "IEC_62196_T2",
+        "format": "SOCKET",
+        "capabilities": null,
+        "maxVoltage": 230,
+        "maxAmperage": 32,
+        "maxElectricPower": 7360,
+        "tariffIds": [
+         "FI001TMIYYLHLMX8EK2ZPW9JJ2KUHYTMVCNL"
+        ],
+        "createdAt": "2025-08-11T12:41:18.289Z",
+        "modifiedAt": "2025-08-27T13:08:44.843Z"
+       }
+      ]
+     },
+     {
+      "id": "FI*001*E4973",
+      "capabilities": [
+       "REMOTE_START_STOP_CAPABLE",
+       "RFID_READER",
+       "CREDIT_CARD_PAYABLE"
+      ],
+      "acceptedServiceProviders": null,
+      "floorLevel": null,
+      "geometry": null,
+      "physicalReference": "",
+      "directions": null,
+      "createdAt": "2025-08-11T12:41:17.672Z",
+      "modifiedAt": "2025-11-07T00:46:20.962Z",
+      "connectors": [
+       {
+        "powerType": "AC_3_PHASE",
+        "standard": "IEC_62196_T2",
+        "format": "SOCKET",
+        "capabilities": null,
+        "maxVoltage": 230,
+        "maxAmperage": 32,
+        "maxElectricPower": 7360,
+        "tariffIds": [
+         "FI001TMIYYLHLMX8EK2ZPW9JJ2KUHYTMVCNL"
+        ],
+        "createdAt": "2025-08-11T12:41:18.289Z",
+        "modifiedAt": "2025-08-27T13:08:44.843Z"
+       }
+      ]
+     },
+     {
+      "id": "FI*001*E4967",
+      "capabilities": [
+       "REMOTE_START_STOP_CAPABLE",
+       "RFID_READER",
+       "CREDIT_CARD_PAYABLE"
+      ],
+      "acceptedServiceProviders": null,
+      "floorLevel": null,
+      "geometry": null,
+      "physicalReference": "",
+      "directions": null,
+      "createdAt": "2025-08-11T12:41:17.672Z",
+      "modifiedAt": "2025-11-07T00:46:20.962Z",
+      "connectors": [
+       {
+        "powerType": "AC_3_PHASE",
+        "standard": "IEC_62196_T2",
+        "format": "SOCKET",
+        "capabilities": null,
+        "maxVoltage": 230,
+        "maxAmperage": 32,
+        "maxElectricPower": 7360,
+        "tariffIds": [
+         "FI001TMIYYLHLMX8EK2ZPW9JJ2KUHYTMVCNL"
+        ],
+        "createdAt": "2025-08-11T12:41:18.289Z",
+        "modifiedAt": "2025-08-27T13:08:44.843Z"
+       }
+      ]
+     },
+     {
+      "id": "FI*001*E4965",
+      "capabilities": [
+       "REMOTE_START_STOP_CAPABLE",
+       "RFID_READER",
+       "CREDIT_CARD_PAYABLE"
+      ],
+      "acceptedServiceProviders": null,
+      "floorLevel": null,
+      "geometry": null,
+      "physicalReference": "",
+      "directions": null,
+      "createdAt": "2025-08-11T12:41:17.672Z",
+      "modifiedAt": "2025-11-07T00:46:20.962Z",
+      "connectors": [
+       {
+        "powerType": "AC_3_PHASE",
+        "standard": "IEC_62196_T2",
+        "format": "SOCKET",
+        "capabilities": null,
+        "maxVoltage": 230,
+        "maxAmperage": 32,
+        "maxElectricPower": 7360,
+        "tariffIds": [
+         "FI001TMIYYLHLMX8EK2ZPW9JJ2KUHYTMVCNL"
+        ],
+        "createdAt": "2025-08-11T12:41:18.289Z",
+        "modifiedAt": "2025-08-27T13:08:44.843Z"
+       }
+      ]
+     },
+     {
+      "id": "FI*001*E6432",
+      "capabilities": [
+       "REMOTE_START_STOP_CAPABLE",
+       "RFID_READER",
+       "CREDIT_CARD_PAYABLE"
+      ],
+      "acceptedServiceProviders": null,
+      "floorLevel": null,
+      "geometry": null,
+      "physicalReference": "",
+      "directions": null,
+      "createdAt": "2025-08-11T12:41:17.672Z",
+      "modifiedAt": "2025-11-07T00:46:20.962Z",
+      "connectors": [
+       {
+        "powerType": "AC_3_PHASE",
+        "standard": "IEC_62196_T2",
+        "format": "SOCKET",
+        "capabilities": null,
+        "maxVoltage": 230,
+        "maxAmperage": 32,
+        "maxElectricPower": 7360,
+        "tariffIds": [
+         "FI001TMIYYLHLMX8EK2ZPW9JJ2KUHYTMVCNL"
+        ],
+        "createdAt": "2025-08-11T12:41:18.289Z",
+        "modifiedAt": "2025-08-27T13:08:44.843Z"
+       }
+      ]
+     },
+     {
+      "id": "FI*001*E6434",
+      "capabilities": [
+       "REMOTE_START_STOP_CAPABLE",
+       "RFID_READER",
+       "CREDIT_CARD_PAYABLE"
+      ],
+      "acceptedServiceProviders": null,
+      "floorLevel": null,
+      "geometry": null,
+      "physicalReference": "",
+      "directions": null,
+      "createdAt": "2025-08-11T12:41:17.672Z",
+      "modifiedAt": "2025-11-07T00:46:20.962Z",
+      "connectors": [
+       {
+        "powerType": "AC_3_PHASE",
+        "standard": "IEC_62196_T2",
+        "format": "SOCKET",
+        "capabilities": null,
+        "maxVoltage": 230,
+        "maxAmperage": 32,
+        "maxElectricPower": 7360,
+        "tariffIds": [
+         "FI001TMIYYLHLMX8EK2ZPW9JJ2KUHYTMVCNL"
+        ],
+        "createdAt": "2025-08-11T12:41:18.289Z",
+        "modifiedAt": "2025-08-27T13:08:44.843Z"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}

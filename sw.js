@@ -34,7 +34,7 @@
  * Last bumped: 2026-10-07, for the split into app/app.css + app/app.js and the
  * second layout page.
  */
-const VERSION = "v38";
+const VERSION = "v40";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [
@@ -47,6 +47,7 @@ const SHELL = [
   "./app/layout-wide.css",
   "./app/i18n.js",
   "./app/storage.js",
+  "./app/stations.js",
   "./manifest.json",
   "./icons/icon.svg",
   "./icons/icon-maskable.svg",
