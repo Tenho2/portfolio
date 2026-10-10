@@ -382,7 +382,14 @@
                   aria-required="true"
                   aria-describedby="durHint"
                 />
-                <div class="hint" id="durHint" data-i18n="as.durHint"></div>
+                <!-- Two elements, not one. #durHint carries data-i18n, so a language switch
+                 rewrites its textContent and would discard anything script had
+                 put there. #durHintNow has no data-i18n and is written only by
+                 script, so it survives a language change. -->
+                <div class="hint" id="durHint">
+                  <span data-i18n="as.durHint"></span>
+                  <span id="durHintNow" aria-live="polite"></span>
+                </div>
               </div>
               <div class="f">
                 <label for="mileage" data-i18n="as.mileage"></label

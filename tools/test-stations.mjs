@@ -655,9 +655,13 @@ await group("an empty result clears what was on the map", () => {
      ever reaching the map. */
   const search = app.slice(app.indexOf("function runStationSearch"), app.indexOf("function findStationsNearMe"));
   ok("the station path clears its pins", /drawStationPins\(\[\]\)/.test(search));
-  ok("and it is on the empty branch", /if \(!stationResults\.length\)[\s\S]{0,600}?drawStationPins\(\[\]\)/.test(search));
+  /* Window widened from 600 to 1400: the fix-quality report sits between the
+     guard and the pin clear, so this assertion broke on an unrelated edit. A
+     window that tight is a test that fails for reasons that have nothing to do
+     with what it checks. */
+  ok("and it is on the empty branch", /if \(!stationResults\.length\)[\s\S]{0,1400}?drawStationPins\(\[\]\)/.test(search));
   const cams = app.slice(app.indexOf("function loadCameras"), app.indexOf("function drawCameraPins"));
-  ok("and so does the camera path", /if \(!cameraResults\.length\)[\s\S]{0,600}?drawCameraPins\(\[\]\)/.test(cams));
+  ok("and so does the camera path", /if \(!cameraResults\.length\)[\s\S]{0,1400}?drawCameraPins\(\[\]\)/.test(cams));
 });
 
 await group("unknown statuses do not print a raw key", () => {

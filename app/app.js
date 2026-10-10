@@ -3443,21 +3443,67 @@ function hoursToHM(h, alwaysSeconds) {
           if (alwaysSeconds || ss > 0) out += ":" + pad(ss);
           return out;
         }
-        /* mean length of the stored sessions, rounded to a whole minute */
-        function avgDuration(list) {
-          if (!list || !list.length) return null;
-          var sum = 0,
-            n = 0;
-          for (var i = 0; i < list.length; i++) {
-            var h = num(list[i].hours);
-            if (h > 0) {
-              sum += h;
-              n++;
-            }
+/* Mean length of the stored sessions, and how many actually contributed.
+       The mean is returned at FULL precision, deliberately. It used to be
+       rounded to a whole minute here, which quietly threw away exactly the
+       thing that was supposed to count: a session of 30 min 20 s and five of
+       30 min came out as 30 min either way, so the seconds were read, added
+       and discarded. Rounding now happens where a number is written for a
+       person to read - see toWholeMinute - and nowhere else. */
+      function avgDuration(list) {
+        if (!list || !list.length) return { hours: null, n: 0 };
+        var sum = 0,
+          n = 0;
+        for (var i = 0; i < list.length; i++) {
+          var h = num(list[i].hours);
+          if (h > 0) {
+            sum += h;
+            n++;
           }
-          if (!n) return null;
-          return Math.round((sum / n) * 60) / 60;
         }
+        if (!n) return { hours: null, n: 0 };
+        return { hours: sum / n, n: n };
+      }
+
+      /* Snap to the nearest whole minute, for display only.
+         Every field that shows a duration uses this, so no readout anywhere
+         ends up with a spurious ":07" from the mean of unrelated charges. */
+      function toWholeMinute(hours) {
+        return Math.round((+hours || 0) * 60) / 60;
+      }
+
+      /* How many logged charges it takes before the average is used instead of
+         the flat default. One or two charges describe those charges, not this
+         driver: a single 90-minute session would otherwise prefill every
+         subsequent charge with an hour and a half. */
+      var DURATION_SAMPLE_MIN = 5;
+      var DURATION_FALLBACK_H = 0.5;
+
+      /**
+       * The duration to prefill: the average once there are enough samples,
+       * otherwise a flat default.
+       *
+       * @returns {{hours: number, fromAverage: boolean, n: number}}
+       */
+      function durationDefault(list) {
+        var a = avgDuration(list || sessions);
+        if (a.hours !== null && a.n >= DURATION_SAMPLE_MIN) {
+          /* Full precision in, whole minute out. The seconds counted towards the
+             mean and are now correctly part of it; they are simply not shown. */
+          return {
+            hours: toWholeMinute(a.hours),
+            fromAverage: true,
+            n: a.n,
+          };
+        }
+        return {
+          hours: DURATION_FALLBACK_H,
+          fromAverage: false,
+          /* Reported even below the threshold, so the hint can say how many
+             more are needed rather than just "default". */
+          n: a.n,
+        };
+      }
         function fmtTime(v) {
           var s = String(v == null ? "" : v).trim();
           if (!s) return "";
@@ -4794,8 +4840,13 @@ function say(msg) {
           $("sCost100").textContent =
             T.km > 0 ? fmtMoney((T.cost / T.km) * 100) : "—";
           $("sSpeed").textContent = fmtKw(speedTotal(sel));
+          /* The tile shows the real mean whatever the sample size - it reports what
+             the data says rather than what we would prefill, so it is not
+             subject to DURATION_SAMPLE_MIN. Rounded for reading, like every
+             other duration readout. */
           var ad = avgDuration(sel);
-          $("sDurAvg").textContent = ad === null ? "—" : hoursToHM(ad);
+          $("sDurAvg").textContent =
+            ad.hours === null ? "—" : hoursToHM(toWholeMinute(ad.hours));
 
           /* The log table and its scope picker are only built while the log is
              actually on screen. This was the most expensive thing in the app by
@@ -7877,6 +7928,25 @@ var stationCentre = null;
           var stationToken = 0;
           var cameraToken = 0;
           var stationCameraToken = 0;
+          /* Reported accuracy of the fix each search ran from, in metres, or
+             null when unknown. Not a gate - see findStationsNearMe. */
+          var stationFixM = null;
+          var cameraFixM = null;
+
+          /**
+           * The result line, with a plain statement of how good the fix was.
+           *
+           * Only mentioned when it is worth mentioning. A five-metre fix needs
+           * no commentary, and a status line that always carries a caveat reads
+           * as a warning about everything.
+           *
+           * @param {string} clean the message for a good fix
+           * @param {string} rough the message template, given {a}
+           */
+          function fixNote(clean, rough, fixM) {
+            if (!isNum(fixM) || fixM <= LOC_MAX_ACCURACY_M) return clean;
+            return TXT(rough, { a: Math.round(fixM) });
+          }
 
         function setStationStatus(t) {
           var el = $("stationStat");
@@ -8024,7 +8094,17 @@ function runStationSearch(lat, lng) {
               if (box) box.hidden = false;
               var list = $("stationList");
               if (!stationResults.length) {
-                setStationStatus(TXT("st.noneNear", { n: STATION_RADIUS_M / 1000 }));
+                /* The fix note matters MORE here than on a successful search.
+                   "No stations within 10 km" from a fix that was 400 m out is
+                   indistinguishable from a street with no chargers, and that is
+                   exactly the moment the user needs to know which it was. */
+                setStationStatus(
+                  fixNote(
+                    TXT("st.noneNear", { n: STATION_RADIUS_M / 1000 }),
+                    "st.noneRough",
+                    stationFixM,
+                  ),
+                );
                 if (list) list.innerHTML = "";
                 var more = $("stationMore");
                 if (more) more.hidden = true;
@@ -8038,10 +8118,14 @@ function runStationSearch(lat, lng) {
                  found 84 would be a different lie from the one the map tells. */
               var n = stationAll.length;
               setStationStatus(
-                TXT(res.cached ? "st.foundCached" : "st.found", {
-                  n: n,
-                  r: STATION_RADIUS_M / 1000,
-                }),
+                fixNote(
+                  TXT(res.cached ? "st.foundCached" : "st.found", {
+                    n: n,
+                    r: STATION_RADIUS_M / 1000,
+                  }),
+                  res.cached ? "st.foundRoughCached" : "st.foundRough",
+                  stationFixM,
+                ),
               );
               renderStations();
               loadLeaflet(function () {
@@ -8088,18 +8172,19 @@ function runStationSearch(lat, lng) {
               /* Re-enabled before any early return below, so a refused fix
                  leaves the button usable. */
               if (btn) btn.disabled = false;
-              acc = p.coords.accuracy;
-              /* The same gate the favourites lookup uses. A position accurate to
-                 a kilometre would place the pin in the wrong district and read
-                 as certain, so it is refused rather than used. */
-              if (acc > LOC_MAX_ACCURACY_M) {
-                setStationStatus(TXT("set.geoTooCoarse", { n: Math.round(acc) }));
-                return;
-              }
+              /* No accuracy refusal here, unlike the automatic background fill.
+                 The 50 m gate protects the pin written into a log entry; on this
+                 screen nothing is written - "Use" pins the CHARGER's own
+                 coordinates, not the device's. Refusing to show anything because
+                 the fix was 180 m out is the unhelpful outcome: a charger 103 m
+                 away was simply not listed, with no way to tell a missing
+                 charger from a missing fix. The quality is reported instead. */
+              stationFixM = isNum(p.coords.accuracy) ? p.coords.accuracy : null;
               runStationSearch(p.coords.latitude, p.coords.longitude);
             },
             function () {
               if (btn) btn.disabled = false;
+              stationFixM = null;
               setStationStatus(TXT("st.geoFail", { n: "" }));
             },
             { enableHighAccuracy: true, timeout: 12000, maximumAge: 120000 },
@@ -8386,19 +8471,23 @@ function hasKey(key) {
           /* Reuse the position the station search already resolved. Asking twice
              for the same fix wastes the user's battery and doubles the wait. */
           if (stationCentre) {
+            /* Reused, so its accuracy is whatever the station search saw. Kept
+               in step rather than forgotten, otherwise the camera result
+               would claim a precision it never had. */
+            cameraFixM = stationFixM;
             loadCameras(stationCentre.lat, stationCentre.lng);
             return;
           }
           setCameraStatus(TXT("st.searching"));
           navigator.geolocation.getCurrentPosition(
             function (p) {
-              if (p.coords.accuracy > LOC_MAX_ACCURACY_M) {
-                setCameraStatus(TXT("set.geoTooCoarse", { n: Math.round(p.coords.accuracy) }));
-                return;
-              }
+              /* Same reasoning as the charger search: nothing is written from
+                 this screen, so a coarse fix is reported rather than refused. */
+              cameraFixM = isNum(p.coords.accuracy) ? p.coords.accuracy : null;
               loadCameras(p.coords.latitude, p.coords.longitude);
             },
             function () {
+              cameraFixM = null;
               setCameraStatus(TXT("st.geoFail", { n: "" }));
             },
             { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 },
@@ -8423,11 +8512,15 @@ function hasKey(key) {
                 return;
               }
               setCameraStatus(
-                TXT("cam.found", {
-                  n: rows.length,
-                  n2: cameraResults.length,
-                  r: CAMERA_RADIUS_M / 1000,
-                }),
+                fixNote(
+                  TXT("cam.found", {
+                    n: rows.length,
+                    n2: cameraResults.length,
+                    r: CAMERA_RADIUS_M / 1000,
+                  }),
+                  "cam.foundRough",
+                  cameraFixM,
+                ),
               );
               renderCameras();
               /* Only asked to reveal the map when there is something to put on
@@ -9081,7 +9174,12 @@ function emptyBin() {
               costOf(s).toFixed(2),
               hasCost(s)
                 ? "entered"
-                : "estimated at " + price.toFixed(2) + " EUR/kWh",
+                : /* "At your price", matching the log tag. This was
+                     "estimated at X EUR/kWh", which called a multiplication of
+                     the user's own kWh by their own saved price an estimate -
+                     the number is exactly right for the price in force, and the
+                     column already says which price. */
+                  "at your price (" + price.toFixed(2) + " EUR/kWh)",
               s.fast ? "yes" : "no",
               s.home ? "yes" : "no",
               s.fav ? "yes" : "no",
@@ -9309,12 +9407,35 @@ function emptyBin() {
         function defaultDuration() {
           var el = $("duration");
           if (!el) return;
-          var ad = avgDuration(sessions);
-          /* avgDuration already rounds to a whole minute, so the mean of
-             minute-resolution sessions stays minute-resolution and the
-             prefill is not full of ":00" the user did not ask for. */
-          var h = ad === null ? 0.5 : ad;
-          el.value = hoursToHM(h, true);
+          var d = durationDefault(sessions);
+          /* NOT hoursToHM(h, true).
+             durationDefault is minute-resolution by construction - avgDuration
+             rounds to a whole minute - so asking for seconds appended ":00" to
+             every value: a 30-minute default rendered as "00:30:00". The
+             seconds are still counted, because the average is taken over the
+             fractional `hours` value and rounded only at the very end. */
+          el.value = hoursToHM(d.hours);
+          setDurationHint(d);
+        }
+
+        /**
+         * Say whether the duration field holds your average or the default.
+         *
+         * Written into its own element rather than into #durHint itself: that
+         * one carries data-i18n, so a language switch rewrites its textContent
+         * and any dynamic value put there would be silently discarded.
+         */
+        function setDurationHint(d) {
+          var box = $("durHintNow");
+          if (!box) return;
+          box.textContent = TXT(
+            d.fromAverage ? "durHintAvg" : "durHintDefault",
+            { n: d.n },
+          );
+          box.setAttribute(
+            "data-state",
+            d.fromAverage ? "average" : "default",
+          );
         }
 
         /* ---------- two-way price / total ---------- */
@@ -9363,6 +9484,16 @@ function emptyBin() {
             var raw = $("cost").value;
             if (raw !== "" && isNum(raw) && e > 0)
               setPriceCents(Math.round((+raw / e) * 100));
+          } else if (e > 0 && price > 0) {
+            /* Neither side has been typed yet, so both flags are false and the
+               field used to stay empty until the PRICE field was touched. The
+               price is not unknown though - syncCents prefilled it from the
+               saved setting when the form opened - so entering the energy was
+               enough information and the cost was left blank anyway. That read
+               as a broken form: kWh alone did nothing, and only re-entering a
+               price produced a number. */
+            $("cost").value = (e * price).toFixed(2);
+            costAuto = true;
           }
           syncHints();
           calcLock = false;
