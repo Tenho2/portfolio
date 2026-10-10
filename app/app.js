@@ -7847,6 +7847,132 @@ slot.map.on("click", function (e) {
           }
           return out;
         }
+        /**
+ * Nearby chargers, grouped and de-duplicated, for the list under the location
+ * field.
+ *
+ * Priority is the order the groups appear in:
+ *   1. places you have charged at before   - you know them, and they may carry
+ *      your own price
+ *   2. your saved favourites                - deliberate, named by you
+ *   3. the Digitraffic registry            - anyone can be anywhere
+ *
+ * De-duplication is by POSITION first and name second, and the first group to
+ * claim a position keeps it. That is the whole point of the ordering: a charger
+ * you have already used and a registry row for the same charger are one place,
+ * and showing both - one labelled "where you charged before", one labelled
+ * "nearby station" - makes the list look like it found more than it did.
+ *
+ * 25 m is the distance threshold. The app already treats two places within 25 m
+ * of each other as indistinguishable on a single position reading (the
+ * favourites matcher calls that ambiguous); using the same number here means
+ * the two screens cannot disagree about whether two rows are the same place.
+ *
+ * @param {number} lat
+ * @param {number} lng
+ * @param {Array} stationRows from StationData, already ranked and within range
+ * @returns {{sessions:Array, favs:Array, stations:Array}}
+ */
+        function nearbyChargers(lat, lng, stationRows) {
+          var SAME_PLACE_M = 25;
+          var claimed = [];
+          var groups = { sessions: [], favs: [], stations: [] };
+
+          function claim(p) {
+            /* Distance from the point being offered to each position already
+               claimed. One comparison, no cleverness: an earlier version tried
+               to express "within 25 m" as a difference of two distances and
+               got it wrong, dropping stations a few hundred metres apart. */
+            for (var i = 0; i < claimed.length; i++) {
+              var d = haversine(p, claimed[i]);
+              if (d < SAME_PLACE_M) return true;
+            }
+            claimed.push({ lat: p.lat, lng: p.lng });
+            return false;
+          }
+
+          function byName(p) {
+            var n = String(p.name || "")
+              .trim()
+              .toLowerCase();
+            return n;
+          }
+
+          var seenNames = {};
+
+          function add(group, p) {
+            var n = byName(p);
+            /* Name second, for the case where the same charger is recorded
+               twice at coordinates far enough apart to be a different pin but is
+               obviously the same name. */
+            if (n && seenNames[n]) return;
+            if (claim(p)) return;
+            if (n) seenNames[n] = 1;
+            p.dist = haversine({ lat: lat, lng: lng }, { lat: p.lat, lng: p.lng });
+            groups[group].push(p);
+          }
+
+          /* 1. Places charged at before, most recent first so the one you used
+             yesterday beats the one from last summer. */
+          var hist = sessions
+            .filter(function (s) {
+              return isNum(s.lat) && isNum(s.lng);
+            })
+            .slice()
+            .sort(function (a, b) {
+              return String(b.date || "").localeCompare(String(a.date || ""));
+            });
+          for (var h = 0; h < hist.length; h++) {
+            add("sessions", {
+              name: hist[h].location,
+              address: hist[h].location,
+              lat: +hist[h].lat,
+              lng: +hist[h].lng,
+              kind: "session",
+            });
+          }
+
+          /* 2. Saved favourites. */
+          for (var f = 0; f < favs.length; f++) {
+            var fv = favs[f];
+            if (fv && isNum(fv.lat) && isNum(fv.lng)) {
+              add("favs", {
+                name: fv.name,
+                address: fv.address,
+                lat: +fv.lat,
+                lng: +fv.lng,
+                kind: "favourite",
+              });
+            }
+          }
+
+          /* 3. The registry, already nearest-first by the data layer. */
+          var rows = stationRows || [];
+          for (var r = 0; r < rows.length; r++) {
+            add("stations", {
+              name: rows[r].name,
+              address: rows[r].address,
+              lat: rows[r].lat,
+              lng: rows[r].lng,
+              kind: "station",
+              power: rows[r].power,
+              plugs: rows[r].plugs,
+            });
+          }
+
+          return groups;
+        }
+
+        /** Nearest two of each, which is what the list shows. */
+        function capGroups(groups, perGroup) {
+          var n = perGroup || 2;
+          return {
+            sessions: groups.sessions.slice(0, n),
+            favs: groups.favs.slice(0, n),
+            stations: groups.stations.slice(0, n),
+          };
+        }
+
         function nearestPlace(lat, lng) {
           var list = knownPlaces(),
             best = null;
@@ -7859,11 +7985,114 @@ slot.map.on("click", function (e) {
           }
           return best;
         }
+/**
+ * The nearby-chargers list under the location field.
+ *
+ * Rendered from whatever has arrived, and re-rendered as each group does. The
+ * first two groups are local and appear immediately; the registry takes a few
+ * seconds on a cold cache, and a blank space with a spinner reads as "nothing
+ * found" rather than "still looking".
+ */
+        var nearToken = 0;
+        function renderNearby(groups) {
+          var box = $("locNear");
+          if (!box) return;
+          var order = [
+            ["sessions", "locNearUsed"],
+            ["favs", "locNearSaved"],
+            ["stations", "locNearStation"],
+          ];
+          var out = [];
+          var any = false;
+          for (var g = 0; g < order.length; g++) {
+            var key = order[g][0];
+            var list = groups[key] || [];
+            if (!list.length) continue;
+            any = true;
+            out.push('<div class="loc-near-group"><h4>' + TXT(order[g][1]) + "</h4><ul>");
+            for (var i = 0; i < list.length; i++) {
+              var p = list[i];
+              out.push(
+                '<li><button type="button" class="loc-near-row" data-near-lat="' +
+                  p.lat +
+                  '" data-near-lng="' +
+                  p.lng +
+                  '" data-near-name="' +
+                  esc(p.address || p.name || "") +
+                  '">' +
+                  '<span class="loc-near-name">' +
+                  esc(p.name || TXT("st.unnamed")) +
+                  "</span>" +
+                  (p.power
+                    ? '<span class="loc-near-meta">' +
+                      esc(p.power) +
+                      (p.plugs && p.plugs.length
+                        ? " · " + esc(p.plugs.slice(0, 2).join(", "))
+                        : "") +
+                      "</span>"
+                    : '<span class="loc-near-meta">' +
+                      Math.round(p.dist) +
+                      " m</span>") +
+                  "</button></li>",
+              );
+            }
+            out.push("</ul></div>");
+          }
+          box.hidden = !any;
+          box.innerHTML = out.join("");
+        }
+
+        /** Ask the registry for stations near a point, and fold them in. */
+        function loadNearStations(lat, lng, mine) {
+          var box = $("locNear");
+          if (box && !box.innerHTML) {
+            box.hidden = false;
+            box.innerHTML = '<p class="loc-near-wait">' + TXT("st.searching") + "</p>";
+          }
+          StationData.findStations({ lat: lat, lng: lng }, LOC_RADIUS_M)
+            .then(function (res) {
+              if (mine !== nearToken) return;
+              var groups = capGroups(nearbyChargers(lat, lng, res.rows), 2);
+              renderNearby(groups);
+            })
+            .catch(function () {
+              /* Silent on the registry alone. The first two groups are local and
+                 still on screen, and a charger search failing is no reason to
+                 throw away a favourite the user can already see. */
+              if (mine !== nearToken) return;
+              var box2 = $("locNear");
+              if (box2 && /loc-near-wait/.test(box2.innerHTML)) {
+                box2.hidden = true;
+                box2.innerHTML = "";
+              }
+            });
+        }
+
+        /** Put a suggested place into the form, pin it, and close the list. */
+        function useNearbyPlace(lat, lng, name) {
+          $("location").value = name || "";
+          locGeo = { lat: +lat, lng: +lng, label: name || "" };
+          var box = $("sessMapBox");
+          if (box) box.hidden = false;
+          var list = $("locNear");
+          if (list) {
+            list.hidden = true;
+            list.innerHTML = "";
+          }
+          loadLeaflet(function () {
+            showPin("sessMap", +lat, +lng, name || "", sessPinDragged);
+          });
+          setLocStatus(TXT("st.chosen", { v: name || TXT("st.unnamed") }));
+        }
+
         /**
-         * Ask the browser where we are and use it as this session's location.
-         * Every failure mode (denied, unavailable, timeout, insecure origin)
-         * reports its own message so the user knows whether to retry.
-         */
+ * Ask the browser where we are and use it as this session's location.
+ *
+ * Unchanged behaviour, deliberately: it still fills the field from the nearest
+ * place you have already used, which is the common case and needs no further
+ * choice. What is new is the list underneath, because until now a favourite
+ * near you meant the charger registry was never consulted at all.
+ */
         function useMyLocation() {
           if (!navigator.geolocation) {
             setLocStatus(TXT("toast.geoNone"));
@@ -7921,6 +8150,15 @@ slot.map.on("click", function (e) {
                 setLocStatus(TXT("toast.geoNoNear"));
                 showPin("sessMap", lat, lng, "", sessPinDragged);
               }
+              /* The list, in every case above - including the one where a saved
+                 place filled the field. Until now, a favourite within 1000 m
+                 meant the charger registry was never asked, so the places you
+                 had never used were unreachable from this screen even when they
+                 were fifty metres away. The field is filled exactly as before;
+                 this only adds the choices underneath it. */
+              var mine = ++nearToken;
+              renderNearby(capGroups(nearbyChargers(lat, lng, []), 2));
+              loadNearStations(lat, lng, mine);
             },
             function (err) {
               $("locGeo").disabled = false;
@@ -8552,16 +8790,15 @@ function hasKey(key) {
             setCameraStatus(TXT("st.geoUnavailable"));
             return;
           }
-          /* Reuse the position the station search already resolved. Asking twice
-             for the same fix wastes the user's battery and doubles the wait. */
-          if (stationCentre) {
-            /* Reused, so its accuracy is whatever the station search saw. Kept
-               in step rather than forgotten, otherwise the camera result
-               would claim a precision it never had. */
-            cameraFixM = stationFixM;
-            loadCameras(stationCentre.lat, stationCentre.lng);
-            return;
-          }
+          /* A fresh fix every time, rather than the one the charger search used.
+
+             The reuse was there to avoid a second permission prompt, and on the
+             same screen minutes apart it is free. It is wrong once the user has
+             moved: the station search ran at the car park and the camera search
+             runs at the charger two streets away, and the cameras are then
+             quietly reported for the wrong place. A 60-second maximumAge keeps
+             the prompt cheap when nothing has changed, so this is usually not
+             even a new prompt. */
           setCameraStatus(TXT("st.searching"));
           navigator.geolocation.getCurrentPosition(
             function (p) {
@@ -8572,6 +8809,15 @@ function hasKey(key) {
             },
             function () {
               cameraFixM = null;
+              /* Falling back to the charger search's position is still better
+                 than failing outright: a stale centre shows nearby cameras,
+                 labelled as such, where no centre shows none. */
+              if (stationCentre) {
+                cameraFixM = stationFixM;
+                loadCameras(stationCentre.lat, stationCentre.lng);
+                setCameraStatus(TXT("cam.usedStationFix"));
+                return;
+              }
               setCameraStatus(TXT("st.geoFail", { n: "" }));
             },
             { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 },
@@ -9495,6 +9741,16 @@ function detachVehicle(id) {
           }
           if (t.hasAttribute("data-leave")) {
             leaveShare(t.getAttribute("data-leave"));
+            return;
+          }
+          /* A nearby charger suggestion. The button carries its own position,
+             so the name can never drift out of step with the pin. */
+          if (t.classList.contains("loc-near-row")) {
+            useNearbyPlace(
+              t.getAttribute("data-near-lat"),
+              t.getAttribute("data-near-lng"),
+              t.getAttribute("data-near-name"),
+            );
             return;
           }
           if (t.hasAttribute("data-unshare")) {

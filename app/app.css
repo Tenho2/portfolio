@@ -1640,6 +1640,68 @@
       /* Who logged a charge, on a shared car. Set on its own line under the
          location rather than as a tag in the flag cell: it is not a flag, and it
          is the same length as the place names beside it. */
+      /* Chargers near you, under the location field. Three groups with headings,
+         because the ORDER is the information: a place you have charged at is a
+         different kind of answer from one the registry returned. */
+      .loc-near {
+        margin: 0.5rem 0 0;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      .loc-near[hidden] {
+        display: none;
+      }
+      .loc-near-group + .loc-near-group {
+        border-top: 1px solid var(--line);
+      }
+      .loc-near-group h4 {
+        margin: 0;
+        padding: 0.35rem 0.7rem;
+        font-size: 0.72rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--text-muted);
+        background: var(--surface-2);
+      }
+      .loc-near-group ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .loc-near-group li + li {
+        border-top: 1px solid var(--line);
+      }
+      .loc-near-row {
+        display: flex;
+        flex-direction: column;
+        gap: 0.05rem;
+        width: 100%;
+        text-align: left;
+        padding: 0.45rem 0.7rem;
+        background: none;
+        border: 0;
+        cursor: pointer;
+      }
+      .loc-near-row:hover {
+        background: var(--surface-2);
+      }
+      .loc-near-name {
+        font-size: 0.9rem;
+        color: var(--text);
+        overflow-wrap: anywhere;
+      }
+      .loc-near-meta {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+      }
+      .loc-near-wait {
+        margin: 0;
+        padding: 0.5rem 0.7rem;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+      }
       .log-by {
         display: block;
         font-size: 0.75rem;
