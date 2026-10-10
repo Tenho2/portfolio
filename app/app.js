@@ -1978,6 +1978,13 @@ function loadShares() {
           var s = myShare(vehicleId);
           return !!s && s.status === "pending";
         }
+        /** A request the owner already turned down. The row is still there, so
+            the car still appears and can still be cleared - which is how a
+            re-invite from the owner is possible. */
+        function isRejected(vehicleId) {
+          var s = myShare(vehicleId);
+          return !!s && s.status === "rejected";
+        }
         /** Read access. A pending requester counts so their placeholder card
             renders; the server still refuses them every real read. */
         function canView(vehicleId) {
@@ -4882,6 +4889,9 @@ function say(msg) {
                 "</td>" +
                 "<td>" +
                 esc(s.location) +
+                /* On a shared car, who wrote the row. Empty on a car with one
+                   member, where it would be "by you" on every single line. */
+                authorOf(s, v) +
                 "</td><td>" +
                 num(s.energy).toFixed(2) +
                 " kWh" +
@@ -4991,6 +5001,25 @@ renderScopePicker();
                   (shareCount(vehicles[k].id)
                     ? " (" + shareCount(vehicles[k].id) + ")"
                     : "") +
+                  "</span></button>"
+                : "") +
+              /* The way out of a car you do not own. Without this the share
+                 was permanent from your side: the panel above only appears for
+                 the owner, so a member had nothing to press. Present for every
+                 state - accepted, pending and refused - and worded for each. */
+              (!mine && myShare(vehicles[k].id)
+                ? '<button type="button" class="btn sm ghost" data-leave="' +
+                  esc(vehicles[k].id) +
+                  '" aria-label="' +
+                  TXT("a11y.leaveVeh", { v: esc(vehicles[k].name) }) +
+                  '"><span aria-hidden="true">' +
+                  TXT(
+                    isPending(vehicles[k].id)
+                      ? "set.cancelRequest"
+                      : isRejected(vehicles[k].id)
+                        ? "set.clearRequest"
+                        : "set.leave",
+                  ) +
                   "</span></button>"
                 : "") +
               (vehicles.length > 1 && mine
@@ -5724,12 +5753,17 @@ if (!row) return;
             /* A permanent DELETE, so the same permission question as the row
                itself. Without it a shared vehicle someone else wrote sessions
                for could be purged from this device's copy of a shared history -
-               for them too, since the server row goes with it. */
-            if (kind === "vehicles" && !mayWriteVehicle(id)) {
+               for them too, since the server row goes with it.
+
+               EXCEPT a row you detached by leaving a shared car. You no longer
+               have access, so the server would refuse with 42501 - and the row
+               could never be removed from the bin at all. Those are this
+               device's copy and nothing else, so they are simply dropped. */
+            if (kind === "vehicles" && !row.detached && !mayWriteVehicle(id)) {
               toast(TXT("toast.noPermission"));
               return;
             }
-            if (kind === "sessions" && !canEditSession(row)) {
+            if (kind === "sessions" && !row.detached && !canEditSession(row)) {
               toast(TXT("toast.noPermission"));
               return;
             }
@@ -5777,17 +5811,21 @@ if (!yes) return false;
                    because the row lookup returned null, and the red banner
                    counted a row the user had already deleted for good. */
                 for (var i = 0; i < gone.length; i++) {
+                  /* Skipped for a row you detached: there is nothing on the
+                     server for you to delete, and asking would only produce a
+                     refusal. */
+                  if (gone[i].detached) continue;
                   forgetGoneRow("sessions", gone[i].id);
                   syncDelete("sessions", gone[i].id);
                 }
                 forgetGoneRow("vehicles", id);
-                syncDelete("vehicles", id);
+                if (!row.detached) syncDelete("vehicles", id);
               } else if (kind === "sessions") {
                 binned.sessions = binned.sessions.filter(function (x) {
                   return x.id !== id;
                 });
                 forgetGoneRow("sessions", id);
-                syncDelete("sessions", id);
+                if (!row.detached) syncDelete("sessions", id);
               } else {
                 binned.favs = binned.favs.filter(function (x) {
                   return x.id !== id;
@@ -8373,7 +8411,53 @@ function hasKey(key) {
           return !!(en && Object.prototype.hasOwnProperty.call(en, key));
         }
 
-        function closeStationDetail() {
+        /**
+   * Who logged a charge, for the log.
+   *
+   * Already stored: sessions.user_id is written on insert and deliberately
+   * preserved through every later edit, because the database checks
+   * can_edit_session against that column and letting an editor overwrite it
+   * would lock them out of their own row. So authorship needed no schema work
+   * and no backfill - only somewhere to show it.
+   *
+   * Three cases, because two of them are not the same thing:
+   *   you              a row of your own on your own car
+   *   a named member   somebody who still holds a share, so the name is known
+   *   somebody else    everybody else, INCLUDING a member who has since left
+   *                    and whose name we no longer have
+   *
+   * The last case is deliberately not blank and not a guessed name. On a shared
+   * car the author is the difference between "we agreed to share this" and "who
+   * actually paid", and inventing a name would be worse than admitting we do
+   * not know. Returns "" for a car with one member, where authorship is
+   * meaningless noise.
+   *
+   * @param {object} s     the session
+   * @param {object} v     the vehicle it belongs to
+   * @returns {string} markup, or "" when there is nothing worth saying
+   */
+  function authorOf(s, v) {
+    if (!s || !v) return "";
+    var mine = ownsVehicle(v.id);
+    /* One member and they are me: every row says "by me". Say nothing. */
+    if (mine && !shareCount(v.id)) return "";
+    var who = s.userId;
+    if (!who) return "";
+    if (mine && who === ownerId())
+      return '<span class="log-by">' + TXT("log.byYou") + "</span>";
+    /* Our own id on somebody else's car - a car shared with us. */
+    if (!mine && who === ownerId())
+      return '<span class="log-by">' + TXT("log.byYou") + "</span>";
+    var name = shareLabel(v.id, who);
+    if (name && name !== String(who).slice(0, 8)) {
+      return '<span class="log-by">' + esc(TXT("log.by", { n: name })) + "</span>";
+    }
+    /* The id is all that is left: a member who has left, since a share row
+       that no longer exists takes its cached name with it. */
+    return '<span class="log-by dim">' + esc(TXT("log.byUnknown")) + "</span>";
+  }
+
+  function closeStationDetail() {
           stationOpen = null;
           /* Any camera request for the panel that is closing is now moot, and
              would otherwise land in the next panel opened onto the same id. */
@@ -8961,9 +9045,11 @@ function emptyBin() {
                someone else's charge for good is not recoverable by anyone. */
             var notMine = 0;
             for (var ei = 0; ei < binned.vehicles.length; ei++)
-              if (!mayWriteVehicle(binned.vehicles[ei].id)) notMine++;
+              /* A detached row is not the server's to delete and cannot fail, so
+                 counting it would block emptying the bin for no reason. */
+              if (!binned.vehicles[ei].detached && !mayWriteVehicle(binned.vehicles[ei].id)) notMine++;
             for (var ej = 0; ej < binned.sessions.length; ej++)
-              if (!canEditSession(binned.sessions[ej])) notMine++;
+              if (!binned.sessions[ej].detached && !canEditSession(binned.sessions[ej])) notMine++;
             if (notMine) {
               toast(TXT("toast.notAllYours", { n: notMine }));
               return Promise.resolve(false);
@@ -8988,11 +9074,11 @@ function emptyBin() {
                  button that did nothing. */
               for (var i = 0; i < goneSes.length; i++) {
                 forgetGoneRow("sessions", goneSes[i].id);
-                syncDelete("sessions", goneSes[i].id);
+                if (!goneSes[i].detached) syncDelete("sessions", goneSes[i].id);
               }
               for (var j = 0; j < goneVeh.length; j++) {
                 forgetGoneRow("vehicles", goneVeh[j].id);
-                syncDelete("vehicles", goneVeh[j].id);
+                if (!goneVeh[j].detached) syncDelete("vehicles", goneVeh[j].id);
               }
               return true;
           });
@@ -9025,6 +9111,170 @@ function emptyBin() {
           toast(TXT("toast.vehAdd", { v: name }));
           syncVehicle(v);
         }
+        /**
+ * * Leave a car that was shared with you, or withdraw a request for one.
+ *
+ * * There was no way out at all before. The share panel returns early for
+ * * anyone who is not the owner - it prints "you're not the owner" and stops -
+ * * so a member who changed their mind had no button to press, and the
+ * * database would have refused the row even if there had been one: the
+ * * delete policy on vehicle_shares allowed only the vehicle's owner.
+ *
+ * * All three states are handled, because "remove this from my list" means
+ * * something different in each:
+ * *   accepted  you are a member and want to go
+ * *   pending   you asked and want to withdraw the ask
+ * *   rejected  you want the row cleared so the owner can invite you afresh
+ *
+ * * The car and its sessions are binned on THIS DEVICE ONLY, and marked
+ * * `detached`. Nothing is pushed. That is deliberate:
+ * *   - you have no right to write to that car's rows any more, so pushing
+ * *     would produce a 42501 in the sync panel and stay there;
+ * *   - a local-only binned row is not re-pushed by the next pull, because the
+ * *     pull only re-pushes rows in the LIVE arrays;
+ * *   - purging one later skips the server, so the bin can always be emptied.
+ * *
+ * * The sessions stay readable in the bin until then. The server will not
+ * * serve them again, so that is a local copy and not a backup - the
+ * * confirmation says so in as many words.
+ *
+ * * @returns {Promise<boolean>}
+ */
+function leaveShare(vehicleId) {
+          var v = vehById(vehicleId);
+          if (!v) return Promise.resolve(false);
+          var share = myShare(vehicleId);
+          if (!share || ownsVehicle(vehicleId)) return Promise.resolve(false);
+          var pending = share.status === "pending";
+          var n = ofVehicle(vehicleId).length;
+          return askConfirm(
+            TXT(pending ? "toast.leavePendingQ" : "toast.leaveQ", {
+              v: v.name,
+              n: n,
+            }),
+            {
+              heading: pending ? "confirm.cancelRequest" : "confirm.leaveCar",
+              ok: pending ? "confirm.cancelRequest" : "confirm.leaveCar",
+              irreversible: pending
+                ? ""
+                : "confirm.irreversibleLeave",
+            },
+          ).then(function (yes) {
+            if (!yes) return false;
+            /* The server copy is removed FIRST. If that fails we have changed
+               nothing locally, so the device still agrees with the server and
+               the user can try again or ask for help. Doing it the other way
+               round would bin the car and then fail, leaving a car that is gone
+               locally but still shared. */
+            return shareRemoveSelf(vehicleId).then(function (res) {
+              if (!res.ok) {
+                /* Three different messages, because they need three different
+                   actions. A 42501 means migration 10 has not been run, and
+                   telling somebody to check their connection would send them
+                   looking in entirely the wrong place. */
+                toast(
+                  TXT(
+                    res.rls
+                      ? "toast.leaveNeedsSql"
+                      : res.code === "offline" || res.code === "network"
+                        ? "toast.leaveOffline"
+                        : res.code === "signedout"
+                          ? "toast.leaveSignedOut"
+                          : "toast.leaveBlocked",
+                  ),
+                );
+                return false;
+              }
+              detachVehicle(vehicleId);
+              /* Forget the share so the card stops offering to leave, and so a
+                 later pull cannot put the vehicle straight back. */
+              delete shares[vehicleId];
+              if (shareNames[vehicleId]) delete shareNames[vehicleId][share.user_id];
+              saveShareNames();
+              save();
+              render();
+              toast(TXT(pending ? "toast.requestCancelled" : "toast.leftCar", {
+                v: v.name,
+                n: n,
+              }));
+              return true;
+            });
+          });
+        }
+
+        /**
+ * * Move a car and its sessions to this device's bin without telling anyone.
+ *
+ * * Deliberately NOT doRemoveVehicle: that marks every row dirty and pushes it,
+ * * which is right for an owner deleting their own car and exactly wrong here.
+ */
+function detachVehicle(id) {
+          var v = vehById(id);
+          if (!v) return;
+          var gone = sessions.filter(function (s) {
+            return s.vehicleId === id;
+          });
+          var at = binStamp();
+          vehicles = vehicles.filter(function (x) {
+            return x.id !== id;
+          });
+          sessions = sessions.filter(function (s) {
+            return s.vehicleId !== id;
+          });
+          v.deletedAt = at;
+          v.detached = true;
+          gone.forEach(function (s) {
+            s.deletedAt = at;
+            s.detached = true;
+          });
+          binned.vehicles.push(v);
+          binned.sessions = binned.sessions.concat(gone);
+          if (cur >= vehicles.length) cur = vehicles.length - 1;
+          /* No markDirty, no syncVehicle, no syncSession. Nothing about this
+             row concerns the server any more. */
+        }
+
+        /**
+         * Delete the signed-in user's own share row, reporting WHY it failed.
+         *
+         * shareRemove collapses every failure to `false`, which is right for
+         * the owner's "remove this member" button. It is wrong here: the most
+         * likely failure is the database refusing because migration 10 has not
+         * been run, and a generic "could not leave" would send the user looking
+         * for the problem in the app. 42501 is a row-level-security refusal,
+         * which for this statement has exactly one cause.
+         *
+         * @returns {Promise<{ok: boolean, code: string, rls: boolean}>}
+         */
+        function shareRemoveSelf(vehicleId) {
+          if (!syncOn() || !vehicleId) {
+            return Promise.resolve({ ok: false, code: "offline", rls: false });
+          }
+          /* authUser, not uid(): `uid()` mints a random id for local rows and would
+             delete somebody else's share - or none at all. */
+          var who = authUser && authUser.id;
+          if (!who) return Promise.resolve({ ok: false, code: "signedout", rls: false });
+          return authClient
+            .from("vehicle_shares")
+            .delete()
+            .eq("vehicle_id", vehicleId)
+            .eq("user_id", who)
+            .then(function (res) {
+              var err = res && res.error;
+              if (err) {
+                return {
+                  ok: false,
+                  code: err.code || err.error_code || "",
+                  rls: (err.code || err.error_code) === "42501",
+                };
+              }
+              return { ok: true, code: "", rls: false };
+            })
+            .catch(function () {
+              return { ok: false, code: "network", rls: false };
+            });
+        }
+
         function removeVehicle(id) {
           var v = vehById(id);
           if (!v) return;
@@ -9194,7 +9444,7 @@ function emptyBin() {
         /* ---------- events ---------- */
         document.addEventListener("click", function (e) {
           var t = e.target.closest(
-            "[data-go],[data-v],[data-del],[data-edit],[data-ren],[data-rm],[data-use],[data-fedit],[data-fdel],[data-share],[data-unshare],[data-accept],[data-reject],[data-bin-restore],[data-bin-purge],[data-discard],[data-station-use],[data-station-detail],[data-station-close],[data-station-cameras],[data-camera-find],[data-camera-full],[data-station-find]",
+            "[data-go],[data-v],[data-del],[data-edit],[data-ren],[data-rm],[data-use],[data-fedit],[data-fdel],[data-share],[data-leave],[data-unshare],[data-accept],[data-reject],[data-bin-restore],[data-bin-purge],[data-discard],[data-station-use],[data-station-detail],[data-station-close],[data-station-cameras],[data-camera-find],[data-camera-full],[data-station-find]",
           );
           if (!t) return;
           if (t.hasAttribute("data-go")) {
@@ -9241,6 +9491,10 @@ function emptyBin() {
           }
           if (t.hasAttribute("data-share")) {
             openShare(t.getAttribute("data-share"));
+            return;
+          }
+          if (t.hasAttribute("data-leave")) {
+            leaveShare(t.getAttribute("data-leave"));
             return;
           }
           if (t.hasAttribute("data-unshare")) {

@@ -1637,6 +1637,14 @@
         margin-left: 0.35rem;
         vertical-align: middle;
       }
+      /* Who logged a charge, on a shared car. Set on its own line under the
+         location rather than as a tag in the flag cell: it is not a flag, and it
+         is the same length as the place names beside it. */
+      .log-by {
+        display: block;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+      }
       /* ---------- charging stations ----------
          The station list is a list of rows rather than .item cards: a search in
          a city returns hundreds, and a card per station makes the page scroll
