@@ -8124,10 +8124,16 @@ var rest = stationAll.length - shown.length;
                   poles.join("") +
                   "</ul>"
                 : "") +
-              '<p class="station-meta" id="stationLive"></p>' +
-              '<button type="button" class="btn sm" data-station-close="1">' +
-              TXT("confirm.close") +
-              "</button>";
+'<p class="station-meta" id="stationLive"></p>' +
+            '<button type="button" class="btn sm" data-station-cameras="' +
+            esc(s.id) +
+            '">' +
+            TXT("cam.nearStation") +
+            "</button>" +
+            '<div class="camera-grid" id="stationCameras"></div>' +
+            '<button type="button" class="btn sm" data-station-close="1">' +
+            TXT("confirm.close") +
+            "</button>";
           box.hidden = false;
           /* OpenStreetMap rows have no evse ids, so there is nothing to ask
              about; saying so plainly beats a spinner that never stops. */
@@ -8169,6 +8175,47 @@ var rest = stationAll.length - shown.length;
             });
         }
 
+        /** Cameras near one charger, for the detail panel. */
+function camerasNearStation(id) {
+          var s = stationFromId(id);
+          var box = $("stationCameras");
+          if (!s || !box) return;
+          box.innerHTML = '<p class="station-meta">' + TXT("cam.loading") + "</p>";
+          StationData.findCameras({ lat: s.lat, lng: s.lng }, CAMERA_RADIUS_M)
+            .then(function (rows) {
+              if (!rows.length) {
+                box.innerHTML = '<p class="station-meta">' + TXT("cam.none", { r: CAMERA_RADIUS_M / 1000 }) + "</p>";
+                return;
+              }
+              var near = rows.slice(0, 3);
+              var out = [];
+              for (var i = 0; i < near.length; i++) {
+                var c = near[i];
+                out.push(
+                  '<figure class="camera-card">' +
+                    '<img src="' +
+                    esc(c.thumb) +
+                    '" alt="' +
+                    esc(TXT("cam.alt", { v: c.name })) +
+                    '" loading="lazy" decoding="async" width="320" height="180" />' +
+                    "<figcaption>" +
+                    '<span class="camera-name">' +
+                    esc(c.name) +
+                    "</span>" +
+                    '<span class="station-meta">' +
+                    Math.round(c.dist / 10) / 100 +
+                    " km · " +
+                    esc(cameraAge(c.updated)) +
+                    "</span></figcaption></figure>",
+                );
+              }
+              box.innerHTML = out.join("");
+            })
+            .catch(function () {
+              box.innerHTML = '<p class="station-meta">' + TXT("cam.failed", { e: "" }) + "</p>";
+            });
+        }
+
         /** "AVAILABLE 2, CHARGING 1", most common first, in the UI language. */
         function statusWord(counts) {
           var names = Object.keys(counts);
@@ -8189,6 +8236,183 @@ var rest = stationAll.length - shown.length;
             box.innerHTML = "";
           }
           renderStations();
+        }
+
+        /* ---------- road-weather cameras ----------
+           Digitraffic publishes 813 cameras on Finnish roads. They are road
+           CONDITION cameras, not enforcement cameras, and the screen says so -
+           a driver who sees a camera icon and thinks of fines has been misled
+           badly enough to matter.
+
+           They are fetched fresh every time rather than cached. A cached road
+           camera is a picture of last hour's rain presented as this one, which
+           is worse than showing nothing, and the list is small enough (813
+           rows) that caching would buy nothing. */
+        var CAMERA_RADIUS_M = 50000;
+        var CAMERA_NEAREST = 6;
+        var cameraResults = [];
+        var cameraCentre = null;
+
+        function setCameraStatus(t) {
+          var el = $("cameraStat");
+          if (el) el.textContent = t;
+        }
+
+        /** How old a picture is, in the user's language. */
+        function cameraAge(iso) {
+          if (!iso) return TXT("cam.ageUnknown");
+          var then = Date.parse(iso);
+          if (!isFinite(then)) return TXT("cam.ageUnknown");
+          var mins = Math.max(0, Math.round((Date.now() - then) / 60000));
+          /* A road camera older than a day has usually stopped being collected;
+             `collectionStatus` says so, but the timestamp is the honest check. */
+          if (mins >= 1440) return TXT("cam.ageDays", { n: Math.round(mins / 1440) });
+          if (mins >= 60) return TXT("cam.ageHours", { n: Math.round(mins / 60) });
+          return TXT("cam.ageMinutes", { n: mins });
+        }
+
+        function renderCameras() {
+          var box = $("cameraList");
+          if (!box) return;
+          if (!cameraResults.length) {
+            box.innerHTML = "";
+            return;
+          }
+          var out = [];
+          for (var i = 0; i < cameraResults.length; i++) {
+            var c = cameraResults[i];
+            /* The full-size picture is opened on click rather than fetched
+               eagerly: 813 of them at 264 KB is 215 MB, and a grid of them is a
+               wall of images nobody looks at. The thumbnail is 16 KB. */
+            out.push(
+              '<figure class="camera-card">' +
+                '<button type="button" class="camera-shot" data-camera-full="' +
+                esc(c.id) +
+                '" aria-label="' +
+                esc(TXT("cam.open", { v: c.name })) +
+                '">' +
+                '<img src="' +
+                esc(c.thumb) +
+                '" alt="' +
+                esc(TXT("cam.alt", { v: c.name })) +
+                '" loading="lazy" decoding="async" width="320" height="180" />' +
+                "</button>" +
+                "<figcaption>" +
+                '<span class="camera-name">' +
+                esc(c.name) +
+                "</span>" +
+                '<span class="station-meta">' +
+                Math.round(c.dist / 10) / 100 +
+                " km · " +
+                esc(cameraAge(c.updated)) +
+                "</span></figcaption></figure>",
+            );
+          }
+          box.innerHTML = out.join("");
+        }
+
+        function findCamerasNearMe() {
+          if (!navigator.onLine) {
+            setCameraStatus(TXT("st.offline"));
+            return;
+          }
+          if (!navigator.geolocation) {
+            setCameraStatus(TXT("st.geoUnavailable"));
+            return;
+          }
+          /* Reuse the position the station search already resolved. Asking twice
+             for the same fix wastes the user's battery and doubles the wait. */
+          if (stationCentre) {
+            loadCameras(stationCentre.lat, stationCentre.lng);
+            return;
+          }
+          setCameraStatus(TXT("st.searching"));
+          navigator.geolocation.getCurrentPosition(
+            function (p) {
+              if (p.coords.accuracy > LOC_MAX_ACCURACY_M) {
+                setCameraStatus(TXT("set.geoTooCoarse", { n: Math.round(p.coords.accuracy) }));
+                return;
+              }
+              loadCameras(p.coords.latitude, p.coords.longitude);
+            },
+            function () {
+              setCameraStatus(TXT("st.geoFail", { n: "" }));
+            },
+            { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 },
+          );
+        }
+
+        function loadCameras(lat, lng) {
+          setCameraStatus(TXT("cam.loading"));
+          StationData.findCameras({ lat: lat, lng: lng }, CAMERA_RADIUS_M)
+            .then(function (rows) {
+              cameraResults = rows.slice(0, CAMERA_NEAREST);
+              cameraCentre = { lat: lat, lng: lng };
+              var box = $("cameraList");
+              if (!cameraResults.length) {
+                setCameraStatus(TXT("cam.none", { r: CAMERA_RADIUS_M / 1000 }));
+                if (box) box.innerHTML = "";
+                return;
+              }
+              setCameraStatus(
+                TXT("cam.found", {
+                  n: rows.length,
+                  n2: cameraResults.length,
+                  r: CAMERA_RADIUS_M / 1000,
+                }),
+              );
+              renderCameras();
+              /* Only asked to reveal the map when there is something to put on
+                 it, for the same reason the station search does. */
+              var mapBox = $("stationMapBox");
+              if (mapBox) mapBox.hidden = false;
+              loadLeaflet(function () {
+                var slot = getMap("stationMap");
+                if (!slot || !slot.map) return;
+                try {
+                  slot.map.setView([lat, lng], 11);
+                  drawCameraPins(cameraResults);
+                } catch (e) {}
+              });
+            })
+            .catch(function (err) {
+              setCameraStatus(
+                TXT("cam.failed", { e: err && err.message ? err.message : "network" }),
+              );
+            });
+        }
+
+        function drawCameraPins(list) {
+          var slot = maps["stationMap"];
+          if (!slot || !slot.map) return;
+          if (slot.cameraPins) {
+            for (var i = 0; i < slot.cameraPins.length; i++)
+              slot.map.removeLayer(slot.cameraPins[i]);
+          }
+          slot.cameraPins = [];
+          for (var k = 0; k < list.length; k++) {
+            var c = list[k];
+            /* A camera is a distinct thing from a charger, so it gets a
+               different colour and a square rather than another green dot. */
+            var m = L.circleMarker([c.lat, c.lng], {
+              radius: 6,
+              color: "#38bdf8",
+              weight: 2,
+              fillColor: "#38bdf8",
+              fillOpacity: 0.6,
+            });
+            m.bindPopup(
+              "<b>" +
+                esc(c.name) +
+                "</b><br>" +
+                esc(cameraAge(c.updated)) +
+                '<br><img src="' +
+                esc(c.thumb) +
+                '" alt="" width="220" />',
+            );
+            m.addTo(slot.map);
+            slot.cameraPins.push(m);
+          }
         }
 
         function useStation(id) {
@@ -8792,7 +9016,7 @@ function emptyBin() {
         /* ---------- events ---------- */
         document.addEventListener("click", function (e) {
           var t = e.target.closest(
-            "[data-go],[data-v],[data-del],[data-edit],[data-ren],[data-rm],[data-use],[data-fedit],[data-fdel],[data-share],[data-unshare],[data-accept],[data-reject],[data-bin-restore],[data-bin-purge],[data-discard],[data-station-use],[data-station-detail],[data-station-close],[data-station-find]",
+            "[data-go],[data-v],[data-del],[data-edit],[data-ren],[data-rm],[data-use],[data-fedit],[data-fdel],[data-share],[data-unshare],[data-accept],[data-reject],[data-bin-restore],[data-bin-purge],[data-discard],[data-station-use],[data-station-detail],[data-station-close],[data-station-cameras],[data-camera-find],[data-camera-full],[data-station-find]",
           );
           if (!t) return;
           if (t.hasAttribute("data-go")) {
@@ -8882,7 +9106,35 @@ function emptyBin() {
             closeStationDetail();
             return;
           }
+          if (t.hasAttribute("data-station-cameras")) {
+            camerasNearStation(t.getAttribute("data-station-cameras"));
+            return;
+          }
           if (t.hasAttribute("data-station-find")) findStationsNearMe();
+          if (t.hasAttribute("data-camera-find")) findCamerasNearMe();
+          /* The full-size picture opens in a new tab. Loading 264 KB into the
+             page for a picture the user may never look at is the wrong default,
+             and the service worker would rather not cache 813 of them.
+             `window.open`, not a bare global: app.js has no `global`, and a
+             ReferenceError here would be thrown from a click handler, where it
+             is least visible. */
+          if (t.hasAttribute("data-camera-full")) {
+            var cam = null;
+            for (var ci = 0; ci < cameraResults.length; ci++)
+              if (cameraResults[ci].id === t.getAttribute("data-camera-full")) cam = cameraResults[ci];
+            if (cam) {
+              var opened = null;
+              try {
+                opened = window.open(cam.image, "_blank", "noopener");
+              } catch (e) {
+                opened = null;
+              }
+              /* A blocked popup is not an error worth reporting, but the url
+                 must not vanish with it. */
+              if (!opened) setCameraStatus(cam.image);
+            }
+            return;
+          }
         });
         /* "Show the rest" is on the button in the markup rather than in the
            delegated list above: it is one fixed element that survives every

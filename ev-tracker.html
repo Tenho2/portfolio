@@ -1059,16 +1059,29 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             <span data-i18n="st.title"></span>
           </h2>
           <p class="lead" data-i18n="st.lead"></p>
-          <div class="qa" style="margin-top: 0">
-            <button type="button" class="btn" id="stationFindBtn" data-station-find>
+<div class="qa" style="margin-top: 0">
+            <button type="button" class="btn sm" id="stationFindBtn" data-station-find>
               <span class="ic" aria-hidden="true">📍</span
               ><span data-i18n="st.findNear"></span>
             </button>
+            <button type="button" class="btn sm" id="cameraFindBtn" data-camera-find>
+              <span class="ic" aria-hidden="true">📷</span
+              ><span data-i18n="cam.find"></span>
+            </button>
           </div>
           <div class="hint" role="status" aria-live="polite" id="stationStat"></div>
+          <!-- Road-weather cameras. Fetched when opened rather than cached: a
+               stale road camera is worse than no camera at all, so the capture
+               time is shown with each one. -->
+          <div class="hint" role="status" aria-live="polite" id="cameraStat"></div>
+          <div class="camera-grid" id="cameraList"></div>
+          <!-- Stated plainly, because the alternative reading of a camera icon
+               on a Finnish road is a fine, and this feed contains no speed
+               cameras at all. -->
+          <p class="mini" data-i18n="cam.note"></p>
           <!-- Leaflet cannot measure an element that is display:none, so the box
-               is revealed by runStationSearch only when there is something to
-               draw in it. -->
+               is revealed by whichever search produced something to draw in it,
+               not by the view merely being opened. -->
           <div class="mapbox" id="stationMapBox" hidden>
             <div id="stationMap"></div>
           </div>

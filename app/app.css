@@ -1716,6 +1716,60 @@
           justify-content: space-between;
         }
       }
+      /* ---------- road-weather cameras ----------
+         A grid rather than a list: the only reason to look at a road camera is
+         the picture, so the picture is the primary object and the text is a
+         caption under it. */
+      .camera-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 0.7rem;
+        margin: 0.8rem 0 0;
+      }
+      .camera-grid:empty {
+        display: none;
+      }
+      .camera-card {
+        margin: 0;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        overflow: hidden;
+        background: var(--surface-2);
+      }
+      /* Fixed aspect ratio on the image so the grid does not jump as the
+         thumbnails arrive at different speeds. `object-fit: cover` keeps the
+         whole frame visible at 16:9 without distortion. */
+      .camera-card img {
+        display: block;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        object-fit: cover;
+        background: var(--surface-3);
+      }
+      .camera-shot {
+        display: block;
+        width: 100%;
+        padding: 0;
+        border: 0;
+        background: none;
+        cursor: zoom-in;
+      }
+      .camera-shot:focus-visible {
+        outline: 2px solid var(--accent, #3b82f6);
+        outline-offset: -2px;
+      }
+      .camera-card figcaption {
+        display: flex;
+        flex-direction: column;
+        gap: 0.1rem;
+        padding: 0.45rem 0.6rem 0.55rem;
+      }
+      .camera-name {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text);
+        overflow-wrap: anywhere;
+      }
       @media (prefers-reduced-motion: reduce) {
         * {
           animation: none !important;

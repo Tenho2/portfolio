@@ -46,6 +46,7 @@ const app = readFileSync("app/app.js", "utf8");
 const mod = readFileSync("app/stations.js", "utf8");
 const shell = readFileSync("app/shell.mjs", "utf8");
 const sw = readFileSync("sw.js", "utf8");
+const i18 = readFileSync("app/i18n.js", "utf8");
 
 const STATIONS_FIXTURE = JSON.parse(readFileSync("tools/fixtures/stations.json", "utf8"));
 /* A real position inside the fixture, so a radius test actually covers it.
@@ -486,6 +487,57 @@ await group("cameras are parsed, with a real image url", () => {
   ok("the full image url is built from it", c.image.endsWith(c.presetId + ".jpg"));
   ok("the thumbnail is the same url, asked for smaller", c.thumb.includes("thumbnail=true"));
   ok("and it says when the picture was taken", !!c.updated);
+});
+
+await group("the camera screen exists and says what these cameras are", () => {
+  for (const [name, doc] of [["classic", html], ["wide", wide]]) {
+    ok(`${name} has a camera button`, /id="cameraFindBtn"/.test(doc));
+    ok(`${name} has a camera list`, /id="cameraList"/.test(doc));
+    ok(`${name} has a live status region for it`, /id="cameraStat"[^>]*aria-live|aria-live[^>]*id="cameraStat"/.test(doc));
+    /* The note matters more than it looks. The obvious reading of a camera on a
+       Finnish road is a speed camera, and this feed contains none. */
+    ok(`${name} states they are road-condition cameras`, /data-i18n="cam\.note"/.test(doc));
+  }
+  ok("the note says so in the copy too", /not speed cameras/.test(i18));
+  /* Thumbnails, not full pictures: 264 KB each, and 813 of them is 215 MB. */
+  ok("thumbnails are used in the grid", /c\.thumb/.test(app));
+  ok("the full picture is opened, not inlined", /data-camera-full/.test(app) && /window\.open/.test(app));
+  /* app.js is a browser classic script with no module scope, so a bare `global`
+     is a ReferenceError at runtime - thrown from a click handler, where nothing
+     catches it and the button silently does nothing. It shipped once. */
+  ok("app.js uses window, never a bare global", !/\bglobal\.[A-Za-z]/.test(app));
+  /* Every image carries alt text, or the grid is unreadable to a screen reader. */
+  ok("each image has an alt", /TXT\("cam\.alt"/.test(app));
+  /* And the capture time is shown, because a stale road camera misleads. */
+  ok("the age is shown", /cameraAge\(c\.updated\)/.test(app));
+  ok("and handles a missing timestamp", /cam\.ageUnknown/.test(i18));
+});
+
+await group("camera images are real, and the right size", () => {
+  const { S } = loadModule();
+  const cam = S.camerasFromCollection(CAMERAS_FIXTURE)[0];
+  /* A wrong preset id produces a 404 that reads as a broken camera rather than
+     a wrong key, so the id is taken from the fixture rather than built. */
+  is("the thumbnail asks for the smaller picture", cam.thumb, cam.image + "?thumbnail=true");
+  ok("the full picture is the same key", cam.image.indexOf(cam.presetId) > 0);
+  ok("and neither is empty", cam.image.length > 0 && cam.thumb.length > 0);
+  /* 16 KB measured live for the thumbnail, 264 KB for the full one. */
+  ok("the thumbnail url is the documented one", /^https:\/\/weathercam\.digitraffic\.fi\/[A-Z0-9]+\.jpg\?thumbnail=true$/.test(cam.thumb));
+});
+
+await group("cameras are ranked, capped, and never cached", () => {
+  ok("there is a radius", /CAMERA_RADIUS_M = \d+/.test(app));
+  ok("and a cap on what is shown", /CAMERA_NEAREST = \d+/.test(app));
+  const n = Number(app.match(/CAMERA_NEAREST = (\d+)/)[1]);
+  ok("small enough to look at", n > 0 && n <= 12);
+  /* Fresh every time: a cached road camera is a picture of last hour's rain
+     presented as this one, so the camera section must not persist anything. */
+  const camSection = mod.slice(mod.indexOf("/* ---------- cameras"), mod.indexOf("global.StationData"));
+  ok("the camera section exists", camSection.length > 200);
+  ok("nothing about cameras is written to localStorage", !/localStorage/.test(camSection));
+  /* The position the station search already resolved is reused rather than
+     asking the user for a second fix. */
+  ok("an existing position is reused", /if \(stationCentre\) \{/.test(app));
 });
 
 await group("the module is loaded on both pages, in the right order", () => {
