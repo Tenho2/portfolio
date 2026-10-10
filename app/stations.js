@@ -68,9 +68,12 @@
     "https://overpass.private.coffee/api/interpreter",
   ];
 
-  /* How much of the registry to keep in localStorage. The full response is
-     ~23.5 MB; this is the same stations reduced to the fields that are
-     actually shown, and measures about 330 KB. */
+  /* A backstop, not a plan. The registry holds 3,840 stations today and this is
+     4,000, but the cap is applied in API order - so the day it is exceeded the
+     tail would be dropped with no warning, and `rank` filters by radius
+     afterwards, which means a user near the tail would be told, confidently,
+     that there are no stations nearby. Dropping is the only safe behaviour at
+     the limit, so `dropped` travels with the result and the UI can say so. */
   var CACHE_MAX = 4000;
 
   /* How many poles are stored in full, per station. Beyond this the detail panel
@@ -96,17 +99,22 @@
      looked up by, and dropping the tail of a 219-pole site would make the
      status count wrong - which is worse than showing no status at all. */
   function packRow(row) {
+    /* One entry per DISTINCT plug combination, and each pole stores an index
+       into that list rather than repeating the strings. Every pole at a site
+       tends to carry the same handful of connectors, so this is most of the
+       saving - and it must be read back on the way out, or every pole is given
+       the union of the whole site. */
+    var combos = [];
+    var comboIx = {};
     var detail = [];
-    var plugs = [];
-    var plugIx = {};
     for (var i = 0; i < row.poles.length && detail.length < POLE_DETAIL_MAX; i++) {
       var p = row.poles[i];
       var key = p.plugs.join("|");
-      if (plugIx[key] === undefined) {
-        plugIx[key] = plugs.length;
-        plugs.push(p.plugs);
+      if (comboIx[key] === undefined) {
+        comboIx[key] = combos.length;
+        combos.push(p.plugs);
       }
-      detail.push([p.id || "", plugIx[key], p.watts || 0]);
+      detail.push([p.id || "", comboIx[key], p.watts || 0]);
     }
     var ids = [];
     for (var k = 0; k < row.poles.length; k++) if (row.poles[k].id) ids.push(row.poles[k].id);
@@ -121,6 +129,8 @@
       a: row.address,
       /* Only ever true in practice, but kept rather than assumed. */
       c: row.alwaysOpen ? 1 : 0,
+      /* The per-pole plug combinations, and the poles that use them. */
+      b: combos,
       p: detail,
       t: row.poles.length,
       /* Every id, so a station's live status is not truncated by the cap above. */
@@ -133,9 +143,17 @@
        this unconditionally is how a v1 payload came back with blank names. */
     if (p.name !== undefined) return p;
     var detail = p.p || [];
+    var combos = p.b || [];
     var poles = [];
     for (var i = 0; i < detail.length; i++) {
-      poles.push({ id: detail[i][0], plugs: p.g || [], watts: detail[i][2] });
+      /* The index, not the station-wide list. Using `g` here gave every pole at
+         a site the union of all its connectors, which reads as a wrong number
+         of plugs rather than as a bug. */
+      poles.push({
+        id: detail[i][0],
+        plugs: combos[detail[i][1]] || [],
+        watts: detail[i][2],
+      });
     }
     return {
       source: "digitraffic",
@@ -481,13 +499,23 @@
         if (w > poleWatts) poleWatts = w;
         if (w > maxWatts) maxWatts = w;
       }
-      poles.push({ id: evses[i].id || "", plugs: labels, watts: poleWatts });
+      /* Every feature carries an id in practice, but an empty one is a silent
+         trap: the UI looks a row up by id, and an empty id would resolve to
+         the first such row - so "Use" would fill in the wrong charger. The
+         position makes a stable synthetic id instead. */
+      poles.push({
+        id: evses[i].id || "",
+        plugs: labels,
+        watts: poleWatts,
+      });
     }
 
     var a = p.address || {};
+    var id = p.id || "";
+    if (!id) id = "dt:" + c[0].toFixed(5) + "," + c[1].toFixed(5);
     return {
       source: "digitraffic",
-      id: p.id || "",
+      id: id,
       name: p.name || op || "",
       operator: op,
       lat: +c[1],
@@ -502,14 +530,16 @@
     };
   }
 
-  /** Whole registry -> cacheable rows, sorted so reads are cheap. */
+  /** Whole registry -> cacheable rows, plus how many did not fit. */
   function stationsFromCollection(payload) {
     var feats = (payload && payload.features) || [];
     var out = [];
-    for (var i = 0; i < feats.length && out.length < CACHE_MAX; i++) {
+    for (var i = 0; i < feats.length; i++) {
+      if (out.length >= CACHE_MAX) break;
       var row = stationFromFeature(feats[i]);
       if (row) out.push(row);
     }
+    out.dropped = Math.max(0, feats.length - out.length);
     return out;
   }
 
@@ -536,8 +566,30 @@
     return OVERPASS_ENDPOINTS[0] + "?data=" + encodeURIComponent(q);
   }
 
+  /* Attributes that live at `socket:<name>` and are NOT connector types. Listing
+     them as connectors is the same mistake as listing `socket:output` was: a
+     station tagged socket:type2, socket:output=22, socket:voltage=230 produced
+     three "plugs" called type2, output and voltage. */
+  var SOCKET_ATTRIBUTES = {
+    output: 1,
+    voltage: 1,
+    amperage: 1,
+    access: 1,
+    combo: 1,
+    restriction: 1,
+    cable: 1,
+    type: 1,
+    /* `socket:plug:CHADEMO` is a real 3-segment form: "which plug is this".
+       `socket:plug` on its own is a free-text description, not a type. */
+    plug: 2,
+  };
+
   /* The tags are `socket:*`. Written from memory as `connector:*`, which
-     matches nothing and produces an empty plug list that looks like data. */
+     matches nothing and produces an empty plug list that looks like data.
+
+     Both shapes are accepted: `socket:<type>` for the connector types OSM
+     documents, and `socket:plug:<type>` for the per-plug variant. Anything whose
+     second segment is a known attribute is an attribute, not a connector. */
   function stationSockets(tags) {
     var out = [];
     if (!tags) return out;
@@ -545,14 +597,27 @@
       if (key.indexOf("socket:") !== 0) continue;
       var parts = key.split(":");
       var type = parts[1];
+      var sub = parts[2];
       /* `socket:<type>:output` is that connector's RATING, not a type. Listing
          it produced a column of rows literally called "output". */
-      if (!type || parts[2]) continue;
+      if (!type || sub) continue;
+      if (SOCKET_ATTRIBUTES[type]) continue;
       var label = type.replace(/_/g, " ");
       var watts = tags[key + ":output"];
       var kw = /([\d.]+)\s*kW/i.exec(watts || "");
       if (kw) label += " " + kw[1] + " kW";
       out.push(label);
+    }
+    /* And the 3-segment form, where parts[2] IS the type. */
+    for (var k2 in tags) {
+      if (k2.indexOf("socket:plug:") !== 0) continue;
+      var t2 = k2.slice("socket:plug:".length);
+      if (!t2) continue;
+      var label2 = t2.replace(/_/g, " ");
+      var w2 = tags[k2];
+      var kw2 = /([\d.]+)\s*kW/i.exec(w2 || "");
+      if (kw2) label2 += " " + kw2[1] + " kW";
+      if (out.indexOf(label2) < 0) out.push(label2);
     }
     return out;
   }
@@ -598,6 +663,10 @@
         Math.cos(lat2 * toRad) *
         Math.sin(dLng / 2) *
         Math.sin(dLng / 2);
+    /* Rounding error can push this fractionally above 1 for distant points,
+       which makes `1 - a` negative and the square root NaN. NaN then passes the
+       `d > radius` test as false and is kept, so the row renders as "NaN km". */
+    if (a > 1) a = 1;
     return Math.round(2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
   }
 
@@ -689,52 +758,69 @@
   }
 
   function fromOverpass(origin, radius, opts) {
-    var url = overpassUrl(origin.lat, origin.lng, radius);
-    var q = decodeURIComponent(url.slice(url.indexOf("data=") + 5));
+    var q = decodeURIComponent(
+      overpassUrl(origin.lat, origin.lng, radius).split("data=")[1],
+    );
     var tried = 0;
+
+    /**
+     * One endpoint, returning rows or rejecting.
+     *
+     * Kept separate from the recursion below. A `.catch` placed around the call
+     * that also performs the recursion would catch the REJECTION OF THE NEXT
+     * ENDPOINT TOO, and retry the whole list again - which showed up as six
+     * attempts cycling the same three endpoints before giving up.
+     */
+    function tryEndpoint(ep, mine) {
+      return fetchWithTimeout(ep + "?data=" + q, 20000).then(function (payload) {
+        var els = (payload && payload.elements) || [];
+        var list = [];
+        for (var i = 0; i < els.length; i++) {
+          var row = stationFromElement(els[i], origin.lat, origin.lng, origin);
+          if (row) list.push(row);
+        }
+        /* A mirror that answers with nothing has not told us there is nothing
+           nearby; it has told us it has no data for this area. Reported as a
+           failure so the next endpoint is tried, and so the user is never told
+           "no chargers here" on the strength of a stale mirror. */
+        if (!list.length && mine > 0) throw new Error("fallback returned no data");
+        if (opts.onAttempt) {
+          opts.onAttempt({
+            endpoint: ep,
+            which: mine === 0 ? "primary" : "fallback",
+            ok: true,
+            elements: els.length,
+            fallback: mine > 0 ? "yes" : "no",
+          });
+        }
+        return { rows: rank(list, origin, radius), source: "osm", cached: false, warning: "" };
+      });
+    }
+
+    /* The two-argument form is correct here BECAUSE the recursion happens inside
+       the rejection handler. A rejection from the recursive call propagates out
+       of this `.then` untouched, which is how the whole list being exhausted
+       becomes a single rejection rather than an endless retry. */
     function attempt() {
       var ep = OVERPASS_ENDPOINTS[tried];
-      if (!ep) {
-        return Promise.reject(new Error("no endpoint answered"));
-      }
-      var mine = tried;
-      tried++;
-      var full = ep + "?data=" + q;
-      return fetchWithTimeout(full, 20000).then(
-        function (payload) {
-          var body = payload;
-          var els = (body && body.elements) || [];
-          var list = [];
-          for (var i = 0; i < els.length; i++) {
-            var row = stationFromElement(els[i], origin.lat, origin.lng, origin);
-            if (row) list.push(row);
-          }
-          if (opts.onAttempt) {
-            opts.onAttempt({
-              endpoint: ep,
-              which: mine === 0 ? "primary" : "fallback",
-              ok: true,
-              bytes: 0,
-              elements: els.length,
-              fallback: mine > 0 ? "yes" : "no",
-            });
-          }
-          /* A mirror that answers with nothing is not evidence of absence. */
-          if (!list.length && mine > 0) throw new Error("fallback returned no data");
-          return { rows: rank(list, origin, radius), source: "osm", cached: false, warning: "" };
-        },
-        function (err) {
-          if (opts.onAttempt) {
-            opts.onAttempt({
-              endpoint: ep,
-              which: mine === 0 ? "primary" : "fallback",
-              ok: false,
-              error: err && err.message ? err.message : "network",
-            });
-          }
-          return attempt();
-        },
-      );
+      if (!ep) return Promise.reject(new Error("no endpoint answered"));
+      var mine = tried++;
+      return tryEndpoint(ep, mine).then(null, function (err) {
+        if (opts.onAttempt) {
+          opts.onAttempt({
+            endpoint: ep,
+            which: mine === 0 ? "primary" : "fallback",
+            ok: false,
+            error:
+              err && err.message === "fallback returned no data"
+                ? "empty answer from a mirror"
+                : err && err.status
+                  ? "HTTP " + err.status
+                  : "network",
+          });
+        }
+        return attempt();
+      });
     }
     return attempt();
   }

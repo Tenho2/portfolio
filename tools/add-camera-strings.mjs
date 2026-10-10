@@ -11,6 +11,8 @@ const FILE = "app/i18n.js";
 
 const STRINGS = {
   en: {
+    "odo.startReading": "this vehicle's starting odometer",
+    "st.statusOther": "{n} {s}",
     "cam.find": "Cameras nearby",
     "cam.loading": "Looking for cameras…",
     "cam.found": "{n} road camera(s) within {r} km. Showing the nearest {n2}.",
@@ -27,6 +29,8 @@ const STRINGS = {
       "Road-condition cameras, not speed cameras. Nothing is uploaded and no image is stored.",
   },
   fi: {
+    "odo.startReading": "ajoneuvon alkumerkintä",
+    "st.statusOther": "{n} {s}",
     "cam.find": "Lähellä olevat kamerat",
     "cam.loading": "Etsitään kameroita…",
     "cam.found": "{n} tiekameraa {r} km säteellä. Näytetään {n2} lähintä.",
@@ -43,6 +47,8 @@ const STRINGS = {
       "Tiekamerat, ei nopeuskamerat. Mitään ei lähetetä eikä kuvaa tallenneta.",
   },
   sv: {
+    "odo.startReading": "fordets startmätarställning",
+    "st.statusOther": "{n} {s}",
     "cam.find": "Kameror i närheten",
     "cam.loading": "Söker kameror…",
     "cam.found": "{n} vägkamera/-or inom {r} km. Visar de {n2} närmaste.",

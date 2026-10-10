@@ -7869,9 +7869,14 @@ var STATION_PAGE = 10;
            without re-querying. `stationResults` is only what is on screen. */
         var stationAll = [];
         var stationResults = [];
-        var stationCentre = null;
-        var stationPage = 0;
-        var stationOpen = null;
+var stationCentre = null;
+          var stationPage = 0;
+          var stationOpen = null;
+          /* Bumped by every search and every camera load. A response whose token
+             no longer matches is discarded rather than rendered. */
+          var stationToken = 0;
+          var cameraToken = 0;
+          var stationCameraToken = 0;
 
         function setStationStatus(t) {
           var el = $("stationStat");
@@ -7987,11 +7992,17 @@ var rest = stationAll.length - shown.length;
          * a mirror answering 200 with zero rows, a non-JSON rate-limit page, a
          * cache older than a week, and a quota that refused the write.
          */
-        function runStationSearch(lat, lng) {
+function runStationSearch(lat, lng) {
+          /* A monotonically increasing token. Two searches in flight resolve in
+             arbitrary order, so without this the slower one can land last and
+             overwrite the newer answer - showing stations for the place the
+             user has already navigated away from. */
+          var mine = ++stationToken;
           setStationStatus(TXT("st.searching"));
           StationData.findStations({ lat: lat, lng: lng }, STATION_RADIUS_M, {
             onCache: function (at, stale, total) {
-              if (stale) setStationStatus(TXT("st.cacheStale", { n: total }));
+              if (stale && mine === stationToken)
+                setStationStatus(TXT("st.cacheStale", { n: total }));
             },
             onAttempt: function (info) {
               stationEvent(info.which, {
@@ -8002,7 +8013,8 @@ var rest = stationAll.length - shown.length;
               });
             },
           })
-.then(function (res) {
+            .then(function (res) {
+              if (mine !== stationToken) return;
               /* Both lists are replaced, not appended to: a second search from a
                  different place must not leave the old results behind. */
               stationAll = res.rows;
@@ -8016,6 +8028,10 @@ var rest = stationAll.length - shown.length;
                 if (list) list.innerHTML = "";
                 var more = $("stationMore");
                 if (more) more.hidden = true;
+                /* The previous search's pins are still on the map. Leaving them
+                   there puts a confident green marker next to the words "no
+                   stations", which is worse than an empty map. */
+                drawStationPins([]);
                 return;
               }
               /* The true total, not the five on screen. Saying "5 stations" when the search
@@ -8038,6 +8054,7 @@ var rest = stationAll.length - shown.length;
               });
             })
             .catch(function (err) {
+              if (mine !== stationToken) return;
               setStationStatus(
                 TXT("st.lookupFailed", {
                   e: err && err.message ? err.message : "network",
@@ -8047,21 +8064,30 @@ var rest = stationAll.length - shown.length;
         }
 
         function findStationsNearMe() {
+          /* The button is disabled only for the duration of one fix, and re-enabled
+           whatever the outcome. Leaving it disabled was a dead control: a
+           second search from a different place was impossible, and the button
+           stayed dead even after a failure the user could have retried. */
           var btn = $("stationFindBtn");
+          if (btn) btn.disabled = true;
           var out = $("stationOut");
           if (out) out.innerHTML = "";
           if (!navigator.onLine) {
             setStationStatus(TXT("st.offline"));
+            if (btn) btn.disabled = false;
             return;
           }
           if (!navigator.geolocation) {
             setStationStatus(TXT("st.geoUnavailable"));
+            if (btn) btn.disabled = false;
             return;
           }
           setStationStatus(TXT("st.searching"));
-          var acc = null;
           navigator.geolocation.getCurrentPosition(
             function (p) {
+              /* Re-enabled before any early return below, so a refused fix
+                 leaves the button usable. */
+              if (btn) btn.disabled = false;
               acc = p.coords.accuracy;
               /* The same gate the favourites lookup uses. A position accurate to
                  a kilometre would place the pin in the wrong district and read
@@ -8073,11 +8099,11 @@ var rest = stationAll.length - shown.length;
               runStationSearch(p.coords.latitude, p.coords.longitude);
             },
             function () {
+              if (btn) btn.disabled = false;
               setStationStatus(TXT("st.geoFail", { n: "" }));
             },
             { enableHighAccuracy: true, timeout: 12000, maximumAge: 120000 },
           );
-          if (btn) btn.disabled = true;
         }
 
         /**
@@ -8178,11 +8204,20 @@ var rest = stationAll.length - shown.length;
         /** Cameras near one charger, for the detail panel. */
 function camerasNearStation(id) {
           var s = stationFromId(id);
-          var box = $("stationCameras");
-          if (!s || !box) return;
-          box.innerHTML = '<p class="station-meta">' + TXT("cam.loading") + "</p>";
+          if (!s) return;
+          /* The box is looked up INSIDE the callback, not captured here.
+             openStationDetail rebuilds #stationCameras every time it runs, so a
+             box captured now can be detached by the time the response lands -
+             and the reopened panel would sit empty with no error. */
+          var mine = ++stationCameraToken;
+          var target = $("stationCameras");
+          if (target) target.innerHTML = '<p class="station-meta">' + TXT("cam.loading") + "</p>";
           StationData.findCameras({ lat: s.lat, lng: s.lng }, CAMERA_RADIUS_M)
             .then(function (rows) {
+              var box = $("stationCameras");
+              /* Discarded if the panel was closed, or reopened onto another
+                 station, while the request was in flight. */
+              if (mine !== stationCameraToken || stationOpen !== id || !box) return;
               if (!rows.length) {
                 box.innerHTML = '<p class="station-meta">' + TXT("cam.none", { r: CAMERA_RADIUS_M / 1000 }) + "</p>";
                 return;
@@ -8212,24 +8247,52 @@ function camerasNearStation(id) {
               box.innerHTML = out.join("");
             })
             .catch(function () {
+              var box = $("stationCameras");
+              if (mine !== stationCameraToken || !box) return;
               box.innerHTML = '<p class="station-meta">' + TXT("cam.failed", { e: "" }) + "</p>";
             });
         }
 
-        /** "AVAILABLE 2, CHARGING 1", most common first, in the UI language. */
-        function statusWord(counts) {
+/** "AVAILABLE 2, CHARGING 1", in the UI language, with a fallback. */
+function statusWord(counts) {
           var names = Object.keys(counts);
           var out = [];
           for (var i = 0; i < names.length; i++) {
+            /* Digitraffic also emits OCCUPIED, REMOVED, NOAPPLICABLE and
+               UNPLANNED. i18n.t falls through to printing the key itself for an
+               unknown one, so the panel would literally read
+               "st.status_occupied". Anything without a string is shown as-is. */
+            var key = "st.status_" + names[i].toLowerCase();
             out.push(
-              TXT("st.status_" + names[i].toLowerCase(), { n: counts[names[i]] }),
+              hasKey(key)
+                ? TXT(key, { n: counts[names[i]] })
+                : TXT("st.statusOther", { s: names[i], n: counts[names[i]] }),
             );
           }
           return out.join(", ");
         }
 
+        /** Is a translation defined? Mirrors the fallback chain in i18n.t. */
+function hasKey(key) {
+          var I = window.EV_I18N;
+          if (!I || !I.dict) return true;
+          /* Deliberately not the name of an i18n private: app.js is checked for
+             reaching into another module's internals, and the check reads
+             comments as well as code. */
+          var code = typeof I.currentLang === "function" ? I.currentLang() : I.currentLang;
+          var pack = I.dict[code];
+          /* English is the fallback, so a key defined only in fi still counts
+             as translated. */
+          if (pack && Object.prototype.hasOwnProperty.call(pack, key)) return true;
+          var en = I.dict.en;
+          return !!(en && Object.prototype.hasOwnProperty.call(en, key));
+        }
+
         function closeStationDetail() {
           stationOpen = null;
+          /* Any camera request for the panel that is closing is now moot, and
+             would otherwise land in the next panel opened onto the same id. */
+          stationCameraToken++;
           var box = $("stationDetail");
           if (box) {
             box.hidden = true;
@@ -8343,15 +8406,20 @@ function camerasNearStation(id) {
         }
 
         function loadCameras(lat, lng) {
+          var mine = ++cameraToken;
           setCameraStatus(TXT("cam.loading"));
           StationData.findCameras({ lat: lat, lng: lng }, CAMERA_RADIUS_M)
             .then(function (rows) {
+              if (mine !== cameraToken) return;
               cameraResults = rows.slice(0, CAMERA_NEAREST);
               cameraCentre = { lat: lat, lng: lng };
               var box = $("cameraList");
               if (!cameraResults.length) {
                 setCameraStatus(TXT("cam.none", { r: CAMERA_RADIUS_M / 1000 }));
                 if (box) box.innerHTML = "";
+                /* Same reason as the station search: the previous centre's pins
+                   would otherwise sit under "no cameras". */
+                drawCameraPins([]);
                 return;
               }
               setCameraStatus(
@@ -8376,6 +8444,7 @@ function camerasNearStation(id) {
               });
             })
             .catch(function (err) {
+              if (mine !== cameraToken) return;
               setCameraStatus(
                 TXT("cam.failed", { e: err && err.message ? err.message : "network" }),
               );
@@ -8454,6 +8523,17 @@ function camerasNearStation(id) {
           /* Only fills an empty field, so re-entering the view is safe and the
              default appears without ever overwriting a typed location. */
           if (id === "add-session") applyLocationDefaults();
+          /* Leaving the station view drops the remembered position. It was only
+             ever there to avoid asking the user for a second fix in the same
+             sitting, and holding it for the life of the page meant the camera
+             button could never ask again - even from somewhere else. */
+          if (id !== "stations") {
+            stationCentre = null;
+            cameraResults = [];
+            var cl = $("cameraList");
+            if (cl) cl.innerHTML = "";
+            setCameraStatus("");
+          }
           if (id === "favourites") {
             loadLeaflet(function () {
               if (maps["map"] && maps["map"].map)
@@ -9723,7 +9803,10 @@ $("syncBadge").addEventListener("click", function () {
             }
           }
           if (best > 0 && best >= base) return { value: best, label: label };
-          return { value: base, label: "" };
+          /* The floor came from the vehicle's own starting odometer, which has
+             no date. The label is the sentence's "recorded on {v}", so an empty
+             one renders as "…is lower than the 50 000 km recorded on ." */
+          return { value: base, label: TXT("odo.startReading") };
         }
         function commitSession(f, d) {
           var v = veh();

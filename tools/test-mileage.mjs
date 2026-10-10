@@ -154,7 +154,9 @@ await group("the floor is the highest EARLIER reading, not the highest overall",
   /* Backfilling before all of them: nothing earlier exists. */
   const early = mileageFloor(VEH, "2026-09-01");
   is("nothing to compare against means zero", early.value, 0);
-  is("and no label", early.label, "");
+  /* The label is the sentence's "recorded on {v}". An empty one rendered as
+     "…is lower than the 50 000 km recorded on ." */
+  ok("and it still names where the floor came from", !!early.label);
 });
 
 await group("same-day and undated rows do not raise the floor", () => {
@@ -201,7 +203,10 @@ await group("the vehicle's starting odometer is a floor in its own right", () =>
   });
   const floor = mileageFloor(VEH, "2026-10-10");
   is("the starting reading is used", floor.value, 45000);
-  is("and it has no date label", floor.label, "");
+  /* It has no date, so the label must describe the source rather than be
+     empty - the dialog interpolates it into "recorded on {v}". */
+  ok("and the label names the source", !!floor.label);
+  ok("and mentions the starting reading", /start|alku|startmätar/i.test(floor.label));
 
   /* A real earlier charge above the start wins, because it is higher. */
   const later = build({

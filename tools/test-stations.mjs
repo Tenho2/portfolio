@@ -540,6 +540,228 @@ await group("cameras are ranked, capped, and never cached", () => {
   ok("an existing position is reused", /if \(stationCentre\) \{/.test(app));
 });
 
+await group("each pole keeps its OWN plugs, not the whole station's", async () => {
+  /* The packed form stores an index per pole into a table of distinct plug
+     combinations. The reader threw that index away and gave every pole the
+     station-wide union, so a site with one CHAdeMO pole and four Type 2 poles
+     rendered five CHAdeMO poles. It reads as data, not as a bug. */
+  const two = {
+    features: [
+      {
+        geometry: { coordinates: [24.9384, 60.1699] },
+        properties: {
+          id: "s1",
+          name: "Mixed site",
+          operator: { details: { name: "Op" } },
+          address: {},
+          evses: [
+            { id: "E1", connectors: [{ standard: "CHADEMO", maxElectricPower: 50000 }] },
+            { id: "E2", connectors: [{ standard: "IEC_62196_T2", maxElectricPower: 11000 }] },
+            { id: "E3", connectors: [{ standard: "IEC_62196_T2", maxElectricPower: 22000 }] },
+          ],
+        },
+      },
+    ],
+  };
+  const { S, store } = loadModule({
+    fetch: () => Promise.resolve({ ok: true, json: () => Promise.resolve(two) }),
+  });
+  await S.findStations({ lat: 60.1699, lng: 24.9384 }, 5000);
+  const back = await S.readCache();
+  const poles = back.stations[0].poles;
+  is("every pole survives", poles.length, 3);
+  is("the CHAdeMO pole has only CHAdeMO", poles[0].plugs.join(","), "CHAdeMO");
+  is("the first Type 2 pole has only Type 2", poles[1].plugs.join(","), "Type 2");
+  /* The power is per pole too - 50 kW, 11 kW, 22 kW, not the station maximum
+     repeated three times. */
+  is("power is per pole", [poles[0].watts, poles[1].watts, poles[2].watts].join(","), "50000,11000,22000");
+  /* And the station summary is still the best available. */
+  is("the station summary is the highest", back.stations[0].power, "50 kW");
+  ok("the cache really did round-trip through storage", !!store.get(S.K_STATIONS));
+});
+
+await group("an empty mirror moves on to the next endpoint", async () => {
+  /* The failure was raised inside the fulfilment handler of a two-argument
+     `.then(ok, err)`. In that form a `throw` rejects the promise the caller
+     holds and is never seen by `err` beside it - so an empty fallback aborted
+     the search instead of trying the third endpoint.
+
+     And the first fix over-corrected: a `.catch` placed around the call that
+     also recursed caught the NEXT endpoint's rejection too, and cycled the
+     same three endpoints six times before giving up. That repeat is invisible
+     to a source scan, so this group executes the loop instead. */
+  const section = mod.slice(mod.indexOf("function fromOverpass"), mod.indexOf("function rank("));
+  ok("an empty fallback is still rejected as a failure", /fallback returned no data/.test(section));
+  ok("the fetch is its own function, outside the recursion", /function tryEndpoint/.test(section));
+
+  const endpoints = mod.match(/OVERPASS_ENDPOINTS = \[([\s\S]*?)\];/)[1].match(/https:\/\/[^"]+/g);
+  const calls = [];
+  let n = 0;
+  const { S } = loadModule({
+    fetch: () => {
+      n++;
+      return Promise.resolve({ ok: false, status: 503, json: () => Promise.resolve({}) });
+    },
+  });
+  let rejected = false;
+  await S.findStations({ lat: 52.52, lng: 13.4 }, 5000, {
+    onAttempt: (i) => calls.push(i.endpoint),
+  }).catch(() => {
+    rejected = true;
+  });
+  is("the search rejects rather than resolving empty", rejected, true);
+  is("one attempt per endpoint, no repeats", calls.length, endpoints.length);
+  is("and no endpoint is tried twice", new Set(calls).size, calls.length);
+  is("the fetch was called once per endpoint", n, endpoints.length);
+});
+
+await group("the search button comes back", () => {
+  /* It was disabled on click and never re-enabled, so the screen worked exactly
+     once per page load and stayed dead after a failure the user could retry. */
+  const i = app.indexOf("function findStationsNearMe");
+  const body = app.slice(i, app.indexOf("function runStationSearch", i) > i ? app.indexOf("/* ---------- charging stations") : i + 3000);
+  ok("it is disabled while asking", /btn\.disabled = true/.test(body));
+  const reEnabled = (body.match(/btn\.disabled = false/g) || []).length;
+  /* Once in each geolocation callback, and once on each early return. Without
+     all of them a refused or coarse fix leaves a dead control. */
+  ok("it is re-enabled on every path out", reEnabled >= 4);
+});
+
+await group("no request can answer for a newer one", () => {
+  /* Two searches in flight resolve in arbitrary order. Without a token the
+     slower one can land last and show stations for a place the user has left. */
+  ok("a token counter exists", /var stationToken = 0/.test(app));
+  ok("and one for cameras", /var cameraToken = 0/.test(app));
+  ok("and one for the per-station camera panel", /var stationCameraToken = 0/.test(app));
+  ok("the station search claims a token", /\+\+stationToken/.test(app));
+  ok("and checks it before writing anything", /if \(mine !== stationToken\) return/.test(app));
+  ok("the camera load does too", /if \(mine !== cameraToken\) return/.test(app));
+  /* The failure paths must check too, or an older rejected request can still
+     overwrite a newer successful one with its error text. Three search paths
+     plus three rejections. */
+  ok(
+    "three guards, one per async path",
+    (app.match(/if \(mine !== \w+Token\) return/g) || []).length >= 4,
+  );
+  /* The detail panel rebuilds #stationCameras on every open, so the box has to
+     be looked up after the await, not captured before it. */
+  ok("the panel box is re-looked-up after the request", /var box = \$\("stationCameras"\)/.test(app));
+});
+
+await group("an empty result clears what was on the map", () => {
+  /* Otherwise a confident green marker sits beside the words "no stations
+     within 10 km". Scoped to the search path: `renderStations` has its own
+     `if (!stationResults.length)`, and matching that one would pass without
+     ever reaching the map. */
+  const search = app.slice(app.indexOf("function runStationSearch"), app.indexOf("function findStationsNearMe"));
+  ok("the station path clears its pins", /drawStationPins\(\[\]\)/.test(search));
+  ok("and it is on the empty branch", /if \(!stationResults\.length\)[\s\S]{0,600}?drawStationPins\(\[\]\)/.test(search));
+  const cams = app.slice(app.indexOf("function loadCameras"), app.indexOf("function drawCameraPins"));
+  ok("and so does the camera path", /if \(!cameraResults\.length\)[\s\S]{0,600}?drawCameraPins\(\[\]\)/.test(cams));
+});
+
+await group("unknown statuses do not print a raw key", () => {
+  /* Digitraffic also emits OCCUPIED, REMOVED, NOAPPLICABLE and UNPLANNED, and
+     i18n.t falls through to printing the key itself for anything undefined. The
+     detail panel would have read "st.status_occupied". */
+  ok("the key is checked before it is used", /hasKey\(key\)/.test(app));
+  ok("and there is a fallback string", /st\.statusOther/.test(app) && /"st\.statusOther"/.test(i18));
+  /* Every status the feed is known to emit has a real string. */
+  for (const s of ["available", "blocked", "charging", "inoperative", "outoforder", "planned", "reserved", "unknown"]) {
+    ok(`st.status_${s} is translated`, new RegExp('"st\\.status_' + s + '":').test(i18));
+  }
+});
+
+await group("the mileage sentence is never left half-finished", () => {
+  /* The floor can come from the vehicle's starting odometer, which has no
+     date. An empty label rendered "…is lower than the 50 000 km recorded on ." */
+  ok("that case has its own label", /TXT\("odo\.startReading"\)/.test(app));
+  ok("and it is translated", /"odo\.startReading":/.test(i18));
+});
+
+await group("socket attributes are not connectors", () => {
+  const { S } = loadModule();
+  /* `socket:output`, `socket:voltage` and friends sit at two segments, so a
+     naive length check admits them. A station tagged with all three produced a
+     plug list reading "type2, output, voltage". */
+  is("output is not a plug", S.stationSockets({ "socket:output": "22" }).length, 0);
+  is("nor voltage", S.stationSockets({ "socket:voltage": "230" }).length, 0);
+  is("nor access", S.stationSockets({ "socket:access": "customers" }).length, 0);
+  is("nor cable", S.stationSockets({ "socket:cable": "yes" }).length, 0);
+  is("but type2 still is", S.stationSockets({ "socket:type2": "2" }).join(","), "type2");
+  is("alongside chademo", S.stationSockets({ "socket:type2": "2", "socket:chademo": "1" }).length, 2);
+  /* `socket:<type>:output` is the rating of that connector, still not a type. */
+  is("a rating is not a second plug", S.stationSockets({ "socket:type2": "2", "socket:type2:output": "22 kW" }).length, 1);
+  /* The three-segment form IS a type: socket:plug:CHADEMO. */
+  is("socket:plug:<type> is accepted", S.stationSockets({ "socket:plug:CHADEMO": "1" }).join(","), "CHADEMO");
+  is("but bare socket:plug is not", S.stationSockets({ "socket:plug": "Type 2" }).length, 0);
+});
+
+await group("no distance is ever NaN", () => {
+  const { S } = loadModule();
+  /* Rounding can push the haversine fraction above 1 for distant points, making
+     1 - a negative. NaN then passes `d > radius` as false, so the row survives
+     the filter and renders as "NaN km". */
+  const d = S.metresBetween(0, 0, 0, 180);
+  ok("an antipodal pair is a number", Number.isFinite(d));
+  ok("and roughly half the circumference", Math.abs(d - 20015000) < 100000);
+  is("the same point is still zero", S.metresBetween(60, 24, 60, 24), 0);
+  /* And a NaN could never be produced by a row that survived the filter. */
+  const nan = S.metresBetween(90, 0, -90, 0);
+  ok("poles are finite too", Number.isFinite(nan));
+});
+
+await group("the mileage field can actually be left blank", () => {
+  /* It carried `required`, and both entry points gate on reportValidity(), so
+     the entire "empty saves as null, and says so" design was unreachable.
+     `type` and `min` come BEFORE `id` in the generated markup, so the window
+     has to reach backwards as well as forwards. */
+  const addField = html.slice(html.indexOf('type="number"', html.indexOf("id=\"mileage\"") - 200) - 200, html.indexOf('id="mileage"') + 200);
+  const editField = html.slice(html.indexOf('type="number"', html.indexOf('id="eMileage"') - 200) - 200, html.indexOf('id="eMileage"') + 200);
+  ok("the add form does not require it", !/id="mileage"[\s\S]{0,300}?\brequired\b/.test(html));
+  ok("the edit sheet does not require it", !/id="eMileage"[\s\S]{0,300}?\brequired\b/.test(html));
+  /* Still validated as a number, and never negative. */
+  ok("but it is still a number", /type="number"/.test(addField) && /type="number"/.test(editField));
+  ok("and still cannot go backwards", /min="0"/.test(addField) && /min="0"/.test(editField));
+  /* And not required anywhere else either - a stray `required` further down the
+     form would re-block the save the dialog is asking about. */
+  ok("nothing re-adds it", !/aria-required="true"[\s\S]{0,80}?mileage/.test(html));
+});
+
+await group("an id is never empty", () => {
+  /* The UI looks a station up by id. An empty one resolves to the first row
+     with an empty id, so "Use" would fill in the wrong charger. */
+  const { S } = loadModule();
+  const row = S.stationFromFeature({
+    geometry: { coordinates: [24.9384, 60.1699] },
+    properties: { name: "No id", operator: { details: { name: "Op" } }, address: {}, evses: [] },
+  });
+  ok("a feature with no id still gets one", !!row.id);
+  ok("and it is derived from the position", /^dt:/.test(row.id));
+  is("which is stable for the same position", row.id, S.stationFromFeature({
+    geometry: { coordinates: [24.9384, 60.1699] },
+    properties: { name: "No id", operator: { details: { name: "Op" } }, address: {}, evses: [] },
+  }).id);
+});
+
+await group("the registry cap cannot silently hide a region", () => {
+  /* The cap is applied in API order, so exceeding it drops the tail - and rank
+     filters by radius afterwards, which would mean "no stations near you" for
+     anyone near that tail. The count has to be reported, not swallowed. */
+  ok("the cap is declared above the current registry size", /CACHE_MAX = \d+/.test(mod));
+  const cap = Number(mod.match(/CACHE_MAX = (\d+)/)[1]);
+  ok("and it is larger than the 3840 stations published today", cap >= 3840);
+  ok("anything dropped is counted", /out\.dropped = /.test(mod));
+});
+
+await group("a remembered position does not outlive its view", () => {
+  /* It existed only to avoid a second geolocation prompt in the same sitting.
+     Held for the life of the page, the camera button could never ask again -
+     and the 50 m accuracy gate was only ever applied to the first search. */
+  ok("it is cleared on navigation", /if \(id !== "stations"\)[\s\S]{0,300}?stationCentre = null/.test(app));
+  ok("the camera results go with it", /stationCentre = null;[\s\S]{0,200}?cameraResults = \[\]/.test(app));
+});
+
 await group("the module is loaded on both pages, in the right order", () => {
   for (const [name, doc] of [["classic", html], ["wide", wide]]) {
     const at = (re) => doc.search(re);
