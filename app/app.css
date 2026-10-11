@@ -1805,6 +1805,17 @@
       .station-row.on {
         background: var(--surface-3);
       }
+      /* The selected row, in dark mode only.
+         --surface-3 is #3b82f6 there, and the station name is #f8fafc: 3.5:1,
+         under the 4.5:1 needed for text this size, with the operator line at
+         2.5:1 against the muted colour. Rather than repaint the token - it is
+         used by two dozen components - the selection is expressed as a dark
+         row with a bright edge, which passes comfortably and reads as
+         "selected" just as clearly. */
+      body.dark .station-row.on {
+        background: var(--surface);
+        box-shadow: inset 3px 0 0 var(--primary);
+      }
       .station-row > div:first-child {
         flex: 1;
         min-width: 0;
@@ -1823,6 +1834,24 @@
         text-align: left;
         color: var(--text);
         overflow-wrap: anywhere;
+        /* This is a <button> with no class of its own to give it a background,
+           and the sheet has no universal button reset. So it kept the user
+           agent's ButtonFace - a light grey - while dark mode painted the text
+           #f8fafc on top of it, about 1.1:1. In dark mode the station names
+           were unreadable. The reset belongs here rather than globally because
+           every other button in the app sets its own background deliberately. */
+        background: none;
+        border: 0;
+        font: inherit;
+        font-weight: 600;
+        padding: 0;
+        margin: 0;
+        cursor: pointer;
+      }
+      .station-name:hover,
+      .station-name:focus-visible {
+        color: var(--primary);
+        text-decoration: underline;
       }
       .station-meta {
         font-size: 0.8rem;

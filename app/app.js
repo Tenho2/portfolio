@@ -267,6 +267,13 @@
         var LOC_MAX_ACCURACY_M = 50;
         var locDefaults = { loc: null, hour: null, geo: false };
         function loadLocDefaults() {
+          /* Reset first, unconditionally. This used to sit inside the guard, so
+             an account with no saved defaults kept the PREVIOUS account's
+             defaults - a pre-selected home charger and, worse, the "ask the
+             device where you are" flag - and saveLocDefaults() then wrote them
+             into the new account's key. Absent must mean "no preference", not
+             "whatever the last account left behind". */
+          locDefaults = { loc: null, hour: null, geo: false };
           try {
             var raw = JSON.parse(localStorage.getItem(K.df) || "null");
             if (raw && typeof raw === "object") {
@@ -275,7 +282,7 @@
               locDefaults.geo = !!raw.geo;
             }
           } catch (e) {
-            locDefaults = { loc: null, hour: null, geo: false };
+            /* the reset above stands */
           }
         }
         function saveLocDefaults() {
@@ -3358,6 +3365,28 @@ function saveFavs() {
          * Tolerates the older string-only format saved by previous versions.
          */
         function loadFavs() {
+          /* Favourites never leave the device, so their bin is device-local too.
+             Read from storage rather than reset, so a deleted favourite is still
+             restorable after a reload.
+             The bin is re-derived FIRST and unconditionally. It used to be done
+             at the end, after an early return, so switching to an account that
+             had never saved a favourite left the PREVIOUS account's deleted
+             rows in memory - and the next saveFavs() copied them, names and
+             street addresses included, into the new account's own key. The user
+             could see them, restore them into their own live list, or purge them
+             for good. An absent key must mean "no favourites", never "whatever
+             the last account happened to leave behind". */
+          var binRaw = null;
+          try {
+            binRaw = JSON.parse(localStorage.getItem(K.bf) || "null");
+          } catch (e) {
+            binRaw = null;
+          }
+          binned.favs = Array.isArray(binRaw)
+            ? binRaw.filter(function (f) {
+                return f && typeof f === "object" && f.id;
+              })
+            : [];
           var raw = null;
           try {
             raw = JSON.parse(localStorage.getItem(K.f) || "null");
@@ -3391,21 +3420,7 @@ function saveFavs() {
                 deletedAt: f.deletedAt || null,
               });
           }
-/* Favourites never leave the device, so their bin is device-local too. Read
-               from storage rather than reset, so a deleted favourite is still
-               restorable after a reload. */
-            var binRaw = null;
-            try {
-              binRaw = JSON.parse(localStorage.getItem(K.bf) || "null");
-            } catch (e) {
-              binRaw = null;
-            }
-            binned.favs = Array.isArray(binRaw)
-              ? binRaw.filter(function (f) {
-                  return f && typeof f === "object" && f.id;
-                })
-              : [];
-            favs = splitBinned(favs, binned.favs);
+          favs = splitBinned(favs, binned.favs);
         }
 
         /* ---------- helpers ---------- */
@@ -8480,7 +8495,7 @@ var rest = stationAll.length - shown.length;
             for (var i = 0; i < slot.stationPins.length; i++)
               slot.map.removeLayer(slot.stationPins[i]);
           }
-          slot.stationPins = [];
+slot.stationPins = [];
           for (var k = 0; k < list.length; k++) {
             var s = list[k];
             var m = L.circleMarker([s.lat, s.lng], {
@@ -8489,6 +8504,14 @@ var rest = stationAll.length - shown.length;
               weight: 2,
               fillColor: "#10b981",
               fillOpacity: 0.75,
+              /* A circle marker is a Leaflet Path, and by default its clicks
+                 bubble to the map. The map handler for every map places a
+                 session pin and zooms to 16, so selecting a station from the
+                 map also dropped a draggable pin on it. Stopping the bubbling
+                 declaratively is version-safe; calling stopPropagation on the
+                 Leaflet event object by hand is not, because that is not
+                 always a DOM event. */
+              bubblingMouseEvents: false,
             });
             m.bindPopup(
               "<b>" +
@@ -8497,8 +8520,26 @@ var rest = stationAll.length - shown.length;
                 esc(s.power || "") +
                 (s.dist != null
                   ? "<br>" + TXT("st.away", { d: Math.round(s.dist) }) + " m"
-                  : ""),
+                  : "") +
+                "<br>" +
+                TXT("st.openDetails"),
             );
+            /* Tapping a pin opens the same panel the list opens. It used to
+               only raise a popup: the station id was never attached to the
+               marker, so there was nothing for a handler to look up, and the
+               panel below the map kept showing whatever the list last opened. */
+            m._stationId = s.id;
+            m.on("click", function () {
+              var sid = this && this._stationId;
+              if (!sid) return;
+              /* The popup still names the station where the finger is, which
+                 matters on a small screen, but the panel is the real answer -
+                 so it is brought into view rather than left below the fold. */
+              openStationDetail(sid);
+              var box = $("stationDetail");
+              if (box && !box.hidden && box.scrollIntoView)
+                box.scrollIntoView({ block: "nearest", behavior: "smooth" });
+            });
             m.addTo(slot.map);
             slot.stationPins.push(m);
           }
@@ -8702,6 +8743,11 @@ function runStationSearch(lat, lng) {
             TXT("confirm.close") +
             "</button>";
           box.hidden = false;
+          /* Move the highlight to the row that is now open. Done here rather
+             than at each call site, because there are two ways in - the list
+             row and a pin on the map - and the map path used to leave the list
+             highlighting a station the panel was no longer showing. */
+          renderStations();
           /* OpenStreetMap rows have no evse ids, so there is nothing to ask
              about; saying so plainly beats a spinner that never stops. */
           if (s.source !== "digitraffic") {
