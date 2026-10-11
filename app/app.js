@@ -130,7 +130,7 @@
            toLocaleDateString: it is read by whoever ends up doing support, and
            a build stamp that changes shape with the interface language is
            awkward to quote over a phone. */
-        var APP_BUILD = "2026-10-02";
+        var APP_BUILD = "2026-10-11";
         function buildStamp() {
           var p = APP_BUILD.split("-");
           if (p.length !== 3) return APP_BUILD;

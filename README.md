@@ -1,5 +1,9 @@
 # portfolio
 
+> **Resuming work:** see [HANDOVER.md](HANDOVER.md) for current state and open
+> questions, and the [To do](#to-do) section at the end of this file for the
+> backlog.
+
 Personal projects. Two pages, no build step: `index.html` is the home page and
 `ev-tracker.html` is an EV charging tracker that runs straight from the file.
 
@@ -437,3 +441,70 @@ signed-in session.
 
 Do not build an in-app "forgot password" that returns a link to whoever typed
 the username — that is account takeover for anyone who knows a name.
+
+## To do
+
+Ordered roughly by what is worth doing next. Open questions that need a human
+answer are marked; they are not code tasks and should not be "fixed" by
+changing the app.
+
+### Mobile-readable charge log
+
+The log is an eleven-column table with `min-width: 760px` and `nowrap`, so on a
+phone it is a horizontal scroll with no context on which column you are reading.
+
+The treatment is **one DOM styled two ways** — not a second renderer. Two
+renderers drift apart, and sorting, selection and editing would have to be
+written twice. Cells carry `data-label`, shown as labels through `::before` in
+card layout below ~700px, with the table parts set to `display: block` only at
+that breakpoint so the desktop table keeps its semantics.
+
+### Shared-charge payer split
+
+Charge a shared car partly and record who paid. Migration
+`13-session-payers.sql` — the number is free because the temporary `11` probe
+was removed rather than renumbered.
+
+Decided already: split per session rather than per car; older charges with no
+payer are excluded from the split and counted separately; the picker defaults
+to the signed-in user; the charge log shows a pie chart per vehicle.
+
+### The `focus` layout
+
+`classic` and `wide` exist. `focus` does not: deep indigo-slate, mint `#10B981`,
+hairline borders, no gradients or glass, a desktop rail and a mobile bottom bar,
+inline monochrome SVG icons in place of emoji. `tools/emit-pages.mjs` and
+`tools/test-layouts.mjs` both have to learn a third layout.
+
+### Known bugs
+
+- **Empty-bin ownership.** Binning the wrong vehicle, or a vehicle with sessions
+  attached, does not resolve ownership or cascades correctly. Separate from
+  detached shared-car rows, which are skipped deliberately.
+
+- **Dark-mode contrast, beyond the one that was fixed.** `--surface-2` and
+  `--surface-3` in the `body.dark` block are still the light theme's values,
+  `#1e40af` and `#3b82f6` — brighter in dark mode than the surface behind them.
+  They are used in about two dozen places. They were left alone on purpose: the
+  change could not be previewed, and repainting a 24-site palette blind is how
+  other things break. The one place that measurably failed WCAG AA — the selected
+  station row — was fixed on its own. **This needs eyes on a real device.**
+
+### Open questions
+
+- **Two logged sessions report 357 kWh/100km.** No road car does that; a real EV
+  is 15–25. The attribution logic is verified by `tools/test-consumption.mjs`,
+  so the data is the suspect, not the code. Do not adjust the calculation to fit.
+
+- **What was in the leaked bin?** The account-switch fix covers deleted
+  _favourites_, because those are the only bin that was not reset on switch.
+  Vehicle and session bins are reset correctly. If charge sessions were also
+  visible to the next account, that is a second and unfound bug.
+
+### Housekeeping
+
+- Manual verification of the Overpass fallback chain from a **browser**. The Node
+  harness exercises the failure and success paths but cannot reproduce a real
+  User-Agent request.
+- No browser visual review is available in the development environment, so
+  layout and contrast work is finished only when a human has looked at it.
