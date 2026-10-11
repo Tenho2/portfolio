@@ -1,0 +1,74 @@
+-- EV Multi-Tracker: usable battery capacity per vehicle.
+-- Run this in the Supabase SQL editor AFTER 06-owner-stamp.sql.
+-- Dashboard -> SQL Editor -> New query -> paste -> Run.
+--
+-- Everything here is idempotent.
+--
+-- What it does
+--   Adds ONE column, public.vehicles.battery_capacity_kwh.
+--
+-- Why a capacity is needed at all
+--   The charge log computes two things today, and neither is right:
+--
+--     "Avg kWh / 100 km"  =  every kWh you logged  /  every km the odometer moved
+--
+--   That is wrong because the newest charge has no kilometres yet - you have not
+--   driven since it - so its energy is divided by distance it never covered. With
+--   two charges the error is half your total energy; with twenty charges it is
+--   one twentieth, which is why it looks plausible once a log fills up.
+--
+--   The honest source is the battery itself. Between one charging session and the
+--   next, the pack went from "left at X%" to "Y% on arrival", and that
+--   percentage drop covers a distance you can measure. Turning a percentage into
+--   kWh needs the usable capacity, and the app had nowhere to record it.
+--
+-- Why this stores USABLE capacity and not gross
+--   The column holds the figure the maths reads. Nothing else is stored.
+--
+--   Gross (the brochure number) is a UI concern only: entering it pre-fills an
+--   EDITABLE usable box at roughly 95%, and only the usable figure is saved.
+--   Storing a separate "is this gross?" flag would be dead state that can drift
+--   from the number it describes - a car flagged gross whose usable figure was
+--   later corrected by hand would keep claiming to be an estimate.
+--
+--   95% is a middle-of-the-road guess, not a law: real ratios run from about
+--   90% (Nissan e-NV200) to about 95% (BMW i4). That is why the usable box is
+--   editable rather than read-only, and why the UI labels the derived figure as
+--   an estimate.
+--
+-- Nullable, deliberately
+--   A vehicle with no capacity set simply has no battery-derived figure. The
+--   log falls back to the charging-based method and says which it used.
+--
+--   No CHECK constraint on purpose. The app validates on entry and clamps a
+--   nonsense import rather than refusing it; a constraint would instead turn an
+--   old backup containing a blank or odd value into a hard failure at restore
+--   time, which is a worse outcome than an editable field that is obviously
+--   wrong.
+--
+-- What it does NOT touch
+--   No policy, no trigger, no grant. RLS on vehicles works at row level
+--   ("accessible by members", "your own rows"), and Supabase grants table-level
+--   privileges, so a new column is readable and writable by exactly the people
+--   who could already read and write the row.
+--
+-- Idempotency
+--   add column if exists, so re-running is a no-op rather than an error.
+
+alter table public.vehicles
+  add column if not exists battery_capacity_kwh numeric;
+
+-- ---------------------------------------------------------------------------
+-- Verify after running (expect one row):
+--   select column_name, data_type, is_nullable
+--     from information_schema.columns
+--    where table_name = 'vehicles' and column_name = 'battery_capacity_kwh';
+--
+-- Set a capacity for a vehicle (example uses a 77.4 kWh gross pack, 95% of
+-- which is 73.53 kWh usable):
+--   update public.vehicles
+--      set battery_capacity_kwh = 73.53
+--    where name = 'Tucson';
+--
+-- Read it back with the id you will need:
+--   select id, name, battery_capacity_kwh from public.vehicles order by name;

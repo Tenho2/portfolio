@@ -305,13 +305,20 @@
               <div class="n" id="sDur">0 h</div>
               <div class="l" data-i18n="tile.time"></div>
             </div>
-            <div class="stat">
+            <!-- Consumption. Two figures can exist - one measured from the battery, one
+                 from charged energy - and they rarely agree exactly. The
+                 preferred one is shown large; the other appears beside it, and
+                 the method is always named. A number with no provenance is how
+                 a wrong figure reads as a right one. -->
+            <div class="stat" data-tile="eff">
               <div class="n" id="sEff">–</div>
               <div class="l" data-i18n="tile.kwh100"></div>
+              <div class="sub" id="sEffNote"></div>
             </div>
-            <div class="stat">
+            <div class="stat" data-tile="cost100">
               <div class="n" id="sCost100">–</div>
               <div class="l" data-i18n="tile.cost100"></div>
+              <div class="sub" id="sCost100Note"></div>
             </div>
             <div class="stat">
               <div class="n" id="sSpeed">—</div>
@@ -1455,6 +1462,57 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               <div class="hint" id="vfOdoHint" data-i18n="set.initialOdoHelp"></div>
             </div>
           </fieldset>
+
+          <!-- Usable battery capacity. Gross and usable are the same number to
+               most drivers only by coincidence: real ratios run from about 90%
+               to 95%. So gross is accepted because it is what a spec sheet says,
+               and it pre-fills an EDITABLE usable box. Only the usable figure is
+               stored; the mode below is not saved anywhere, so it cannot drift
+               out of step with the number it produced. -->
+          <fieldset class="row cap">
+            <legend class="sr-only" data-i18n="grp.capacity"></legend>
+            <div class="f">
+              <span class="lbl" id="vfCapLbl" data-i18n="set.capacity"></span>
+              <div class="cap-row">
+                <input
+                  type="number"
+                  id="vfGross"
+                  min="0"
+                  step="0.1"
+                  data-i18n-ph="ph.capGross"
+                  aria-describedby="vfCapHint"
+                />
+                <span class="dim" id="vfCapTimes" data-i18n="set.capTimes"></span>
+              </div>
+            </div>
+            <div class="f">
+              <label for="vfUsable" data-i18n="set.capUsable"></label
+              ><input
+                type="number"
+                id="vfUsable"
+                min="0"
+                step="0.01"
+                data-i18n-ph="ph.capUsable"
+                aria-describedby="vfCapHint"
+              />
+            </div>
+          </fieldset>
+          <div class="cap-mode" role="radiogroup" aria-labelledby="vfCapLbl">
+            <!-- Input and label are siblings, not nested. Nested makes the "for"
+                 redundant, which the markup linter rejects; dropping "for"
+                 then leaves the radio without a label[for] that the accessible
+                 name check follows. As siblings both tools are satisfied, and
+                 clicking the label still selects the radio. -->
+            <div class="cap-opt">
+              <input type="radio" name="vfCapMode" id="vfCapGrossMode" value="gross" checked />
+              <label for="vfCapGrossMode" data-i18n="set.capGrossMode"></label>
+            </div>
+            <div class="cap-opt">
+              <input type="radio" name="vfCapMode" id="vfCapNetMode" value="net" />
+              <label for="vfCapNetMode" data-i18n="set.capNetMode"></label>
+            </div>
+          </div>
+          <div class="hint" id="vfCapHint"></div>
           <div class="addrow" style="margin-top: 1.25rem">
             <button class="btn" type="submit" data-i18n="ed.save"></button>
             <button

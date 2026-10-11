@@ -476,11 +476,17 @@
           } catch (e) {
             vehicles = [];
           }
-          /* backwards compatibility: vehicles saved before the initial odometer existed */
+          /* backwards compatibility: vehicles saved before the initial odometer
+               existed, and before usable capacity existed */
           if (Array.isArray(vehicles))
             for (var vi = 0; vi < vehicles.length; vi++) {
               if (vehicles[vi] && !isFinite(+vehicles[vi].initialOdometer))
                 vehicles[vi].initialOdometer = 0;
+              /* Normalised to null, not 0. A vehicle with no capacity set must
+                 not be treated as having a zero-capacity battery, which would
+                 read as "no usable energy at all" rather than "unknown". */
+              if (vehicles[vi] && !isNum(vehicles[vi].capacity))
+                vehicles[vi].capacity = null;
             }
           try {
             sessions = JSON.parse(localStorage.getItem(K.s)) || [];
@@ -510,6 +516,7 @@
                 name: TXT("veh.default"),
                 icon: "🚗",
                 initialOdometer: 0,
+                capacity: null,
                 /* The baseline has to be stamped here for the same reason
                    addVehicle stamps it: without an owner the row is labelled a
                    shared vehicle, the sharing controls stay hidden, and
@@ -775,6 +782,14 @@ for (var a = 0; a < vi.length; a++) {
             initial_odometer: isNum(v.initialOdometer)
               ? num(v.initialOdometer)
               : 0,
+            /* USABLE capacity, and the only capacity the maths reads. The
+               gross-to-usable conversion happens in the vehicle editor and is
+               never stored, so there is no flag that could disagree with this
+               number. null rather than 0: "not set" and "set to zero" mean
+               different things, and only the second disables the method. */
+            battery_capacity_kwh: isNum(v.capacity)
+              ? num(v.capacity)
+              : null,
             /* null means live. A timestamp means the row is in the bin and the
                client is expected to keep it out of the live arrays. */
             deleted_at: v.deletedAt || null,
@@ -828,6 +843,12 @@ function rowVehicle(r) {
               initialOdometer: isNum(r.initial_odometer)
                 ? num(r.initial_odometer)
                 : 0,
+              /* Absent on every row written before migration 12. isNum rejects
+                 null, undefined and "", so an old vehicle reads as "not set"
+                 and simply has no battery-derived figure. */
+              capacity: isNum(r.battery_capacity_kwh)
+                ? num(r.battery_capacity_kwh)
+                : null,
               userId: r.user_id || null,
               deletedAt: r.deleted_at || null,
               /* It came from the server, so the server already has it. syncVehicle
@@ -3182,6 +3203,7 @@ sessions = splitBinned(
                   name: TXT("veh.default"),
                   icon: "\u{1F697}",
                   initialOdometer: 0,
+                  capacity: null,
                   /* Stamped so the insert satisfies the vehicles insert policy
                      (user_id = auth.uid()) and the car is treated as theirs. */
                   userId: ownerId(),
@@ -3729,6 +3751,163 @@ function hoursToHM(h, alwaysSeconds) {
         /* distance driven = highest odometer reading logged, minus the vehicle's
    initial odometer ("ground zero"). Adding up the gaps between consecutive
    sessions would silently ignore everything driven before the first entry. */
+        /**
+         * Consumption, measured one drive at a time.
+         *
+         * The old calculation divided EVERY kWh you logged by EVERY kilometre
+         * the odometer moved. That is wrong by exactly one charge's worth of
+         * energy, always: the newest charge has no kilometres yet, because you
+         * have not driven since it, and its energy was divided by distance it
+         * never covered. With two charges the error is half the total, which is
+         * why it looked absurd; with twenty charges it is a twentieth, which is
+         * why nobody noticed until a log was short.
+         *
+         * A "leg" is one drive between two charging sessions. Both endpoints
+         * must carry a mileage reading, because the distance comes from the
+         * difference between them. The energy credited to a leg is the charge
+         * at its START: you charge, then you drive, so that charge is what
+         * powered the drive.
+         *
+         * Sessions are walked in date order, and a leg whose distance is zero or
+         * negative is skipped and COUNTED rather than allowed to subtract.
+         * That happens when a reading is mistyped or when a session is
+         * backfilled out of sequence, and silently averaging a negative leg
+         * would make the car look impossibly efficient.
+         *
+         * The first reading only has a leg if the vehicle has an initial
+         * odometer, because otherwise there is nothing before it to measure
+         * from.
+         *
+         * @param {Array} list    sessions for one vehicle
+         * @param {number} initialOdo the vehicle's starting odometer, or 0
+         * @returns {{legs:number, km:number, kwh:number, cost:number,
+         *            skipped:number, noStart:boolean, unattributed:number}}
+         */
+        function legStats(list, initialOdo) {
+          var out = {
+            legs: 0,
+            km: 0,
+            kwh: 0,
+            cost: 0,
+            skipped: 0,
+            noStart: false,
+            /* Charges whose energy has no distance to divide by. Reported, not
+               hidden: the difference between "12 charges" and "12 charges,
+               11 of them measured" is the whole point. */
+            unattributed: 0,
+          };
+          var start = num(initialOdo);
+          /* OLDEST FIRST, and said so because sorted() is the other way round:
+             it returns newest first, which is what the log wants. Pairing legs
+             needs the reverse walk, and getting this wrong is silent - the loop
+             runs, every leg comes out negative, and the whole set is discarded
+             as "no data". */
+          var s = sorted(list || []).slice().reverse();
+          var prev = null;
+          for (var i = 0; i < s.length; i++) {
+            var cur = s[i];
+            var cm = num(cur.mileage);
+            /* No mileage means this session cannot be an endpoint of a leg. It
+               still counts as unmeasured energy. */
+            if (!(cm > 0)) {
+              out.unattributed += num(cur.energy);
+              continue;
+            }
+            if (!prev) {
+              if (start > 0) {
+                var d0 = cm - start;
+                if (d0 > 0) {
+                  /* Distance only. There is no charge at the initial odometer
+                     to attribute energy to, so counting cur's charge here as
+                     well would bill the same energy to two legs. */
+                  out.legs++;
+                  out.km += d0;
+                } else out.skipped++;
+              } else {
+                /* No starting point, so this session's charge cannot be
+                   measured from here. Its energy is NOT counted here: the next
+                   iteration may consume it as the start of a proper leg, and
+                   the final step adds it only if nothing did. */
+                out.noStart = true;
+              }
+              prev = cur;
+              continue;
+            }
+            var d = cm - num(prev.mileage);
+            if (d <= 0) {
+              /* The odometer did not move forward. The charge is still real,
+                 it just has no measurable distance behind it. */
+              out.skipped++;
+              out.unattributed += num(prev.energy);
+            } else {
+              out.legs++;
+              out.km += d;
+              out.kwh += num(prev.energy);
+              out.cost += costOf(prev);
+            }
+            prev = cur;
+          }
+          /* The newest charge: measured nothing yet, by definition. */
+          if (prev) out.unattributed += num(prev.energy);
+          return out;
+        }
+
+        /**
+         * Consumption, measured from the battery instead of from the odometer.
+         *
+         * Between two charging sessions the pack went from prev.socEnd (left
+         * charged) to cur.socStart (arrived), and that percentage drop covers the
+         * drive between them:
+         *
+         *     energy = (prev.socEnd - cur.socStart) / 100 x usable capacity
+         *
+         * This is the better source where it exists, because it does not care
+         * how often you charge: it measures the battery rather than inferring
+         * from the spacing of your entries.
+         *
+         * A drop of zero or less means the car was plugged in at the same level
+         * it left at, which in practice means a charge was missed or a percentage
+         * was mistyped. Such a leg is excluded and counted, never averaged in -
+         * a zero drop would otherwise pull the figure toward zero efficiency and
+         * make the car look superhuman.
+         *
+         * @param {Array} list
+         * @param {number} usableKwh the vehicle's USABLE capacity, 0 if unset
+         */
+        function socLegStats(list, usableKwh) {
+          var cap = num(usableKwh);
+          var out = { legs: 0, km: 0, kwh: 0, skipped: 0, usable: cap > 0 };
+          if (!(cap > 0)) return out;
+          /* Oldest first; see legStats for why that is not the default. */
+          var s = sorted(list || []).slice().reverse();
+          var prev = null;
+          for (var i = 0; i < s.length; i++) {
+            var cur = s[i];
+            if (prev) {
+              var pe = soc(prev.socEnd),
+                cs = soc(cur.socStart);
+              var pm = num(prev.mileage),
+                cm = num(cur.mileage);
+              /* Both percentages and both positions are required: the
+                 percentage gives the energy, the difference gives the distance,
+                 and either half without the other is not a measurement. */
+              if (pe !== null && cs !== null && pm > 0 && cm > 0) {
+                var d = cm - pm;
+                var drop = pe - cs;
+                if (d > 0 && drop > 0) {
+                  out.legs++;
+                  out.km += d;
+                  out.kwh += (drop / 100) * cap;
+                } else {
+                  out.skipped++;
+                }
+              }
+            }
+            if (num(cur.mileage) > 0) prev = cur;
+          }
+          return out;
+        }
+
         function totals(list, initialOdo) {
           var t = { kwh: 0, cost: 0, h: 0, km: 0, est: 0 };
           var s = sorted(list);
@@ -4842,10 +5021,7 @@ function say(msg) {
           }
           $("sCost").textContent = fmtMoney(T.cost);
           $("sDur").textContent = T.h.toFixed(1) + " h";
-          $("sEff").textContent =
-            T.km > 0 ? ((T.kwh / T.km) * 100).toFixed(1) : "—";
-          $("sCost100").textContent =
-            T.km > 0 ? fmtMoney((T.cost / T.km) * 100) : "—";
+          renderConsumption(sel, v);
           $("sSpeed").textContent = fmtKw(speedTotal(sel));
           /* The tile shows the real mean whatever the sample size - it reports what
              the data says rather than what we would prefill, so it is not
@@ -6235,6 +6411,7 @@ for (i = 0; i < IMPORT_COLS.length; i++) {
             name: want,
             icon: "🚙",
             initialOdometer: 0,
+            capacity: null,
           };
           vehicles.push(made);
           return made;
@@ -6533,6 +6710,9 @@ vehiclesAdded = vehicles.length - before;
                 initialOdometer: isNum(pa.initialOdometer)
                   ? num(pa.initialOdometer)
                   : 0,
+                /* Carried through a backup restore, so a vehicle that had a
+                   capacity set does not silently lose it on the way in. */
+                capacity: isNum(pa.capacity) ? num(pa.capacity) : null,
               });
               vehiclesAdded++;
             }
@@ -9236,6 +9416,7 @@ function doWipe() {
               name: TXT("veh.default"),
               icon: "🚗",
               initialOdometer: 0,
+              capacity: null,
               userId: ownerId() || null,
             },
           ];
@@ -9343,6 +9524,7 @@ function emptyBin() {
             name: name,
             icon: "🚗",
             initialOdometer: odo,
+            capacity: null,
             /* Record the owner locally straight away. Without it the sharing
                controls stay hidden on a brand new car until the server sends
                the row back, which leaves the Share button mysteriously absent
@@ -9543,6 +9725,130 @@ function detachVehicle(id) {
             return true;
           });
         }
+        /* ---------- usable battery capacity ----------
+           Gross and usable are entered in one place and only the usable figure is
+           kept. 95% is a middle-of-the-road guess - real ratios run from about
+           90% (e-NV200) to 95% (BMW i4) - which is why the derived box is
+           editable rather than read-only: anyone who knows their real figure, or
+           an OBD2 reading, corrects it once and never sees the guess again. */
+        var CAP_GROSS_FACTOR = 0.95;
+
+        function capMode() {
+          var n = $("vfCapNetMode");
+          return n && n.checked ? "net" : "gross";
+        }
+
+        /** Re-derive the usable box from the gross one, and explain. */
+        function capDerive() {
+          var g = $("vfGross"),
+            u = $("vfUsable"),
+            hint = $("vfCapHint");
+          if (!g || !u) return;
+          var gross = num(g.value);
+          if (capMode() === "gross" && gross > 0) {
+            u.value = (gross * CAP_GROSS_FACTOR).toFixed(2);
+          }
+          if (!hint) return;
+          var usable = num(u.value);
+          if (capMode() === "net") {
+            hint.textContent = usable > 0 ? TXT("set.capHintNet", { n: usable }) : "";
+            return;
+          }
+          hint.textContent =
+            usable > 0
+              ? TXT("set.capHintGross", { n: usable })
+              : TXT("set.capHintNone");
+        }
+
+        /** Store only the usable figure; the mode is deliberately not kept. */
+        function capRead() {
+          var u = $("vfUsable");
+          if (!u || u.value === "") return null;
+          var n = num(u.value);
+          /* Negative or absurd values are dropped rather than stored. A capacity
+             is not a hard limit, so there is no database constraint to lean on;
+             the editor is the only place it can be entered. */
+          if (!(n > 0) || n > 500) return null;
+          return Math.round(n * 100) / 100;
+        }
+
+        /**
+ * The consumption tiles.
+ *
+ * Two independent measurements, and they are not interchangeable:
+ *
+ *   from the battery     SoC difference between consecutive charges. Immune to
+ *                        how often you charge, because it measures the pack.
+ *   from charging        Charged kWh over the odometer delta. Needs the vehicle
+ *                        to have no initial odometer set before every charge
+ *                        has a distance behind it.
+ *
+ * The battery figure wins where it exists. Where both exist and disagree by
+ * more than DIVERGE_PCT, BOTH are shown: a gap that size usually means a
+ * charge was missed or a reading is wrong, and that is worth seeing rather
+ * than resolving silently in favour of one method.
+ *
+ * Cost per 100 km uses the charging method only. Money cannot be read off a
+ * battery percentage, and attributing a charge's cost to a drive the battery
+ * method measured would be inventing a link. It is on the leg basis rather than
+ * the raw total, because the newest charge's money belongs to kilometres that
+ * have not been driven yet - exactly the error that made the kWh figure wrong.
+ *
+ * @param {Array} sel  sessions for this vehicle
+ * @param {Object} v   the vehicle
+ */
+        function renderConsumption(sel, v) {
+          var DIVERGE_PCT = 0.15;
+          var eff = $("sEff"),
+            effNote = $("sEffNote"),
+            cost100 = $("sCost100"),
+            costNote = $("sCost100Note");
+          var legs = legStats(sel, v.initialOdometer);
+          var soc = socLegStats(sel, v.capacity);
+          var byCharge = legs.km > 0 ? (legs.kwh / legs.km) * 100 : null;
+          var bySoc = soc.km > 0 ? (soc.kwh / soc.km) * 100 : null;
+
+          var main = bySoc !== null ? bySoc : byCharge;
+          if (eff) eff.textContent = main === null ? "—" : main.toFixed(1);
+
+          if (effNote) {
+            var parts = [];
+            if (bySoc !== null)
+              parts.push(TXT("tile.fromBattery", { n: soc.legs }));
+            if (byCharge !== null) {
+              parts.push(
+                TXT("tile.fromCharging", {
+                  n: legs.legs,
+                  v: byCharge.toFixed(1),
+                }),
+              );
+            }
+            /* Divergence is worth a word of its own: it is usually a data
+               problem, and a data problem the user can fix. */
+            var apart =
+              bySoc !== null &&
+              byCharge !== null &&
+              Math.abs(bySoc - byCharge) / Math.max(bySoc, byCharge) > DIVERGE_PCT;
+            if (apart) parts.push(TXT("tile.disagree"));
+            if (!parts.length && legs.unattributed > 0)
+              parts.push(
+                TXT("tile.noLegs", { n: Math.round(legs.unattributed) }),
+              );
+            effNote.textContent = parts.join(" · ");
+          }
+
+          if (cost100) {
+            cost100.textContent =
+              legs.km > 0 ? fmtMoney((legs.cost / legs.km) * 100) : "—";
+          }
+          if (costNote) {
+            costNote.textContent =
+              legs.km > 0
+                ? TXT("tile.costLegs", { n: legs.legs })
+                : "";
+          }
+        }
+
         function openVeh(id) {
           var v = vehById(id);
           if (!v) return;
@@ -9554,6 +9860,16 @@ function detachVehicle(id) {
           lastFocus = document.activeElement;
           $("vfName").value = v.name || "";
           $("vfOdo").value = soc0(v.initialOdometer);
+          /* Opened in gross mode with the gross box blank, because only the
+             usable figure was ever stored and inventing a gross figure for it
+             would put a number in the user's hand that they did not type. The
+             usable box shows what is actually stored; typing a gross figure
+             overwrites it. */
+          $("vfGross").value = "";
+          $("vfUsable").value = isNum(v.capacity) ? String(v.capacity) : "";
+          var gm = $("vfCapGrossMode");
+          if (gm) gm.checked = true;
+          capDerive();
           $("vehSheet").classList.add("on");
           lockBackground(true);
           $("vfName").focus();
@@ -9581,6 +9897,7 @@ function detachVehicle(id) {
           v.name = n;
           v.initialOdometer =
             $("vfOdo").value === "" ? 0 : Math.max(0, num($("vfOdo").value));
+          v.capacity = capRead();
           /* Renaming the placeholder makes it real. Without this, syncPull still
              treats the row as a guess and discards it on the next pull, which is
              how renaming the default vehicle appeared to work for a moment and
@@ -10177,6 +10494,7 @@ throw 0;
                     name: TXT("veh.default"),
                     icon: "🚗",
                     initialOdometer: 0,
+                    capacity: null,
                   },
                 ];
               sessions = d.sessions;
@@ -10685,6 +11003,12 @@ $("eDelete").addEventListener("click", function () {
         });
         $("logoutBtn").addEventListener("click", doLogout);
         $("vehForm").addEventListener("submit", saveVeh);
+          /* The gross box is the only input that changes the usable one, and the
+             mode decides whether it is allowed to. Wired here rather than in
+             openVeh so it is live while the sheet is open. */
+          $("vfGross").addEventListener("input", capDerive);
+          $("vfCapGrossMode").addEventListener("change", capDerive);
+          $("vfCapNetMode").addEventListener("change", capDerive);
         $("vfCancel").addEventListener("click", closeVeh);
         $("vehSheet").addEventListener("click", function (e) {
           if (e.target === this) closeVeh();
