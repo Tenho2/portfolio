@@ -48,6 +48,12 @@
        load — and "start over", which promises everything is still recoverable,
        unrecoverably emptied the whole favourites list. */
     bf: pre + "binFavs",
+      /* The private address book behind the payer picker: names the user has
+         saved so they can be offered when splitting a charge. Per account for
+         the same reason as every other key, and the one piece of local state
+         that must never be readable by another member - it is a list of
+         people, not data about a car. */
+      fr: pre + "friends",
       /* usernames of people we invited, keyed by vehicle and user id. The share
          table only stores ids, so this is what lets the owner recognise "Anna"
          instead of a bare uuid. */

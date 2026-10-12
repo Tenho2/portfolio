@@ -1,0 +1,395 @@
+/*
+ * Payer splits.
+ *
+ * The rules, and why each is a rule rather than a preference.
+ *
+ * A charge with NO payers is not the same as a charge one person paid for
+ * alone. The first is "nobody has said"; the second is a fact worth relying on.
+ * Collapsing them would put a stranger's name against your money the moment
+ * you split anything, so the chart keeps them apart and so does the model.
+ *
+ * The names are copied into the payer rows rather than referenced from the
+ * friends table. That is a privacy decision: anybody who can see a session can
+ * see its split, so a reference id would let every member of a car enumerate
+ * everybody else's address book. It also keeps history honest - renaming a
+ * friend must not rewrite an old charge.
+ *
+ * The shares are fractions, not percentages, so 0.5 means half and the column
+ * has no scale to disagree with itself about. The database insists they total
+ * exactly 1; the app is marginally more forgiving so that rounding is not
+ * reported as an error the user cannot act on.
+ *
+ * The form asks for CURRENCY, because that is what a receipt says. The
+ * percentage is derived and shown. A second payer starts on an even split,
+ * which is the common case by a long way.
+ *
+ *   node tools/test-session-payers.mjs
+ */
+import { readFileSync } from "node:fs";
+import { appSource, fnSource } from "./app-source.mjs";
+
+const app = appSource();
+const sql = readFileSync("supabase/13-session-payers.sql", "utf8");
+const css = readFileSync("app/app.css", "utf8");
+const html = readFileSync("ev-tracker.html", "utf8");
+const storage = readFileSync("app/storage.js", "utf8");
+
+let pass = 0;
+const failures = [];
+function ok(label, condition) {
+  if (condition) pass++;
+  else failures.push(label);
+}
+function is(label, actual, expected) {
+  if (Object.is(actual, expected)) pass++;
+  else failures.push(`${label}\n      expected ${expected}, got ${actual}`);
+}
+function near(label, actual, expected, tol) {
+  ok(`${label} (${actual} vs ${expected})`, Math.abs(actual - expected) <= (tol || 0.000001));
+}
+function group(name, fn) {
+  const before = failures.length;
+  fn();
+  console.log(`${failures.length - before ? "FAIL" : "ok  "}  ${name}`);
+}
+
+const num = new Function(`${fnSource("num")}; return num;`)();
+/* The tolerance the app and the database agree on, lifted from source so the
+   test cannot quietly become more forgiving than the app it is testing. */
+const SHARE_EPS = Number(
+  /var SHARE_EPS = ([\d.e-]+)/.exec(app)[1],
+);
+const normPayer = new Function(
+  `${fnSource("num")}${fnSource("normPayer")}; return normPayer;`,
+)();
+const payerListOf = new Function(
+  `${fnSource("num")}${fnSource("normPayer")}${fnSource("payerListOf")}; return payerListOf;`,
+)();
+const checkSplit = new Function(
+  `var SHARE_EPS = ${SHARE_EPS};` +
+    `${fnSource("num")}${fnSource("normPayer")}${fnSource("payerListOf")}${fnSource("checkSplit")}; return checkSplit;`,
+)();
+const costOf = new Function(
+  `${fnSource("num")}${fnSource("isNum")}${fnSource("hasCost")}${fnSource("costOf")}; return costOf;`,
+)();
+const payerTotals = new Function(
+  `var price = 0.2;` +
+    `${fnSource("num")}${fnSource("isNum")}${fnSource("hasCost")}${fnSource("costOf")}` +
+    `${fnSource("normPayer")}${fnSource("payerListOf")}${fnSource("payerTotals")}; return payerTotals;`,
+)();
+
+/* ---------- normalisation ---------- */
+
+group("a payer row is cleaned or refused", () => {
+  is("a normal row survives", normPayer({ name: "Anna", share: 0.5 }).share, 0.5);
+  is("the name is trimmed", normPayer({ name: "  Anna  ", share: 0.5 }).name, "Anna");
+  is("a blank name is refused", normPayer({ name: "   ", share: 1 }), null);
+  is("a missing name is refused", normPayer({ share: 1 }), null);
+  is("a zero share is refused", normPayer({ name: "A", share: 0 }), null);
+  is("a negative share is refused", normPayer({ name: "A", share: -1 }), null);
+  is("nonsense is refused", normPayer("Anna"), null);
+  is("null is refused", normPayer(null), null);
+  /* Division rounding cannot produce 1.0000000000000002, and the database
+     rejects anything above 1. */
+  is("a share above one is capped", normPayer({ name: "A", share: 1.4 }).share, 1);
+});
+
+group("a session with no payers has an empty list, not an error", () => {
+  is("absent", payerListOf({}).length, 0);
+  is("not an array", payerListOf({ payers: "Anna" }).length, 0);
+  is("empty", payerListOf({ payers: [] }).length, 0);
+  is("all rows unusable", payerListOf({ payers: [{ name: "" }, 7] }).length, 0);
+  is("two of three usable", payerListOf({ payers: [{ name: "A", share: 1 }, null, { name: "B", share: 1 }] }).length, 2);
+});
+
+/* ---------- the total must be one ---------- */
+
+group("a split is accepted only when it adds up", () => {
+  ok("an even split", checkSplit([{ name: "A", share: 0.5 }, { name: "B", share: 0.5 }]).ok);
+  ok("an uneven split", checkSplit([{ name: "A", share: 0.3 }, { name: "B", share: 0.7 }]).ok);
+  ok("three ways", checkSplit([{ name: "A", share: 1 / 3 }, { name: "B", share: 1 / 3 }, { name: "C", share: 1 / 3 }]).ok);
+});
+
+group("a split that does not add up says so, and says how far off", () => {
+  const short = checkSplit([{ name: "A", share: 0.4 }, { name: "B", share: 0.4 }]);
+  ok("too little is refused", short.ok === false);
+  is("and is called a total problem", short.why, "total");
+  near("and reports the actual figure", short.total, 0.8, 0.0001);
+  const over = checkSplit([{ name: "A", share: 0.8 }, { name: "B", share: 0.8 }]);
+  ok("too much is refused", over.ok === false);
+  near("also reporting the figure", over.total, 1.6, 0.0001);
+});
+
+group("rounding is not treated as an error", () => {
+  /* Three thirds is 0.9999999999999999 in binary floating point. Refusing that
+     would be refusing a perfectly good three-way split. */
+  const third = 1 / 3;
+  ok("three thirds is accepted", checkSplit([
+    { name: "A", share: third },
+    { name: "B", share: third },
+    { name: "C", share: third },
+  ]).ok);
+  near("it really does total a hair under 1", third * 3, 1, 0.0000001);
+});
+
+group("one payer at the whole share is a real answer", () => {
+  ok("accepted", checkSplit([{ name: "Anna", share: 1 }]).ok);
+  /* And that is different from nobody being recorded at all. */
+  is("which is an empty list", payerListOf({}).length, 0);
+});
+
+group("no payers at all is not a broken split", () => {
+  /* The form allows it: an old charge has none, and refusing it would block
+     editing a row that is perfectly fine. */
+  ok("an empty split is accepted", checkSplit([]).ok);
+  is("and totals zero", checkSplit([]).total, 0);
+});
+
+/* ---------- the totals behind the chart ---------- */
+
+group("each payer is credited their share of each charge", () => {
+  const list = [{ cost: 100, energy: 50, payers: [{ name: "A", share: 0.5 }, { name: "B", share: 0.5 }] }];
+  const t = payerTotals(list);
+  is("two payers", t.rows.length, 2);
+  near("the first half", t.rows[0].cost, 50);
+  is("nothing unattributed", t.unattributed, 0);
+});
+
+group("shares accumulate across charges", () => {
+  const list = [
+    { cost: 100, energy: 50, payers: [{ name: "A", share: 0.5 }, { name: "B", share: 0.5 }] },
+    { cost: 40, energy: 20, payers: [{ name: "B", share: 1 }] },
+  ];
+  const t = payerTotals(list);
+  is("still two payers", t.rows.length, 2);
+  /* 50 from the first charge, plus the whole 40. Sorted by what they paid. */
+  is("B is first", t.rows[0].name, "B");
+  near("B's total", t.rows[0].cost, 90);
+  near("A's total", t.rows[1].cost, 50);
+  is("B appears twice", t.rows[0].sessions, 2);
+});
+
+group("unattributed charges are kept out of the pie", () => {
+  /* The point of the whole separation: a charge nobody has claimed is an
+     absence of information, not a claim about a person. */
+  const t = payerTotals([
+    { cost: 100, energy: 50, payers: [{ name: "A", share: 1 }] },
+    { cost: 30, energy: 15 },
+    { cost: 20, energy: 10, payers: [] },
+  ]);
+  is("one named payer", t.rows.length, 1);
+  near("all of their spending", t.rows[0].cost, 100);
+  near("the unclaimed money is counted separately", t.unattributed, 50);
+  is("and how many charges it came from", t.unattributedCount, 2);
+  near("and their energy", t.unattributedKwh, 25);
+});
+
+group("a charge with no cost still credits energy", () => {
+  /* costOf() falls back to energy x price, so a charge logged without a total
+     is still attributable - and dropping it would silently lose the kWh. */
+  const t = payerTotals([{ cost: null, energy: 40, price: 0.2, payers: [{ name: "A", share: 1 }] }]);
+  is("still one payer", t.rows.length, 1);
+  near("with their energy", t.rows[0].kwh, 40);
+});
+
+group("results are ordered so the largest share is first", () => {
+  const t = payerTotals([
+    { cost: 10, energy: 5, payers: [{ name: "Small", share: 1 }] },
+    { cost: 500, energy: 250, payers: [{ name: "Big", share: 1 }] },
+  ]);
+  is("largest first", t.rows[0].name, "Big");
+});
+
+/* ---------- the privacy decision ---------- */
+
+group("payer rows carry a copied name, never a reference to an address book", () => {
+  /* If this ever comes back, every member of a car can enumerate everybody
+     else's saved names by reading the splits they are already entitled to
+     see. That is the whole argument for the column being text. */
+  ok("no foreign key to friends", !/references\s+public\.friends/i.test(sql));
+  ok("the name is stored on the row itself", /name\s+text not null/.test(sql));
+  ok("an account link is optional and nulled on delete", /account_id uuid references auth\.users\(id\) on delete set null/.test(sql));
+  ok("friends is owner-only in RLS", /user_id = auth\.uid\(\)/.test(sql));
+});
+
+group("friends never leaks through a vehicle member", () => {
+  /* The policy for friends must be exactly the owner. A member-of-vehicle
+     escape would undo the copying above. */
+  const policy = /create policy "friends are own rows"[\s\S]{0,300}?;/i.exec(sql);
+  ok("the policy exists", !!policy);
+  ok("it reads only user_id = auth.uid()", /using\s*\(\s*user_id = auth\.uid\(\)\s*\)/.test(policy[0]));
+  ok("and grants nothing to vehicle members", !/can_access_vehicle/.test(policy[0]));
+});
+
+/* ---------- the database refuses a split that does not add up ---------- */
+
+group("the shares are checked by the database, not just the app", () => {
+  /* The app is the first writer, not the only one. A charge whose shares add to
+     1.3 has to be impossible rather than unlikely. */
+  ok("there is a trigger", /create constraint trigger session_payers_total/.test(sql));
+  ok("it is deferred", /deferrable initially deferred/.test(sql));
+  ok("it sums the session's shares", /sum\(share\)/.test(sql));
+  ok("and refuses anything but 1", /abs\(total - 1\)/.test(sql));
+  /* Deferred, because the client sends one row at a time: the first row of a
+     two-person split is legitimately 0.5 on its own. */
+  ok("a delete cannot trip it", /tg_op = 'DELETE'/.test(sql));
+});
+
+group("a payer may not be someone with no access to the car", () => {
+  /* Wait - they may. That is the feature. What must not happen is a stranger
+     being *added to the car* by writing a payer row. */
+  ok("the split policy mirrors the sessions policy", /can_access_vehicle\(s\.vehicle_id\)/.test(sql));
+  ok("and does not grant membership", !/create policy[\s\S]{0,400}?session_payers[\s\S]{0,400}?insert into public\.vehicle_shares/i.test(sql));
+});
+
+group("a split is replaced atomically, never merged", () => {
+  /* An upsert can only add or overwrite. Removing a person from a split would
+     leave their row behind, the shares would then total more than one, and the
+     deferred constraint would refuse every later attempt to fix it - with an
+     error about a total the interface can no longer show. */
+  ok("the function exists", /create or replace function public\.set_session_payers/.test(sql));
+  ok("it deletes the old split", /delete from public\.session_payers where session_id = p_session/.test(sql));
+  const body = /create or replace function public\.set_session_payers[\s\S]*?\$\$([\s\S]*?)\$\$/.exec(sql)[1];
+  const del = body.indexOf("delete from");
+  const ins = body.indexOf("insert into");
+  ok("the delete happens before the insert", del > -1 && ins > del);
+  /* And the app goes through it. */
+  const sync = fnSource("syncSessionPayers");
+  ok("the app calls the function", /rpc\("set_session_payers"/.test(sync));
+  ok("and does not upsert the table directly", !/from\("session_payers"\)\.upsert/.test(sync));
+  /* It must not be a way around the policies. */
+  ok("it checks access itself", /can_access_vehicle/.test(body));
+  ok("and refuses a stranger", /42501/.test(body));
+});
+
+group("clearing a split is a valid answer", () => {
+  const body = /create or replace function public\.set_session_payers[\s\S]*?\$\$([\s\S]*?)\$\$/.exec(sql)[1];
+  ok("an empty array is coalesced, not a null dereference", /coalesce\(p_payers, '\[\]'::jsonb\)/.test(body));
+  ok("and returns zero rather than failing", /return v_written/.test(body));
+});
+
+group("the split function validates what it is given", () => {
+  const body = /create or replace function public\.set_session_payers[\s\S]*?\$\$([\s\S]*?)\$\$/.exec(sql)[1];
+  ok("a blank name is refused", /v_name = ''/.test(body));
+  ok("a share outside 0..1 is refused", /v_share <= 0 or v_share > 1/.test(body));
+  ok("a missing session is refused", /no such session/.test(body));
+});
+
+group("deleting a charge takes its split with it", () => {
+  ok("the rows cascade", /references public\.sessions\(id\) on delete cascade/.test(sql));
+});
+
+/* ---------- the form ---------- */
+
+group("the picker asks for currency, not percentages", () => {
+  /* A receipt says euros. A percentage field makes the user do arithmetic to
+     express something they already know. */
+  const picker = app.slice(app.indexOf("function renderPayers"), app.indexOf("function renderBody"));
+  ok("the amount field is a number input", /type="number" class="payer-amt"/.test(picker));
+  ok("it takes two decimals", /step="0\.01"/.test(picker));
+  ok("a decimal keypad on a phone", /inputmode="decimal"/.test(picker));
+  /* No percentage input anywhere. */
+  ok("there is no percentage input", !/type="number"[^>]*payer-pct/.test(picker));
+});
+
+group("the percentage is shown, and derived", () => {
+  const picker = app.slice(app.indexOf("function renderPayers"), app.indexOf("function renderBody"));
+  ok("each row shows a percentage", /class="pct"/.test(picker));
+  ok("it is computed from the amounts", /Math\.round\(\(num\(p\.amount\) \/ total\) \* 100\)/.test(picker));
+  /* And editing an amount updates the percentages without re-rendering the
+     inputs, which would steal the caret mid-typing. */
+  ok("the live path does not re-render", /querySelectorAll\("\.pct"\)/.test(app.slice(app.indexOf('data-pn'), app.indexOf('data-pr"'))));
+});
+
+group("a second payer starts on an even split", () => {
+  const add = fnSource("addPayer");
+  ok("the split is even", /1 \/ \(payerDraft\.length \+ 1\)/.test(add));
+  ok("and the amounts are laid down against the charge cost", /cost \* share/.test(add));
+  ok("a new row is added", /payerDraft\.push/.test(add));
+});
+
+group("the picker defaults to the signed-in user at the whole charge", () => {
+  ok("there is a reset for a fresh charge", /function resetPayers/.test(app));
+  const r = fnSource("resetPayers");
+  ok("it starts from the signed-in name", /myPayerName\(\)/.test(r));
+  /* And it must not invent a name when nobody is signed in - a name on a
+     financial record is a claim, not a placeholder. */
+  ok("which is null when signed out", /if \(!authUser\) return null/.test(fnSource("myPayerName")));
+});
+
+group("a typed name that matches nobody is kept, not refused", () => {
+  /* The person who plugs your car in is often not someone you have shared it
+     with. Refusing unknown names would make the common case impossible. */
+  const r = fnSource("resolvePayerName");
+  ok("an existing friend is reused", /friendNamed/.test(r));
+  ok("a new name is added to the address book", /friends\.push/.test(r));
+  ok("and marked generic", /generic: true/.test(r));
+  ok("it is saved", /saveFriends\(\)/.test(r));
+  /* It goes on a row other members can read, so it has to be bounded. */
+  ok("a name is length-capped", /clean\.length > 60/.test(r));
+});
+
+group("the address book is per account", () => {
+  ok("it has its own key", /fr: pre \+ "friends"/.test(storage));
+  /* The cross-account leak class. showApp() is the only place the bucket moves,
+     and it is delimited by its own guard - so the reload has to happen inside
+     it, not merely somewhere in the file. Anchored on the guard rather than on
+     a function name, because loadShareNames appears in more than one place and
+     an earlier version of this assertion silently matched the wrong one. */
+  const switchStart = app.indexOf("who !== lastAccount");
+  const switchEnd = app.indexOf("lastAccount = who", switchStart);
+  ok("the account-switch block was found", switchStart > 0 && switchEnd > switchStart);
+  const block = app.slice(switchStart, switchEnd);
+  ok("the address book is reloaded there", /loadFriends\(\);/.test(block));
+  ok("alongside favourites", /loadFavs\(\);/.test(block));
+  ok("and location defaults", /loadLocDefaults\(\);/.test(block));
+  /* Exactly one call in the whole file, and it is that one. Anything else -
+     at boot, after a save - would either read the signed-out bucket or needlessly
+     reload. An earlier version of this assertion sliced "everything before
+     initAuth()" to mean "the boot sequence" and was wrong: showApp is earlier
+     in the file than the boot code. */
+  const calls = app.match(/^\s*loadFriends\(\);/gm) || [];
+  is("it is called exactly once", calls.length, 1);
+});
+
+/* ---------- the chart ---------- */
+
+group("the chart keeps unclaimed money visually distinct", () => {
+  ok("unclaimed charges are counted", /unattributed/.test(fnSource("payerTotals")));
+  const r = fnSource("renderPayerChart");
+  ok("and shown in the legend", /pay\.unattributed/.test(r));
+  /* A hatched swatch, not a colour. Giving an absent claim a colour would put
+     it in the same visual language as a person. */
+  ok("with a hatched swatch rather than a colour", /\.sw\.none/.test(css));
+  ok("and it is a pattern, not a fill", /repeating-linear-gradient/.test(css));
+});
+
+group("the chart is a stacked bar, not a pie", () => {
+  /* With five people a pie is unreadable at phone width, and bars compare
+     shares more accurately than angles do. */
+  ok("it is a bar", /class="bar"/.test(fnSource("renderPayerChart")));
+  ok("built from segments", /class="seg"/.test(fnSource("renderPayerChart")));
+  ok("with a role and a label", /role="img" aria-label/.test(fnSource("renderPayerChart")));
+});
+
+group("two people on one charge never share a colour", () => {
+  ok("the palette is indexed, not picked at random", /PAYER_HUES\[i % PAYER_HUES\.length\]/.test(fnSource("payerColour")));
+  ok("and it has enough entries to be worth having", (fnSource("payerColour").match(/\[/) || []).length >= 0);
+  const hues = /var PAYER_HUES = \[([^\]]*)\]/.exec(app);
+  ok("the palette is declared", !!hues);
+  is("with eight distinct hues", new Set(hues[1].split(",").map((s) => s.trim())).size, 8);
+});
+
+group("the chart appears only when it has something to say", () => {
+  ok("it is hidden with no splits", /if \(!t\.rows\.length\)[\s\S]{0,40}hidden = true/.test(fnSource("renderPayerChart")));
+  ok("and revealed when it does", /box\.hidden = false/.test(fnSource("renderPayerChart")));
+  ok("the container is hidden in the markup", /id="payerBoxChart" hidden/.test(html));
+});
+
+group("the log renders it", () => {
+  ok("renderBody draws the chart", /renderPayerChart\(list\)/.test(app));
+});
+
+console.log(`\n${pass} passed, ${failures.length} failed`);
+for (const f of failures) console.log(`  FAIL ${f}`);
+process.exit(failures.length ? 1 : 0);

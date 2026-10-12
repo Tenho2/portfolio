@@ -34,27 +34,40 @@ Everything committed is on GitHub. If the machine is shut down, nothing is lost.
 
 4. Removed `supabase/11-probe-logging.sql`.
 
-## Open questions — these need the user, not more code
+## Ground rules — read before touching git
 
-**1. Are the two test rows inconsistent?** The 14 km log now reports
-357.1 kWh/100km. No road car does that; a real EV is 15–25. The maths is
-verified correct, so one of the inputs is wrong. Most likely the two sessions'
-mileage readings or their charge energies do not describe the same real drives.
-**Do not "fix" this in the app** — the app is right and the data is the question.
+Set by the user on 2026-10-11:
 
-**2. What was in the bin that leaked?** The user saw "deleted data entries"
-without saying whether they were _favourites_ or _charge sessions_. Vehicles and
-sessions bins are reset correctly on an account switch, so the fix only covers
-favourites. If sessions were visible, there is a second bug that has not been
-found yet.
+- **Do not run `git push`.** Not ever, unless explicitly asked in that session.
+- **Do not run `git commit`** unless there is a long queue of tasks and work
+  genuinely needs committing partway through to keep it safe.
+- Normal workflow: leave the changes **in the working tree**, and hand over a
+  summary plus a suggested commit message. The user commits and pushes.
 
-**3. Does dark mode have more contrast failures?** `--surface-2: #1e40af` and
-`--surface-3: #3b82f6` are the _light_ theme's values, unchanged in the dark
-block — brighter in dark mode than the surface behind them. They are used in 24
-places. They were deliberately **not** repainted: the consequence could not be
-previewed, and guessing at a 24-site palette change is how other things break.
-Only the one station row that measurably failed was fixed. This needs eyes on a
-real device.
+This supersedes the usual "commit when a unit of work finishes" habit. A dirty
+working tree at the end of a session is the expected outcome, not an oversight.
+
+## Open questions
+
+**1. Are the two test rows inconsistent? — ANSWERED, closed.**
+The 357 kWh/100km figure came from test data: 50 kWh charged across only 14 km.
+The attribution is behaving as designed; real driving data will normalise it. No
+further action, and explicitly **do not** adjust the calculation to fit.
+
+**2. What was in the bin that leaked? — ANSWERED, closed.**
+A place name the user recognised as a **favourite**. That is precisely the
+`binned.favs` path the fix covers, so no second unfound bug is outstanding.
+Worth noting the leak was only ever reachable on _favourites_: vehicle and
+session bins were always reset correctly on an account switch.
+
+**3. Does dark mode have more contrast failures? — OPEN, user is checking.**
+`--surface-2: #1e40af` and `--surface-3: #3b82f6` are the _light_ theme's
+values, unchanged in the dark block — brighter in dark mode than the surface
+behind them. They are used in 24 places. They were deliberately **not** repainted:
+the consequence could not be previewed, and guessing at a 24-site palette change
+is how other things break. Only the one station row that measurably failed was
+fixed. The user is inspecting these on a physical device. **If they report a
+problem, fix the specific component — do not repaint the tokens wholesale.**
 
 ## Next task, green-lit: mobile-readable charge log
 

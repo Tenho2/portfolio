@@ -85,6 +85,10 @@
         var vehicles = [],
           sessions = [],
           favs = [],
+          /* The payer picker's address book. Per account like everything else,
+             and loaded in load() rather than at boot, because K does not point
+             at the signed-in bucket until useAccount() has run. */
+          friends = [],
           cur = 0,
           view = "dashboard",
           dirty = false,          price = 0.2,
@@ -484,8 +488,7 @@
             vehicles = [];
           }
           /* backwards compatibility: vehicles saved before the initial odometer
-               existed, and before usable capacity existed */
-          if (Array.isArray(vehicles))
+               existed, and before usable capacity existed */          if (Array.isArray(vehicles))
             for (var vi = 0; vi < vehicles.length; vi++) {
               if (vehicles[vi] && !isFinite(+vehicles[vi].initialOdometer))
                 vehicles[vi].initialOdometer = 0;
@@ -835,10 +838,15 @@ for (var a = 0; a < vi.length; a++) {
             socStart: soc(s.socStart),
             socEnd: soc(s.socEnd),
             /* Kept through every write, or emptying the bin would silently
-               un-delete a row that got re-saved while it sat there. */
-            deleted_at: s.deletedAt || null,
-          };
-        }
+un-delete a row that got re-saved while it sat there. */
+                deleted_at: s.deletedAt || null,
+              };
+            }
+            /* Payer splits are deliberately NOT a column here. They live in
+               session_payers, keyed by session id, because a split is several
+               rows and a JSON column would have to be rewritten in place - which
+               RLS would then refuse, since the policy checks the row's own
+               vehicle. They are synced separately by syncSessionPayers(). */
         /* snake_case -> camelCase */
 function rowVehicle(r) {
             /* userId is the owner, which is not necessarily the signed-in user
@@ -4192,6 +4200,11 @@ if (who !== lastAccount) {
               loadFavs();
               loadLocDefaults();
               loadShareNames();
+              /* The payer picker's address book, same reason and same treatment:
+                 not read at boot, because K still points at the signed-out
+                 bucket then, and carrying it across would offer the previous
+                 account's names to whoever signs in next. */
+              loadFriends();
 /* Sharing state is account-scoped too. Carrying it across left the
                  new account's role checks answering from the previous account's
                  rows, which is how a driver's add-session form was hidden. */
@@ -4948,6 +4961,512 @@ function say(msg) {
             }
           }
         }
+        /* ---------- payer splits ----------
+           Who paid for a charge, and in what proportion.
+
+           A split is stored as a share - a fraction of the charge, not a
+           percentage, so 0.5 means half and the column has no scale to
+           disagree with itself about.
+
+           A charge with NO payers is a distinct thing from a charge one person
+           paid for alone. The first is "nobody has said", the second is a fact
+           that can be relied on, and collapsing them would put a stranger's
+           name against your money the moment you split anything.
+
+           The names are copied out of the friends list rather than referenced
+           by id, and that is a privacy decision rather than a modelling
+           convenience: anybody who can see the session can see the split, so a
+           reference would let every member of a car enumerate everybody else's
+           address book. It also keeps history honest - renaming a friend must
+           not rewrite an old charge.
+        */
+
+        /* Share tolerances. The database demands exactly 1; the app has to be
+           more forgiving than that or rounding turns every split into an error
+           the user cannot act on. One part in a hundred thousand matches what
+           the constraint itself allows. */
+        var SHARE_EPS = 0.000001;
+
+        /** Normalise one payer row, or null if it is not usable. */
+        function normPayer(p) {
+          if (!p || typeof p !== "object") return null;
+          var name = String(p.name == null ? "" : p.name).trim();
+          if (!name) return null;
+          var share = num(p.share);
+          if (!(share > 0)) return null;
+          /* Capped at 1 so a round of division cannot produce 1.0000000000000002
+             and be rejected by the constraint on the way to the server. */
+          if (share > 1) share = 1;
+          return { name: name, share: share, accountId: p.accountId || null };
+        }
+
+        /** The payers of a session, cleaned. Never the caller's own array. */
+        function payerListOf(s) {
+          var out = [];
+          if (!s || !Array.isArray(s.payers)) return out;
+          for (var i = 0; i < s.payers.length; i++) {
+            var p = normPayer(s.payers[i]);
+            if (p) out.push(p);
+          }
+          return out;
+        }
+
+        /**
+         * Do these shares add up to one charge?
+         *
+         * Returns the reason rather than a bare boolean, because "you have two
+         * payers" and "those two add to 1.2" need different sentences and the
+         * user can only fix one of them by typing.
+         *
+         * @returns {{ok: boolean, why?: string, total?: number}}
+         */
+        function checkSplit(payers) {
+          var list = payerListOf({ payers: payers });
+          if (!list.length) return { ok: true, total: 0 };
+          var total = 0;
+          for (var i = 0; i < list.length; i++) total += list[i].share;
+          if (list.length === 1 && Math.abs(total - 1) <= SHARE_EPS) {
+            /* One payer at a full share is just that person paid. Allowed, and
+               stored, because it is a real answer rather than an omission. */
+            return { ok: true, total: total };
+          }
+          if (Math.abs(total - 1) > SHARE_EPS) {
+            return { ok: false, why: "total", total: total };
+          }
+          return { ok: true, total: total };
+        }
+
+        /**
+         * The signed-in user's own name, for the default payer.
+         *
+         * Returns null when nobody is signed in, because guessing would put a
+         * name on a financial record that the user never claimed. The form
+         * simply starts empty in that case.
+         */
+        function myPayerName() {
+          if (!authUser) return null;
+          var n = String(
+            authUser.user_metadata && authUser.user_metadata.username,
+          ).trim();
+          /* The email is the fallback because every account here was created
+             as <name>@evtracker.test, and the local part is the part the user
+             recognises. The domain is stripped so the log does not read
+             "anna@evtracker.test" on every row. */
+          if (!n && authUser.email) n = String(authUser.email).split("@")[0];
+          return n || null;
+        }
+
+        /* ---------- friends ----------
+           A private, per-account list of names for the payer picker. Generic
+           names - ones typed in rather than matched to somebody - are kept and
+           marked, rather than refused, because "the neighbour plugged in" is a
+           real thing to want to record.
+        */
+        function loadFriends() {
+          friends = [];
+          try {
+            var raw = JSON.parse(localStorage.getItem(K.fr) || "null");
+            if (!Array.isArray(raw)) return;
+            for (var i = 0; i < raw.length; i++) {
+              var f = raw[i];
+              if (!f) continue;
+              var name = String(f.name == null ? "" : f.name).trim();
+              if (!name) continue;
+              friends.push({ name: name, accountId: f.accountId || null, generic: !!f.generic });
+            }
+          } catch (e) {
+            friends = [];
+          }
+        }
+
+        function saveFriends() {
+          try {
+            localStorage.setItem(K.fr, JSON.stringify(friends));
+          } catch (e) {
+            /* The picker still works from the names on this session. */
+          }
+        }
+
+        /** Find a friend by name, ignoring case and surrounding space. */
+        function friendNamed(name) {
+          var want = String(name == null ? "" : name).trim().toLowerCase();
+          if (!want) return null;
+          for (var i = 0; i < friends.length; i++)
+            if (friends[i].name.toLowerCase() === want) return friends[i];
+          return null;
+        }
+
+        /**
+         * Resolve a typed name to a payer, adding it to the address book if it
+         * is new.
+         *
+         * A name that matches nothing is kept as a GENERIC payer rather than
+         * refused. The alternative - only allowing people who are members of the
+         * car - makes the common case impossible, because the person who plugs
+         * your car in is often not someone you have shared it with.
+         */
+        function resolvePayerName(name) {
+          var hit = friendNamed(name);
+          if (hit) return { name: hit.name, accountId: hit.accountId };
+          var clean = String(name == null ? "" : name).trim();
+          if (!clean) return null;
+          /* Capped, because it is about to be written into a row on a shared
+             car that other members can read. */
+          if (clean.length > 60) clean = clean.slice(0, 60);
+          friends.push({ name: clean, accountId: null, generic: true });
+          saveFriends();
+          return { name: clean, accountId: null };
+        }
+
+        /* ---------- the payer picker in the form ----------
+           One row per payer. The inputs are CURRENCY, not percentages, because
+           that is the thing the user actually knows from a receipt - "I paid 17
+           euros and Bo put in 11" - and a percentage field would make them do
+           arithmetic to express it. The percentage is derived and shown, because
+           that is the useful summary, not the input.
+
+           Adding a second payer defaults to an even split. That is the common
+           case by a long way, and starting the two fields at 50 each means the
+           user edits one number rather than working out the other.
+        */
+        var payerDraft = [];
+
+        function payerTotal() {
+          var t = 0;
+          for (var i = 0; i < payerDraft.length; i++) t += num(payerDraft[i].amount);
+          return t;
+        }
+
+        function renderPayers() {
+          var box = $("payerRows");
+          if (!box) return;
+          var html = "";
+          for (var i = 0; i < payerDraft.length; i++) {
+            var p = payerDraft[i];
+            var total = payerTotal();
+            var pct =
+              total > 0 ? Math.round((num(p.amount) / total) * 100) : null;
+            html +=
+              '<div class="payer-row">' +
+              '<input type="text" class="payer-name" data-pn="' +
+              i +
+              '" value="' +
+              esc(p.name) +
+              '" maxlength="60" aria-label="' +
+              TXT("as.payerName") +
+              '" list="payerNames" />' +
+              '<input type="number" class="payer-amt" data-pa="' +
+              i +
+              '" value="' +
+              (p.amount === "" ? "" : esc(String(p.amount))) +
+              '" min="0" step="0.01" inputmode="decimal" aria-label="' +
+              TXT("as.payerAmount") +
+              '" />' +
+              '<span class="pct" data-pp="' +
+              i +
+              '">' +
+              (pct === null ? "" : pct + "%") +
+              "</span>" +
+              (payerDraft.length > 1
+                ? '<button type="button" class="btn sm ghost" data-pr="' +
+                  i +
+                  '" aria-label="' +
+                  TXT("as.payerRemove", { v: esc(p.name) }) +
+                  '"><span aria-hidden="true">×</span></button>'
+                : "") +
+              "</div>";
+          }
+          box.innerHTML = html;
+          /* The datalist carries the saved names as suggestions, but typing a
+             name that is not on it is fine - that is the generic case, and it
+             gets added to the address book on save. */
+          var dl = $("payerNames");
+          if (dl) {
+            var opts = "";
+            for (var f = 0; f < friends.length; f++)
+              opts +=
+                '<option value="' +
+                esc(friends[f].name) +
+                '"></option>';
+            dl.innerHTML = opts;
+          }
+          syncPayerHint();
+        }
+
+        function syncPayerHint() {
+          var hint = $("payerHint");
+          if (!hint) return;
+          var check = checkSplit(
+            payerDraft.map(function (p) {
+              return { name: p.name, share: amountToShare(p.amount) };
+            }),
+          );
+          var total = payerTotal();
+          if (!payerDraft.length) {
+            hint.textContent = TXT("as.payerNone");
+            hint.setAttribute("data-state", "none");
+            return;
+          }
+          if (!check.ok) {
+            hint.textContent = TXT("as.payerBadTotal", { v: total.toFixed(2) });
+            hint.setAttribute("data-state", "bad");
+            return;
+          }
+          hint.textContent = payerDraft.length
+            ? TXT("as.payerTotal", { v: total.toFixed(2) })
+            : "";
+          hint.setAttribute("data-state", "ok");
+        }
+
+        /**
+         * A payer's amount as a fraction of what is entered so far.
+         *
+         * While the user is still typing, the amounts do not total the charge,
+         * so the split is relative to the total of the amounts entered. It is
+         * renormalised to 1 at save time, and only when the charge's own cost is
+         * known enough for that to mean something.
+         */
+        function amountToShare(amount) {
+          var total = payerTotal();
+          if (!(total > 0)) return 0;
+          var s = num(amount) / total;
+          return s > 1 ? 1 : s;
+        }
+
+        /** The draft as it will be stored, shares renormalised to 1. */
+        function payerDraftOut() {
+          var out = [];
+          var list = payerListOf({
+            payers: payerDraft.map(function (p) {
+              return { name: p.name, share: amountToShare(p.amount) };
+            }),
+          });
+          for (var i = 0; i < list.length; i++) out.push(list[i]);
+          return out;
+        }
+
+        function setPayerDraft(list) {
+          payerDraft = [];
+          var src = Array.isArray(list) ? list : [];
+          for (var i = 0; i < src.length; i++) {
+            var p = normPayer(src[i]);
+            if (p) payerDraft.push({ name: p.name, amount: "" });
+          }
+          renderPayers();
+        }
+
+        /** Start a fresh charge: the signed-in user owes the whole amount. */
+        function resetPayers() {
+          var me = myPayerName();
+          payerDraft = me ? [{ name: me, amount: "" }] : [];
+          renderPayers();
+        }
+
+        function addPayer() {
+          /* An even split between everybody, which is what the field starts at
+             when a second payer arrives. */
+          var share = payerDraft.length ? 1 / (payerDraft.length + 1) : 1;
+          payerDraft.push({ name: "", amount: "" });
+          /* Only one field can be derived at a time, so the shares are laid
+             down as amounts against the charge cost when it is known, and left
+             blank when it is not. */
+          var cost = num($("cost").value);
+          if (cost > 0) {
+            for (var i = 0; i < payerDraft.length - 1; i++)
+              if (payerDraft[i].amount === "")
+                payerDraft[i].amount = (cost * share).toFixed(2);
+            payerDraft[payerDraft.length - 1].amount = (cost * share).toFixed(2);
+          }
+          void share;
+          renderPayers();
+          var first = $("payerRows") && $("payerRows").querySelector(".payer-name");
+          if (first) first.focus();
+        }
+
+/* ---------- syncing the split ----------
+           The payers live in their own table, so they need their own write.
+           It is separate because a split is several rows sharing one session
+           id, and stuffing them into a JSON column on sessions would mean a
+           delete-and-rewrite that the row level security policy would then
+           refuse: the policy decides on the row's own vehicle, and a partial
+           rewrite of an existing row reads to it as an update of somebody
+           else's charge.
+
+           Order matters. The session row goes first, because session_payers
+           references it and an insert before the parent exists is a foreign key
+           violation - which the user would see as a charge that saved without
+           its split, silently, rather than as an error.
+
+           The shares must total exactly 1 by the time the transaction commits.
+           They are sent as one batch so that constraint is evaluated once at
+           the end, rather than refusing the first row of a two-person split.
+        */
+        function syncSessionPayers(s) {
+          var rows = payerListOf(s);
+          if (!rows.length) return Promise.resolve(false);
+          if (!syncOn() || !s) return Promise.resolve(false);
+          if (!syncOnline()) {
+            /* Left on the device with the charge. A split that survives a reload
+               and reaches the server on the next pull is far better than one
+               that is lost because the phone was in a tunnel. */
+            markDirty("sessions", s.id);
+            return Promise.resolve(false);
+          }
+          /* Through the RPC rather than a direct upsert. An upsert can only add
+             or overwrite: dropping a person from a split would leave their row
+             behind, the shares would then total more than one, and the
+             deferred constraint would refuse every subsequent attempt to fix
+             it - with an error about a total the interface can no longer show.
+             The function deletes and re-inserts in one transaction. */
+          var payload = rows.map(function (p) {
+            return { name: p.name, account_id: p.accountId, share: p.share };
+          });
+          syncQueue.pending++;
+          return timed(
+            authClient.rpc("set_session_payers", { p_session: s.id, p_payers: payload }),
+          )
+            .then(function (res) {
+              syncQueue.pending--;
+              var e = res && res.error;
+              if (e) {
+                /* A refusal here does NOT roll back the charge. The charge is
+                   real and the split is not, so the right thing is to keep the
+                   session, say so plainly, and leave the split to be re-sent. */
+                return failPush("sessions", s.id, "payer split", e);
+              }
+              clearStalled("sessions", s.id);
+              stampSuccess("push");
+              return true;
+            })
+            .catch(function (ce) {
+              syncQueue.pending--;
+              return failPush("sessions", s.id, "payer split", ce);
+            });
+        }
+
+        /** Read a vehicle's splits back. Used by the pie chart. */
+        /* ---------- the payer chart ----------
+           Computed from the local sessions, like every other total in the app
+           (the tiles, the month chart, the cost per 100 km all work this way).
+           An RPC that returns the same figures server-side would be a second
+           code path free to disagree with the first, for no gain: the data is
+           already here.
+
+           Two things are deliberately kept apart in the output:
+             - the split, for the people who have said who paid
+             - the unattributed total, for the charges nobody has claimed
+           Merging them would put "nobody" in the same pie slice as a named
+           person, which reads as though an absent row were an assertion about
+           a person. It is not one; it is an absence of information.
+        */
+        function payerTotals(list) {
+          var byName = {};
+          var order = [];
+          var unattributed = 0;
+          var unattributedCount = 0;
+          var unattributedKwh = 0;
+          for (var i = 0; i < list.length; i++) {
+            var s = list[i];
+            var payers = payerListOf(s);
+            var cost = costOf(s);
+            if (!payers.length) {
+              unattributed += cost;
+              unattributedKwh += num(s.energy);
+              unattributedCount++;
+              continue;
+            }
+            for (var j = 0; j < payers.length; j++) {
+              var p = payers[j];
+              if (!byName[p.name]) {
+                byName[p.name] = { name: p.name, cost: 0, kwh: 0, sessions: 0 };
+                order.push(p.name);
+              }
+              byName[p.name].cost += cost * p.share;
+              byName[p.name].kwh += num(s.energy) * p.share;
+              byName[p.name].sessions++;
+            }
+          }
+          var rows = order.map(function (n) {
+            return byName[n];
+          });
+          rows.sort(function (a, b) {
+            return b.cost - a.cost || (a.name < b.name ? -1 : 1);
+          });
+          return {
+            rows: rows,
+            unattributed: unattributed,
+            unattributedKwh: unattributedKwh,
+            unattributedCount: unattributedCount,
+          };
+        }
+
+        /* A small palette that survives both themes and stays distinguishable
+           for the most common colour-vision deficiencies. Chosen for hue
+           separation first; the index is used so two people on one charge never
+           get the same slice even if the list reorders. */
+        var PAYER_HUES = [160, 28, 262, 196, 344, 92, 220, 48];
+
+        function payerColour(i) {
+          return "hsl(" + PAYER_HUES[i % PAYER_HUES.length] + ",58%,46%)";
+        }
+
+        function renderPayerChart(list) {
+          var box = $("payerBoxChart");
+          if (!box) return;
+          var t = payerTotals(list);
+          if (!t.rows.length) {
+            box.hidden = true;
+            return;
+          }
+          var total = 0;
+          for (var i = 0; i < t.rows.length; i++) total += t.rows[i].cost;
+          var legend = "";
+          var segs = "";
+          for (var j = 0; j < t.rows.length; j++) {
+            var r = t.rows[j];
+            var pct = total > 0 ? (r.cost / total) * 100 : 0;
+            legend +=
+              '<li><span class="sw" style="background:' +
+              payerColour(j) +
+              '" aria-hidden="true"></span><span class="nm">' +
+              esc(r.name) +
+              '</span><span class="val">' +
+              fmtMoney(r.cost) +
+              " · " +
+              Math.round(pct) +
+              "% · " +
+              r.sessions +
+              "</span></li>";
+            segs +=
+              '<span class="seg" style="width:' +
+              pct.toFixed(3) +
+              "%;background:" +
+              payerColour(j) +
+              '" title="' +
+              esc(r.name + " " + fmtMoney(r.cost)) +
+              '"></span>';
+          }
+          if (t.unattributed > 0) {
+            legend +=
+              '<li class="muted"><span class="sw none" aria-hidden="true"></span>' +
+              '<span class="nm">' +
+              TXT("pay.unattributed", { n: t.unattributedCount }) +
+              '</span><span class="val">' +
+              fmtMoney(t.unattributed) +
+              "</span></li>";
+          }
+          box.hidden = false;
+          box.innerHTML =
+            '<div class="bar" role="img" aria-label="' +
+            TXT("pay.chartLabel", { v: veh() ? veh().name : "" }) +
+            '">' +
+            segs +
+            "</div>" +
+            "<ul>" +
+            legend +
+            "</ul>";
+        }
+
         function renderBody() {
           var v = veh();
 /* Through TXT(). These were hard-coded English, so the page heading for two
@@ -5054,10 +5573,11 @@ function say(msg) {
              picker's value on demand, and it keeps the user's last choice. */
           if (view === "view-data") {
             var list = sorted(ofVehicle(v.id));
-            $("logLead").textContent = list.length
-              ? TXT("log.for", { n: list.length, v: v.name })
-              : TXT("log.none", { v: v.name });
-            var tb = "";
+$("logLead").textContent = list.length
+            ? TXT("log.for", { n: list.length, v: v.name })
+            : TXT("log.none", { v: v.name });
+          renderPayerChart(list);
+          var tb = "";
             for (var j = 0; j < list.length; j++) {
               var s = list[j];
               var c = fmtMoney(costOf(s));
@@ -5070,34 +5590,59 @@ function say(msg) {
                 tags += '<span class="tag t-fav">' + TXT("tag.fav") + "</span>";
               if (!hasCost(s))
                 tags += '<span class="tag t-est">' + TXT("tag.est") + "</span>";
+              /* data-label is the column heading, from the SAME key the <th> uses, so the
+                   card view cannot drift from the table above it and a language
+                   switch relabels both at once. It carries no width and no
+                   styling on a wide screen; below the breakpoint the cell
+                   reveals it through ::before and lays out as a row of its own. */
               tb +=
-                "<tr><td>" +
+                '<tr><td data-label="' +
+                TXT("th.date") +
+                '">' +
                 esc(s.date) +
-                "</td><td>" +
+                '</td><td data-label="' +
+                TXT("th.time") +
+                '">' +
                 esc(fmtTime(s.time)) +
-                "</td><td>" +
+                '</td><td data-label="' +
+                TXT("th.dur") +
+                '">' +
                 esc(hoursToHM(s.hours)) +
                 "</td>" +
-                "<td>" +
+                '<td data-label="' +
+                TXT("th.loc") +
+                '">' +
                 esc(s.location) +
                 /* On a shared car, who wrote the row. Empty on a car with one
                    member, where it would be "by you" on every single line. */
                 authorOf(s, v) +
-                "</td><td>" +
+                '</td><td data-label="' +
+                TXT("th.energy") +
+                '">' +
                 num(s.energy).toFixed(2) +
                 " kWh" +
                 fmtSoc(s) +
-                "</td><td>" +
+                '</td><td data-label="' +
+                TXT("th.speed") +
+                '">' +
                 fmtKw(chargeSpeed(s)) +
                 "</td>" +
-                "<td>" +
+                '<td data-label="' +
+                TXT("th.mileage") +
+                '">' +
                 num(s.mileage).toFixed(1) +
-                " km</td>" +
-                "<td>" +
+                ' km</td>' +
+                '<td data-label="' +
+                TXT("th.cost") +
+                '">' +
                 c +
-                "</td><td>" +
+                '</td><td data-label="' +
+                TXT("th.tags") +
+                '">' +
                 tags +
-                '</td><td class="wrapc">' +
+                '</td><td data-label="' +
+                TXT("th.notes") +
+                '" class="wrapc">' +
                 esc(s.notes || "—") +
                 "</td>" +
                 /* The buttons are omitted rather than disabled: a viewer should
@@ -10068,6 +10613,11 @@ function detachVehicle(id) {
               }
             save();
             render();
+            /* The duration default belongs to the car it was computed from, so
+               switching cars has to recompute it. Without this the field kept
+               the previous car's average - on a second car with no history at
+               all, that meant offering it a figure it had never earned. */
+            defaultDuration();
             return;
           }
           if (t.hasAttribute("data-edit")) {
@@ -10280,7 +10830,13 @@ function detachVehicle(id) {
         function defaultDuration() {
           var el = $("duration");
           if (!el) return;
-          var d = durationDefault(sessions);
+          /* THIS VEHICLE's charges, not every charge on the device. It used to
+             pass the whole `sessions` array, so one car that had reached the
+             threshold supplied the default for every other car - including one
+             with no history at all, which then got a stranger's average
+             offered to it as its own. */
+          var mine = ofVehicle(veh() && veh().id);
+          var d = durationDefault(mine);
           /* NOT hoursToHM(h, true).
              durationDefault is minute-resolution by construction - avgDuration
              rounds to a whole minute - so asking for seconds appended ":00" to
@@ -10314,20 +10870,49 @@ function detachVehicle(id) {
         /* ---------- two-way price / total ---------- */
         var calcLock = false,
           costAuto = false,
-          priceAuto = false;
+          priceAuto = false,
+          /* The third of the triangle. Needed because "the energy field has a
+             number" is not the same question as "the energy field holds MY
+             number": after a bill has filled it in, typing a new total must
+             re-solve the energy rather than re-solve the price from a figure
+             it did not come from. */
+          energyAuto = false;
         function setPriceCents(c) {
           price = Math.min(99, Math.max(0, c)) / 100;
           if ($("ppkCents")) $("ppkCents").value = Math.round(price * 100);
           if ($("ppk")) $("ppk").value = price.toFixed(2);
           persist();
         }
+        /* Energy, cost and unit price are three views of one number: any two fix the
+           third. Which one gives way is decided by which field was typed last,
+           and by the auto flags left over from the previous edit.
+
+           Both edges that were missing are here:
+             energy + price -> cost      (the common case)
+             cost   + price -> energy    (someone who reads a bill, not a meter)
+
+           The second edge is why this no longer derives the price from the
+           cost. It used to: type a total and the unit price was silently
+           overwritten with cost/energy, so a correct 0.32 EUR/kWh became
+           whatever the two typed numbers happened to divide to - and with the
+           energy field still empty, which is the normal state when you have a
+           receipt, the cost was ignored outright. */
         function recalcFromCost() {
           if (calcLock) return;
           calcLock = true;
-          var e = num($("energy").value),
-            raw = $("cost").value;
+          var raw = $("cost").value,
+            e = num($("energy").value);
           costAuto = false;
-          if (raw !== "" && isNum(raw) && e > 0) {
+          if (raw !== "" && isNum(raw) && price > 0 && !(e > 0 && !energyAuto)) {
+            /* Cost and price are known, the energy is not: derive it. This is
+               the bill case. Deliberately not rounding to whole kWh - a bill
+               is a precise number and the field's own step is 0.01. */
+            $("energy").value = (+raw / price).toFixed(2);
+            energyAuto = true;
+            priceAuto = false;
+          } else if (raw !== "" && isNum(raw) && e > 0) {
+            /* Everything is present and the energy is the user's own, so the
+               price is the only thing left to solve for. */
             setPriceCents(Math.round((+raw / e) * 100));
             priceAuto = true;
           }
@@ -10351,6 +10936,10 @@ function detachVehicle(id) {
           if (calcLock) return;
           calcLock = true;
           var e = num($("energy").value);
+          /* Typing the energy by hand takes it back from whoever calculated it,
+             which is what stops a bill-derived figure from silently surviving
+             as if the user had confirmed it. */
+          energyAuto = false;
           if (costAuto) {
             $("cost").value = e > 0 ? (e * price).toFixed(2) : "";
           } else if (priceAuto) {
@@ -10391,7 +10980,8 @@ function detachVehicle(id) {
               e > 0
                 ? TXT("toast.priceHint", {
                     v: fmtCents(Math.round(price * 100)),
-                  })
+                  }) +
+                  (energyAuto ? TXT("toast.energyFromTotal") : "")
                 : TXT("toast.priceNeedE");
         }
         $("locGeo").addEventListener("click", function () {
@@ -10851,10 +11441,20 @@ $("syncBadge").addEventListener("click", function () {
             lat: isNum(locGeo.lat) ? locGeo.lat : null,
             lng: isNum(locGeo.lng) ? locGeo.lng : null,
             created: Date.now(),
+            /* Whatever the picker held. An empty array means nobody has been
+               recorded against this charge, which the log reports separately
+               from "one person paid for all of it". */
+            payers: payerDraftOut(),
           };
+          /* Names typed into the picker become address-book entries, so the
+             next split is two taps instead of two typings. Only names with an
+             amount are kept: an abandoned empty row is not somebody. */
+          for (var py = 0; py < s.payers.length; py++)
+            resolvePayerName(s.payers[py].name);
           sessions.push(s);
           save();
           syncSession(s);
+          syncSessionPayers(s);
           if (s.fav) {
             var matched = null;
             for (var fi = 0; fi < favs.length; fi++) {
@@ -10876,7 +11476,9 @@ $("syncBadge").addEventListener("click", function () {
           stampDefaults();
           costAuto = false;
           priceAuto = false;
+          energyAuto = false;
           defaultDuration();
+          resetPayers();
           syncCents();
           syncHints();
           locGeo = { lat: null, lng: null, label: "" };
@@ -10907,7 +11509,45 @@ $("syncBadge").addEventListener("click", function () {
             $("favName").focus();
           }
         });
-        $("fFind").addEventListener("click", geocode);
+        $("payerAdd").addEventListener("click", addPayer);
+          /* Delegated, because the rows are re-rendered wholesale on every
+             keystroke and a per-row listener would have to be re-attached each
+             time. */
+          $("payerRows").addEventListener("input", function (ev) {
+            var t = ev.target;
+            var ni = t.getAttribute && t.getAttribute("data-pn");
+            var ai = t.getAttribute && t.getAttribute("data-pa");
+            if (ni !== null && ni !== undefined) {
+              payerDraft[+ni].name = t.value;
+              syncPayerHint();
+              return;
+            }
+            if (ai !== null && ai !== undefined) {
+              payerDraft[+ai].amount = t.value;
+              /* Only the percentages change here, so the inputs are not
+                 re-rendered - doing so would steal the caret mid-typing. */
+              var total = payerTotal();
+              var spans = $("payerRows").querySelectorAll(".pct");
+              for (var s = 0; s < spans.length; s++) {
+                var idx = +spans[s].getAttribute("data-pp");
+                spans[s].textContent =
+                  total > 0
+                    ? Math.round((num(payerDraft[idx].amount) / total) * 100) +
+                      "%"
+                    : "";
+              }
+              syncPayerHint();
+            }
+          });
+          $("payerRows").addEventListener("click", function (ev) {
+            var b = ev.target.closest
+              ? ev.target.closest("[data-pr]")
+              : null;
+            if (!b) return;
+            payerDraft.splice(+b.getAttribute("data-pr"), 1);
+            renderPayers();
+          });
+          $("fFind").addEventListener("click", geocode);
         $("fSave").addEventListener("click", saveFavourite);
         $("fClear").addEventListener("click", clearFavForm);
         $("fAddr").addEventListener("keydown", function (e) {

@@ -1053,6 +1053,97 @@
         min-width: 180px;
         color: var(--text-muted);
       }
+
+      /* ---------- the charge log as cards on a phone ----------
+         Eleven columns with nowrap and a 760px floor means a phone gets a
+         horizontal scroll with no clue which column it is reading, and the
+         headings scroll out of sight with it.
+
+         One DOM, two presentations. A second renderer for small screens was
+         rejected: sorting, selection and editing would then have to exist
+         twice, and the two would drift. Here the markup is unchanged and only
+         its display changes.
+
+         Scoped to #logTable deliberately. `table` is a bare element selector
+         used by the settings and import previews too, and turning those into
+         card stacks as well would be a change nobody asked for.
+         */
+      #logTable td::before {
+        content: attr(data-label);
+      }
+      @media (max-width: 700px) {
+        /* The scroll is the thing being replaced. Left in place it would still
+           scroll, because min-width is what made it scroll. */
+        #logTable {
+          min-width: 0;
+        }
+        /* Only below the breakpoint. Above it these stay display:table-cell and
+           the grid, the column widths and the sticky header all behave
+           exactly as before. */
+        #logTable,
+        #logTable tbody,
+        #logTable tr,
+        #logTable td {
+          display: block;
+        }
+        /* The column headings have no meaning once each cell carries its own
+           label, and leaving them would put a row of stray words above the
+           first card. */
+        #logTable thead {
+          display: none;
+        }
+        #logTable tr {
+          border: 1px solid var(--line);
+          border-radius: var(--r);
+          margin-bottom: 0.75rem;
+          padding: 0.35rem 0;
+          background: var(--surface);
+        }
+        #logTable tr:hover {
+          background: var(--surface);
+        }
+        #logTable td {
+          display: flex;
+          gap: 0.75rem;
+          align-items: baseline;
+          white-space: normal;
+          border-bottom: 1px solid var(--line);
+          padding: 0.45rem 0.75rem;
+        }
+        /* The label is the card's own typography: small, muted, fixed width so
+           the values line up in a column instead of forming a ragged edge. */
+        #logTable td::before {
+          content: attr(data-label);
+          flex: 0 0 34%;
+          max-width: 34%;
+          font-size: 0.72rem;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          color: var(--text-muted);
+        }
+        /* The value takes the rest and wraps, so a long location or a set of
+           notes cannot push the card sideways. */
+        #logTable td > * {
+          min-width: 0;
+          overflow-wrap: anywhere;
+        }
+        #logTable td.wrapc {
+          min-width: 0;
+        }
+        /* The last row of a card has no divider - it reads as a stray line
+           under the final value. */
+        #logTable td:last-child {
+          border-bottom: 0;
+        }
+        /* The action buttons have no heading and should sit at the card's
+           right, not under a 34% empty gutter. */
+        #logTable td:last-child::before {
+          content: "";
+        }
+        #logTable td:last-child {
+          justify-content: flex-end;
+        }
+      }
       .tag {
         display: inline-block;
         padding: 0.15rem 0.5rem;
@@ -1688,6 +1779,101 @@
         font-size: 0.88rem;
         cursor: pointer;
         margin: 0;
+      }
+      /* ---------- payer splits ---------- */
+      .payer-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.4rem;
+      }
+      .payer-row .payer-name {
+        flex: 2 1 0;
+        min-width: 0;
+      }
+      .payer-row .payer-amt {
+        flex: 1 1 0;
+        min-width: 0;
+      }
+      /* The percentage is derived, not typed, so it is set apart from the
+         inputs rather than looking like a third field to fill in. */
+      .payer-row .pct {
+        flex: 0 0 3.2rem;
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+      }
+      .payer-row .btn {
+        flex: none;
+      }
+      /* A split that does not add up is not an error message, it is a fact the
+         user is mid-way through producing. Amber rather than red: the save is
+         still allowed, because a half-finished split is a normal state. */
+      .hint[data-state="bad"] {
+        color: #b45309;
+      }
+      body.dark .hint[data-state="bad"] {
+        color: #fbbf24;
+      }
+      .payer-chart {
+        margin: 0.75rem 0 1rem;
+      }
+      /* A stacked bar rather than a pie: with five people a pie becomes
+         unreadable at phone width, and the bar compares shares - which is the
+         only thing anybody asks of it - more accurately than angles do. */
+      .payer-chart .bar {
+        display: flex;
+        height: 1.1rem;
+        border-radius: 6px;
+        overflow: hidden;
+        background: var(--surface-2);
+      }
+      .payer-chart .seg {
+        display: block;
+        height: 100%;
+      }
+      .payer-chart ul {
+        list-style: none;
+        margin: 0.6rem 0 0;
+        display: grid;
+        gap: 0.3rem;
+      }
+      .payer-chart li {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.88rem;
+      }
+      .payer-chart .sw {
+        width: 0.8rem;
+        height: 0.8rem;
+        border-radius: 3px;
+        flex: none;
+      }
+      /* A charge nobody has claimed is shown as a hatched swatch rather than
+         a colour, because it is not a person and must not be given one. */
+      .payer-chart .sw.none {
+        background: repeating-linear-gradient(
+          45deg,
+          var(--line),
+          var(--line) 3px,
+          transparent 3px,
+          transparent 6px
+        );
+      }
+      .payer-chart .nm {
+        flex: 1 1 auto;
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+      .payer-chart .val {
+        flex: none;
+        color: var(--text-muted);
+        font-variant-numeric: tabular-nums;
+      }
+      .payer-chart .muted {
+        color: var(--text-muted);
       }
       .lbl {
         display: block;

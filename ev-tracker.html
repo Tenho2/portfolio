@@ -506,6 +506,28 @@
                 <div class="hint" id="priceHint"></div>
               </div>
             </div>
+            <!-- Who paid. A charge with nobody recorded is not the same as a charge one
+                 person paid for alone, so this starts as the signed-in user at
+                 the whole amount and is only meaningful once it is touched. -->
+            <fieldset class="row" id="payerBox">
+              <legend data-i18n="grp.payers"></legend>
+              <div class="f">
+                <span class="lbl" data-i18n="as.paidBy"></span>
+                <div id="payerRows"></div>
+                <div class="addrow">
+                  <button type="button" class="btn sm ghost" id="payerAdd">
+                    <span aria-hidden="true">+</span>
+                    <span data-i18n="as.addPayer"></span>
+                  </button>
+                </div>
+                <div class="hint" id="payerHint"></div>
+              </div>
+            </fieldset>
+
+            <!-- Suggestions for the payer picker. Not a constraint: a name that is not on
+         this list is perfectly valid, and becomes a generic entry. -->
+            <datalist id="payerNames"></datalist>
+
             <!-- Start and end state of charge describe one journey, so they are grouped
              for screen readers even though the grid keeps them in one row. -->
             <fieldset class="row">
@@ -609,8 +631,15 @@
             <span data-i18n="nav.log"></span>
           </h2>
           <p class="lead" id="logLead"></p>
+          <!-- Who has paid what on this car. Hidden until at least one charge
+               carries a split, because an empty chart teaches nothing. -->
+          <div class="payer-chart" id="payerBoxChart" hidden></div>
           <div class="tbl-wrap">
-            <table>
+            <!-- id, so the card transformation below 700px can be scoped to
+                 this table. `table` is a bare element selector that the settings
+                 and import previews share, and restacking those as well would be
+                 a change nobody asked for. -->
+            <table id="logTable">
               <thead>
                 <tr>
                   <th scope="col" data-i18n="th.date"></th>

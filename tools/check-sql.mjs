@@ -195,6 +195,75 @@ for (const name of files) {
   }
   pass++;
 
+  /* ---- 7b. plpgsql written inside a `language sql` function ---- */
+  /* Added after this project shipped exactly that mistake: a totals function
+     declared `language sql` but written with `raise exception` and `return
+     query`. Nothing here caught it, and nothing in the client catches it
+     either - the function is only ever created when the migration runs, so it
+     would have surfaced as a migration failure against a live database. */
+  for (const m of raw.matchAll(
+    /create\s+(?:or\s+replace\s+)?function\s+([\w.]+)\s*\([\s\S]*?\)\s*returns[\s\S]*?language\s+(sql|plpgsql)\s*(?:stable|volatile|immutable)?\s*(?:security\s+\w+)?\s*(?:set\s+search_path[^\n]*)?\s*as\s*\$\$([\s\S]*?)\$\$/gi,
+  )) {
+    const [, fn, lang, body] = m;
+    /* Only the mismatch that matters: plpgsql written in a function declared
+       as sql. A plpgsql function is allowed anything. */
+    if (/plpgsql/i.test(lang)) continue;
+    const line = lineOf(raw, m.index);
+    /* Statement-level plpgsql. A pure SQL body may legitimately contain the
+       word "if" inside a CASE expression, so these are matched as whole
+       statements rather than as bare words. */
+    const offenders = [
+      [/^\s*raise\s+exception\b/im, "raise exception"],
+      [/^\s*return\s+query\b/im, "return query"],
+      [/^\s*declare\b/im, "declare"],
+      [/^\s*if\b[\s\S]{0,400}?^\s*end\s+if\s*;/im, "if ... end if"],
+      [/^\s*for\s+\w+\s+in\b[\s\S]{0,400}?^\s*end\s+loop\s*;/im, "for ... end loop"],
+    ].filter(([re]) => re.test(body));
+    for (const [, what] of offenders) {
+      fail(
+        `${name}: ${fn} is declared language ${lang} but contains ${what}`,
+        `line ${line}: ${what} is plpgsql only\n` +
+          "      change the declaration to `language plpgsql`, or rewrite the body in SQL",
+      );
+    }
+  }
+  pass++;
+
+  /* ---- 7c. an expression inside a table constraint ---- */
+  /* Added after this project shipped `unique (user_id, lower(name))`, which
+     Postgres rejects with 42601 "syntax error at or near (". A table-level
+     UNIQUE, PRIMARY KEY or FOREIGN KEY may only name columns; an expression has
+     to be a separate unique index.
+
+     The failure surfaces only when the migration is run against a live
+     database, which is the worst place to find out. */
+  for (const m of raw.matchAll(
+    /(^|[\s,])((?:unique|primary\s+key|foreign\s+key)(?:\s+\([^)]*\))?)\s*(?=,|\)|$)/gim,
+  )) {
+    const clause = m[2];
+    const clauseStart = m.index + m[1].length;
+    const line = lineOf(raw, clauseStart);
+    /* The column list, if the clause names one. */
+    const cols = /\(([^)]*)\)/.exec(clause);
+    if (!cols) continue;
+    /* Anything inside that is not a bare name is an expression. A call, a
+       cast, an arithmetic operator - all rejected. */
+    const bare = cols[1]
+      .split(",")
+      .map((s) => s.trim().replace(/^["'`]|["'`]$/g, ""))
+      .filter((s) => /^[A-Za-z_][A-Za-z0-9_ ]*$/.test(s));
+    if (bare.length !== cols[1].split(",").length) {
+      fail(
+        `${name}: a table constraint contains an expression`,
+        `line ${line}: ${clause.replace(/\s+/g, " ")}\n` +
+          "      UNIQUE, PRIMARY KEY and FOREIGN KEY may only name columns.\n" +
+          "      Postgres rejects this with 42601. Use a unique index instead:\n" +
+          "        create unique index if not exists t_idx on public.t (col, lower(other));",
+      );
+    }
+  }
+  pass++;
+
   /* ---- 8. every referenced migration file exists ---- */
   /* Any two-digit prefix, not just 0x: a header saying "run this after
      42-something.sql" is just as broken as a missing one. */
