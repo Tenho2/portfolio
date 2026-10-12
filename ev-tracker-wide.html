@@ -520,6 +520,16 @@
                     <span data-i18n="as.addPayer"></span>
                   </button>
                 </div>
+                <!-- A quick way to say "I did not pay this one". Removes the
+                     signed-in user from the split and gives the whole charge to
+                     whoever is left, without the user having to delete their own
+                     row and re-balance by hand. -->
+                <div class="chk" id="payerExcludeWrap" hidden>
+                  <input type="checkbox" id="payerExclude" /><label
+                    for="payerExclude"
+                    data-i18n="as.excludeMe"
+                  ></label>
+                </div>
                 <div class="hint" id="payerHint"></div>
               </div>
             </fieldset>
@@ -1387,6 +1397,29 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               />
             </div>
           </div>
+          <!-- Who paid, editable like the add form. A legacy charge with no
+               recorded split defaults to the signed-in user at the whole amount,
+               matching what the add form starts from. -->
+          <fieldset class="row" id="ePayerBox">
+            <legend data-i18n="grp.payers"></legend>
+            <div class="f">
+              <span class="lbl" data-i18n="as.paidBy"></span>
+              <div id="ePayerRows"></div>
+              <div class="addrow">
+                <button type="button" class="btn sm ghost" id="ePayerAdd">
+                  <span aria-hidden="true">+</span>
+                  <span data-i18n="as.addPayer"></span>
+                </button>
+              </div>
+              <div class="chk" id="ePayerExcludeWrap" hidden>
+                <input type="checkbox" id="ePayerExclude" /><label
+                  for="ePayerExclude"
+                  data-i18n="as.excludeMe"
+                ></label>
+              </div>
+              <div class="hint" id="ePayerHint"></div>
+            </div>
+          </fieldset>
           <fieldset class="row">
             <legend class="sr-only" data-i18n="grp.soc"></legend>
             <div class="f">

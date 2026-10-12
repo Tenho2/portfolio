@@ -31,9 +31,10 @@
  * tools/test-sw-bump.mjs asserts that every shell file was touched, and that the
  * version moved with it.
  *
- * Last bumped: 2026-10-12, for the payer splits and the breakdown sheet.
+ * Last bumped: 2026-10-12, for the payer picker in the edit sheet and the
+ * exclude-me toggle.
  */
-const VERSION = "v51";
+const VERSION = "v52";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [

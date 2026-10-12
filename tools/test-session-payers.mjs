@@ -606,6 +606,131 @@ group("adding a payer, end to end", () => {
   is("the newcomer is blank", noCost[1].amount, "");
 });
 
+/* ---------- the exclude-me quick toggle ---------- */
+
+group("the exclude-me toggle removes the signed-in user, then restores them", () => {
+  const make = (draft, me) => {
+    const src = `
+      var payerDraft = __draft;
+      var payerExcludeMe = false;
+      function myPayerName(){ return __me; }
+      function redistributeEvenly(){}
+      function renderPayers(){}
+      ${fnSource("toggleExcludeMe")}
+      return {
+        toggle: function(){ toggleExcludeMe(); return payerDraft.slice(); },
+        excluded: function(){ return payerExcludeMe; },
+      };
+    `;
+    return new Function("__draft", "__me", src)(draft, me);
+  };
+  const m = make(
+    [
+      { name: "Anna", amount: "", auto: true },
+      { name: "Bo", amount: "", auto: true },
+    ],
+    "Anna",
+  );
+  const excluded = m.toggle();
+  is("me is removed", excluded.length, 1);
+  is("and the other stays", excluded[0].name, "Bo");
+  ok("and the flag is set", m.excluded() === true);
+  const restored = m.toggle();
+  is("me is back", restored.length, 2);
+  is("and back at the front", restored[0].name, "Anna");
+  ok("and the flag is clear", m.excluded() === false);
+});
+
+group("the exclude-me toggle is wired and resets with a fresh charge", () => {
+  ok("the add form has the toggle", /id="payerExclude"/.test(html));
+  ok("the edit sheet has the toggle", /id="ePayerExclude"/.test(html));
+  ok("the add form listens to it", /addEventListener\("change", toggleExcludeMe\)/.test(app));
+  ok("the edit sheet listens to it", /addEventListener\("change", editToggleExcludeMe\)/.test(app));
+  /* A fresh charge (or a reset) must start with the signed-in user included,
+     never carry a stale exclusion over from the previous charge. */
+  ok("a fresh charge clears the flag", /payerExcludeMe = false/.test(fnSource("resetPayers")));
+  ok("removing the signed-in user by hand also sets the flag", /if \(wasMe\) payerExcludeMe = true/.test(fnSource("removePayer")));
+});
+
+/* ---------- the edit-sheet picker ---------- */
+
+group("the edit sheet defaults a legacy charge to the signed-in user", () => {
+  const load = fnSource("editLoadPayers");
+  ok("no split hands off to the reset", /editResetPayers\(\)/.test(load));
+  const reset = fnSource("editResetPayers");
+  ok("the reset starts from the signed-in name", /myPayerName\(\)/.test(reset));
+  ok("and clears the exclusion flag", /editPayerExcludeMe = false/.test(reset));
+});
+
+group("the edit sheet preloads an existing split with amounts", () => {
+  const make = (session, me) => {
+    const src = `
+      var editPayerDraft = [];
+      var editPayerExcludeMe = false;
+      var price = 0.2;
+      function myPayerName(){ return __me; }
+      function renderEditPayers(){}
+      ${fnSource("num")}
+      ${fnSource("isNum")}
+      ${fnSource("hasCost")}
+      ${fnSource("costOf")}
+      ${fnSource("normPayer")}
+      ${fnSource("payerListOf")}
+      ${fnSource("editLoadPayers")}
+      editLoadPayers(__session);
+      return { draft: editPayerDraft, excluded: editPayerExcludeMe };
+    `;
+    return new Function("__session", "__me", src)(session, me);
+  };
+
+  const loaded = make(
+    {
+      cost: 20,
+      payers: [
+        { name: "Anna", share: 0.5 },
+        { name: "Bo", share: 0.5 },
+      ],
+    },
+    "Anna",
+  );
+  is("two rows", loaded.draft.length, 2);
+  is("the order is kept", loaded.draft[0].name, "Anna");
+  near("Anna's amount", num(loaded.draft[0].amount), 10, 0.001);
+  near("Bo's amount", num(loaded.draft[1].amount), 10, 0.001);
+  ok("restored rows are settled, not auto", loaded.draft.every((r) => r.auto === false));
+  ok("and the signed-in user is not excluded", loaded.excluded === false);
+
+  /* A charge logged with energy but no explicit total still has a money value,
+     so the amounts must come from energy × price rather than stay blank. */
+  const energyOnly = make(
+    {
+      cost: null,
+      energy: 20,
+      payers: [{ name: "Anna", share: 1 }],
+    },
+    "Anna",
+  );
+  near("energy-only amount is still filled", num(energyOnly.draft[0].amount), 4, 0.001);
+
+  /* A split that does not name the signed-in user means they were excluded. */
+  const excluded = make(
+    {
+      cost: 20,
+      payers: [{ name: "Bo", share: 1 }],
+    },
+    "Anna",
+  );
+  ok("a missing signed-in user reads as excluded", excluded.excluded === true);
+  is("and the other payer is preloaded", excluded.draft[0].name, "Bo");
+});
+
+group("saving the edit sheet persists the split", () => {
+  const commit = fnSource("commitEdit");
+  ok("the split is written to the row", /s\.payers = editPayerDraftOut\(\)/.test(commit));
+  ok("and synced through the same RPC as the add form", /syncSessionPayers\(s\)/.test(commit));
+  ok("typed names still join the address book", /resolvePayerName\(s\.payers\[py\]\.name\)/.test(commit));
+});
+
 console.log(`\n${pass} passed, ${failures.length} failed`);
 for (const f of failures) console.log(`  FAIL ${f}`);
 process.exit(failures.length ? 1 : 0);

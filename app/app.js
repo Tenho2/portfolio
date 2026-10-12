@@ -5131,6 +5131,11 @@ function say(msg) {
            user edits one number rather than working out the other.
         */
         var payerDraft = [];
+        /* Whether the signed-in user has been taken out of the split. It is a
+           flag rather than "is the me row present", because the me row can also
+           be removed by its own × button, and the checkbox has to reflect both
+           ways of doing the same thing. */
+        var payerExcludeMe = false;
 
         function payerTotal() {
           var t = 0;
@@ -5236,6 +5241,13 @@ function say(msg) {
                 '"></option>';
             dl.innerHTML = opts;
           }
+          /* The exclude-me toggle follows the signed-in user's presence. It is
+             hidden entirely when signed out, because there is no "me" to
+             exclude. */
+          var exWrap = $("payerExcludeWrap");
+          if (exWrap) exWrap.hidden = !myPayerName();
+          var ex = $("payerExclude");
+          if (ex) ex.checked = payerExcludeMe;
           syncPayerHint();
         }
 
@@ -5309,6 +5321,29 @@ function say(msg) {
           /* `auto`, so the first person added later re-balances this one
              instead of leaving it stranded at the whole charge. */
           payerDraft = me ? [{ name: me, amount: "", auto: true }] : [];
+          payerExcludeMe = false;
+          redistributeEvenly();
+          renderPayers();
+        }
+
+        /**
+         * The "exclude me" quick toggle.
+         *
+         * One action where the user would otherwise delete their own row and
+         * re-balance by hand: it removes the signed-in user's row and lets the
+         * remaining rows take the whole charge, or puts the signed-in user back
+         * (at an auto share) when un-toggled.
+         */
+        function toggleExcludeMe() {
+          payerExcludeMe = !payerExcludeMe;
+          var me = myPayerName();
+          if (payerExcludeMe) {
+            /* Drop the signed-in user's row, wherever it is. */
+            for (var i = payerDraft.length - 1; i >= 0; i--)
+              if (payerDraft[i].name === me) payerDraft.splice(i, 1);
+          } else if (me) {
+            payerDraft.unshift({ name: me, amount: "", auto: true });
+          }
           redistributeEvenly();
           renderPayers();
         }
@@ -5339,13 +5374,234 @@ function say(msg) {
          * is reached by an unassigned charge - not by deleting the only name.
          */
         function removePayer(index) {
+          var me = myPayerName();
+          var wasMe =
+            !!payerDraft[index] && !!me && payerDraft[index].name === me;
           payerDraft.splice(index, 1);
+          /* Removing the signed-in user by hand is the same outcome as ticking
+             "exclude me", so the checkbox has to follow. */
+          if (wasMe) payerExcludeMe = true;
           if (!payerDraft.length) {
             resetPayers();
             return;
           }
           redistributeEvenly();
           renderPayers();
+        }
+
+        /* ---------- the edit-sheet payer picker ----------
+           The same picker as the add form, but against the edit sheet's own
+           draft and fields. The two drafts are separate on purpose: the add
+           form and the edit sheet can both be reached in one session, and one
+           shared array would let a half-built split in one bleed into the other.
+
+           The arithmetic is deliberately duplicated rather than shared. A
+           shared helper would move `redistributeEvenly`'s arithmetic out of
+           that function, and the source-reading tests pin it there.
+        */
+        var editPayerDraft = [];
+        var editPayerExcludeMe = false;
+
+        function editPayerTotal() {
+          var t = 0;
+          for (var i = 0; i < editPayerDraft.length; i++)
+            t += num(editPayerDraft[i].amount);
+          return t;
+        }
+
+        function editAmountToShare(amount) {
+          var total = editPayerTotal();
+          if (!(total > 0)) return 0;
+          var s = num(amount) / total;
+          return s > 1 ? 1 : s;
+        }
+
+        /** The edit draft as it will be stored, shares renormalised to 1. */
+        function editPayerDraftOut() {
+          var out = [];
+          var list = payerListOf({
+            payers: editPayerDraft.map(function (p) {
+              return { name: p.name, share: editAmountToShare(p.amount) };
+            }),
+          });
+          for (var i = 0; i < list.length; i++) out.push(list[i]);
+          return out;
+        }
+
+        function editRedistributeEvenly() {
+          var cost = num($("eCost").value);
+          var autos = [];
+          for (var i = 0; i < editPayerDraft.length; i++)
+            if (editPayerDraft[i].auto) autos.push(i);
+          if (!autos.length) return;
+          if (!(cost > 0)) {
+            for (var b = 0; b < autos.length; b++)
+              editPayerDraft[autos[b]].amount = "";
+            return;
+          }
+          var share = Math.round((cost / autos.length) * 100) / 100;
+          var running = 0;
+          for (var j = 0; j < autos.length; j++) {
+            var last = j === autos.length - 1;
+            var amount = last
+              ? Math.round((cost - running) * 100) / 100
+              : share;
+            editPayerDraft[autos[j]].amount = String(amount);
+            running += amount;
+          }
+        }
+
+        function editSyncPayerHint() {
+          var hint = $("ePayerHint");
+          if (!hint) return;
+          var check = checkSplit(
+            editPayerDraft.map(function (p) {
+              return { name: p.name, share: editAmountToShare(p.amount) };
+            }),
+          );
+          var total = editPayerTotal();
+          if (!editPayerDraft.length) {
+            hint.textContent = TXT("as.payerNone");
+            hint.setAttribute("data-state", "none");
+            return;
+          }
+          if (!check.ok) {
+            hint.textContent = TXT("as.payerBadTotal", {
+              v: total.toFixed(2),
+            });
+            hint.setAttribute("data-state", "bad");
+            return;
+          }
+          hint.textContent = editPayerDraft.length
+            ? TXT("as.payerTotal", { v: total.toFixed(2) })
+            : "";
+          hint.setAttribute("data-state", "ok");
+        }
+
+        function renderEditPayers() {
+          var box = $("ePayerRows");
+          if (!box) return;
+          var html = "";
+          for (var i = 0; i < editPayerDraft.length; i++) {
+            var p = editPayerDraft[i];
+            var total = editPayerTotal();
+            var pct =
+              total > 0 ? Math.round((num(p.amount) / total) * 100) : null;
+            html +=
+              '<div class="payer-row">' +
+              '<input type="text" class="payer-name" data-epn="' +
+              i +
+              '" value="' +
+              esc(p.name) +
+              '" maxlength="60" aria-label="' +
+              TXT("as.payerName") +
+              '" list="payerNames" />' +
+              '<input type="number" class="payer-amt" data-epa="' +
+              i +
+              '" value="' +
+              (p.amount === "" ? "" : esc(String(p.amount))) +
+              '" min="0" step="0.01" inputmode="decimal" aria-label="' +
+              TXT("as.payerAmount") +
+              '" />' +
+              '<span class="pct" data-epp="' +
+              i +
+              '">' +
+              (pct === null ? "" : pct + "%") +
+              "</span>" +
+              '<button type="button" class="btn sm ghost" data-epr="' +
+              i +
+              '" aria-label="' +
+              TXT("as.payerRemove", { v: esc(p.name) }) +
+              '"><span aria-hidden="true">×</span></button>' +
+              "</div>";
+          }
+          box.innerHTML = html;
+          var exWrap = $("ePayerExcludeWrap");
+          if (exWrap) exWrap.hidden = !myPayerName();
+          var ex = $("ePayerExclude");
+          if (ex) ex.checked = editPayerExcludeMe;
+          editSyncPayerHint();
+        }
+
+        /** Start the edit sheet's picker from the signed-in user at 100%. */
+        function editResetPayers() {
+          var me = myPayerName();
+          editPayerDraft = me ? [{ name: me, amount: "", auto: true }] : [];
+          editPayerExcludeMe = false;
+          editRedistributeEvenly();
+          renderEditPayers();
+        }
+
+        /**
+         * Load a session's split into the edit sheet, or default to the
+         * signed-in user when the charge has none (a legacy row nobody has
+         * attributed). Restored rows are settled (`auto: false`) so adding a
+         * new payer later does not quietly re-balance an old arrangement.
+         */
+        function editLoadPayers(s) {
+          var payers = payerListOf(s);
+          if (!payers.length) {
+            editResetPayers();
+            return;
+          }
+          var me = myPayerName();
+          /* costOf() rather than s.cost alone: a charge logged with energy but
+             no explicit total still has a money value (energy × price), and
+             blanking the amounts for it would silently clear the split when the
+             edit is saved. */
+          var cost = costOf(s);
+          editPayerDraft = [];
+          var hasMe = false;
+          for (var i = 0; i < payers.length; i++) {
+            var p = payers[i];
+            if (me && p.name === me) hasMe = true;
+            editPayerDraft.push({
+              name: p.name,
+              amount:
+                cost > 0 ? String(Math.round(p.share * cost * 100) / 100) : "",
+              auto: false,
+            });
+          }
+          editPayerExcludeMe = !!me && !hasMe;
+          renderEditPayers();
+        }
+
+        function editAddPayer() {
+          editPayerDraft.push({ name: "", amount: "", auto: true });
+          editRedistributeEvenly();
+          renderEditPayers();
+          var names =
+            $("ePayerRows") && $("ePayerRows").querySelectorAll(".payer-name");
+          if (names && names.length) names[names.length - 1].focus();
+        }
+
+        function editRemovePayer(index) {
+          var me = myPayerName();
+          var wasMe =
+            !!editPayerDraft[index] &&
+            !!me &&
+            editPayerDraft[index].name === me;
+          editPayerDraft.splice(index, 1);
+          if (wasMe) editPayerExcludeMe = true;
+          if (!editPayerDraft.length) {
+            editResetPayers();
+            return;
+          }
+          editRedistributeEvenly();
+          renderEditPayers();
+        }
+
+        function editToggleExcludeMe() {
+          var me = myPayerName();
+          editPayerExcludeMe = !editPayerExcludeMe;
+          if (editPayerExcludeMe) {
+            for (var i = editPayerDraft.length - 1; i >= 0; i--)
+              if (editPayerDraft[i].name === me) editPayerDraft.splice(i, 1);
+          } else if (me) {
+            editPayerDraft.unshift({ name: me, amount: "", auto: true });
+          }
+          editRedistributeEvenly();
+          renderEditPayers();
         }
 
 /* ---------- syncing the split ----------
@@ -8008,6 +8264,9 @@ vehiclesAdded = vehicles.length - before;
           $("eFast").checked = !!s.fast;
           $("eHome").checked = !!s.home;
           $("eFav").checked = !!s.fav;
+          /* Load the split after eCost, so a legacy charge pre-fills the
+             signed-in user's amount from the known cost. */
+          editLoadPayers(s);
           $("editSheet").classList.add("on");
           lockBackground(true);
           $("eDate").focus();
@@ -8062,9 +8321,16 @@ if (!$("editForm").reportValidity()) return;
           s.home = $("eHome").checked;
           s.fav = $("eFav").checked;
           s.vehicleId = v.id;
+          /* The split travels with the row exactly as on the add form: an empty
+             array means nobody recorded, which is different from one person at
+             the whole charge. */
+          s.payers = editPayerDraftOut();
           s.edited = Date.now();
+          for (var py = 0; py < s.payers.length; py++)
+            resolvePayerName(s.payers[py].name);
           save();
           syncSession(s);
+          syncSessionPayers(s);
           if (s.fav) {
             var matched = null;
             for (var fi = 0; fi < favs.length; fi++)
@@ -11975,6 +12241,7 @@ $("syncBadge").addEventListener("click", function () {
           }
         });
         $("payerAdd").addEventListener("click", addPayer);
+        $("payerExclude").addEventListener("change", toggleExcludeMe);
           /* The breakdown, and the window it is showing. */
           $("payerBreakdownBtn").addEventListener("click", openPayBreakdown);
           $("payRange").addEventListener("change", renderPayBreakdown);
@@ -12029,6 +12296,42 @@ $("syncBadge").addEventListener("click", function () {
               : null;
             if (!b) return;
             removePayer(+b.getAttribute("data-pr"));
+          });
+          /* The edit sheet's picker mirrors the add form's, on its own ids. */
+          $("ePayerAdd").addEventListener("click", editAddPayer);
+          $("ePayerExclude").addEventListener("change", editToggleExcludeMe);
+          $("ePayerRows").addEventListener("input", function (ev) {
+            var t = ev.target;
+            var ni = t.getAttribute && t.getAttribute("data-epn");
+            var ai = t.getAttribute && t.getAttribute("data-epa");
+            if (ni !== null && ni !== undefined) {
+              editPayerDraft[+ni].name = t.value;
+              editSyncPayerHint();
+              return;
+            }
+            if (ai !== null && ai !== undefined) {
+              editPayerDraft[+ai].amount = t.value;
+              editPayerDraft[+ai].auto = false;
+              var total = editPayerTotal();
+              var spans = $("ePayerRows").querySelectorAll(".pct");
+              for (var s = 0; s < spans.length; s++) {
+                var idx = +spans[s].getAttribute("data-epp");
+                spans[s].textContent =
+                  total > 0
+                    ? Math.round(
+                        (num(editPayerDraft[idx].amount) / total) * 100,
+                      ) + "%"
+                    : "";
+              }
+              editSyncPayerHint();
+            }
+          });
+          $("ePayerRows").addEventListener("click", function (ev) {
+            var b = ev.target.closest
+              ? ev.target.closest("[data-epr]")
+              : null;
+            if (!b) return;
+            editRemovePayer(+b.getAttribute("data-epr"));
           });
           $("fFind").addEventListener("click", geocode);
         $("fSave").addEventListener("click", saveFavourite);
