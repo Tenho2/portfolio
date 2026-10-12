@@ -195,6 +195,7 @@
         var LAYOUT_PAGES = [
           { name: "classic", file: "ev-tracker.html", label: "set.layoutClassic" },
           { name: "wide", file: "ev-tracker-wide.html", label: "set.layoutWide" },
+          { name: "focus", file: "ev-tracker-focus.html", label: "set.layoutFocus" },
         ];
         function currentLayout() {
           var el = document.body && document.body.getAttribute("data-layout");

@@ -28,6 +28,7 @@
 export const LAYOUTS = [
   { name: "classic", file: "ev-tracker.html", label: "set.layoutClassic" },
   { name: "wide", file: "ev-tracker-wide.html", label: "set.layoutWide" },
+  { name: "focus", file: "ev-tracker-focus.html", label: "set.layoutFocus" },
 ];
 
 /** The filename for a layout name, used by the switcher to build its href. */

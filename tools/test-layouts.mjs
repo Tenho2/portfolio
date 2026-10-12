@@ -34,6 +34,7 @@ import { execFileSync } from "node:child_process";
 const PAGES = [
   { name: "classic", file: "ev-tracker.html" },
   { name: "wide", file: "ev-tracker-wide.html" },
+  { name: "focus", file: "ev-tracker-focus.html" },
 ];
 
 let pass = 0;
@@ -53,6 +54,7 @@ const appCss = read("app/app.css");
 const layoutCss = {
   classic: read("app/layout-classic.css"),
   wide: read("app/layout-wide.css"),
+  focus: read("app/layout-focus.css"),
 };
 const shell = read("app/shell.mjs");
 

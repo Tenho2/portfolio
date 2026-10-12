@@ -21,23 +21,26 @@ const STRINGS = {
   en: {
     "set.layout": "Layout",
     "set.layoutHint":
-      "Two arrangements of the same app. Nothing is moved or re-imported when you switch, and your data and account are the same in both.",
+      "Three arrangements of the same app. Nothing is moved or re-imported when you switch, and your data and account are the same in both.",
     "set.layoutClassic": "Classic (side rail)",
     "set.layoutWide": "Wide (top bar)",
+    "set.layoutFocus": "Focus (dashboard)",
   },
   fi: {
     "set.layout": "Asettelu",
     "set.layoutHint":
-      "Sama sovellus kahdessa asettelussa. Vaihdettaessa mitään ei siirretä eikä tuoda uudelleen, ja tietosi sekä tilisi ovat molemmissa samat.",
+      "Sama sovellus kolmessa asettelussa. Vaihdettaessa mitään ei siirretä eikä tuoda uudelleen, ja tietosi sekä tilisi ovat molemmissa samat.",
     "set.layoutClassic": "Klassinen (sivupalkki)",
     "set.layoutWide": "Leveä (yläpalkki)",
+    "set.layoutFocus": "Kohdistus (koontinäyttö)",
   },
   sv: {
     "set.layout": "Layout",
     "set.layoutHint":
-      "Samma app i två layouter. Ingenting flyttas eller importeras om när du byter, och dina data och ditt konto är desamma i båda.",
+      "Samma app i tre layouter. Ingenting flyttas eller importeras om när du byter, och dina data och ditt konto är desamma i alla.",
     "set.layoutClassic": "Klassisk (sidopanel)",
     "set.layoutWide": "Bred (toppfält)",
+    "set.layoutFocus": "Fokuserad (dashboard)",
   },
 };
 

@@ -289,7 +289,7 @@
             role="group"
             data-i18n-aria="a11y.stats"
           >
-            <div class="stat">
+            <div class="stat" data-key>
               <div class="n" id="sEnergy">0 kWh</div>
               <div class="l" data-i18n="tile.kwh"></div>
             </div>
@@ -297,7 +297,7 @@
               <div class="n" id="sDist">0 km</div>
               <div class="l" id="sDistLabel" data-i18n="tile.dist"></div>
             </div>
-            <div class="stat">
+            <div class="stat" data-key>
               <div class="n" id="sCost">€0.00</div>
               <div class="l" data-i18n="tile.cost"></div>
             </div>
@@ -310,12 +310,12 @@
                  preferred one is shown large; the other appears beside it, and
                  the method is always named. A number with no provenance is how
                  a wrong figure reads as a right one. -->
-            <div class="stat" data-tile="eff">
+            <div class="stat" data-tile="eff" data-key>
               <div class="n" id="sEff">–</div>
               <div class="l" data-i18n="tile.kwh100"></div>
               <div class="sub" id="sEffNote"></div>
             </div>
-            <div class="stat" data-tile="cost100">
+            <div class="stat" data-tile="cost100" data-key>
               <div class="n" id="sCost100">–</div>
               <div class="l" data-i18n="tile.cost100"></div>
               <div class="sub" id="sCost100Note"></div>

@@ -31,19 +31,21 @@
  * tools/test-sw-bump.mjs asserts that every shell file was touched, and that the
  * version moved with it.
  *
- * Last bumped: 2026-10-12, for the JSON-import payer-assignment prompt.
+ * Last bumped: 2026-10-13, for the focus layout (dashboard-first arrangement).
  */
-const VERSION = "v53";
+const VERSION = "v54";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [
   "./",
   "./ev-tracker.html",
   "./ev-tracker-wide.html",
+  "./ev-tracker-focus.html",
   "./app/app.css",
   "./app/app.js",
   "./app/layout-classic.css",
   "./app/layout-wide.css",
+  "./app/layout-focus.css",
   "./app/i18n.js",
   "./app/storage.js",
   "./app/stations.js",
@@ -119,7 +121,11 @@ async function cacheFirst(request) {
  * of the request, but a query string on some hosts is, and a miss here means no
  * offline shell at all.
  */
-const PAGES = ["./ev-tracker.html", "./ev-tracker-wide.html"];
+const PAGES = [
+  "./ev-tracker.html",
+  "./ev-tracker-wide.html",
+  "./ev-tracker-focus.html",
+];
 
 function fallbackFor(url) {
   const path = url.pathname.replace(/\/$/, "");

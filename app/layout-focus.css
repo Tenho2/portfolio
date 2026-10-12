@@ -1,0 +1,54 @@
+/* EV Tracker layout shell: the focus arrangement.
+ *
+ * The dashboard, arranged for a glance. The four figures that answer "what has
+ * this car cost and how far does it go" come first and are set larger; the
+ * remaining tiles follow in their usual order. The content column is narrower so
+ * those figures are read as a group rather than spread across a monitor.
+ *
+ * Why this exists
+ *   The classic and wide layouts show every tile at the same size, in the same
+ *   order, so the figures that matter most are not the ones the eye lands on. A
+ *   focus arrangement gives the key figures the prominence without removing any
+ *   of them: nothing is hidden, and every view, button and tile stays reachable.
+ *
+ * What it does not do
+ *   The app has no live "charging now" state. The figures shown are the stored
+ *   totals and per-100 km averages, which is what the dashboard already reports.
+ *
+ * Only position, size, order and width are changed here. Colour, spacing,
+ * borders and focus rings belong to app/app.css and are shared by every layout.
+ * Scoped to body[data-layout="focus"] so nothing leaks into the other pages.
+ */
+
+body[data-layout="focus"] .wrap {
+  max-width: 48rem;
+}
+
+body[data-layout="focus"] .stats {
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+}
+
+/* The four key tiles are marked data-key in the shared markup. They share one
+   order value, so they keep their existing relative order and move ahead of
+   the rest. */
+body[data-layout="focus"] .stats > .stat {
+  order: 5;
+}
+
+body[data-layout="focus"] .stats > .stat[data-key] {
+  order: 1;
+}
+
+body[data-layout="focus"] .stat[data-key] .n {
+  font-size: 2.2rem;
+}
+
+body[data-layout="focus"] .chartbox {
+  max-height: 16rem;
+}
+
+@media (max-width: 560px) {
+  body[data-layout="focus"] .stat[data-key] .n {
+    font-size: 1.8rem;
+  }
+}
