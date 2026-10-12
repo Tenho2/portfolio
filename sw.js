@@ -31,10 +31,9 @@
  * tools/test-sw-bump.mjs asserts that every shell file was touched, and that the
  * version moved with it.
  *
- * Last bumped: 2026-10-07, for the split into app/app.css + app/app.js and the
- * second layout page.
+ * Last bumped: 2026-10-12, for the payer splits and the breakdown sheet.
  */
-const VERSION = "v50";
+const VERSION = "v51";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [

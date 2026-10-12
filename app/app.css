@@ -1510,6 +1510,26 @@
       .sheet-box .row {
         margin-top: 1rem;
       }
+      /* Below 700px a sheet stops being a centred modal and becomes a bottom
+         sheet: the box is anchored to the bottom edge with rounded top corners,
+         and scrolls inside itself rather than letting a long list push the title
+         and close button off the top of the screen. */
+      @media (max-width: 700px) {
+        .sheet.on {
+          align-items: flex-end;
+          padding: 0;
+        }
+        /* Scoped with the parent so it outranks the per-sheet width caps
+           (.confirm-box 440px, .pay-box 460px) that would otherwise leave a
+           bottom sheet centred with gaps on either side. */
+        .sheet .sheet-box {
+          max-width: 100%;
+          border-radius: var(--r) var(--r) 0 0;
+          border-bottom: 0;
+          max-height: 92vh;
+          overflow-y: auto;
+        }
+      }
       footer {
         margin-left: 250px;
         background: var(--surface);
@@ -1779,6 +1799,95 @@
         font-size: 0.88rem;
         cursor: pointer;
         margin: 0;
+      }
+      /* ---------- the payer breakdown sheet ---------- */
+      .pay-box {
+        max-width: 460px;
+      }
+      /* A sheet is centred on a wide screen; on a phone it is already a bottom
+         sheet, so nothing to change below the breakpoint. The rule is here to
+         make the intent explicit rather than inherited by accident. */
+      .seg-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem 0.9rem;
+        margin: 0.75rem 0;
+      }
+      .seg-opt {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+      }
+      .seg-opt input {
+        width: auto;
+        margin: 0;
+      }
+      .seg-opt label {
+        font-size: 0.88rem;
+        cursor: pointer;
+      }
+      .donut {
+        display: block;
+        width: min(220px, 60vw);
+        height: min(220px, 60vw);
+        margin: 0.5rem auto 1rem;
+      }
+      .donut-total {
+        fill: var(--text);
+        font-size: 20px;
+        font-weight: 700;
+      }
+      body.dark .donut-total {
+        fill: #f8fafc;
+      }
+      .donut-cap {
+        fill: var(--text-muted);
+        font-size: 11px;
+      }
+      #payBreakBody ul {
+        list-style: none;
+        margin: 0;
+        display: grid;
+        gap: 0.4rem;
+      }
+      #payBreakBody li {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+      }
+      #payBreakBody .sw {
+        width: 0.85rem;
+        height: 0.85rem;
+        border-radius: 3px;
+        flex: none;
+      }
+      /* The legend needs the hatch pattern too, and it lives in a different
+         <svg> from the one the pattern is defined in - a pattern id only
+         resolves inside its own document fragment. Defined once, reused by
+         both. */
+      #payBreakBody .nm {
+        flex: 1 1 auto;
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+      #payBreakBody .val {
+        flex: none;
+        color: var(--text-muted);
+        font-variant-numeric: tabular-nums;
+      }
+      #payBreakBody .muted {
+        color: var(--text-muted);
+      }
+      #payBreakNote {
+        margin-top: 0.75rem;
+      }
+      /* The button that opens a sheet, positioned out of the flow so it cannot
+         push the heading sideways. */
+      .sheet-x {
+        position: absolute;
+        top: 0.6rem;
+        right: 0.6rem;
       }
       /* ---------- payer splits ---------- */
       .payer-row {

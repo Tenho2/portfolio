@@ -84,7 +84,14 @@ function build(overrides = {}) {
   )(pad);
   /* veh() is the whole form's context in the app. Only its id matters here. */
   const veh = () => state.vehicles.find((v) => v.id === (overrides.selected || VEH)) || null;
+  const sorted = new Function(`${fnSource("sorted")}; return sorted;`)();
+  const soc = new Function(
+    `${fnSource("isNum")}${fnSource("num")}${fnSource("soc")}; return soc;`,
+  )();
   const factory = new Function(
+    /* Only the app's EXTERNALS go in the parameter list. Everything the body
+       declares itself - hasCost, costOf, splitBinned, legStats and the rest -
+       comes from fnSource, so passing those too would redeclare them. */
     [
       "state",
       "asked",
@@ -97,17 +104,48 @@ function build(overrides = {}) {
       "validDate",
       "LOCALE",
       "veh",
+      "sorted",
+      "soc",
+      "price",
     ],
     [
       fnSource("confirmMileage"),
       fnSource("mileageFloor"),
+      fnSource("suggestedOdometer"),
+      fnSource("ofVehicle"),
+      fnSource("splitBinned"),
+      /* legStats() is pulled in whole rather than stubbed: the suggestion is
+         supposed to be the same arithmetic as the consumption tile, and a stub
+         here would let the two drift apart without failing anything. */
+      fnSource("sorted"),
+      fnSource("soc"),
+      fnSource("hasCost"),
+      fnSource("costOf"),
+      fnSource("legStats"),
       `let sessions = state.sessions;
        let vehicles = state.vehicles;
        let editId = null;
-       return { confirmMileage, mileageFloor };`,
+       return { confirmMileage, mileageFloor, suggestedOdometer };`,
     ].join("\n"),
   );
-  const api = factory(state, asked, askConfirm, toast, TXT, num, isNum, pad, validDate, "en-GB", veh);
+  const api = factory(
+    state,
+    asked,
+    askConfirm,
+    toast,
+    TXT,
+    num,
+    isNum,
+    pad,
+    validDate,
+    "en-GB",
+    veh,
+    sorted,
+    soc,
+    /* price is app state; costOf() falls back to energy x price, and
+       legStats() reads it on the way through. */
+    0.2,
+  );
   return { ...api, asked, state, toast, TXT, num, validDate };
 }
 
@@ -244,14 +282,20 @@ await group("a warning is raised, and it names both readings", async () => {
   is("the dialog was opened once", m.asked.length, 1);
   is("it has its own heading", m.asked[0].opts.heading, "odo.title");
   is("the third action is the keep-anyway branch", m.asked[0].opts.altKey, "odo.keepAnyway");
-  is("the primary action fills in the previous reading", m.asked[0].opts.ok, "odo.usePrevious");
+  is("the primary action offers a corrected reading", m.asked[0].opts.ok, "odo.useSuggested");
+  /* The buttons were printing their own template. opts.vars is what stops it:
+     askConfirm passed the key to TXT with no values, and t() only substitutes
+     when it is handed some. */
+  ok("the buttons are given values", !!m.asked[0].opts.vars);
+  ok("including the corrected reading", "f" in (m.asked[0].opts.vars || {}));
+  ok("and the reading being typed", "d" in (m.asked[0].opts.vars || {}));
   ok("the message carries the reading being entered", /100/.test(m.asked[0].message));
   /* Formatted for reading, so the separator is locale-dependent. */
   ok("and the reading it contradicts", /100[,.\u00a0 ]?100/.test(m.asked[0].message));
   ok("and the date that reading came from", /2026-10-10/.test(m.asked[0].message));
 });
 
-await group("choosing the previous reading writes it into the field", async () => {
+await group("choosing the correction writes it into the field", async () => {
   const m = build({
     state: makeState(HISTORY, [{ id: VEH, initialOdometer: 0 }]),
     answer: true,
@@ -260,7 +304,61 @@ await group("choosing the previous reading writes it into the field", async () =
   let ran = false;
   await m.confirmMileage(null, d, () => (ran = true));
   ok("the save proceeds", ran);
-  is("the field now holds the previous reading", d.mileage.value, "100100");
+  /* 100,100 + the vehicle's average distance between charges, not the floor
+     unchanged. Offering the last reading verbatim means every charge gets
+     logged at the same mileage, which is a typo in waiting. */
+  is("the field now holds the correction", d.mileage.value, "110150");
+});
+
+await group("the correction is the last reading plus the car's own average", () => {
+  /* HISTORY runs 80,000 -> 100,000 -> 100,100, so the two legs are 20,000 and
+     100: a mean of 10,050. */
+  const m = build({
+    state: makeState(HISTORY, [{ id: VEH, initialOdometer: 0 }]),
+    answer: true,
+  });
+  is("last reading plus the mean leg", m.suggestedOdometer(100100, { id: VEH, initialOdometer: 0 }), 110150);
+  /* Reused from legStats on purpose, so the figure offered in the dialog and
+     the figure on the consumption tile cannot drift apart. */
+  ok("it is the same arithmetic the tile uses", /legStats\(/.test(fnSource("suggestedOdometer")));
+  ok("over the vehicle's own sessions", /ofVehicle\(/.test(fnSource("suggestedOdometer")));
+});
+
+await group("with no history the correction is just the last reading", () => {
+  /* One charge, or none. There is no distance between charges to learn from,
+     and inventing one would be a guess dressed as a correction. */
+  const one = build({
+    state: makeState([{ id: "s1", vehicleId: VEH, date: "2026-10-01", mileage: 100100 }], [
+      { id: VEH, initialOdometer: 0 },
+    ]),
+  });
+  is("a single charge", one.suggestedOdometer(100100, { id: VEH, initialOdometer: 0 }), 100100);
+  const none = build({ state: makeState([], [{ id: VEH, initialOdometer: 0 }]) });
+  is("no charges", none.suggestedOdometer(100100, { id: VEH, initialOdometer: 0 }), 100100);
+  /* The initial odometer is a floor with no distance behind it either. */
+  const start = build({
+    state: makeState([{ id: "s1", vehicleId: VEH, date: "2026-10-01", mileage: 100100 }], [
+      { id: VEH, initialOdometer: 90000 },
+    ]),
+  });
+  /* A starting odometer is deliberately ignored here. The gap from it to the
+     first charge is not "between charges" - it can be months of driving - and
+     including it would drag the mean away from a typical gap. */
+  is("a starting odometer is not a charge", start.suggestedOdometer(100100, { id: VEH, initialOdometer: 90000 }), 100100);
+});
+
+await group("the correction never goes backwards", () => {
+  /* It has just told the user their reading is too low. Proposing a lower one
+     would be incoherent, so a degenerate average cannot produce one. */
+  const m = build({
+    state: makeState(HISTORY, [{ id: VEH, initialOdometer: 0 }]),
+  });
+  is("with no vehicle at all", m.suggestedOdometer(50000, null), 50000);
+  /* A floor of zero cannot reach this dialog - nothing positive is below it -
+     so the function returning the average distance is harmless, and is in fact
+     the more sensible answer than zero. */
+  is("with a zero floor it offers the average distance", m.suggestedOdometer(0, { id: VEH, initialOdometer: 0 }), 10050);
+  is("and never lands below the floor", m.suggestedOdometer(100100, { id: VEH, initialOdometer: 0 }) >= 100100, true);
 });
 
 await group("cancelling saves nothing and leaves the field alone", async () => {
@@ -328,8 +426,8 @@ await group("every answer leads to the right outcome", async () => {
   is("and leaves the typed reading in place", alt.d.mileage.value, "100");
 
   const yes = await ask(true);
-  ok("using the previous reading saves", yes.ran);
-  is("and overwrites the field with it", yes.d.mileage.value, "100100");
+  ok("using the correction saves", yes.ran);
+  is("and overwrites the field with it", yes.d.mileage.value, "110150");
 
   const no = await ask(false);
   ok("cancel does not save", !no.ran);

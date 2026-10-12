@@ -4249,6 +4249,7 @@ shareTarget = null;
                  private notes. */
               closeEdit();
               closeVeh();
+              closePayBreakdown();
               closeSyncPanel();
               if ($("confirmSheet").classList.contains("on")) closeConfirm(false);
               editFav = null;
@@ -5137,6 +5138,49 @@ function say(msg) {
           return t;
         }
 
+        /**
+         * Divide the charge equally between the rows the app filled in.
+         *
+         * "the rows the app filled in" is the whole point, and it is why each
+         * row carries an `auto` flag. Adding a payer used to leave the existing
+         * amounts alone and halve only the new one, so a charge that started as
+         * one person at 100% became 100% and 50% - 150% of the money, which the
+         * split check then refused. Redistributing everything is also what the
+         * user means by "split this three ways".
+         *
+         * An amount the user typed is never overwritten. That is their number,
+         * and adding a fourth person to a split they have already balanced is
+         * not a request to have their half quietly rewritten.
+         *
+         * Without a known charge there is nothing to divide, so the amounts are
+         * left blank rather than guessed at.
+         */
+        function redistributeEvenly() {
+          var cost = num($("cost").value);
+          var autos = [];
+          for (var i = 0; i < payerDraft.length; i++)
+            if (payerDraft[i].auto) autos.push(i);
+          if (!autos.length) return;
+          if (!(cost > 0)) {
+            for (var b = 0; b < autos.length; b++) payerDraft[autos[b]].amount = "";
+            return;
+          }
+          /* Each row gets cost/n rounded to cents, and the LAST auto row takes
+             whatever is left over. Three ways on a 10.00 charge is 3.33 x 3 =
+             9.99, and a split whose amounts do not add up to the charge is one
+             the user has to notice and fix themselves. */
+          var share = Math.round((cost / autos.length) * 100) / 100;
+          var running = 0;
+          for (var j = 0; j < autos.length; j++) {
+            var last = j === autos.length - 1;
+            var amount = last
+              ? Math.round((cost - running) * 100) / 100
+              : share;
+            payerDraft[autos[j]].amount = String(amount);
+            running += amount;
+          }
+        }
+
         function renderPayers() {
           var box = $("payerRows");
           if (!box) return;
@@ -5167,13 +5211,15 @@ function say(msg) {
               '">' +
               (pct === null ? "" : pct + "%") +
               "</span>" +
-              (payerDraft.length > 1
-                ? '<button type="button" class="btn sm ghost" data-pr="' +
-                  i +
-                  '" aria-label="' +
-                  TXT("as.payerRemove", { v: esc(p.name) }) +
-                  '"><span aria-hidden="true">×</span></button>'
-                : "") +
+              /* Every row gets a remove button, including the only one. Removing it does not
+                 leave the split empty - it resets to the default payer - so the
+                 button is never a dead end, and hiding it on the last row would
+                 have made the reset unreachable and unexplained. */
+              '<button type="button" class="btn sm ghost" data-pr="' +
+              i +
+              '" aria-label="' +
+              TXT("as.payerRemove", { v: esc(p.name) }) +
+              '"><span aria-hidden="true">×</span></button>' +
               "</div>";
           }
           box.innerHTML = html;
@@ -5250,7 +5296,9 @@ function say(msg) {
           var src = Array.isArray(list) ? list : [];
           for (var i = 0; i < src.length; i++) {
             var p = normPayer(src[i]);
-            if (p) payerDraft.push({ name: p.name, amount: "" });
+            /* A restored split is a settled arrangement, so its amounts count
+               as typed: re-adding somebody must not quietly halve them. */
+            if (p) payerDraft.push({ name: p.name, amount: "", auto: false });
           }
           renderPayers();
         }
@@ -5258,29 +5306,46 @@ function say(msg) {
         /** Start a fresh charge: the signed-in user owes the whole amount. */
         function resetPayers() {
           var me = myPayerName();
-          payerDraft = me ? [{ name: me, amount: "" }] : [];
+          /* `auto`, so the first person added later re-balances this one
+             instead of leaving it stranded at the whole charge. */
+          payerDraft = me ? [{ name: me, amount: "", auto: true }] : [];
+          redistributeEvenly();
           renderPayers();
         }
 
         function addPayer() {
-          /* An even split between everybody, which is what the field starts at
-             when a second payer arrives. */
-          var share = payerDraft.length ? 1 / (payerDraft.length + 1) : 1;
-          payerDraft.push({ name: "", amount: "" });
-          /* Only one field can be derived at a time, so the shares are laid
-             down as amounts against the charge cost when it is known, and left
-             blank when it is not. */
-          var cost = num($("cost").value);
-          if (cost > 0) {
-            for (var i = 0; i < payerDraft.length - 1; i++)
-              if (payerDraft[i].amount === "")
-                payerDraft[i].amount = (cost * share).toFixed(2);
-            payerDraft[payerDraft.length - 1].amount = (cost * share).toFixed(2);
-          }
-          void share;
+          /* New rows are `auto`, so they take part in the next redistribution -
+             and so does the default payer, which is the half of the old bug
+             that made the split add to 150%. */
+          payerDraft.push({ name: "", amount: "", auto: true });
+          redistributeEvenly();
           renderPayers();
-          var first = $("payerRows") && $("payerRows").querySelector(".payer-name");
-          if (first) first.focus();
+          var names = $("payerRows") && $("payerRows").querySelectorAll(".payer-name");
+          /* Focus the one just added, which is the last. Focusing the first
+             would put the caret in a field the user has already filled. */
+          if (names && names.length) names[names.length - 1].focus();
+        }
+
+        /**
+         * Drop one payer and re-balance what is left.
+         *
+         * Two rows collapsing to one has to end at 100%: the remaining amount is
+         * whatever it was when there were two, so a split that is re-opened and
+         * tidied would otherwise leave somebody paying half of nothing.
+         *
+         * Removing the last payer resets to the default one rather than leaving
+         * the field empty, because a saved charge with nobody named against it
+         * is an absence nobody asked for. "Nobody has said" is a real state and
+         * is reached by an unassigned charge - not by deleting the only name.
+         */
+        function removePayer(index) {
+          payerDraft.splice(index, 1);
+          if (!payerDraft.length) {
+            resetPayers();
+            return;
+          }
+          redistributeEvenly();
+          renderPayers();
         }
 
 /* ---------- syncing the split ----------
@@ -5414,6 +5479,10 @@ function say(msg) {
           var box = $("payerBoxChart");
           if (!box) return;
           var t = payerTotals(list);
+          /* The breakdown button earns its place only once there is a split to
+             break down. Before that it is a dead control. */
+          var row = $("payerBreakdownRow");
+          if (row) row.hidden = !t.rows.length;
           if (!t.rows.length) {
             box.hidden = true;
             return;
@@ -5465,6 +5534,312 @@ function say(msg) {
             "<ul>" +
             legend +
             "</ul>";
+        }
+
+        /* ---------- the payer breakdown ----------
+           Who has paid what on this car, over a window the user chooses.
+
+           Four windows, and they are genuinely different:
+             all     everything
+             month   the calendar month so far, not the last thirty days. On
+                     the 3rd that is two days of spending, which is what
+                     "this month" means to everybody who says it.
+             year    the calendar year so far
+             last    a rolling twelve months from today
+
+           A charge whose date is missing or impossible belongs to no window but
+           "all". It is not silently dropped from the dated windows either -
+           dropping it would understate the month and the year with no visible
+           reason, which reads as a bug in the arithmetic rather than as a row
+           nobody dated. The note under the list says how many.
+
+           UNASSIGNED is a bucket of its own, hatched rather than coloured. It is
+           not a person, and giving it a slice from the payer palette would say
+           it was. It is the whole legacy history of a car whose charges predate
+           this feature, and the one number worth surfacing is how much of the
+           bill is still unattributed.
+        */
+
+        /** Inclusive ISO bounds for a window, or null for "everything". */
+        function payRangeBounds(kind) {
+          var t = new Date();
+          var y = t.getFullYear(),
+            mo = t.getMonth() + 1,
+            d = t.getDate();
+          var today = y + "-" + pad(mo) + "-" + pad(d);
+          if (kind === "month")
+            return { from: y + "-" + pad(mo) + "-01", to: today };
+          if (kind === "year") return { from: y + "-01-01", to: today };
+          if (kind === "last") {
+            /* Twelve months back, same day of the month. Constructed through
+               setFullYear rather than by subtracting milliseconds, because the
+               31st of a short month would otherwise roll into the next one. */
+            var back = new Date(t.getFullYear(), t.getMonth() - 12, t.getDate());
+            return {
+              from: back.getFullYear() + "-" + pad(back.getMonth() + 1) + "-" + pad(back.getDate()),
+              to: today,
+            };
+          }
+          return null;
+        }
+
+        /**
+         * Which of a list fall inside the window.
+         * @returns {{list: Array, undated: number}}
+         */
+        function filterByRange(list, kind) {
+          var b = payRangeBounds(kind);
+          if (!b) return { list: list.slice(), undated: 0 };
+          var out = [];
+          var undated = 0;
+          for (var i = 0; i < list.length; i++) {
+            var day = validDate(list[i].date);
+            /* An undated row cannot be shown to belong to any window, so it is
+               held back rather than guessed into one. */
+            if (!day) {
+              undated++;
+              continue;
+            }
+            if (day >= b.from && day <= b.to) out.push(list[i]);
+          }
+          return { list: out, undated: undated };
+        }
+
+        /**
+         * Totals for the breakdown, with unassigned kept apart.
+         *
+         * Colours are indexed from the PAYERS ONLY. If unassigned took a slot
+         * then switching between windows - where it may or may not appear -
+         * would shift everyone else's colour, and the same person would look
+         * like two different people depending on which chart you were looking
+         * at. That is worse than a colour that repeats on a long list.
+         */
+        function payBreakdown(list) {
+          var rows = [];
+          var byName = {};
+          var unassigned = { name: null, cost: 0, kwh: 0, sessions: 0 };
+          var grand = 0;
+          for (var i = 0; i < list.length; i++) {
+            var s = list[i];
+            var payers = payerListOf(s);
+            var cost = costOf(s);
+            grand += cost;
+            if (!payers.length) {
+              unassigned.cost += cost;
+              unassigned.kwh += num(s.energy);
+              unassigned.sessions++;
+              continue;
+            }
+            for (var j = 0; j < payers.length; j++) {
+              var p = payers[j];
+              if (!byName[p.name]) {
+                byName[p.name] = {
+                  name: p.name,
+                  cost: 0,
+                  kwh: 0,
+                  sessions: 0,
+                  colour: payerColour(rows.length),
+                };
+                rows.push(byName[p.name]);
+              }
+              byName[p.name].cost += cost * p.share;
+              byName[p.name].kwh += num(s.energy) * p.share;
+              byName[p.name].sessions++;
+            }
+          }
+          rows.sort(function (a, b) {
+            return b.cost - a.cost || (a.name < b.name ? -1 : 1);
+          });
+          return {
+            rows: rows,
+            unassigned: unassigned,
+            grand: grand,
+            /* An unassigned slice of no money is not a slice. */
+            hasUnassigned: unassigned.cost > 0,
+          };
+        }
+
+        /**
+         * An SVG donut. No library: a path per slice and a circle for the hole.
+         *
+         * Drawn rather than a conic-gradient because the same code then renders
+         * identically to the stacked bar in the log, and because a gradient
+         * cannot express the hatched unassigned arc.
+         *
+         * @param {{rows: Array, unassigned: Object, grand: number}} d
+         * @returns {string} SVG markup
+         */
+        function payDonut(d) {
+          var R = 80,
+            r = 52,
+            cx = 100,
+            cy = 100;
+          var total = d.grand;
+          var slices = d.rows.slice();
+          if (d.hasUnassigned)
+            slices.push({ name: null, cost: d.unassigned.cost, unassigned: true });
+          if (!(total > 0)) {
+            return (
+              '<svg viewBox="0 0 200 200" class="donut" role="img" aria-label="' +
+              TXT("pay.chartLabel", { v: veh() ? veh().name : "" }) +
+              '"><circle cx="100" cy="100" r="' +
+              (R + r) / 2 +
+              '" fill="none" stroke="var(--line)" stroke-width="' +
+              (R - r) +
+              '"/></svg>'
+            );
+          }
+          var acc = -Math.PI / 2;
+          var arcs = "";
+          for (var i = 0; i < slices.length; i++) {
+            var frac = slices[i].cost / total;
+            if (!(frac > 0)) continue;
+            var angle = frac * Math.PI * 2;
+            /* A single slice would be a full circle, and an arc drawn from a
+               point back to itself renders as nothing at all. */
+            var isWhole = frac > 0.9999;
+            var sweep = angle - 0.0001;
+            var x1 = cx + R * Math.cos(acc),
+              y1 = cy + R * Math.sin(acc);
+            var x2 = cx + R * Math.cos(acc + sweep),
+              y2 = cy + R * Math.sin(acc + sweep);
+            var x3 = cx + r * Math.cos(acc + sweep),
+              y3 = cy + r * Math.sin(acc + sweep);
+            var x4 = cx + r * Math.cos(acc),
+              y4 = cy + r * Math.sin(acc);
+            var fill = slices[i].unassigned ? "url(#payHatch)" : slices[i].colour;
+            arcs +=
+              '<path d="M' +
+              x1.toFixed(2) +
+              " " +
+              y1.toFixed(2) +
+              " A" +
+              R +
+              " " +
+              R +
+              " 0 " +
+              (sweep > Math.PI ? 1 : 0) +
+              " 1 " +
+              x2.toFixed(2) +
+              " " +
+              y2.toFixed(2) +
+              " L" +
+              x3.toFixed(2) +
+              " " +
+              y3.toFixed(2) +
+              " A" +
+              r +
+              " " +
+              r +
+              " 0 " +
+              (sweep > Math.PI ? 1 : 0) +
+              " 0 " +
+              x4.toFixed(2) +
+              " " +
+              y4.toFixed(2) +
+              ' Z" fill="' +
+              fill +
+              '" />';
+            acc += angle;
+            void isWhole;
+          }
+          return (
+            '<svg viewBox="0 0 200 200" class="donut" role="img" aria-label="' +
+            TXT("pay.chartLabel", { v: veh() ? veh().name : "" }) +
+            '"><defs><pattern id="payHatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">' +
+            '<rect width="6" height="6" fill="var(--surface-2)"></rect>' +
+            '<line x1="0" y1="0" x2="0" y2="6" stroke="var(--text-muted)" stroke-width="2.5"></line>' +
+            "</pattern></defs>" +
+            arcs +
+            '<text x="100" y="96" class="donut-total" text-anchor="middle">' +
+            esc(fmtMoney(d.grand)) +
+            '</text><text x="100" y="114" class="donut-cap" text-anchor="middle">' +
+            esc(TXT("pay.total")) +
+            "</text></svg>"
+          );
+        }
+
+        /** Draw the breakdown sheet for the chosen window. */
+        function renderPayBreakdown() {
+          var body = $("payBreakBody");
+          if (!body) return;
+          var kind = payRangeKind();
+          var v = veh();
+          var all = ofVehicle(v ? v.id : null);
+          var filtered = filterByRange(all, kind);
+          var d = payBreakdown(filtered.list);
+
+          var rows = d.rows.slice();
+          if (d.hasUnassigned)
+            rows.push({ name: null, cost: d.unassigned.cost, sessions: d.unassigned.sessions, unassigned: true });
+          var list = "";
+          for (var i = 0; i < rows.length; i++) {
+            var r = rows[i];
+            var pct = d.grand > 0 ? (r.cost / d.grand) * 100 : 0;
+            list +=
+              '<li class="' +
+              (r.unassigned ? "muted" : "") +
+              '"><span class="sw" style="background:' +
+              (r.unassigned ? "url(#payHatchLegend)" : payerColour(i)) +
+              '" aria-hidden="true"></span>' +
+              '<span class="nm">' +
+              esc(r.unassigned ? TXT("pay.unassignedShort") : r.name) +
+              '</span><span class="val">' +
+              fmtMoney(r.cost) +
+              " · " +
+              Math.round(pct) +
+              "% · " +
+              TXT("pay.sessions", { n: r.sessions }) +
+              "</span></li>";
+          }
+          body.innerHTML =
+            payDonut(d) +
+            (rows.length
+              ? "<ul>" + list + "</ul>"
+              : '<p class="mini">' + TXT("pay.nothingInRange") + "</p>");
+
+          /* Undated rows are invisible in every window but "all", so they are
+             named rather than quietly missing. */
+          var note = $("payBreakNote");
+          if (note) {
+            var msg = filtered.undated
+              ? TXT("pay.undatedNote", { n: filtered.undated })
+              : "";
+            note.textContent = msg;
+            note.hidden = !msg;
+          }
+        }
+
+        function payRangeKind() {
+          var n = $("payRangeLast");
+          if (n && n.checked) return "last";
+          n = $("payRangeYear");
+          if (n && n.checked) return "year";
+          n = $("payRangeMonth");
+          if (n && n.checked) return "month";
+          return "all";
+        }
+
+        function openPayBreakdown() {
+          var sheet = $("payBreakSheet");
+          if (!sheet) return;
+          renderPayBreakdown();
+          sheet.classList.add("on");
+          lockBackground(true);
+          /* Matches closeEdit/closeVeh: the button that opened it gets the focus
+             back when it closes, or a keyboard user is dropped at the top of the
+             page. */
+          lastFocus = document.activeElement;
+          var close = sheet.querySelector("[data-pay-close]");
+          if (close) close.focus();
+        }
+
+        function closePayBreakdown() {
+          var sheet = $("payBreakSheet");
+          if (!sheet || !sheet.classList.contains("on")) return;
+          sheet.classList.remove("on");
+          lockBackground(false);
+          restoreFocus();
         }
 
         function renderBody() {
@@ -7462,11 +7837,18 @@ vehiclesAdded = vehicles.length - before;
             }
           }
           if (heading)
-            heading.textContent = TXT(opts.heading || "confirm.title");
+            heading.textContent = TXT(opts.heading || "confirm.title", opts.vars);
           var ok = $("confirmOk");
-          if (ok) ok.textContent = TXT(opts.ok || "confirm.ok");
+          /* opts.vars is forwarded to every label, not just the body. It was
+             not, and the odometer dialog showed the buttons as "Use {f} km"
+             and "Save {d} km anyway" - the literal template, because t() only
+             substitutes when it is handed a values object. The body had its
+             values all along, which is why the sentence read correctly while
+             the two buttons beneath it did not. */
+          if (ok) ok.textContent = TXT(opts.ok || "confirm.ok", opts.vars);
           var cancel = $("confirmCancel");
-          if (cancel) cancel.textContent = TXT(opts.cancel || "confirm.cancel");
+          if (cancel)
+            cancel.textContent = TXT(opts.cancel || "confirm.cancel", opts.vars);
           /* Typed confirmation. Exact and case-sensitive on purpose: if the
              instruction says RESET, then someone who cannot type RESET exactly
              has not acknowledged what they are about to destroy. */
@@ -7500,7 +7882,7 @@ vehiclesAdded = vehicles.length - before;
           if (alt) {
             if (opts.altKey) {
               alt.hidden = false;
-              alt.textContent = TXT(opts.altKey);
+              alt.textContent = TXT(opts.altKey, opts.vars);
             } else {
               alt.hidden = true;
               alt.textContent = "";
@@ -9716,7 +10098,15 @@ function hasKey(key) {
           render();
           /* Only fills an empty field, so re-entering the view is safe and the
              default appears without ever overwriting a typed location. */
-          if (id === "add-session") applyLocationDefaults();
+          if (id === "add-session") {
+            applyLocationDefaults();
+            /* Date and time, so arriving at the form always offers now rather
+               than whatever the last session was. Together with the duration
+               guard below: an empty time field is not neutral in Chrome, it
+               becomes the clock. */
+            stampDefaults();
+            fillDurationIfEmpty();
+          }
           /* Leaving the station view drops the remembered position. It was only
              ever there to avoid asking the user for a second fix in the same
              sitting, and holding it for the life of the page meant the camera
@@ -10827,9 +11217,13 @@ function detachVehicle(id) {
            silently changed the granularity of the editor for every later edit -
            a setting that lived in the DOM of a different view and was never
            saved anywhere. */
-        function defaultDuration() {
+        function defaultDuration(onlyIfEmpty) {
           var el = $("duration");
           if (!el) return;
+          /* "Only if empty" is for the paths that can run while the user is
+             part-way through the form: arriving at the view, and the focus
+             guard below. Everywhere else the field is meant to be set. */
+          if (onlyIfEmpty && String(el.value || "").trim()) return;
           /* THIS VEHICLE's charges, not every charge on the device. It used to
              pass the whole `sessions` array, so one car that had reached the
              threshold supplied the default for every other car - including one
@@ -10845,6 +11239,27 @@ function detachVehicle(id) {
              fractional `hours` value and rounded only at the very end. */
           el.value = hoursToHM(d.hours);
           setDurationHint(d);
+        }
+
+        /**
+         * Make sure the duration field is never empty when a person looks at it.
+         *
+         * Android Chrome's time picker defaults an EMPTY time input to the
+         * current time, and writes that back the moment the picker closes -
+         * including when it is dismissed. So an empty field does not read as
+         * "please fill this in"; it silently becomes a duration equal to the
+         * wall clock, which then gets saved with the charge.
+         *
+         * That is not reachable from this app's own code, which is why it
+         * survived a check of every writer of #duration: the browser is the
+         * one writing. The cure is to make sure there is never a moment when the
+         * field is empty and visible.
+         *
+         * Called on entering the view and again on focus, the second time in
+         * case anything cleared it in between.
+         */
+        function fillDurationIfEmpty() {
+          defaultDuration(true);
         }
 
         /**
@@ -11327,6 +11742,16 @@ $("syncBadge").addEventListener("click", function () {
             if (typeof onOk === "function") onOk();
             return Promise.resolve(true);
           }
+          /* What to offer as the corrected reading.
+             The floor is simply "the last one you wrote", and accepting it
+             unchanged means every charge gets logged at the same mileage -
+             which is a typo in waiting, not a correction. Adding the vehicle's
+             own average distance between charges turns it into a number the
+             user can recognise as right, and only costs them a keystroke to
+             edit it further.
+             With no history there is no average, and the floor is the best
+             answer available. */
+          var suggested = suggestedOdometer(floor.value, v);
           return askConfirm(
             TXT("odo.lowerThanHistory", {
               v: floor.label,
@@ -11335,9 +11760,15 @@ $("syncBadge").addEventListener("click", function () {
             }),
             {
               heading: "odo.title",
-              /* Primary is "correct it": fills the field with the last reading so
+              /* Shared by both buttons, which is what makes them read as two
+                 answers to one question rather than two unrelated commands. */
+              vars: {
+                f: suggested.toLocaleString(LOCALE),
+                d: num(raw).toLocaleString(LOCALE),
+              },
+              /* Primary is "correct it": fills the field with the suggestion so
                  the user can accept or adjust it, then saves. */
-              ok: "odo.usePrevious",
+              ok: "odo.useSuggested",
               /* The second action resolves the string "alt", which the older
                  callers never see because they only test truthiness. */
               altKey: "odo.keepAnyway",
@@ -11349,7 +11780,7 @@ $("syncBadge").addEventListener("click", function () {
               return true;
             }
             if (choice === true) {
-              if (d.mileage) d.mileage.value = String(floor.value);
+              if (d.mileage) d.mileage.value = String(suggested);
               if (typeof onOk === "function") onOk();
               return true;
             }
@@ -11357,6 +11788,40 @@ $("syncBadge").addEventListener("click", function () {
                save does not happen, which is the safe reading of both. */
             return false;
           });
+        }
+
+        /**
+         * The odometer reading to offer when the entered one is too low.
+         *
+         * last + the vehicle's average distance between charges. legStats() is
+         * reused rather than a new calculation, so the figure offered here and
+         * the one on the consumption tile are the same arithmetic on the same
+         * data rather than two answers that can drift apart.
+         *
+         * @param {number} floor  the last reading that was actually recorded
+         * @param {Object} v      the vehicle
+         * @returns {number} a whole kilometre reading
+         */
+        function suggestedOdometer(floor, v) {
+          var prev = Math.max(0, num(floor));
+          if (!v) return Math.round(prev);
+          /* A starting odometer of 0 on purpose. legStats() would otherwise
+             count the distance from the vehicle's initial odometer to its first
+             charge as a leg, and that interval can be months or years of
+             driving - which would drag the mean away from what a charge-to-
+             charge gap actually looks like. Only legs between two real charges
+             are wanted here. */
+          var legs = legStats(ofVehicle(v.id), 0);
+          /* No completed leg means no average to add: a car with one charge
+             has driven nothing it can tell us about. */
+          if (!(legs.legs > 0) || !(legs.km > 0)) return Math.round(prev);
+          var avg = legs.km / legs.legs;
+          /* Rounded, because an odometer is whole kilometres and offering
+             "50 234.7" invites a second correction. Never allowed to go
+             backwards: a negative or tiny average would propose a number the
+             user had just been told was too low. */
+          var out = Math.round(prev + avg);
+          return out > prev ? out : Math.round(prev);
         }
         /**
          * The lowest reading that makes sense for a session on `date`.
@@ -11510,6 +11975,21 @@ $("syncBadge").addEventListener("click", function () {
           }
         });
         $("payerAdd").addEventListener("click", addPayer);
+          /* The breakdown, and the window it is showing. */
+          $("payerBreakdownBtn").addEventListener("click", openPayBreakdown);
+          $("payRange").addEventListener("change", renderPayBreakdown);
+          $("payBreakSheet").addEventListener("click", function (e) {
+            if (e.target.closest && e.target.closest("[data-pay-close]"))
+              closePayBreakdown();
+            else if (e.target === this) closePayBreakdown();
+          });
+          /* The duration field must never be seen empty. See fillDurationIfEmpty:
+             Chrome's time picker turns an empty field into the current time and
+             writes it back on dismiss, so a gap between page load and the user
+             arriving at the form is enough to lose the default. Focus is the
+             last moment before that picker can open. */
+          $("duration").addEventListener("focus", fillDurationIfEmpty);
+          $("duration").addEventListener("click", fillDurationIfEmpty);
           /* Delegated, because the rows are re-rendered wholesale on every
              keystroke and a per-row listener would have to be re-attached each
              time. */
@@ -11524,6 +12004,10 @@ $("syncBadge").addEventListener("click", function () {
             }
             if (ai !== null && ai !== undefined) {
               payerDraft[+ai].amount = t.value;
+              /* The user has taken this amount into their own hands. It is not
+                 ours to re-balance later, and clearing the flag is what stops
+                 the next "add someone" from overwriting it. */
+              payerDraft[+ai].auto = false;
               /* Only the percentages change here, so the inputs are not
                  re-rendered - doing so would steal the caret mid-typing. */
               var total = payerTotal();
@@ -11544,8 +12028,7 @@ $("syncBadge").addEventListener("click", function () {
               ? ev.target.closest("[data-pr]")
               : null;
             if (!b) return;
-            payerDraft.splice(+b.getAttribute("data-pr"), 1);
-            renderPayers();
+            removePayer(+b.getAttribute("data-pr"));
           });
           $("fFind").addEventListener("click", geocode);
         $("fSave").addEventListener("click", saveFavourite);
@@ -11711,8 +12194,14 @@ $("eDelete").addEventListener("click", function () {
               closeEdit();
               return;
             }
-if ($("vehSheet").classList.contains("on")) {
+            if ($("vehSheet").classList.contains("on")) {
                 closeVeh();
+                return;
+              }
+              /* Same rule as the sheets above: a modal that Escape cannot
+                 dismiss is one a keyboard user can only leave by guessing. */
+              if ($("payBreakSheet").classList.contains("on")) {
+                closePayBreakdown();
                 return;
               }
               /* The sync panel was missing here. It is role="dialog"

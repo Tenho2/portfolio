@@ -634,6 +634,12 @@
           <!-- Who has paid what on this car. Hidden until at least one charge
                carries a split, because an empty chart teaches nothing. -->
           <div class="payer-chart" id="payerBoxChart" hidden></div>
+          <div class="addrow" id="payerBreakdownRow" hidden>
+            <button type="button" class="btn ghost" id="payerBreakdownBtn">
+              <span aria-hidden="true">◔</span>
+              <span data-i18n="pay.breakdown"></span>
+            </button>
+          </div>
           <div class="tbl-wrap">
             <!-- id, so the card transformation below 700px can be scoped to
                  this table. `table` is a bare element selector that the settings
@@ -1449,6 +1455,49 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             ></button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <div class="sheet" id="payBreakSheet">
+      <div
+        class="sheet-box pay-box"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="payBreakTitle"
+      >
+        <h3 id="payBreakTitle" data-i18n="pay.breakdown"></h3>
+        <button
+          type="button"
+          class="btn sm ghost sheet-x"
+          data-pay-close
+          aria-label="Close"
+          data-i18n-aria="confirm.cancel"
+        >
+          <span aria-hidden="true">×</span>
+        </button>
+        <!-- A radiogroup rather than a select: four options that all stay
+             visible is quicker to hit than a menu that has to be opened, and
+             the arrows are already understood. -->
+        <div class="seg-group" id="payRange" role="radiogroup" aria-labelledby="payBreakTitle">
+          <div class="seg-opt">
+            <input type="radio" name="payRange" id="payRangeAll" value="all" checked />
+            <label for="payRangeAll" data-i18n="pay.rangeAll"></label>
+          </div>
+          <div class="seg-opt">
+            <input type="radio" name="payRange" id="payRangeMonth" value="month" />
+            <label for="payRangeMonth" data-i18n="pay.rangeMonth"></label>
+          </div>
+          <div class="seg-opt">
+            <input type="radio" name="payRange" id="payRangeYear" value="year" />
+            <label for="payRangeYear" data-i18n="pay.rangeYear"></label>
+          </div>
+          <div class="seg-opt">
+            <input type="radio" name="payRange" id="payRangeLast" value="last" />
+            <label for="payRangeLast" data-i18n="pay.rangeLast"></label>
+          </div>
+        </div>
+        <div id="payBreakBody"></div>
+        <p class="mini" id="payBreakNote" hidden></p>
       </div>
     </div>
 

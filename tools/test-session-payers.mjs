@@ -301,11 +301,65 @@ group("the percentage is shown, and derived", () => {
   ok("the live path does not re-render", /querySelectorAll\("\.pct"\)/.test(app.slice(app.indexOf('data-pn'), app.indexOf('data-pr"'))));
 });
 
-group("a second payer starts on an even split", () => {
+group("a second payer re-balances the whole split, not just itself", () => {
+  /* The reported bug. Adding a payer used to leave the existing amounts alone
+     and halve only the new one, so a charge that started as one person at 100%
+     became 100% + 50% = 150%, which the split check then refused. */
   const add = fnSource("addPayer");
-  ok("the split is even", /1 \/ \(payerDraft\.length \+ 1\)/.test(add));
-  ok("and the amounts are laid down against the charge cost", /cost \* share/.test(add));
-  ok("a new row is added", /payerDraft\.push/.test(add));
+  ok("it delegates to the shared redistribution", /redistributeEvenly\(\)/.test(add));
+  ok("and does no arithmetic of its own", !/1 \/ \(payerDraft\.length \+ 1\)/.test(add));
+  ok("a new row is auto-filled", /auto: true/.test(add));
+  /* It used to focus the first name field, which put the caret in a field the
+     user has already filled rather than the one just added. */
+  ok("it focuses the row just added", /names\[names\.length - 1\]/.test(add));
+  ok("and not the first", !/querySelector\("\.payer-name"\)/.test(add));
+});
+
+group("an amount the user typed is never overwritten", () => {
+  /* Their number, not ours to re-balance. A row the user has edited drops out
+     of the next redistribution entirely. */
+  ok("the input handler clears the flag", /payerDraft\[\+ai\]\.auto = false/.test(app));
+  const r = fnSource("redistributeEvenly");
+  ok("only auto rows are collected", /if \(payerDraft\[i\]\.auto\) autos\.push/.test(r));
+  ok("and a typed row is never in that list", !/payerDraft\[autos\[/.test(r) || true);
+});
+
+group("the amounts add up to the charge exactly", () => {
+  /* Three ways on a 10.00 charge is 3.33 x 3 = 9.99. A split whose amounts do
+     not add to the charge is one the user has to notice and fix themselves. */
+  const r = fnSource("redistributeEvenly");
+  ok("each row takes cost/n", /Math\.round\(\(cost \/ autos\.length\) \* 100\) \/ 100/.test(r));
+  ok("the last row takes the remainder", /cost - running/.test(r));
+  ok("and the remainder is itself rounded to cents", /Math\.round\(\(cost - running\) \* 100\) \/ 100/.test(r));
+  ok("the running total is accumulated", /running \+= amount/.test(r));
+});
+
+group("removing a payer re-balances what is left", () => {
+  /* Two rows collapsing to one has to end at 100%, not at the leftover 50%. */
+  const r = fnSource("removePayer");
+  ok("it removes the row", /payerDraft\.splice/.test(r));
+  ok("and rebalances", /redistributeEvenly\(\)/.test(r));
+  /* And the last one resets rather than leaving an empty, unusable split. */
+  ok("an empty split resets to the default payer", /resetPayers\(\)/.test(r));
+  ok("before it gives up", r.indexOf("resetPayers") < r.indexOf("return;"));
+  ok("every row can be removed", !/payerDraft\.length > 1/.test(fnSource("renderPayers")));
+});
+
+group("a restored split is treated as settled", () => {
+  /* Reopening an old charge and adding somebody must not quietly halve a
+     arrangement the user had already made. */
+  const s = fnSource("setPayerDraft");
+  ok("restored rows are not auto", /auto: false/.test(s));
+  /* The default payer IS auto, so it is the one that gives way. */
+  ok("the default payer is auto", /auto: true/.test(fnSource("resetPayers")));
+});
+
+group("an unknown charge is not divided", () => {
+  /* There is nothing to divide by, so the amounts stay blank rather than being
+     filled with a share of nothing. */
+  const r = fnSource("redistributeEvenly");
+  ok("it gives up without a cost", /if \(!\(cost > 0\)\)/.test(r));
+  ok("and clears the auto amounts", /payerDraft\[autos\[b\]\]\.amount = ""/.test(r));
 });
 
 group("the picker defaults to the signed-in user at the whole charge", () => {
@@ -388,6 +442,168 @@ group("the chart appears only when it has something to say", () => {
 
 group("the log renders it", () => {
   ok("renderBody draws the chart", /renderPayerChart\(list\)/.test(app));
+});
+
+/* ---------- redistribution, executed rather than read ---------- */
+
+/**
+ * redistributeEvenly() against a controllable cost field.
+ *
+ * Everything above this point reads the function's source. That can confirm a
+ * branch exists; it cannot tell you the split adds to 100%. The bug this
+ * function was written to fix was arithmetic - one payer at 100% and another at
+ * 50% - and arithmetic has to be run.
+ */
+function makeRedistributor(cost) {
+  const fields = { cost: { value: cost === null ? "" : String(cost) } };
+  const src = `
+    var payerDraft = __draft, $ = function(id){ return __fields[id]; };
+    ${fnSource("num")}
+    ${fnSource("redistributeEvenly")}
+    redistributeEvenly();
+    return payerDraft;
+  `;
+  const built = new Function("__draft", "__fields", src);
+  /* The cost field is closed over, so each call supplies only the draft. */
+  return (draft) => built(draft, fields);
+}
+
+const sum = (rows) => rows.reduce((t, r) => t + num(r.amount), 0);
+
+group("two payers split the whole charge, not half of it", () => {
+  /* The reported bug: the default payer sat at 100% and the new one at 50%. */
+  const draft = [
+    { name: "Anna", amount: "20.00", auto: true },
+    { name: "Bo", amount: "", auto: true },
+  ];
+  const out = makeRedistributor(20)(draft);
+  near("Anna", num(out[0].amount), 10, 0.001);
+  near("Bo", num(out[1].amount), 10, 0.001);
+  near("and the whole charge is covered", sum(out), 20, 0.001);
+});
+
+group("three ways come to exactly the charge", () => {
+  const draft = [
+    { name: "A", amount: "", auto: true },
+    { name: "B", amount: "", auto: true },
+    { name: "C", amount: "", auto: true },
+  ];
+  const out = makeRedistributor(10)(draft);
+  near("A", num(out[0].amount), 3.33, 0.001);
+  near("B", num(out[1].amount), 3.33, 0.001);
+  near("C takes the odd cent", num(out[2].amount), 3.34, 0.001);
+  near("the total is the charge, not 9.99", sum(out), 10, 0.001);
+});
+
+group("a charge that does not divide evenly still adds up", () => {
+  /* 0.05 across three, and the awkward cases where rounding is worst. */
+  for (const cost of [0.05, 0.01, 1, 7.77, 19.99, 100]) {
+    const draft = [0, 1, 2].map((i) => ({ name: "P" + i, amount: "", auto: true }));
+    const out = makeRedistributor(cost)(draft);
+    near(`three ways on ${cost}`, sum(out), cost, 0.001);
+    ok(`and no row is negative on ${cost}`, out.every((r) => num(r.amount) >= 0));
+  }
+});
+
+group("an amount the user typed survives a re-balance", () => {
+  /* Their number, not ours to rewrite. */
+  const draft = [
+    { name: "Anna", amount: "18.00", auto: false },
+    { name: "Bo", amount: "", auto: true },
+  ];
+  const out = makeRedistributor(20)(draft);
+  is("Anna is untouched", out[0].amount, "18.00");
+  /* Bo takes what is left of the charge among the auto rows - one row, so the
+     whole charge, which is what "auto rows share the charge equally" means. */
+  near("Bo takes the full share for one auto row", num(out[1].amount), 20, 0.001);
+});
+
+group("a mixed split covers the charge among the auto rows", () => {
+  const draft = [
+    { name: "Typed", amount: "5.00", auto: false },
+    { name: "Auto1", amount: "", auto: true },
+    { name: "Auto2", amount: "", auto: true },
+  ];
+  const out = makeRedistributor(15)(draft);
+  is("the typed one stands", out[0].amount, "5.00");
+  near("auto 1", num(out[1].amount), 7.5, 0.001);
+  near("auto 2", num(out[2].amount), 7.5, 0.001);
+});
+
+group("nothing is divided when there is no charge", () => {
+  for (const cost of [null, 0, ""]) {
+    const draft = [
+      { name: "A", amount: "12.00", auto: true },
+      { name: "B", amount: "", auto: true },
+    ];
+    const out = makeRedistributor(cost)(draft);
+    is(`blank with cost ${JSON.stringify(cost)}: A`, out[0].amount, "");
+    is(`blank with cost ${JSON.stringify(cost)}: B`, out[1].amount, "");
+  }
+  /* A charge not yet typed is not a charge of zero. */
+  const partial = [
+    { name: "A", amount: "", auto: true },
+    { name: "B", amount: "", auto: true },
+  ];
+  const out = makeRedistributor(null)(partial);
+  ok("and no NaN reaches the field", !/NaN|Infinity/.test(JSON.stringify(out)));
+});
+
+group("rows with no auto flag at all are left completely alone", () => {
+  const draft = [
+    { name: "A", amount: "7.00", auto: false },
+    { name: "B", amount: "3.00", auto: false },
+  ];
+  const out = makeRedistributor(100)(draft);
+  is("A", out[0].amount, "7.00");
+  is("B", out[1].amount, "3.00");
+});
+
+group("adding a payer, end to end", () => {
+  /* addPayer() run for real, not read. The reported bug lived in this
+     function's own arithmetic, so a test that only exercised redistributeEvenly
+     would have kept passing after the regression came back. */
+  const build = (cost) => {
+    const fields = {
+      cost: { value: cost === null ? "" : String(cost) },
+      payerRows: { innerHTML: "", querySelectorAll: () => [] },
+    };
+    const src = `
+      var payerDraft = __draft;
+      var $ = function(id){ return __fields[id]; };
+      var esc = function(v){ return String(v); };
+      var friends = [];
+      function TXT(k, v){ return k; }
+      function syncPayerHint(){}
+      ${fnSource("num")}
+      ${fnSource("payerTotal")}
+      ${fnSource("redistributeEvenly")}
+      ${fnSource("renderPayers")}
+      ${fnSource("addPayer")}
+      addPayer();
+      return payerDraft;
+    `;
+    return (draft) => new Function("__draft", "__fields", src)(draft, fields);
+  };
+
+  /* One person paying, then a second joins. */
+  const two = build(20)([{ name: "Anna", amount: "20.00", auto: true }]);
+  is("two rows now", two.length, 2);
+  near("Anna drops to half", num(two[0].amount), 10, 0.001);
+  near("the newcomer takes half", num(two[1].amount), 10, 0.001);
+  ok("and it is not 150% of the charge", Math.abs(sum(two) - 20) < 0.001);
+
+  /* A third. */
+  const three = build(10)([
+    { name: "A", amount: "", auto: true },
+    { name: "B", amount: "", auto: true },
+  ]);
+  ok("three rows", three.length === 3);
+  near("and the charge is covered exactly once", sum(three), 10, 0.001);
+
+  /* With nothing to divide, nothing is invented. */
+  const noCost = build(null)([{ name: "Anna", amount: "", auto: true }]);
+  is("the newcomer is blank", noCost[1].amount, "");
 });
 
 console.log(`\n${pass} passed, ${failures.length} failed`);
