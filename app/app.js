@@ -7723,7 +7723,14 @@ for (i = 0; i < IMPORT_COLS.length; i++) {
             made = [],
             vehiclesAdded = 0,
             before = vehicles.length;
-          if (/\.json$/.test(name) || /^\s*[[{]/.test(text)) {
+          var isJson = /\.json$/.test(name) || /^\s*[[{]/.test(text);
+          /* Declared here rather than inside the JSON branch below: the apply
+             step after the parse reads all three, and a CSV import never enters
+             that branch, so the variables used to be undefined for it. */
+          var pendFavs = null,
+            pendPrice = null,
+            pendVehAdds = [];
+          if (isJson) {
             var data;
             try {
               data = JSON.parse(text);
@@ -7859,64 +7866,99 @@ vehiclesAdded = vehicles.length - before;
             }
             /* Past the bail-out: at least one row survived, so the rest of the
                file's intent is now worth applying. */
-            if (pendPrice !== null && pendPrice !== undefined) {
-              price = pendPrice;
-              persist();
-              $("ppk").value = price;
-            }
-            if (pendFavs) {
-              /* Replaced, so the bin they were split out of has to go too.
-                 loadFavs() re-reads the bin key, and it was left pointing at the
-                 OLD contents: importing the same backup twice after binning a
-                 favourite put that place back live while its binned copy stayed,
-                 so one place existed in two states and appeared in the bin
-                 forever. Every favourite the file did not mention was destroyed
-                 outright, with no bin entry and no undo. */
-              try {
-                localStorage.setItem(K.f, JSON.stringify(pendFavs));
-                localStorage.setItem(K.bf, JSON.stringify([]));
-              } catch (err) {
-                /* favourites are a convenience; a failed write must not abort the restore */
+
+            /* A JSON import asks who paid once instead of guessing. A CSV has no
+               payer column to preserve and a signed-out user has no "me" to
+               assign, so the prompt only appears when it has an answer. */
+            var me = myPayerName();
+
+            function finishImport(assignToMe) {
+              if (assignToMe && me) {
+                /* One payer at the whole share: the signed-in user. */
+                for (var mi = 0; mi < made.length; mi++)
+                  made[mi].payers = [{ name: me, share: 1 }];
               }
-              loadFavs();
-              binned.favs = [];
-            }
-            for (var pv = 0; pv < pendVehAdds.length; pv++) {
-              var pa = pendVehAdds[pv];
-              if (vehById(pa.id)) continue;
-              vehicles.push({
-                id: pa.id,
-                name: String(pa.name || "Vehicle"),
-                icon: String(pa.icon || "\u{1F697}"),
-                /* Stamped, or the restored car belongs to nobody as far as this
-                   device is concerned. ownsVehicle() compares userId with the
-                   signed-in id, so a vehicle without one resolves to no role at
-                   all and the interface reported the owner's own restored car as
-                   "waiting for the owner to approve your access" - a request for
-                   something nobody had asked for. It also made the row look
-                   writable to everybody: mayWriteVehicle() treats a missing owner
-                   as "not yet claimed", so an imported vehicle was pushed under
-                   an id the server may already attribute to another account. */
-                userId: ownerId() || null,
-                initialOdometer: isNum(pa.initialOdometer)
-                  ? num(pa.initialOdometer)
-                  : 0,
-                /* Carried through a backup restore, so a vehicle that had a
-                   capacity set does not silently lose it on the way in. */
-                capacity: isNum(pa.capacity) ? num(pa.capacity) : null,
+              if (pendPrice !== null && pendPrice !== undefined) {
+                price = pendPrice;
+                persist();
+                $("ppk").value = price;
+              }
+              if (pendFavs) {
+                /* Replaced, so the bin they were split out of has to go too.
+                   loadFavs() re-reads the bin key, and it was left pointing at the
+                   OLD contents: importing the same backup twice after binning a
+                   favourite put that place back live while its binned copy stayed,
+                   so one place existed in two states and appeared in the bin
+                   forever. Every favourite the file did not mention was destroyed
+                   outright, with no bin entry and no undo. */
+                try {
+                  localStorage.setItem(K.f, JSON.stringify(pendFavs));
+                  localStorage.setItem(K.bf, JSON.stringify([]));
+                } catch (err) {
+                  /* favourites are a convenience; a failed write must not abort the restore */
+                }
+                loadFavs();
+                binned.favs = [];
+              }
+              for (var pv = 0; pv < pendVehAdds.length; pv++) {
+                var pa = pendVehAdds[pv];
+                if (vehById(pa.id)) continue;
+                vehicles.push({
+                  id: pa.id,
+                  name: String(pa.name || "Vehicle"),
+                  icon: String(pa.icon || "\u{1F697}"),
+                  /* Stamped, or the restored car belongs to nobody as far as this
+                     device is concerned. ownsVehicle() compares userId with the
+                     signed-in id, so a vehicle without one resolves to no role at
+                     all and the interface reported the owner's own restored car as
+                     "waiting for the owner to approve your access" - a request for
+                     something nobody had asked for. It also made the row look
+                     writable to everybody: mayWriteVehicle() treats a missing owner
+                     as "not yet claimed", so an imported vehicle was pushed under
+                     an id the server may already attribute to another account. */
+                  userId: ownerId() || null,
+                  initialOdometer: isNum(pa.initialOdometer)
+                    ? num(pa.initialOdometer)
+                    : 0,
+                  /* Carried through a backup restore, so a vehicle that had a
+                     capacity set does not silently lose it on the way in. */
+                  capacity: isNum(pa.capacity) ? num(pa.capacity) : null,
+                });
+                vehiclesAdded++;
+              }
+              for (var m = 0; m < made.length; m++) sessions.push(made[m]);
+              save();
+              render();
+              /* The payers ride on top of the sessions: the rows must exist on
+                 the server before the RPC can attach a split to them, so the
+                 payer writes wait for the bulk upsert to settle. */
+              syncSessions(made).then(function () {
+                if (assignToMe && me)
+                  for (var sp = 0; sp < made.length; sp++)
+                    syncSessionPayers(made[sp]);
               });
-              vehiclesAdded++;
+              showImport(
+                made.length && errors.length ? "warn" : "ok",
+                TXT("imp.note", { n: made.length }),
+                errors,
+              );
+              toast(TXT("toast.imported", { n: made.length }));
             }
-            for (var m = 0; m < made.length; m++) sessions.push(made[m]);
-            save();
-            render();
-            syncSessions(made);
-            showImport(
-              made.length && errors.length ? "warn" : "ok",
-              TXT("imp.note", { n: made.length }),
-              errors,
-            );
-            toast(TXT("toast.imported", { n: made.length }));
+
+            if (isJson && me) {
+              askConfirm(TXT("imp.payersBody", { n: made.length }), {
+                heading: "imp.payersTitle",
+                ok: "imp.payersMe",
+                altKey: "imp.payersNone",
+                cancel: "confirm.cancel",
+              }).then(function (choice) {
+                if (choice === true) finishImport(true);
+                else if (choice === "alt") finishImport(false);
+                else showImport("bad", TXT("imp.payersCancelled"), []);
+              });
+            } else {
+              finishImport(false);
+            }
           }
         function showImport(kind, headline, list) {
           var box = $("impResult");
