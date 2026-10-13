@@ -31,10 +31,9 @@
  * tools/test-sw-bump.mjs asserts that every shell file was touched, and that the
  * version moved with it.
  *
- * Last bumped: 2026-10-13, for the telemetry-style mobile log and the
- * handedness cluster on the focus bottom bar.
+ * Last bumped: 2026-10-13, for the flush bottom-bar alignment (no edge gap).
  */
-const VERSION = "v57";
+const VERSION = "v58";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [

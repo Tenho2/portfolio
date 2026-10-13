@@ -128,8 +128,8 @@ group("the bottom bar honours handedness", () => {
   ok("storage exposes a global navAlign key", /navAlign:\s*K_NAVALIGN/.test(storage));
   ok("the icons shrink to a 44px touch target", /\.side-nav li\s*\{[^}]*min-width:\s*44px/.test(focusCss));
   ok("and cluster right by default", /body\[data-layout="focus"\] .side-nav\s*\{[^}]*justify-content:\s*flex-end/.test(focusCss));
-  ok("right-handed adds an edge gap", /body\[data-layout="focus"\]\[data-nav-align="right"\] .side-nav\s*\{[^}]*justify-content:\s*flex-end[^}]*padding-right:\s*0\.5rem/.test(focusCss));
-  ok("left-handed mirrors it", /body\[data-layout="focus"\]\[data-nav-align="left"\] .side-nav\s*\{[^}]*justify-content:\s*flex-start[^}]*padding-left:\s*0\.5rem/.test(focusCss));
+  ok("right-handed aligns to the edge with no gap", /body\[data-layout="focus"\]\[data-nav-align="right"\] .side-nav\s*\{[^}]*justify-content:\s*flex-end[^}]*padding-right:\s*0/.test(focusCss));
+  ok("left-handed mirrors it", /body\[data-layout="focus"\]\[data-nav-align="left"\] .side-nav\s*\{[^}]*justify-content:\s*flex-start[^}]*padding-left:\s*0/.test(focusCss));
 });
 
 console.log(failures.length ? "\nFAILED:" : "");

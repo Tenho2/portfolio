@@ -114,11 +114,11 @@
      small gap for the thumb; left-handed mirrors it. */
   body[data-layout="focus"][data-nav-align="right"] .side-nav {
     justify-content: flex-end;
-    padding-right: 0.5rem;
+    padding-right: 0;
   }
   body[data-layout="focus"][data-nav-align="left"] .side-nav {
     justify-content: flex-start;
-    padding-left: 0.5rem;
+    padding-left: 0;
   }
   body[data-layout="focus"] .side-nav button[aria-current="page"] {
     border-left-color: transparent;
