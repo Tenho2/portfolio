@@ -485,6 +485,7 @@
       "sync.allGood":
         "Everything is on the server. Nothing is waiting to sync.",
       "sync.discard": "Discard",
+      "sync.techDetails": "Technical details",
       "sync.stalledHint":
         "The server refused these, so waiting will not help. The exact reason is shown under each one. Discard to remove it from this device, or open it and save again to try a fresh copy.",
       "sync.heldHint":
@@ -1261,6 +1262,7 @@
         "Kaikki tässä on tallennettu tälle laitteelle eikä ole vielä päässyt palvelimelle.",
       "sync.allGood": "Kaikki on palvelimella. Ei mitään odottamassa.",
       "sync.discard": "Hylkää",
+      "sync.techDetails": "Tekniset tiedot",
       "sync.stalledHint":
         "Palvelin hylkäsi nämä, joten odottaminen ei auta. Tarkka syy näytetään jokaisen kohdalla. Hylkää poistaa kohteen tältä laitteelta, tai avaa ja tallenna uudelleen, jotta kopio lähetettäisiin.",
       "sync.heldHint":
@@ -2033,6 +2035,7 @@
         "Allt här är sparat på den här enheten och har ännu inte nått servern.",
       "sync.allGood": "Allt finns på servern. Inget väntar på synkning.",
       "sync.discard": "Kasta",
+      "sync.techDetails": "Tekniska detaljer",
       "sync.stalledHint":
         "Servern nekade dessa, så att vänta hjälper inte. Den exakta orsaken visas under varje post. Kasta för att ta bort den från enheten, eller öppna och spara igen för att skicka en ny kopia.",
       "sync.heldHint":

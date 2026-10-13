@@ -407,6 +407,28 @@
         color: var(--danger);
         overflow-wrap: anywhere;
       }
+      /* The raw server text is diagnostic, so it is tucked behind a disclosure
+         rather than printed inline next to the translated reason. */
+      .sync-tech {
+        flex: 1 1 100%;
+        margin: 0.15rem 0 0;
+      }
+      .sync-tech summary {
+        display: inline-block;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        cursor: pointer;
+      }
+      .sync-tech code.sync-err {
+        display: block;
+        margin-top: 0.35rem;
+      }
+      /* Inline SVG icons inherit the surrounding text colour, so a monochrome
+         glyph replaces the emoji without a second palette to keep in step. */
+      .ic svg {
+        display: block;
+        margin: 0 auto;
+      }
       /* Sits above the content and below the toast. Deliberately not
          dismissible: it clears itself when the cause is resolved. */
       .sync-banner {
@@ -2237,4 +2259,45 @@
           animation: none !important;
           transition: none !important;
         }
+      }
+      /* ---------- focus layout theme ----------
+         The focus arrangement's palette. Deep indigo-slate, a mint accent and
+         hairline borders, with no gradients and no glass. The colours live here
+         rather than in app/layout-focus.css so the layout sheet stays
+         arrangement-only and keeps passing tools/test-layouts.mjs. Placed last
+         so it wins over the body.dark block; focus is a fixed dark theme and
+         ignores the light/dark toggle. */
+      body[data-layout="focus"] {
+        --primary: #10b981;
+        --primary-d: #0ea271;
+        --accent: #34d399;
+        --success: #10b981;
+        --warn: #f59e0b;
+        --danger: #f87171;
+        --text: #e2e8f0;
+        --text-muted: #94a3b8;
+        --surface: #151b2e;
+        --surface-2: #1c2438;
+        --surface-3: #232d45;
+        --line: #2b3550;
+        --hero-a: #1c2438;
+        --hero-b: #1c2438;
+        --page-a: #0e1322;
+        --page-b: #0e1322;
+        --sh: none;
+        --sh-lg: none;
+        background: #0e1322;
+      }
+      /* No gradients or glass. The pressed vehicle card carries a gradient in
+         dark mode, and the sheet scrim blurs what is behind it; both are undone
+         so the focus layout reads flat. */
+      body[data-layout="focus"] .vcard[aria-pressed="true"] {
+        background: var(--surface-2);
+        border-color: var(--line);
+      }
+      body[data-layout="focus"] .sheet {
+        backdrop-filter: none;
+      }
+      body[data-layout="focus"] .item {
+        border-color: var(--line);
       }

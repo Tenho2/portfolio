@@ -6619,15 +6619,16 @@ function discardUnsynced(kind, id) {
                 '<span class="mt">' +
                 esc(r.why2 || TXT("sync.reason." + r.why)) +
                 "</span>" +
-                /* The server's own words. Without this the panel can only say
-                   that a write was refused, which is the least useful possible
-                   answer when the question is why. */
+                /* The server's own words, tucked behind a disclosure. The
+                   translated reason above is what a person reads; the raw SQL
+                   text is diagnostic and belongs out of the way, not inline. */
                 (r.detail
-                  ? '<span class="sync-err" title="' +
+                  ? '<details class="sync-tech"><summary>' +
+                    TXT("sync.techDetails") +
+                    "</summary>" +
+                    '<code class="sync-err">' +
                     esc(r.detail) +
-                    '">' +
-                    esc(r.detail.length > 90 ? r.detail.slice(0, 90) + "…" : r.detail) +
-                    "</span>"
+                    "</code></details>"
                   : "") +
                 (r.hard
                 ? '<button type="button" class="btn sm dgr" data-discard="' +

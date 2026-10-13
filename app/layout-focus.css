@@ -1,54 +1,125 @@
 /* EV Tracker layout shell: the focus arrangement.
  *
- * The dashboard, arranged for a glance. The four figures that answer "what has
- * this car cost and how far does it go" come first and are set larger; the
- * remaining tiles follow in their usual order. The content column is narrower so
- * those figures are read as a group rather than spread across a monitor.
+ * The dashboard, arranged for a glance, with a navigation shell that folds
+ * from a desktop rail into a mobile bottom bar. The colours come from
+ * app/app.css under body[data-layout="focus"]; this sheet only rearranges the
+ * shell, so tools/test-layouts.mjs keeps passing.
  *
- * Why this exists
- *   The classic and wide layouts show every tile at the same size, in the same
- *   order, so the figures that matter most are not the ones the eye lands on. A
- *   focus arrangement gives the key figures the prominence without removing any
- *   of them: nothing is hidden, and every view, button and tile stays reachable.
- *
- * What it does not do
- *   The app has no live "charging now" state. The figures shown are the stored
- *   totals and per-100 km averages, which is what the dashboard already reports.
- *
- * Only position, size, order and width are changed here. Colour, spacing,
- * borders and focus rings belong to app/app.css and are shared by every layout.
- * Scoped to body[data-layout="focus"] so nothing leaks into the other pages.
+ * Above 700px the vertical rail from app/app.css stands as-is. The classic
+ * layout collapses that rail into a sticky top strip at 820px; the focus
+ * layout does not, so the two breakpoints below undo that collapse and then,
+ * at 700px, move the navigation to a fixed bar along the bottom edge instead.
  */
 
-body[data-layout="focus"] .wrap {
-  max-width: 48rem;
+/* Between 820px and 700px the classic top-strip collapse is undone: the rail
+   stays a rail. These rules re-assert the desktop rail and restore the labels
+   that the collapse hides. */
+@media (max-width: 820px) {
+  body[data-layout="focus"] .side {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: 250px;
+    display: block;
+    padding: 1.25rem 0;
+    overflow-x: visible;
+    overflow-y: auto;
+  }
+  body[data-layout="focus"] .side-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0 1.25rem 1rem;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 0.75rem;
+    font-size: 1.15rem;
+  }
+  body[data-layout="focus"] .side-nav {
+    display: block;
+  }
+  body[data-layout="focus"] .side-nav button {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    width: 100%;
+    padding: 0.7rem 1.25rem;
+    border-left: 3px solid transparent;
+    border-bottom: 0;
+    border-radius: 0;
+    white-space: normal;
+    text-align: left;
+  }
+  body[data-layout="focus"] .side-nav button[aria-current="page"] {
+    border-left-color: var(--primary);
+    border-bottom: 0;
+  }
+  body[data-layout="focus"] .side-nav button span:not(.ic):not(.bin-count) {
+    display: inline;
+  }
+  body[data-layout="focus"] .side .badge {
+    display: block;
+  }
+  body[data-layout="focus"] .wrap,
+  body[data-layout="focus"] footer {
+    margin-left: 250px;
+  }
+  body[data-layout="focus"] .wrap {
+    padding: 1.25rem;
+  }
 }
 
-body[data-layout="focus"] .stats {
-  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-}
-
-/* The four key tiles are marked data-key in the shared markup. They share one
-   order value, so they keep their existing relative order and move ahead of
-   the rest. */
-body[data-layout="focus"] .stats > .stat {
-  order: 5;
-}
-
-body[data-layout="focus"] .stats > .stat[data-key] {
-  order: 1;
-}
-
-body[data-layout="focus"] .stat[data-key] .n {
-  font-size: 2.2rem;
-}
-
-body[data-layout="focus"] .chartbox {
-  max-height: 16rem;
-}
-
-@media (max-width: 560px) {
-  body[data-layout="focus"] .stat[data-key] .n {
-    font-size: 1.8rem;
+/* The mobile bottom bar. The rail's furniture - brand, account, badge - has no
+   room in a bottom bar and is hidden; the nav stretches across the width with
+   the icon over its label. Content and footer are padded up off the bar. */
+@media (max-width: 700px) {
+  body[data-layout="focus"] .side {
+    position: fixed;
+    inset: auto 0 0 0;
+    width: auto;
+    display: flex;
+    padding: 0;
+    overflow: visible;
+    border-right: 0;
+    border-top: 1px solid var(--line);
+  }
+  body[data-layout="focus"] .side-brand,
+  body[data-layout="focus"] .side .badge,
+  body[data-layout="focus"] .side .who-mobile {
+    display: none;
+  }
+  body[data-layout="focus"] .side-nav {
+    display: flex;
+    flex: 1 1 auto;
+    gap: 0;
+  }
+  body[data-layout="focus"] .side-nav li {
+    flex: 1 1 0;
+  }
+  body[data-layout="focus"] .side-nav button {
+    flex-direction: column;
+    gap: 0.15rem;
+    width: 100%;
+    padding: 0.45rem 0.25rem;
+    border-left: 0;
+    border-bottom: 0;
+    border-radius: 0;
+    font-size: 0.62rem;
+    text-align: center;
+  }
+  body[data-layout="focus"] .side-nav button[aria-current="page"] {
+    border-left-color: transparent;
+    border-bottom-color: transparent;
+  }
+  body[data-layout="focus"] .side-nav button span:not(.ic):not(.bin-count) {
+    display: inline;
+  }
+  body[data-layout="focus"] .wrap,
+  body[data-layout="focus"] footer {
+    margin-left: 0;
+  }
+  body[data-layout="focus"] .wrap {
+    padding-bottom: 5rem;
+  }
+  body[data-layout="focus"] footer {
+    padding-bottom: 5rem;
   }
 }

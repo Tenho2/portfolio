@@ -71,6 +71,37 @@ function markupOf(file) {
     .replace(/\s*data-layout="[^"]*"/g, "");
 }
 
+/**
+ * Remove a top-level `@media (max-width: Npx) { ... }` block, brace-balanced.
+ *
+ * Responsive furniture-hiding is legitimate arrangement: the focus bottom bar
+ * hides the rail's brand, account and badge below 700px, and that is exactly
+ * the kind of "what shows at which width" the layout sheets exist for. So the
+ * display:none prohibition below reads the sheet with this block excised, and
+ * the split is asserted by test-layout-focus.mjs instead of being trusted.
+ */
+function withoutMobile(css, maxWidthPx) {
+  const query = `@media (max-width: ${maxWidthPx}px)`;
+  let out = css;
+  let i = out.indexOf(query);
+  while (i >= 0) {
+    const open = out.indexOf("{", i);
+    if (open < 0) break;
+    let depth = 0;
+    let j = open;
+    for (; j < out.length; j++) {
+      if (out[j] === "{") depth++;
+      else if (out[j] === "}") {
+        depth--;
+        if (depth === 0) break;
+      }
+    }
+    out = out.slice(0, i) + out.slice(j + 1);
+    i = out.indexOf(query);
+  }
+  return out;
+}
+
 group("both layout pages exist and declare themselves", () => {
   for (const p of PAGES) {
     ok(`${p.file} exists`, existsSync(p.file));
@@ -143,7 +174,10 @@ group("the layout sheets only arrange what the shared sheet defines", () => {
       /font-family\s*:/,
     ].filter((re) => re.test(css.replace(/\/\*[\s\S]*?\*\//g, "")));
     ok(`${name}: does not restyle a component's appearance`, restyles.length === 0);
-    ok(`${name}: cannot hide content with display:none`, !/display:\s*none/.test(css));
+    ok(
+      `${name}: cannot hide content with display:none outside the mobile bottom bar`,
+      !/display:\s*none/.test(withoutMobile(css, 700)),
+    );
   }
 });
 

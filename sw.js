@@ -31,9 +31,10 @@
  * tools/test-sw-bump.mjs asserts that every shell file was touched, and that the
  * version moved with it.
  *
- * Last bumped: 2026-10-13, for the focus layout (dashboard-first arrangement).
+ * Last bumped: 2026-10-13, for the focus layout theme, bottom-bar nav and
+ * inline SVG icons.
  */
-const VERSION = "v54";
+const VERSION = "v55";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [
