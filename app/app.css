@@ -2329,108 +2329,104 @@
         padding: 0.7rem 1rem;
       }
 
-      /* High-density log on a phone. The focus layout trades the labelled cards
-         for a compact four-column row - date, energy, cost, mileage - so several
-         sessions fit on screen at once. The secondary columns (time, duration,
-         location, speed, tags, notes) stay reachable through the edit sheet. */
+      /* Telemetry-style log on a phone. The focus layout discards the table
+         columns for a compact two-line row - date and location over energy and
+         cost on the first line, mileage and duration over the edit action on the
+         second - so five or six sessions fit on screen. No header, no cards, just
+         hairline separators. The secondary columns stay reachable through the
+         edit sheet, and the delete button lives there too. */
       @media (max-width: 700px) {
         body[data-layout="focus"] #logTable,
         body[data-layout="focus"] #logTable tbody {
           display: block;
         }
-        body[data-layout="focus"] #logTable thead {
-          display: block;
-        }
         body[data-layout="focus"] #logTable tr {
-          display: grid;
-          grid-template-columns: 5.6rem minmax(0, 1fr) auto auto auto;
-          gap: 0.35rem 0.5rem;
+          display: flex;
+          flex-wrap: wrap;
           align-items: center;
-          padding: 0.28rem 0.5rem;
+          column-gap: 0.6rem;
+          row-gap: 0.1rem;
+          padding: 0.45rem 0.6rem;
           margin-bottom: 0;
           border: 0;
           border-bottom: 1px solid var(--line);
           border-radius: 0;
           background: var(--surface);
         }
-        body[data-layout="focus"] #logTable th,
+        /* A full-width zero-height break separates the two lines. */
+        body[data-layout="focus"] #logTable tr::after {
+          content: "";
+          flex-basis: 100%;
+          order: 4.5;
+        }
         body[data-layout="focus"] #logTable td {
           display: block;
           padding: 0;
           border: 0;
+          font-size: 0.8rem;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
-          font-size: 0.8rem;
-        }
-        body[data-layout="focus"] #logTable th {
-          color: var(--text-muted);
-          font-size: 0.65rem;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
+          min-width: 0;
         }
         body[data-layout="focus"] #logTable td::before {
           content: none;
         }
-        /* Shown columns: date(1), energy(5), cost(8), mileage(7), action(11). */
+        /* Line 1: date and location on the left, energy and cost on the right. */
         body[data-layout="focus"] #logTable td:nth-child(1) {
-          grid-column: 1;
+          order: 1;
+          font-weight: 600;
+          flex: 0 0 auto;
+        }
+        body[data-layout="focus"] #logTable td:nth-child(4) {
+          order: 2;
+          font-weight: 600;
+          flex: 0 1 auto;
+          max-width: 42%;
         }
         body[data-layout="focus"] #logTable td:nth-child(5) {
-          grid-column: 2;
+          order: 3;
+          margin-left: auto;
+          font-weight: 600;
+          flex: 0 1 auto;
+          max-width: 40%;
         }
         body[data-layout="focus"] #logTable td:nth-child(8) {
-          grid-column: 3;
+          order: 4;
+          font-weight: 600;
+          flex: 0 0 auto;
         }
+        /* Line 2: mileage and duration on the left, the edit action far right. */
         body[data-layout="focus"] #logTable td:nth-child(7) {
-          grid-column: 4;
+          order: 5;
+          color: var(--text-muted);
+        }
+        body[data-layout="focus"] #logTable td:nth-child(3) {
+          order: 6;
+          color: var(--text-muted);
         }
         body[data-layout="focus"] #logTable td:nth-child(11) {
-          grid-column: 5;
+          order: 7;
+          margin-left: auto;
+          display: flex;
+          gap: 0.25rem;
+          white-space: normal;
+          overflow: visible;
         }
+        /* The secondary columns, and the delete button, move to the edit sheet. */
         body[data-layout="focus"] #logTable td:nth-child(2),
-        body[data-layout="focus"] #logTable td:nth-child(3),
-        body[data-layout="focus"] #logTable td:nth-child(4),
         body[data-layout="focus"] #logTable td:nth-child(6),
         body[data-layout="focus"] #logTable td:nth-child(9),
         body[data-layout="focus"] #logTable td:nth-child(10) {
           display: none;
         }
-        body[data-layout="focus"] #logTable th:nth-child(1) {
-          grid-column: 1;
-        }
-        body[data-layout="focus"] #logTable th:nth-child(5) {
-          grid-column: 2;
-        }
-        body[data-layout="focus"] #logTable th:nth-child(8) {
-          grid-column: 3;
-        }
-        body[data-layout="focus"] #logTable th:nth-child(7) {
-          grid-column: 4;
-        }
-        body[data-layout="focus"] #logTable th:nth-child(11) {
-          grid-column: 5;
-        }
-        body[data-layout="focus"] #logTable th:nth-child(2),
-        body[data-layout="focus"] #logTable th:nth-child(3),
-        body[data-layout="focus"] #logTable th:nth-child(4),
-        body[data-layout="focus"] #logTable th:nth-child(6),
-        body[data-layout="focus"] #logTable th:nth-child(9),
-        body[data-layout="focus"] #logTable th:nth-child(10) {
+        body[data-layout="focus"] #logTable [data-del] {
           display: none;
-        }
-        /* The action cell keeps its edit and delete buttons side by side. */
-        body[data-layout="focus"] #logTable td:nth-child(11) {
-          display: flex;
-          justify-content: flex-end;
-          gap: 0.25rem;
-          white-space: normal;
-          overflow: visible;
         }
         /* The empty-state cell spans the whole row instead of one column. */
         body[data-layout="focus"] #logTable td.empty {
-          display: block;
-          grid-column: 1 / -1;
+          flex-basis: 100%;
+          white-space: normal;
           text-align: center;
         }
       }

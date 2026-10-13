@@ -105,14 +105,17 @@ group("the luxury aesthetic strips radii and padding", () => {
   ok("action tiles go to a hairline border and a small radius", /body\[data-layout="focus"\]\s*\.qa button\s*\{[^}]*border-width:\s*1px/.test(appCss) && /body\[data-layout="focus"\]\s*\.qa button\s*\{[^}]*border-radius:\s*3px/.test(appCss));
 });
 
-group("the mobile log is a compact four-column table", () => {
+group("the mobile log is a two-line telemetry row", () => {
   ok("the density block is scoped to focus", /@media\s*\(max-width:\s*700px\)[\s\S]*body\[data-layout="focus"\] #logTable/.test(appCss));
-  ok("rows become a grid", /body\[data-layout="focus"\] #logTable tr\s*\{[^}]*display:\s*grid/.test(appCss));
-  ok("with a fixed date column and a flexible energy column", /grid-template-columns:\s*5\.6rem minmax\(0,\s*1fr\)/.test(appCss));
-  ok("the header row is shown again", /body\[data-layout="focus"\] #logTable thead\s*\{[^}]*display:\s*block/.test(appCss));
+  ok("rows become a wrapping flex row, not a table", /body\[data-layout="focus"\] #logTable tr\s*\{[^}]*display:\s*flex/.test(appCss));
+  ok("the two lines are separated by a full-width break", /#logTable tr::after\s*\{[^}]*flex-basis:\s*100%/.test(appCss));
   ok("the card labels are suppressed", /body\[data-layout="focus"\] #logTable td::before\s*\{[^}]*content:\s*none/.test(appCss));
-  ok("the four key columns are placed", /td:nth-child\(1\)\s*\{[^}]*grid-column:\s*1/.test(appCss) && /td:nth-child\(5\)\s*\{[^}]*grid-column:\s*2/.test(appCss) && /td:nth-child\(8\)\s*\{[^}]*grid-column:\s*3/.test(appCss) && /td:nth-child\(7\)\s*\{[^}]*grid-column:\s*4/.test(appCss));
+  ok("line 1 puts date and location first", /td:nth-child\(1\)\s*\{[^}]*order:\s*1/.test(appCss) && /td:nth-child\(4\)\s*\{[^}]*order:\s*2/.test(appCss));
+  ok("line 1 puts energy and cost on the right", /td:nth-child\(5\)\s*\{[^}]*order:\s*3/.test(appCss) && /td:nth-child\(8\)\s*\{[^}]*order:\s*4/.test(appCss));
+  ok("line 2 puts mileage, duration, then the edit action", /td:nth-child\(7\)\s*\{[^}]*order:\s*5/.test(appCss) && /td:nth-child\(3\)\s*\{[^}]*order:\s*6/.test(appCss) && /td:nth-child\(11\)\s*\{[^}]*order:\s*7/.test(appCss));
   ok("the secondary columns are hidden", /td:nth-child\(2\),[\s\S]*td:nth-child\(10\)\s*\{[^}]*display:\s*none/.test(appCss));
+  ok("the delete button is hidden, leaving the edit action", /#logTable \[data-del\]\s*\{[^}]*display:\s*none/.test(appCss));
+  ok("no column header is shown", !/body\[data-layout="focus"\] #logTable thead\s*\{[^}]*display:\s*block/.test(appCss));
 });
 
 group("the bottom bar honours handedness", () => {
@@ -121,9 +124,12 @@ group("the bottom bar honours handedness", () => {
   ok("the app writes a body attribute", /setAttribute\("data-nav-align",\s*v\)/.test(appJs));
   ok("and persists the choice", /localStorage\.setItem\(K\.na,\s*v\)/.test(appJs));
   ok("and applies it on boot", /applyNavAlign\(localStorage\.getItem\(K\.na\)\)/.test(appJs));
+  ok("the change handler drives the attribute immediately", /\$\("navAlignSel"\)\.addEventListener\("change"/.test(appJs));
   ok("storage exposes a global navAlign key", /navAlign:\s*K_NAVALIGN/.test(storage));
-  ok("the icons cluster right by default", /body\[data-layout="focus"\] .side-nav\s*\{[^}]*justify-content:\s*flex-end/.test(focusCss));
-  ok("and left when left-handed", /body\[data-layout="focus"\]\[data-nav-align="left"\] .side-nav\s*\{[^}]*justify-content:\s*flex-start/.test(focusCss));
+  ok("the icons shrink to a 44px touch target", /\.side-nav li\s*\{[^}]*min-width:\s*44px/.test(focusCss));
+  ok("and cluster right by default", /body\[data-layout="focus"\] .side-nav\s*\{[^}]*justify-content:\s*flex-end/.test(focusCss));
+  ok("right-handed adds an edge gap", /body\[data-layout="focus"\]\[data-nav-align="right"\] .side-nav\s*\{[^}]*justify-content:\s*flex-end[^}]*padding-right:\s*0\.5rem/.test(focusCss));
+  ok("left-handed mirrors it", /body\[data-layout="focus"\]\[data-nav-align="left"\] .side-nav\s*\{[^}]*justify-content:\s*flex-start[^}]*padding-left:\s*0\.5rem/.test(focusCss));
 });
 
 console.log(failures.length ? "\nFAILED:" : "");

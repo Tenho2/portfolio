@@ -90,18 +90,19 @@
     display: flex;
     flex: 1 1 auto;
     gap: 0;
-    /* Right-handed is the default: the icons cluster against the right edge,
-       where a right-handed thumb reaches them. */
+    /* Right-handed is the fallback; the explicit rule below adds the edge gap. */
     justify-content: flex-end;
   }
   body[data-layout="focus"] .side-nav li {
     flex: 0 0 auto;
+    width: auto;
+    min-width: 44px;
   }
   body[data-layout="focus"] .side-nav button {
     flex-direction: column;
     gap: 0.15rem;
     width: auto;
-    min-width: 3.5rem;
+    min-width: 44px;
     padding: 0.45rem 0.25rem;
     border-left: 0;
     border-bottom: 0;
@@ -109,9 +110,15 @@
     font-size: 0.62rem;
     text-align: center;
   }
-  /* A left-handed user wants the same reach, mirrored. */
+  /* Handedness: right-handed clusters the icons against the right edge with a
+     small gap for the thumb; left-handed mirrors it. */
+  body[data-layout="focus"][data-nav-align="right"] .side-nav {
+    justify-content: flex-end;
+    padding-right: 0.5rem;
+  }
   body[data-layout="focus"][data-nav-align="left"] .side-nav {
     justify-content: flex-start;
+    padding-left: 0.5rem;
   }
   body[data-layout="focus"] .side-nav button[aria-current="page"] {
     border-left-color: transparent;
