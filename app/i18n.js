@@ -445,6 +445,9 @@
       "set.theme": "Appearance",
       "set.themeLight": "Light",
       "set.themeDark": "Dark",
+      "set.navAlign": "Navigation alignment",
+      "set.navRight": "Right-handed",
+      "set.navLeft": "Left-handed",
       "set.resetDevice": "Sign out and clear this device",
       "set.resetDeviceHint":
         "Removes this device's copy of every account, then signs you out. Nothing is deleted on the server.",
@@ -1223,6 +1226,9 @@
       "set.theme": "Ulkoasu",
       "set.themeLight": "Vaalea",
       "set.themeDark": "Tumma",
+      "set.navAlign": "Navigoinnin puoli",
+      "set.navRight": "Oikeakätinen",
+      "set.navLeft": "Vasenkätinen",
       "set.resetDevice": "Kirjaudu ulos ja tyhjennä tämä laite",
       "set.resetDeviceHint":
         "Poistaa tämän laitteen kopion kaikista tileistä ja kirjaa ulos. Palvelimelta ei poisteta mitään.",
@@ -1996,6 +2002,9 @@
       "set.theme": "Utseende",
       "set.themeLight": "Ljust",
       "set.themeDark": "Mörkt",
+      "set.navAlign": "Navigeringssida",
+      "set.navRight": "Högerhänt",
+      "set.navLeft": "Vänsterhänt",
       "set.resetDevice": "Logga ut och töm den här enheten",
       "set.resetDeviceHint":
         "Tar bort den här enhetens kopia av alla konton och loggar ut. Inget raderas på servern.",

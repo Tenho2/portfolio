@@ -27,6 +27,7 @@ const appJs = readFileSync("app/app.js", "utf8");
 const i18n = readFileSync("app/i18n.js", "utf8");
 const sw = readFileSync("sw.js", "utf8");
 const shell = readFileSync("app/shell.mjs", "utf8");
+const storage = readFileSync("app/storage.js", "utf8");
 
 let pass = 0;
 const failures = [];
@@ -94,6 +95,35 @@ group("the focus page is offered and cached", () => {
 
 group("the focus label is translated in all three languages", () => {
   ok("set.layoutFocus appears once per language", (i18n.match(/"set\.layoutFocus":/g) || []).length === 3);
+});
+
+group("the luxury aesthetic strips radii and padding", () => {
+  ok("the radius token drops to 3px", /body\[data-layout="focus"\]\s*\{[^}]*--r:\s*3px;/.test(appCss));
+  ok("panels tighten their padding", /body\[data-layout="focus"\]\s*\.panel\s*\{[^}]*padding:\s*1rem/.test(appCss));
+  ok("tiles tighten their padding", /body\[data-layout="focus"\]\s*\.stat\s*\{[^}]*padding:\s*0\.7rem/.test(appCss));
+  ok("vehicle cards go to a hairline border", /body\[data-layout="focus"\]\s*\.vcard\s*\{[^}]*border-width:\s*1px/.test(appCss));
+  ok("action tiles go to a hairline border and a small radius", /body\[data-layout="focus"\]\s*\.qa button\s*\{[^}]*border-width:\s*1px/.test(appCss) && /body\[data-layout="focus"\]\s*\.qa button\s*\{[^}]*border-radius:\s*3px/.test(appCss));
+});
+
+group("the mobile log is a compact four-column table", () => {
+  ok("the density block is scoped to focus", /@media\s*\(max-width:\s*700px\)[\s\S]*body\[data-layout="focus"\] #logTable/.test(appCss));
+  ok("rows become a grid", /body\[data-layout="focus"\] #logTable tr\s*\{[^}]*display:\s*grid/.test(appCss));
+  ok("with a fixed date column and a flexible energy column", /grid-template-columns:\s*5\.6rem minmax\(0,\s*1fr\)/.test(appCss));
+  ok("the header row is shown again", /body\[data-layout="focus"\] #logTable thead\s*\{[^}]*display:\s*block/.test(appCss));
+  ok("the card labels are suppressed", /body\[data-layout="focus"\] #logTable td::before\s*\{[^}]*content:\s*none/.test(appCss));
+  ok("the four key columns are placed", /td:nth-child\(1\)\s*\{[^}]*grid-column:\s*1/.test(appCss) && /td:nth-child\(5\)\s*\{[^}]*grid-column:\s*2/.test(appCss) && /td:nth-child\(8\)\s*\{[^}]*grid-column:\s*3/.test(appCss) && /td:nth-child\(7\)\s*\{[^}]*grid-column:\s*4/.test(appCss));
+  ok("the secondary columns are hidden", /td:nth-child\(2\),[\s\S]*td:nth-child\(10\)\s*\{[^}]*display:\s*none/.test(appCss));
+});
+
+group("the bottom bar honours handedness", () => {
+  ok("the setting exists in the markup", /id="navAlignSel"/.test(html));
+  ok("its label is translated in all three languages", (i18n.match(/"set\.navAlign":/g) || []).length === 3 && (i18n.match(/"set\.navRight":/g) || []).length === 3 && (i18n.match(/"set\.navLeft":/g) || []).length === 3);
+  ok("the app writes a body attribute", /setAttribute\("data-nav-align",\s*v\)/.test(appJs));
+  ok("and persists the choice", /localStorage\.setItem\(K\.na,\s*v\)/.test(appJs));
+  ok("and applies it on boot", /applyNavAlign\(localStorage\.getItem\(K\.na\)\)/.test(appJs));
+  ok("storage exposes a global navAlign key", /navAlign:\s*K_NAVALIGN/.test(storage));
+  ok("the icons cluster right by default", /body\[data-layout="focus"\] .side-nav\s*\{[^}]*justify-content:\s*flex-end/.test(focusCss));
+  ok("and left when left-handed", /body\[data-layout="focus"\]\[data-nav-align="left"\] .side-nav\s*\{[^}]*justify-content:\s*flex-start/.test(focusCss));
 });
 
 console.log(failures.length ? "\nFAILED:" : "");

@@ -20,14 +20,16 @@
 
   /* Theme and language are deliberately global. They describe the device, not
      the account, so a shared phone does not inherit somebody else's font size
-     or language choice. */
+     or language choice. Navigation handedness is the same kind of device
+     preference, so it is global too. */
   var K_THEME = "theme";
+  var K_NAVALIGN = "navAlign";
 
   /**
    * The full key set for one account's bucket.
    * @param {?string} userId null means the signed-out bucket.
    * @returns {{v: string, s: string, bv: string, bs: string, p: string,
-   *            df: string, f: string, n: string, t: string}}
+   *            df: string, f: string, n: string, t: string, na: string}}
    */
   function keysFor(userId) {
     var pre = userId ? "ev.v1." + userId + "." : "ev.v1.local.";
@@ -59,6 +61,7 @@
          instead of a bare uuid. */
       n: pre + "shareNames",
       t: K_THEME,
+      na: K_NAVALIGN,
     };
   }
 
@@ -170,6 +173,7 @@
        It would otherwise have to reach for the private K_THEME, which is the
        exact mistake this module exists to prevent. */
     theme: K_THEME,
+    navAlign: K_NAVALIGN,
     current: function () {
       return current;
     },

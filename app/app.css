@@ -2286,6 +2286,7 @@
         --page-b: #0e1322;
         --sh: none;
         --sh-lg: none;
+        --r: 3px;
         background: #0e1322;
       }
       /* No gradients or glass. The pressed vehicle card carries a gradient in
@@ -2300,4 +2301,136 @@
       }
       body[data-layout="focus"] .item {
         border-color: var(--line);
+      }
+      /* The luxury read: small radii, hairline borders, tighter padding. The
+         palette above already dropped the shadows and set --r to 3px; these
+         rules tighten the containers that carry the dashboard and the log. */
+      body[data-layout="focus"] .panel {
+        padding: 1rem;
+      }
+      body[data-layout="focus"] .stat {
+        padding: 0.7rem;
+        border-color: var(--line);
+      }
+      body[data-layout="focus"] .vcard {
+        border-width: 1px;
+        padding: 0.75rem;
+      }
+      body[data-layout="focus"] .qa button {
+        border-width: 1px;
+        border-radius: 3px;
+        padding: 0.6rem 0.5rem;
+      }
+      body[data-layout="focus"] .item {
+        border-radius: 3px;
+        padding: 0.45rem 0.65rem;
+      }
+      body[data-layout="focus"] .top {
+        padding: 0.7rem 1rem;
+      }
+
+      /* High-density log on a phone. The focus layout trades the labelled cards
+         for a compact four-column row - date, energy, cost, mileage - so several
+         sessions fit on screen at once. The secondary columns (time, duration,
+         location, speed, tags, notes) stay reachable through the edit sheet. */
+      @media (max-width: 700px) {
+        body[data-layout="focus"] #logTable,
+        body[data-layout="focus"] #logTable tbody {
+          display: block;
+        }
+        body[data-layout="focus"] #logTable thead {
+          display: block;
+        }
+        body[data-layout="focus"] #logTable tr {
+          display: grid;
+          grid-template-columns: 5.6rem minmax(0, 1fr) auto auto auto;
+          gap: 0.35rem 0.5rem;
+          align-items: center;
+          padding: 0.28rem 0.5rem;
+          margin-bottom: 0;
+          border: 0;
+          border-bottom: 1px solid var(--line);
+          border-radius: 0;
+          background: var(--surface);
+        }
+        body[data-layout="focus"] #logTable th,
+        body[data-layout="focus"] #logTable td {
+          display: block;
+          padding: 0;
+          border: 0;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          font-size: 0.8rem;
+        }
+        body[data-layout="focus"] #logTable th {
+          color: var(--text-muted);
+          font-size: 0.65rem;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+        body[data-layout="focus"] #logTable td::before {
+          content: none;
+        }
+        /* Shown columns: date(1), energy(5), cost(8), mileage(7), action(11). */
+        body[data-layout="focus"] #logTable td:nth-child(1) {
+          grid-column: 1;
+        }
+        body[data-layout="focus"] #logTable td:nth-child(5) {
+          grid-column: 2;
+        }
+        body[data-layout="focus"] #logTable td:nth-child(8) {
+          grid-column: 3;
+        }
+        body[data-layout="focus"] #logTable td:nth-child(7) {
+          grid-column: 4;
+        }
+        body[data-layout="focus"] #logTable td:nth-child(11) {
+          grid-column: 5;
+        }
+        body[data-layout="focus"] #logTable td:nth-child(2),
+        body[data-layout="focus"] #logTable td:nth-child(3),
+        body[data-layout="focus"] #logTable td:nth-child(4),
+        body[data-layout="focus"] #logTable td:nth-child(6),
+        body[data-layout="focus"] #logTable td:nth-child(9),
+        body[data-layout="focus"] #logTable td:nth-child(10) {
+          display: none;
+        }
+        body[data-layout="focus"] #logTable th:nth-child(1) {
+          grid-column: 1;
+        }
+        body[data-layout="focus"] #logTable th:nth-child(5) {
+          grid-column: 2;
+        }
+        body[data-layout="focus"] #logTable th:nth-child(8) {
+          grid-column: 3;
+        }
+        body[data-layout="focus"] #logTable th:nth-child(7) {
+          grid-column: 4;
+        }
+        body[data-layout="focus"] #logTable th:nth-child(11) {
+          grid-column: 5;
+        }
+        body[data-layout="focus"] #logTable th:nth-child(2),
+        body[data-layout="focus"] #logTable th:nth-child(3),
+        body[data-layout="focus"] #logTable th:nth-child(4),
+        body[data-layout="focus"] #logTable th:nth-child(6),
+        body[data-layout="focus"] #logTable th:nth-child(9),
+        body[data-layout="focus"] #logTable th:nth-child(10) {
+          display: none;
+        }
+        /* The action cell keeps its edit and delete buttons side by side. */
+        body[data-layout="focus"] #logTable td:nth-child(11) {
+          display: flex;
+          justify-content: flex-end;
+          gap: 0.25rem;
+          white-space: normal;
+          overflow: visible;
+        }
+        /* The empty-state cell spans the whole row instead of one column. */
+        body[data-layout="focus"] #logTable td.empty {
+          display: block;
+          grid-column: 1 / -1;
+          text-align: center;
+        }
       }

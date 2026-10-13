@@ -90,20 +90,28 @@
     display: flex;
     flex: 1 1 auto;
     gap: 0;
+    /* Right-handed is the default: the icons cluster against the right edge,
+       where a right-handed thumb reaches them. */
+    justify-content: flex-end;
   }
   body[data-layout="focus"] .side-nav li {
-    flex: 1 1 0;
+    flex: 0 0 auto;
   }
   body[data-layout="focus"] .side-nav button {
     flex-direction: column;
     gap: 0.15rem;
-    width: 100%;
+    width: auto;
+    min-width: 3.5rem;
     padding: 0.45rem 0.25rem;
     border-left: 0;
     border-bottom: 0;
     border-radius: 0;
     font-size: 0.62rem;
     text-align: center;
+  }
+  /* A left-handed user wants the same reach, mirrored. */
+  body[data-layout="focus"][data-nav-align="left"] .side-nav {
+    justify-content: flex-start;
   }
   body[data-layout="focus"] .side-nav button[aria-current="page"] {
     border-left-color: transparent;

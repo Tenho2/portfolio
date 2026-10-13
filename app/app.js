@@ -6919,6 +6919,16 @@ function retryNow() {
               '<option value="dark">' + TXT("set.themeDark") + "</option>";
             th.value = document.body.classList.contains("dark") ? "dark" : "light";
           }
+          var na = $("navAlignSel");
+          if (na) {
+            na.innerHTML =
+              '<option value="right">' + TXT("set.navRight") + "</option>" +
+              '<option value="left">' + TXT("set.navLeft") + "</option>";
+            na.value =
+              document.body.getAttribute("data-nav-align") === "left"
+                ? "left"
+                : "right";
+          }
           /* The language list lives inside the i18n module, which already fills
              the header's select. Copying its options keeps one source of truth
              without reaching across the module boundary, and the language still
@@ -6950,6 +6960,19 @@ function retryNow() {
         function applyThemeSel(want) {
           var isDark = document.body.classList.contains("dark");
           if ((want === "dark") !== isDark) $("themeBtn").click();
+        }
+        /** Apply the navigation handedness, a global device preference like the
+            theme. Right-handed is the default; the value only has an effect in
+            the focus layout's mobile bottom bar, where it chooses which edge the
+            icons cluster against. */
+        function applyNavAlign(want) {
+          var v = want === "left" ? "left" : "right";
+          document.body.setAttribute("data-nav-align", v);
+          try {
+            localStorage.setItem(K.na, v);
+          } catch (e) {
+            /* the alignment applies now; only the remembered choice is lost */
+          }
         }
         /** Fill the export scope picker with the current vehicle list.
          *
@@ -11725,6 +11748,9 @@ function detachVehicle(id) {
         $("themeSel").addEventListener("change", function () {
           applyThemeSel(this.value);
         });
+        $("navAlignSel").addEventListener("change", function () {
+          applyNavAlign(this.value);
+        });
         $("langSel2").addEventListener("change", function () {
           var sel = $("langSel");
           sel.value = this.value;
@@ -12597,6 +12623,7 @@ $("eDelete").addEventListener("click", function () {
           document.body.classList.add("dark");
           setThemeIcon("🌙");
         }
+        applyNavAlign(localStorage.getItem(K.na));
         /* Before the first read, so the signed-out bucket is already whole. The
            module reports how many slots it moved rather than showing a toast
            itself, which keeps it free of any dependency on the interface. */
