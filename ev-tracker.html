@@ -340,6 +340,21 @@
               <div class="l" data-i18n="tile.duravg"></div>
             </div>
           </div>
+          <!-- Mid-screen thumb action zone. Shown only by the focus layout
+               (app/app.css hides it everywhere else): the two controls a thumb
+               reaches for without leaving the figures, so the focus mobile bar
+               can drop the redundant add button and keep only the view tabs. -->
+          <div class="thumb-actions" id="thumbActions">
+            <button type="button" class="btn thumb-add" data-go="add-session">
+              <span aria-hidden="true">+</span>
+              <span data-i18n="nav.add"></span>
+            </button>
+            <select
+              class="thumb-veh"
+              id="thumbVeh"
+              data-i18n-aria="a11y.vehList"
+            ></select>
+          </div>
           <div class="chart-panel" id="chartPanel">
             <h3 data-i18n="chart.title"></h3>
             <p class="chart-note" id="chartNote" hidden></p>

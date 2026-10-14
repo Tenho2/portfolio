@@ -6170,6 +6170,25 @@ function say(msg) {
           }
           announceVehicle();
 
+          /* The focus layout's mid-screen thumb zone carries a vehicle picker,
+             which is what lets its mobile bar drop the redundant add button. It
+             is filled from the same list the dashboard cards use and reflects
+             the current vehicle; the other layouts hide the zone, so this is
+             guarded rather than assumed. */
+          var tv = $("thumbVeh");
+          if (tv) {
+            var tvs = "";
+            for (var ti = 0; ti < vehicles.length; ti++)
+              tvs +=
+                '<option value="' +
+                esc(vehicles[ti].id) +
+                '">' +
+                esc(vehicles[ti].name) +
+                "</option>";
+            tv.innerHTML = tvs;
+            tv.value = v && v.id ? v.id : "";
+          }
+
           var sel = ofVehicle(v.id);
           var T = totals(sel, v.initialOdometer);
           $("sEnergy").textContent = T.kwh.toFixed(1) + " kWh";
@@ -11750,6 +11769,18 @@ function detachVehicle(id) {
         });
         $("navAlignSel").addEventListener("change", function () {
           applyNavAlign(this.value);
+        });
+        /* The focus layout's thumb-zone vehicle picker. Same effect as tapping a
+           dashboard vehicle card: select the vehicle, persist and re-render. */
+        $("thumbVeh").addEventListener("change", function () {
+          for (var i = 0; i < vehicles.length; i++)
+            if (vehicles[i].id === this.value) {
+              cur = i;
+              break;
+            }
+          save();
+          render();
+          defaultDuration();
         });
         $("langSel2").addEventListener("change", function () {
           var sel = $("langSel");

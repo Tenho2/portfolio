@@ -2329,6 +2329,86 @@
         padding: 0.7rem 1rem;
       }
 
+      /* ---------- focus: the 2x2 KPI telemetry grid ----------
+         One flush instrument panel instead of eight floating cards. The four
+         key figures sit in a fixed 2x2 and the hairline partitions are the only
+         chrome: no shadow, no outer margin, no radius. The consumption and
+         derived tiles (efficiency, cost per 100km, peak speed, mean duration)
+         stay reachable through the log's edit sheet rather than competing for
+         the glance. */
+      body[data-layout="focus"] .stats {
+        grid-template-columns: 1fr 1fr;
+        gap: 0;
+        margin: 0;
+      }
+      body[data-layout="focus"] .stats .stat {
+        background: var(--surface);
+        border: 0;
+        border-right: 1px solid #2b3550;
+        border-bottom: 1px solid #2b3550;
+        border-radius: 0;
+        padding: 0.7rem 0.85rem;
+        text-align: left;
+      }
+      /* The right column and the bottom row carry no outer edge, so each line
+         is drawn once between neighbours rather than doubled on an edge. */
+      body[data-layout="focus"] .stats .stat:nth-child(even) {
+        border-right: 0;
+      }
+      body[data-layout="focus"] .stats .stat:nth-last-child(-n + 2) {
+        border-bottom: 0;
+      }
+      body[data-layout="focus"] .stats .stat:nth-child(n + 5) {
+        display: none;
+      }
+      body[data-layout="focus"] .stats .stat .n {
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        color: #f8fafc;
+      }
+      body[data-layout="focus"] .stats .stat .l {
+        font-size: 11px;
+        color: #64748b;
+      }
+
+      /* ---------- focus: mid-screen thumb action zone ----------
+         Sits between the KPI grid and the figures' detail: a full-width new
+         charge on the left, the vehicle picker on the right, both 44px for a
+         thumb. Hidden by default so the classic and wide layouts are untouched;
+         the focus layout is the only one that turns it on. */
+      .thumb-actions {
+        display: none;
+      }
+      body[data-layout="focus"] .thumb-actions {
+        display: flex;
+        align-items: stretch;
+        gap: 0.5rem;
+        height: 44px;
+        margin: 0.75rem 0;
+      }
+      body[data-layout="focus"] .thumb-actions .thumb-add {
+        flex: 1 1 auto;
+        height: 44px;
+        padding: 0 1rem;
+        background: #10b981;
+        color: #0e1322;
+        font-weight: 600;
+        border: none;
+        border-radius: 3px;
+      }
+      body[data-layout="focus"] .thumb-actions .thumb-veh {
+        flex: 0 0 40%;
+        min-width: 0;
+        height: 44px;
+        padding: 0 0.6rem;
+        background: #151b2e;
+        border: 1px solid #2b3550;
+        color: #f8fafc;
+        border-radius: 3px;
+        font: inherit;
+        font-size: 0.85rem;
+      }
+
       /* Telemetry-style log on a phone. The focus layout discards the table
          columns for a compact two-line row - date and location over energy and
          cost on the first line, mileage and duration over the edit action on the

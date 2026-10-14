@@ -33,7 +33,7 @@
  *
  * Last bumped: 2026-10-13, for the flush bottom-bar alignment (no edge gap).
  */
-const VERSION = "v58";
+const VERSION = "v59";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [

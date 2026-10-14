@@ -137,4 +137,13 @@
   body[data-layout="focus"] footer {
     padding-bottom: 5rem;
   }
+  /* Clean bottom bar: view tabs only. The add action lives in the mid-screen
+     thumb zone now, and favourites and the bin are reached from Settings and
+     the log, so the bar keeps just the three view tabs (dashboard, log,
+     settings) and every remaining target stays a full-width 44px tap. */
+  body[data-layout="focus"] .side-nav li:nth-child(2),
+  body[data-layout="focus"] .side-nav li:nth-child(4),
+  body[data-layout="focus"] .side-nav li:nth-child(5) {
+    display: none;
+  }
 }
