@@ -2379,6 +2379,12 @@
       .thumb-actions {
         display: none;
       }
+      /* The charger search button lives in the thumb zone but is shown only by
+         the modern layout; the other three reach the station view from the
+         dashboard's quick-action grid. */
+      .thumb-actions .thumb-stations {
+        display: none;
+      }
       body[data-layout="focus"] .thumb-actions {
         display: flex;
         align-items: stretch;
@@ -2526,21 +2532,21 @@
         --success: #10b981;
         --warn: #f59e0b;
         --danger: #ef4444;
-        --text: #0f172a;
-        --text-muted: #475569;
-        --surface: #fff;
-        --surface-2: #f1f5f9;
-        --surface-3: #e2e8f0;
-        --line: #e2e8f0;
-        --hero-a: #f8fafc;
-        --hero-b: #f8fafc;
-        --page-a: #f8fafc;
-        --page-b: #f8fafc;
+        --text: #292524;
+        --text-muted: #78716c;
+        --surface: #ede9e0;
+        --surface-2: #ede9e0;
+        --surface-3: #e4dfd3;
+        --line: #ded8cb;
+        --hero-a: #f6f4ef;
+        --hero-b: #f6f4ef;
+        --page-a: #f6f4ef;
+        --page-b: #f6f4ef;
         --sh: none;
         --sh-lg: 0 10px 25px -5px rgb(15 23 42 / 0.18);
         --r: 10px;
-        background: #f8fafc !important;
-        color: #0f172a !important;
+        background: #f6f4ef !important;
+        color: #292524 !important;
       }
       body.dark[data-layout="modern"] {
         --text: #f8fafc;
@@ -2703,6 +2709,25 @@
         border-radius: 4px;
         text-align: center;
       }
+      /* The second dashboard action: a way into the charger search, and through
+         it the map and the road cameras, on a phone where the quick-action grid
+         is hidden. An outline rather than a fill, so the new charge stays the
+         primary action. */
+      body[data-layout="modern"] .thumb-actions .thumb-stations {
+        display: block;
+        width: 85%;
+        max-width: 320px;
+        height: 44px;
+        line-height: 44px;
+        margin: 0 auto 1rem;
+        padding: 0;
+        background: transparent;
+        color: #10b981;
+        font-weight: 700;
+        border: 1px solid #10b981;
+        border-radius: 4px;
+        text-align: center;
+      }
 
       /* Telemetry log on a phone for the modern layout. The same two-line idea
          as focus, but line 1 is the date and the station with the energy and
@@ -2724,9 +2749,14 @@
           padding: 0.4rem 0.6rem;
           margin-bottom: 0;
           border: 0;
-          border-bottom: 1px solid #1e293b;
+          border-bottom: 1px solid var(--line);
           border-radius: 0;
           background: transparent;
+        }
+        /* Dark mode keeps the deeper slate hairline; the warm light line above
+           would be invisible against #0b0f19. */
+        body.dark[data-layout="modern"] #logTable tr {
+          border-bottom-color: #1e293b;
         }
         /* A full-width zero-height break separates the two lines. */
         body[data-layout="modern"] #logTable tr::after {

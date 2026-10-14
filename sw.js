@@ -31,10 +31,10 @@
  * tools/test-sw-bump.mjs asserts that every shell file was touched, and that the
  * version moved with it.
  *
- * Last bumped: 2026-10-15, for the modern layout visual reset, numbered station
- * badges, and automatic station cameras within 10 km.
+ * Last bumped: 2026-10-15, for the warm modern palette, the dashboard charger
+ * button, DD.MM.YYYY log dates and true-nearest "Near me".
  */
-const VERSION = "v61";
+const VERSION = "v62";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [

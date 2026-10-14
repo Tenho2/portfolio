@@ -3588,6 +3588,23 @@ function hoursToHM(h, alwaysSeconds) {
           }
           return s;
         }
+        /**
+         * A stored date as DD.MM.YYYY, the convention the log reads in.
+         *
+         * Dates are stored ISO (YYYY-MM-DD, from the date input and the import
+         * path). Anything that is not a recognisable date is returned unchanged
+         * rather than as "Invalid Date": a malformed row is still evidence, and
+         * stamping a formatter's failure over it hides the real value.
+         */
+        function fmtDate(v) {
+          var s = String(v == null ? "" : v).trim();
+          var m = s.match(/^(\d{4})[-./](\d{1,2})[-./](\d{1,2})$/);
+          if (!m) return s;
+          var mo = +m[2],
+            d = +m[3];
+          if (mo < 1 || mo > 12 || d < 1 || d > 31) return s;
+          return pad(d) + "." + pad(mo) + "." + m[1];
+        }
         function num(v) {
           var n = parseFloat(v);
           return isFinite(n) ? n : 0;
@@ -6100,6 +6117,41 @@ function say(msg) {
           restoreFocus();
         }
 
+        /**
+         * The title a session shows in the log.
+         *
+         * The stored location is whatever the field held: a favourite's street
+         * address, a station name, or something the user typed. A saved
+         * favourite is the name the user chose for that place, so it wins -
+         * matched by the location string, or by position when the row carries
+         * coordinates and sits within the same 25 m the rest of the app treats
+         * as one place. Everything else is shown exactly as stored, which is
+         * what an explicitly typed location should read as.
+         */
+        function sessionTitle(s) {
+          if (!s) return "";
+          var loc = String(s.location || "").trim();
+          var low = loc.toLowerCase();
+          var i, f;
+          for (i = 0; i < favs.length; i++) {
+            f = favs[i];
+            if (!f || f.deletedAt) continue;
+            if (
+              (f.name && String(f.name).toLowerCase() === low) ||
+              (f.address && String(f.address).toLowerCase() === low)
+            )
+              return f.name || loc;
+          }
+          if (isNum(s.lat) && isNum(s.lng)) {
+            for (i = 0; i < favs.length; i++) {
+              f = favs[i];
+              if (!f || f.deletedAt || !isNum(f.lat) || !isNum(f.lng)) continue;
+              if (metresBetween(s.lat, s.lng, +f.lat, +f.lng) <= 25)
+                return f.name || loc;
+            }
+          }
+          return loc;
+        }
         function renderBody() {
           var v = veh();
 /* Through TXT(). These were hard-coded English, so the page heading for two
@@ -6267,7 +6319,7 @@ $("logLead").textContent = list.length
                 '<tr><td data-label="' +
                 TXT("th.date") +
                 '">' +
-                esc(s.date) +
+                esc(fmtDate(s.date)) +
                 '</td><td data-label="' +
                 TXT("th.time") +
                 '">' +
@@ -6280,7 +6332,7 @@ $("logLead").textContent = list.length
                 '<td data-label="' +
                 TXT("th.loc") +
                 '">' +
-                esc(s.location) +
+                esc(sessionTitle(s)) +
                 /* On a shared car, who wrote the row. Empty on a car with one
                    member, where it would be "by you" on every single line. */
                 authorOf(s, v) +
@@ -6321,16 +6373,16 @@ $("logLead").textContent = list.length
                     esc(s.id) +
                     '" aria-label="' +
                     TXT("a11y.editSession", {
-                      v: esc(s.location),
-                      d: esc(s.date),
+                      v: esc(sessionTitle(s)),
+                      d: esc(fmtDate(s.date)),
                     }) +
                     '"><span aria-hidden="true">✎</span></button> ' +
                     '<button type="button" class="btn sm dgr" data-del="' +
                     esc(s.id) +
                     '" aria-label="' +
                     TXT("a11y.deleteSession", {
-                      v: esc(s.location),
-                      d: esc(s.date),
+                      v: esc(sessionTitle(s)),
+                      d: esc(fmtDate(s.date)),
                     }) +
                     '"><span aria-hidden="true">✕</span></button></td>'
                   : '<td class="mt">—</td>') +
@@ -9476,6 +9528,28 @@ slot.map.on("click", function (e) {
           }
           return best;
         }
+        /**
+         * The nearest saved favourite within `maxM`, or null.
+         *
+         * Only favourites, and only their own coordinates. "Near me" uses it to
+         * treat a favourite the driver is standing at as the same place even
+         * when a public charger reads a metre or two nearer - that gap is GPS
+         * jitter, not a different place.
+         */
+        function nearestFavourite(lat, lng, maxM) {
+          var best = null,
+            bestD = Infinity;
+          for (var i = 0; i < favs.length; i++) {
+            var f = favs[i];
+            if (!f || f.deletedAt || !isNum(f.lat) || !isNum(f.lng)) continue;
+            var d = metresBetween(lat, lng, +f.lat, +f.lng);
+            if (d <= maxM && d < bestD) {
+              bestD = d;
+              best = f;
+            }
+          }
+          return best;
+        }
 /**
  * The nearby-chargers list under the location field.
  *
@@ -9485,6 +9559,9 @@ slot.map.on("click", function (e) {
  * found" rather than "still looking".
  */
         var nearToken = 0;
+        /* What "Near me" last put in the field, so the registry can correct it
+           to a nearer charger without ever overwriting typing. */
+        var nearFill = null;
         function renderNearby(groups) {
           var box = $("locNear");
           if (!box) return;
@@ -9509,7 +9586,7 @@ slot.map.on("click", function (e) {
                   '" data-near-lng="' +
                   p.lng +
                   '" data-near-name="' +
-                  esc(p.address || p.name || "") +
+                  esc(p.name || p.address || "") +
                   '">' +
                   '<span class="loc-near-name">' +
                   esc(p.name || TXT("st.unnamed")) +
@@ -9545,6 +9622,9 @@ slot.map.on("click", function (e) {
               if (mine !== nearToken) return;
               var groups = capGroups(nearbyChargers(lat, lng, res.rows), 2);
               renderNearby(groups);
+              /* The list is on screen; now let a nearer charger take the field,
+                 if there is one. */
+              correctToNearestStation(res.rows);
             })
             .catch(function () {
               /* Silent on the registry alone. The first two groups are local and
@@ -9557,6 +9637,40 @@ slot.map.on("click", function (e) {
                 box2.innerHTML = "";
               }
             });
+        }
+
+        /**
+         * Switch the field to a registry charger when one is nearer than the
+         * place "Near me" just used.
+         *
+         * Only ever runs for the search that set `nearFill`, and never over
+         * typing: if the field no longer holds what we wrote, the user has
+         * changed it and the answer is theirs. A favourite within 100 m is
+         * final, so `done` is set and nothing here runs.
+         */
+        function correctToNearestStation(rows) {
+          if (!nearFill || nearFill.done) return;
+          var input = $("location");
+          if (!input || input.value.trim() !== nearFill.value) return;
+          var best = null;
+          for (var i = 0; i < rows.length; i++) {
+            if (!best || rows[i].dist < best.dist) best = rows[i];
+          }
+          if (!best || best.dist >= nearFill.dist) return;
+          var name = best.name || best.address || "";
+          if (name) input.value = name;
+          locGeo = { lat: best.lat, lng: best.lng, label: best.name || "" };
+          var box = $("sessMapBox");
+          if (box) box.hidden = false;
+          showPin("sessMap", best.lat, best.lng, best.name || "", sessPinDragged);
+          if ($("fav").checked) $("favName").value = best.name || "";
+          setLocStatus(
+            TXT("toast.geoNear", {
+              v: best.name || TXT("st.unnamed"),
+              d: Math.round(best.dist),
+            }),
+          );
+          nearFill.done = true;
         }
 
         /** Put a suggested place into the form, pin it, and close the list. */
@@ -9596,9 +9710,30 @@ slot.map.on("click", function (e) {
               $("locGeo").disabled = false;
               var lat = pos.coords.latitude,
                 lng = pos.coords.longitude;
+              /* A favourite within 100 m is the same place to within GPS jitter,
+                 so it wins even when a public charger reads a metre or two
+                 nearer. Past that the reading is real, and the nearest place
+                 wins - which is what stops a favourite kilometres away beating
+                 the charger the driver is standing at. */
+              var fav = nearestFavourite(lat, lng, 100);
               var near = nearestPlace(lat, lng);
               var threshold = 1000;
-              if (near && near.dist <= threshold) {
+              var filled = "";
+              if (fav) {
+                filled = fav.address || fav.name;
+                $("location").value = filled;
+                locGeo = { lat: +fav.lat, lng: +fav.lng, label: fav.name };
+                $("sessMapBox").hidden = false;
+                setLocStatus(
+                  TXT("toast.geoNear", {
+                    v: fav.name,
+                    d: Math.round(metresBetween(lat, lng, +fav.lat, +fav.lng)),
+                  }),
+                );
+                if ($("fav").checked) $("favName").value = fav.name;
+                showPin("sessMap", +fav.lat, +fav.lng, fav.name, sessPinDragged);
+              } else if (near && near.dist <= threshold) {
+                filled = near.p.address || near.p.name;
                 $("location").value = near.p.address || near.p.name;
                 locGeo = {
                   lat: near.p.lat,
@@ -9621,6 +9756,7 @@ slot.map.on("click", function (e) {
                   sessPinDragged,
                 );
               } else if (near) {
+                filled = near.p.address || near.p.name;
                 $("location").value = near.p.address || near.p.name;
                 locGeo = {
                   lat: lat,
@@ -9646,8 +9782,16 @@ slot.map.on("click", function (e) {
                  meant the charger registry was never asked, so the places you
                  had never used were unreachable from this screen even when they
                  were fifty metres away. The field is filled exactly as before;
-                 this only adds the choices underneath it. */
+                 this only adds the choices underneath it, and - when no
+                 favourite is right here - lets the registry take the field if a
+                 charger turns out to be nearer. */
               var mine = ++nearToken;
+              nearFill = {
+                mine: mine,
+                value: String(filled).trim(),
+                dist: fav ? 0 : near ? near.dist : Infinity,
+                done: !!fav,
+              };
               renderNearby(capGroups(nearbyChargers(lat, lng, []), 2));
               loadNearStations(lat, lng, mine);
             },
