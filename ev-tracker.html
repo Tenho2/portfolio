@@ -199,6 +199,14 @@
       <header class="top">
         <h1><span id="who">Dashboard</span></h1>
         <div class="top-right">
+          <!-- The modern layout's slim header owns the vehicle picker. Shown
+               only there (app/app.css hides it by default); elsewhere the
+               dashboard's vehicle cards do the job. -->
+          <select
+            class="head-veh"
+            id="headVeh"
+            data-i18n-aria="a11y.vehList"
+          ></select>
           <label class="lang-wrap"
             ><span class="mini" data-i18n="lang"></span
             ><select id="langSel" data-i18n-aria="lang"></select

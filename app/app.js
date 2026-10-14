@@ -196,6 +196,7 @@
           { name: "classic", file: "ev-tracker.html", label: "set.layoutClassic" },
           { name: "wide", file: "ev-tracker-wide.html", label: "set.layoutWide" },
           { name: "focus", file: "ev-tracker-focus.html", label: "set.layoutFocus" },
+          { name: "modern", file: "ev-tracker-modern.html", label: "set.layoutModern" },
         ];
         function currentLayout() {
           var el = document.body && document.body.getAttribute("data-layout");
@@ -6189,6 +6190,22 @@ function say(msg) {
             tv.value = v && v.id ? v.id : "";
           }
 
+          /* The modern layout's slim header carries its own vehicle picker.
+             Same source list, and the same hidden-unless-shown treatment. */
+          var hv = $("headVeh");
+          if (hv) {
+            var hvs = "";
+            for (var hi = 0; hi < vehicles.length; hi++)
+              hvs +=
+                '<option value="' +
+                esc(vehicles[hi].id) +
+                '">' +
+                esc(vehicles[hi].name) +
+                "</option>";
+            hv.innerHTML = hvs;
+            hv.value = v && v.id ? v.id : "";
+          }
+
           var sel = ofVehicle(v.id);
           var T = totals(sel, v.initialOdometer);
           $("sEnergy").textContent = T.kwh.toFixed(1) + " kWh";
@@ -11770,17 +11787,24 @@ function detachVehicle(id) {
         $("navAlignSel").addEventListener("change", function () {
           applyNavAlign(this.value);
         });
-        /* The focus layout's thumb-zone vehicle picker. Same effect as tapping a
-           dashboard vehicle card: select the vehicle, persist and re-render. */
-        $("thumbVeh").addEventListener("change", function () {
+        /* Select the vehicle named by `id`, persist and re-render. Shared by the
+           focus thumb picker and the modern header picker so the two cannot
+           drift in what switching a vehicle does. */
+        function selectVehicleById(id) {
           for (var i = 0; i < vehicles.length; i++)
-            if (vehicles[i].id === this.value) {
+            if (vehicles[i].id === id) {
               cur = i;
               break;
             }
           save();
           render();
           defaultDuration();
+        }
+        $("thumbVeh").addEventListener("change", function () {
+          selectVehicleById(this.value);
+        });
+        $("headVeh").addEventListener("change", function () {
+          selectVehicleById(this.value);
         });
         $("langSel2").addEventListener("change", function () {
           var sel = $("langSel");

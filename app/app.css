@@ -2510,3 +2510,287 @@
           text-align: center;
         }
       }
+
+      /* ---------- modern layout theme ----------
+         The fourth arrangement: a slim 40px header instead of a bulky vehicle
+         card, metrics rendered as bare text on the canvas, a centred
+         new-charge button, and a centred three-tab bottom bar. Unlike the focus
+         layout this one is theme-aware - the light palette is the default and
+         body.dark[data-layout="modern"] swaps in the deep slate set - and both
+         stay high contrast. Tokens live in the shared sheet so
+         app/layout-modern.css stays arrangement-only. */
+      body[data-layout="modern"] {
+        --primary: #10b981;
+        --primary-d: #0ea271;
+        --accent: #06b6d4;
+        --success: #10b981;
+        --warn: #f59e0b;
+        --danger: #ef4444;
+        --text: #0f172a;
+        --text-muted: #475569;
+        --surface: #fff;
+        --surface-2: #f1f5f9;
+        --surface-3: #e2e8f0;
+        --line: #e2e8f0;
+        --hero-a: #f8fafc;
+        --hero-b: #f8fafc;
+        --page-a: #f8fafc;
+        --page-b: #f8fafc;
+        --sh: none;
+        --sh-lg: 0 10px 25px -5px rgb(15 23 42 / 0.18);
+        --r: 10px;
+        background: #f8fafc;
+      }
+      body.dark[data-layout="modern"] {
+        --text: #f8fafc;
+        --text-muted: #94a3b8;
+        --surface: #151b2e;
+        --surface-2: #1c2438;
+        --surface-3: #232d45;
+        --line: #2b3550;
+        --hero-a: #1c2438;
+        --hero-b: #1c2438;
+        --page-a: #0e1322;
+        --page-b: #0e1322;
+        background: #0e1322;
+      }
+
+      /* The modern header's vehicle picker is off unless the layout is modern. */
+      .head-veh {
+        display: none;
+      }
+
+      /* A slim 40px header: the vehicle picker and the theme toggle, nothing
+         bulky. The language picker, the signed-in account and the sign-out
+         button live in Settings, and the dashboard's vehicle card list is
+         removed because the header now carries the same choice. */
+      body[data-layout="modern"] .top {
+        height: 40px;
+        min-height: 40px;
+        padding: 0 0.75rem;
+        gap: 0.6rem;
+        margin-bottom: 1rem;
+      }
+      body[data-layout="modern"] .top h1 {
+        font-size: 1rem;
+      }
+      body[data-layout="modern"] .lang-wrap,
+      body[data-layout="modern"] .top-right .user-chip,
+      body[data-layout="modern"] .top-right .tgl-wide {
+        display: none;
+      }
+      body[data-layout="modern"] .head-veh {
+        display: block;
+        height: 30px;
+        min-width: 7rem;
+        padding: 0 1.6rem 0 0.5rem;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--surface);
+        color: var(--text);
+        font: inherit;
+        font-size: 0.85rem;
+        cursor: pointer;
+        appearance: none;
+        -webkit-appearance: none;
+        background-image:
+          linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
+          linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+        background-position:
+          calc(100% - 14px) 52%,
+          calc(100% - 9px) 52%;
+        background-size:
+          5px 5px,
+          5px 5px;
+        background-repeat: no-repeat;
+      }
+      body[data-layout="modern"] .tgl {
+        width: 32px;
+        height: 32px;
+        font-size: 1rem;
+      }
+
+      /* The dashboard is a canvas, not a card: no panel chrome, no vehicle
+         cards, and the metrics are bare text and figures. */
+      body[data-layout="modern"] #dashboard .panel {
+        background: none;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        padding: 0;
+        margin-bottom: 0;
+      }
+      body[data-layout="modern"] #vehWrap {
+        display: none;
+      }
+      body[data-layout="modern"] .stats {
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 0.75rem 1.25rem;
+        margin-top: 0.75rem;
+      }
+      body[data-layout="modern"] .stat {
+        background: none;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        padding: 0.2rem 0;
+        text-align: left;
+      }
+      body[data-layout="modern"] .stat .n {
+        font-size: 1.5rem;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        line-height: 1.2;
+        color: var(--text);
+      }
+      body[data-layout="modern"] .stat .l {
+        font-size: 0.72rem;
+        color: var(--text-muted);
+      }
+
+      /* The centred new-charge button between the metrics and the log. The
+         focus layout's two-up row becomes a single centred block, and its
+         inline picker is dropped because the header owns the choice now. */
+      body[data-layout="modern"] .thumb-actions {
+        display: block;
+        height: auto;
+        margin: 0;
+      }
+      body[data-layout="modern"] .thumb-actions .thumb-veh {
+        display: none;
+      }
+      body[data-layout="modern"] .thumb-actions .thumb-add {
+        display: block;
+        width: 80%;
+        max-width: 280px;
+        height: 42px;
+        line-height: 42px;
+        margin: 0.75rem auto;
+        padding: 0;
+        background: var(--primary);
+        color: #0e1322;
+        font-weight: 600;
+        border: none;
+        border-radius: var(--r);
+        text-align: center;
+      }
+
+      /* Telemetry log on a phone for the modern layout. The same two-line idea
+         as focus, but line 1 is the date and the station with the energy and
+         cost pinned right, and line 2 carries the odometer and duration with
+         the edit action hard right. The station is the flexible cell and
+         ellipsises, so a long place name can never collide with the figures. */
+      @media (max-width: 700px) {
+        body[data-layout="modern"] #logTable,
+        body[data-layout="modern"] #logTable tbody {
+          display: block;
+        }
+        body[data-layout="modern"] #logTable tr {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          column-gap: 0.6rem;
+          row-gap: 0.1rem;
+          min-height: 42px;
+          padding: 0.4rem 0.6rem;
+          margin-bottom: 0;
+          border: 0;
+          border-bottom: 1px solid var(--line);
+          border-radius: 0;
+          background: var(--surface);
+        }
+        /* A full-width zero-height break separates the two lines. */
+        body[data-layout="modern"] #logTable tr::after {
+          content: "";
+          flex-basis: 100%;
+          order: 4.5;
+        }
+        body[data-layout="modern"] #logTable td {
+          display: block;
+          padding: 0;
+          border: 0;
+          font-size: 0.8rem;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          min-width: 0;
+        }
+        body[data-layout="modern"] #logTable td::before {
+          content: none;
+        }
+        /* Line 1: date, the station taking the slack, then energy and cost. */
+        body[data-layout="modern"] #logTable td:nth-child(1) {
+          order: 1;
+          flex: 0 0 auto;
+          font-weight: 600;
+        }
+        body[data-layout="modern"] #logTable td:nth-child(4) {
+          order: 2;
+          flex: 1 1 auto;
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          font-weight: 600;
+        }
+        body[data-layout="modern"] #logTable td:nth-child(5) {
+          order: 3;
+          flex: 0 0 auto;
+          font-weight: 600;
+        }
+        body[data-layout="modern"] #logTable td:nth-child(8) {
+          order: 4;
+          flex: 0 0 auto;
+          font-weight: 600;
+        }
+        /* Line 2: odometer and duration on the left, the edit action right. */
+        body[data-layout="modern"] #logTable td:nth-child(7) {
+          order: 5;
+          color: var(--text-muted);
+        }
+        body[data-layout="modern"] #logTable td:nth-child(3) {
+          order: 6;
+          color: var(--text-muted);
+        }
+        body[data-layout="modern"] #logTable td:nth-child(11) {
+          order: 7;
+          margin-left: auto;
+          display: flex;
+          gap: 0.25rem;
+          white-space: normal;
+          overflow: visible;
+        }
+        /* Time, speed, tags and notes move to the edit sheet. */
+        body[data-layout="modern"] #logTable td:nth-child(2),
+        body[data-layout="modern"] #logTable td:nth-child(6),
+        body[data-layout="modern"] #logTable td:nth-child(9),
+        body[data-layout="modern"] #logTable td:nth-child(10) {
+          display: none;
+        }
+        body[data-layout="modern"] #logTable [data-del] {
+          display: none;
+        }
+        /* The empty-state cell spans the whole row instead of one column. */
+        body[data-layout="modern"] #logTable td.empty {
+          flex-basis: 100%;
+          white-space: normal;
+          text-align: center;
+        }
+      }
+
+      /* Below 560px the shared header wraps the title onto its own row. The
+         modern header is defined as a single slim row, so that wrap is undone
+         and the picker and toggle keep sharing the line with it. */
+      @media (max-width: 560px) {
+        body[data-layout="modern"] .top {
+          flex-wrap: nowrap;
+          height: 40px;
+          padding: 0 0.6rem;
+        }
+        body[data-layout="modern"] .top h1 {
+          order: 0;
+          flex: 1 1 auto;
+          min-width: 0;
+          font-size: 0.95rem;
+        }
+      }

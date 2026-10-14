@@ -35,6 +35,7 @@ const PAGES = [
   { name: "classic", file: "ev-tracker.html" },
   { name: "wide", file: "ev-tracker-wide.html" },
   { name: "focus", file: "ev-tracker-focus.html" },
+  { name: "modern", file: "ev-tracker-modern.html" },
 ];
 
 let pass = 0;
@@ -55,6 +56,7 @@ const layoutCss = {
   classic: read("app/layout-classic.css"),
   wide: read("app/layout-wide.css"),
   focus: read("app/layout-focus.css"),
+  modern: read("app/layout-modern.css"),
 };
 const shell = read("app/shell.mjs");
 

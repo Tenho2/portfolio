@@ -31,9 +31,9 @@
  * tools/test-sw-bump.mjs asserts that every shell file was touched, and that the
  * version moved with it.
  *
- * Last bumped: 2026-10-13, for the flush bottom-bar alignment (no edge gap).
+ * Last bumped: 2026-10-14, for the new modern layout (fourth arrangement).
  */
-const VERSION = "v59";
+const VERSION = "v60";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [
@@ -41,11 +41,13 @@ const SHELL = [
   "./ev-tracker.html",
   "./ev-tracker-wide.html",
   "./ev-tracker-focus.html",
+  "./ev-tracker-modern.html",
   "./app/app.css",
   "./app/app.js",
   "./app/layout-classic.css",
   "./app/layout-wide.css",
   "./app/layout-focus.css",
+  "./app/layout-modern.css",
   "./app/i18n.js",
   "./app/storage.js",
   "./app/stations.js",
@@ -125,6 +127,7 @@ const PAGES = [
   "./ev-tracker.html",
   "./ev-tracker-wide.html",
   "./ev-tracker-focus.html",
+  "./ev-tracker-modern.html",
 ];
 
 function fallbackFor(url) {
