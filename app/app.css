@@ -2539,7 +2539,8 @@
         --sh: none;
         --sh-lg: 0 10px 25px -5px rgb(15 23 42 / 0.18);
         --r: 10px;
-        background: #f8fafc;
+        background: #f8fafc !important;
+        color: #0f172a !important;
       }
       body.dark[data-layout="modern"] {
         --text: #f8fafc;
@@ -2552,7 +2553,23 @@
         --hero-b: #1c2438;
         --page-a: #0e1322;
         --page-b: #0e1322;
-        background: #0e1322;
+        background: #0b0f19 !important;
+        color: #f8fafc !important;
+      }
+
+      /* A flat canvas, not a card. Every gradient and every container edge is
+         removed so the figures and the log sit directly on the page. Scoped to
+         the modern layout, because the classic, wide and focus arrangements
+         keep their own surfaces. Theme-aware: a light flat canvas by default,
+         the deep #0b0f19 when dark mode is on. The borders are stripped with
+         !important so no later component rule can paint an edge back in; the
+         KPI hairlines below re-add theirs with the same weight. */
+      body[data-layout="modern"] .panel,
+      body[data-layout="modern"] .stat,
+      body[data-layout="modern"] .top {
+        background: transparent !important;
+        box-shadow: none !important;
+        border: none !important;
       }
 
       /* The modern header's vehicle picker is off unless the layout is modern. */
@@ -2624,17 +2641,29 @@
         display: none;
       }
       body[data-layout="modern"] .stats {
-        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-        gap: 0.75rem 1.25rem;
+        grid-template-columns: 1fr 1fr;
+        gap: 0;
         margin-top: 0.75rem;
       }
       body[data-layout="modern"] .stat {
         background: none;
         border: 0;
+        /* The hairline partition is the only chrome left on a figure. It has to
+           carry !important to survive the border:none strip above. */
+        border-bottom: 1px solid var(--line) !important;
         border-radius: 0;
         box-shadow: none;
-        padding: 0.2rem 0;
+        padding: 0.6rem 0.25rem;
         text-align: left;
+      }
+      body.dark[data-layout="modern"] .stat {
+        border-bottom: 1px solid #1e293b !important;
+      }
+      /* Only the four key figures. The derived tiles - efficiency, cost per
+         100 km, peak speed, mean duration - stay reachable through the log's
+         edit sheet rather than competing for the glance. */
+      body[data-layout="modern"] .stats .stat:nth-child(n + 5) {
+        display: none;
       }
       body[data-layout="modern"] .stat .n {
         font-size: 1.5rem;
@@ -2661,17 +2690,17 @@
       }
       body[data-layout="modern"] .thumb-actions .thumb-add {
         display: block;
-        width: 80%;
-        max-width: 280px;
-        height: 42px;
-        line-height: 42px;
-        margin: 0.75rem auto;
+        width: 85%;
+        max-width: 320px;
+        height: 44px;
+        line-height: 44px;
+        margin: 1rem auto;
         padding: 0;
-        background: var(--primary);
-        color: #0e1322;
-        font-weight: 600;
+        background: #10b981;
+        color: #0b0f19;
+        font-weight: 700;
         border: none;
-        border-radius: var(--r);
+        border-radius: 4px;
         text-align: center;
       }
 
@@ -2695,9 +2724,9 @@
           padding: 0.4rem 0.6rem;
           margin-bottom: 0;
           border: 0;
-          border-bottom: 1px solid var(--line);
+          border-bottom: 1px solid #1e293b;
           border-radius: 0;
-          background: var(--surface);
+          background: transparent;
         }
         /* A full-width zero-height break separates the two lines. */
         body[data-layout="modern"] #logTable tr::after {
@@ -2793,4 +2822,28 @@
           min-width: 0;
           font-size: 0.95rem;
         }
+      }
+
+      /* ---------- station map badges ----------
+         The station pins are Leaflet divIcons, so the numbered badge is styled
+         here rather than by a Leaflet class. The number matches the row's
+         1-based position in the result list, which is what lets a driver tie a
+         pin on the map to a line in the list below it. */
+      .station-pin {
+        background: none;
+        border: 0;
+      }
+      .station-num {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: #10b981;
+        color: #0b0f19;
+        font-size: 0.78rem;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        box-shadow: 0 1px 3px rgb(0 0 0 / 0.4);
       }

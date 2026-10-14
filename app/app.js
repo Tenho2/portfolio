@@ -9757,6 +9757,8 @@ out.push(
                 '<button type="button" class="station-name" data-station-detail="' +
                 esc(s.id) +
                 '">' +
+                esc(i + 1) +
+                ". " +
                 esc(s.name || TXT("st.unnamed")) +
                 (s.operator ? ' <span class="station-meta">' + esc(s.operator) + "</span>" : "") +
                 "</button>" +
@@ -9794,19 +9796,23 @@ var rest = stationAll.length - shown.length;
 slot.stationPins = [];
           for (var k = 0; k < list.length; k++) {
             var s = list[k];
-            var m = L.circleMarker([s.lat, s.lng], {
-              radius: 5,
-              color: "#10b981",
-              weight: 2,
-              fillColor: "#10b981",
-              fillOpacity: 0.75,
-              /* A circle marker is a Leaflet Path, and by default its clicks
-                 bubble to the map. The map handler for every map places a
-                 session pin and zooms to 16, so selecting a station from the
-                 map also dropped a draggable pin on it. Stopping the bubbling
-                 declaratively is version-safe; calling stopPropagation on the
-                 Leaflet event object by hand is not, because that is not
-                 always a DOM event. */
+            /* A numbered badge, matching the row's 1-based position in the
+               result list below. A divIcon rather than a circleMarker: the
+               number is the whole point, and it is what lets a driver tie a pin
+               on the map to a line in the list. */
+            var m = L.marker([s.lat, s.lng], {
+              icon: L.divIcon({
+                className: "station-pin",
+                html: '<span class="station-num">' + (k + 1) + "</span>",
+                iconSize: [26, 26],
+                iconAnchor: [13, 13],
+              }),
+              /* A marker's clicks bubble to the map by default. The map handler
+                 for every map places a session pin and zooms to 16, so selecting
+                 a station from the map also dropped a draggable pin on it.
+                 Stopping the bubbling declaratively is version-safe; calling
+                 stopPropagation on the Leaflet event object by hand is not,
+                 because that is not always a DOM event. */
               bubblingMouseEvents: false,
             });
             m.bindPopup(
@@ -10029,11 +10035,9 @@ function runStationSearch(lat, lng) {
                   "</ul>"
                 : "") +
 '<p class="station-meta" id="stationLive"></p>' +
-            '<button type="button" class="btn sm" data-station-cameras="' +
-            esc(s.id) +
-            '">' +
+            "<h4>" +
             TXT("cam.nearStation") +
-            "</button>" +
+            "</h4>" +
             '<div class="camera-grid" id="stationCameras"></div>' +
             '<button type="button" class="btn sm" data-station-close="1">' +
             TXT("confirm.close") +
@@ -10044,6 +10048,12 @@ function runStationSearch(lat, lng) {
              row and a pin on the map - and the map path used to leave the list
              highlighting a station the panel was no longer showing. */
           renderStations();
+          /* Road-weather cameras are fetched from the station's own coordinates
+             as soon as it is selected - there is no second tap. It runs before
+             the status fetch below, and before the early return for
+             OpenStreetMap rows, because the camera network is independent of
+             the station registry and applies to both sources. */
+          camerasNearStation(id);
           /* OpenStreetMap rows have no evse ids, so there is nothing to ask
              about; saying so plainly beats a spinner that never stops. */
           if (s.source !== "digitraffic") {
@@ -10095,14 +10105,14 @@ function camerasNearStation(id) {
           var mine = ++stationCameraToken;
           var target = $("stationCameras");
           if (target) target.innerHTML = '<p class="station-meta">' + TXT("cam.loading") + "</p>";
-          StationData.findCameras({ lat: s.lat, lng: s.lng }, CAMERA_RADIUS_M)
+          StationData.findCameras({ lat: s.lat, lng: s.lng }, STATION_CAMERA_RADIUS_M)
             .then(function (rows) {
               var box = $("stationCameras");
               /* Discarded if the panel was closed, or reopened onto another
                  station, while the request was in flight. */
               if (mine !== stationCameraToken || stationOpen !== id || !box) return;
               if (!rows.length) {
-                box.innerHTML = '<p class="station-meta">' + TXT("cam.none", { r: CAMERA_RADIUS_M / 1000 }) + "</p>";
+                box.innerHTML = '<p class="station-meta">' + TXT("cam.none", { r: STATION_CAMERA_RADIUS_M / 1000 }) + "</p>";
                 return;
               }
               var near = rows.slice(0, 3);
@@ -10241,6 +10251,13 @@ function hasKey(key) {
            is worse than showing nothing, and the list is small enough (813
            rows) that caching would buy nothing. */
         var CAMERA_RADIUS_M = 50000;
+        /* The per-station panel is a different question from the camera screen:
+           it is "is there a look at the road I am about to join", not "what is
+           the weather on this stretch". 10 km keeps it to the cameras a driver
+           can actually act on, and it is the radius the panel labels itself
+           with. Deliberately separate from CAMERA_RADIUS_M above, which the
+           camera screen still uses at 50 km. */
+        var STATION_CAMERA_RADIUS_M = 10000;
         var CAMERA_NEAREST = 6;
         var cameraResults = [];
         var cameraCentre = null;
@@ -11357,7 +11374,7 @@ function detachVehicle(id) {
         /* ---------- events ---------- */
         document.addEventListener("click", function (e) {
           var t = e.target.closest(
-            "[data-go],[data-v],[data-del],[data-edit],[data-ren],[data-rm],[data-use],[data-fedit],[data-fdel],[data-share],[data-leave],[data-unshare],[data-accept],[data-reject],[data-bin-restore],[data-bin-purge],[data-discard],[data-station-use],[data-station-detail],[data-station-close],[data-station-cameras],[data-camera-find],[data-camera-full],[data-station-find]",
+            "[data-go],[data-v],[data-del],[data-edit],[data-ren],[data-rm],[data-use],[data-fedit],[data-fdel],[data-share],[data-leave],[data-unshare],[data-accept],[data-reject],[data-bin-restore],[data-bin-purge],[data-discard],[data-station-use],[data-station-detail],[data-station-close],[data-camera-find],[data-camera-full],[data-station-find]",
           );
           if (!t) return;
           if (t.hasAttribute("data-go")) {
@@ -11464,10 +11481,6 @@ function detachVehicle(id) {
           }
           if (t.hasAttribute("data-station-close")) {
             closeStationDetail();
-            return;
-          }
-          if (t.hasAttribute("data-station-cameras")) {
-            camerasNearStation(t.getAttribute("data-station-cameras"));
             return;
           }
           if (t.hasAttribute("data-station-find")) findStationsNearMe();

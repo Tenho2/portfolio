@@ -309,10 +309,16 @@ group("a refused fix falls back rather than failing", () => {
   ok("which is translated", value("en", "cam.usedStationFix") && value("fi", "cam.usedStationFix") && value("sv", "cam.usedStationFix"));
 });
 
-group("the per-station camera control survives", () => {
-  ok("the button is still in the detail panel", /data-station-cameras=/.test(code));
-  ok("and is still wired", /data-station-cameras"\)\) \{/.test(code));
-  ok("and still searches from the station", /findCameras\(\{ lat: s\.lat, lng: s\.lng \}/.test(code));
+group("the per-station cameras load without a second tap", () => {
+  /* The control used to be a button in the panel. It is now the act of opening
+     a station: the cameras are fetched from that station's own coordinates as
+     soon as it is selected, so a driver never has to ask twice. */
+  const open = fnSource("openStationDetail");
+  const near = fnSource("camerasNearStation");
+  ok("opening a station loads its cameras", /camerasNearStation\(id\)/.test(open));
+  ok("and searches from the station's own position", /findCameras\(\{ lat: s\.lat, lng: s\.lng \}/.test(near));
+  ok("within a 10 km radius", /STATION_CAMERA_RADIUS_M/.test(near) && /STATION_CAMERA_RADIUS_M = 10000/.test(code));
+  ok("the manual button is gone", !/data-station-cameras/.test(code));
 });
 
 group("the cameras say what they are, without being asked", () => {
