@@ -173,6 +173,15 @@
               ><span data-i18n="nav.set"></span>
             </button>
           </li>
+          <!-- The charger search. Appended last so the existing tabs keep their
+               indices; hidden everywhere except the modern phone bar, where the
+               dashboard quick-action grid is not available. -->
+          <li class="nav-stations">
+            <button type="button" data-go="stations">
+              <span class="ic" aria-hidden="true">📍</span
+              ><span data-i18n="st.findCharger"></span>
+            </button>
+          </li>
         </ul>
       </nav>
       <!-- Phone only. Inside the sticky strip, so the signed-in account and the

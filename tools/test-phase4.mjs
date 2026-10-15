@@ -99,7 +99,7 @@ function groups(sessions, favs) {
     ].join("\n"),
   );
   const api = factory(sessions, favs, isNum);
-  return (stations) => api.capGroups(api.nearbyChargers(H, H, stations), 2);
+  return (stations) => api.capGroups(api.nearbyChargers(H.lat, H.lng, stations), 2);
 }
 
 /* A point near Helsinki, and offsets in metres. */
@@ -177,7 +177,7 @@ group("genuinely different chargers all survive de-duplication", () => {
       "return { nearbyChargers, capGroups };",
     ].join("\n"),
   )([], [], isNum);
-  const grouped = api.nearbyChargers(H, H, rows);
+  const grouped = api.nearbyChargers(H.lat, H.lng, rows);
   is("three distinct stations survive", grouped.stations.length, 3);
   /* And the cap then limits what is shown, which is a different decision. */
   is("and the cap limits it to two", api.capGroups(grouped, 2).stations.length, 2);
@@ -222,19 +222,51 @@ group("rows without coordinates are not offered", () => {
 
 /* ---------- C: wiring ---------- */
 
-group("Near me still fills the field exactly as before", () => {
-  /* The user asked for this function to be kept. It still fills from the
-     nearest known place; the list is additive. */
+group("Near me fills from home, a near place, or the true nearest charger", () => {
+  /* The old rule filled from any favourite within 1000 m, so a favourite
+     kilometres away beat the charger the driver was standing at. Only home
+     within 100 m is special now; everything else is distance, with a 250 m
+     floor on what is filled before the registry answers. */
   const fn = fnOf("useMyLocation");
   ok("the slice found the function", fn.length > 500);
   ok("it still asks nearestPlace", /nearestPlace\(lat, lng\)/.test(fn));
   ok("it still fills the location field", fn.includes('$("location").value = near.p.address'));
   ok("it still pins it", /showPin\(\s*"sessMap"/.test(fn));
-  ok("it still uses the 1000 m threshold", /threshold = 1000/.test(fn));
+  ok("home wins only within 100 m", /homeFavourite\(lat, lng, 100\)/.test(fn));
+  ok("a local place is filled only within 250 m", /near\.dist <= 250/.test(fn));
+  ok("there is no 1000 m threshold left", !/threshold = 1000/.test(fn));
   /* And the new list is built in every branch, including the one where a saved
-     place filled the field - which is exactly the reported bug. */
+     place filled the field. */
   ok("and builds the list from what it knows", /nearbyChargers\(lat, lng, \[\]\)/.test(fn));
   ok("then asks the registry", /loadNearStations\(lat, lng, mine\)/.test(fn));
+});
+
+group("the registry answer can only take the field on distance", () => {
+  const fn = fnOf("correctToNearestStation");
+  ok("it is found", fn.length > 200);
+  ok("it never overwrites typing", /input\.value\.trim\(\) !== nearFill\.value/.test(fn));
+  ok("a station must be nearer than what was filled", /stationDist >= nearFill\.dist/.test(fn));
+  ok("with nothing filled it picks the true nearest", /stationDist <= nearDist/.test(fn));
+});
+
+group("a far favourite never outranks a closer charger", () => {
+  /* The reported bug: a favourite 6 km away was offered ahead of a charger
+     200 m away. With the registry answer in hand, the far favourite is dropped
+     from the list entirely. */
+  const g = groups(
+    [],
+    [fav("f1", "Far favourite", mNorth(6000).lat, mNorth(6000).lng)],
+    [],
+  )([st("n1", "Nearby charger", mNorth(200).lat, mNorth(200).lng)]);
+  is("the far favourite is dropped", g.favs.length, 0);
+  is("the closer charger is kept", g.stations.length, 1);
+  /* A favourite nearer than the charger is still offered. */
+  const g2 = groups(
+    [],
+    [fav("f1", "Near favourite", mNorth(150).lat, mNorth(150).lng)],
+    [],
+  )([st("n1", "Nearby charger", mNorth(200).lat, mNorth(200).lng)]);
+  is("a nearer favourite survives", g2.favs.length, 1);
 });
 
 group("the list is a real control, not decoration", () => {

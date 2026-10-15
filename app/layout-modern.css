@@ -88,7 +88,15 @@
     display: flex;
     flex: 1 1 auto;
     justify-content: center;
-    gap: 1.5rem;
+    gap: 1rem;
+  }
+  /* The <nav> must fill the bar. Without a flex/width rule it shrinks to its
+     content and the tabs sit against the left edge instead of centred. */
+  body[data-layout="modern"] .side > nav {
+    flex: 1 1 100%;
+    width: 100%;
+    display: flex;
+    justify-content: center;
   }
   body[data-layout="modern"] .side-nav li {
     flex: 0 0 auto;
@@ -114,9 +122,9 @@
   body[data-layout="modern"] .side-nav button span:not(.ic):not(.bin-count) {
     display: inline;
   }
-  /* View tabs only: the add action moved to the centred button, and favourites
-     and the bin are reached from Settings and the log. */
-  body[data-layout="modern"] .side-nav li:nth-child(2),
+  /* Favourites and the bin are reached from Settings and the log, so they are
+     not tabs; the five visible ones are dashboard, add, log, settings and the
+     charger search. */
   body[data-layout="modern"] .side-nav li:nth-child(4),
   body[data-layout="modern"] .side-nav li:nth-child(5) {
     display: none;

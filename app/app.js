@@ -9503,6 +9503,21 @@ slot.map.on("click", function (e) {
             });
           }
 
+          /* A known place never outranks a closer public charger. When the
+             registry offered anything, drop the favourites and past places that
+             a station beats on distance - a 6 km favourite disappears once a
+             200 m charger is in the list. */
+          if (groups.stations.length) {
+            var nearest = Infinity;
+            for (var s = 0; s < groups.stations.length; s++)
+              if (groups.stations[s].dist < nearest) nearest = groups.stations[s].dist;
+            groups.sessions = groups.sessions.filter(function (p) {
+              return p.dist <= nearest;
+            });
+            groups.favs = groups.favs.filter(function (p) {
+              return p.dist <= nearest;
+            });
+          }
           return groups;
         }
 
@@ -9529,26 +9544,20 @@ slot.map.on("click", function (e) {
           return best;
         }
         /**
-         * The nearest saved favourite within `maxM`, or null.
+         * The user's home favourite within `maxM`, or null.
          *
-         * Only favourites, and only their own coordinates. "Near me" uses it to
-         * treat a favourite the driver is standing at as the same place even
-         * when a public charger reads a metre or two nearer - that gap is GPS
-         * jitter, not a different place.
+         * Home is the place chosen in Settings as the default location. It is
+         * the one favourite "Near me" may treat as the same place even when a
+         * public charger reads a metre or two nearer, because standing at home
+         * and being told a charger down the road is the location is wrong. Every
+         * other favourite competes by true distance.
          */
-        function nearestFavourite(lat, lng, maxM) {
-          var best = null,
-            bestD = Infinity;
-          for (var i = 0; i < favs.length; i++) {
-            var f = favs[i];
-            if (!f || f.deletedAt || !isNum(f.lat) || !isNum(f.lng)) continue;
-            var d = metresBetween(lat, lng, +f.lat, +f.lng);
-            if (d <= maxM && d < bestD) {
-              bestD = d;
-              best = f;
-            }
-          }
-          return best;
+        function homeFavourite(lat, lng, maxM) {
+          if (!locDefaults.loc) return null;
+          var f = favById(locDefaults.loc);
+          if (!f || f.deletedAt || !isNum(f.lat) || !isNum(f.lng)) return null;
+          if (metresBetween(lat, lng, +f.lat, +f.lng) > maxM) return null;
+          return f;
         }
 /**
  * The nearby-chargers list under the location field.
@@ -9639,37 +9648,65 @@ slot.map.on("click", function (e) {
             });
         }
 
+        /** Fill the location field from a registry station row. */
+        function fillFromStation(input, s) {
+          var name = s.name || s.address || "";
+          if (name) input.value = name;
+          locGeo = { lat: s.lat, lng: s.lng, label: s.name || "" };
+          var box = $("sessMapBox");
+          if (box) box.hidden = false;
+          showPin("sessMap", s.lat, s.lng, s.name || "", sessPinDragged);
+          if ($("fav").checked) $("favName").value = s.name || "";
+          setLocStatus(
+            TXT("toast.geoNear", {
+              v: s.name || TXT("st.unnamed"),
+              d: Math.round(s.dist),
+            }),
+          );
+        }
+
+        /** Fill the location field from a known place (favourite or past use). */
+        function fillFromPlace(input, near) {
+          var p = near.p;
+          var val = p.address || p.name;
+          if (val) input.value = val;
+          locGeo = { lat: p.lat, lng: p.lng, label: p.address || p.name };
+          var box = $("sessMapBox");
+          if (box) box.hidden = false;
+          showPin("sessMap", p.lat, p.lng, p.name, sessPinDragged);
+          if ($("fav").checked) $("favName").value = p.name;
+          setLocStatus(TXT("toast.geoNear", { v: p.name, d: Math.round(near.dist) }));
+        }
+
         /**
-         * Switch the field to a registry charger when one is nearer than the
-         * place "Near me" just used.
+         * Decide the field from the registry answer, once it arrives.
          *
-         * Only ever runs for the search that set `nearFill`, and never over
-         * typing: if the field no longer holds what we wrote, the user has
-         * changed it and the answer is theirs. A favourite within 100 m is
-         * final, so `done` is set and nothing here runs.
+         * When a place was filled immediately (home, or a known place within
+         * 250 m) only a strictly nearer charger may take it, and only while the
+         * field still holds what we wrote. When nothing was filled - because
+         * everything local was farther than 250 m - the true nearest of the
+         * deferred known place and the registry answer is used. A far favourite
+         * therefore never wins over a closer charger.
          */
         function correctToNearestStation(rows) {
           if (!nearFill || nearFill.done) return;
           var input = $("location");
-          if (!input || input.value.trim() !== nearFill.value) return;
+          if (!input) return;
           var best = null;
           for (var i = 0; i < rows.length; i++) {
             if (!best || rows[i].dist < best.dist) best = rows[i];
           }
-          if (!best || best.dist >= nearFill.dist) return;
-          var name = best.name || best.address || "";
-          if (name) input.value = name;
-          locGeo = { lat: best.lat, lng: best.lng, label: best.name || "" };
-          var box = $("sessMapBox");
-          if (box) box.hidden = false;
-          showPin("sessMap", best.lat, best.lng, best.name || "", sessPinDragged);
-          if ($("fav").checked) $("favName").value = best.name || "";
-          setLocStatus(
-            TXT("toast.geoNear", {
-              v: best.name || TXT("st.unnamed"),
-              d: Math.round(best.dist),
-            }),
-          );
+          var stationDist = best ? best.dist : Infinity;
+          if (nearFill.filled) {
+            if (input.value.trim() !== nearFill.value) return;
+            if (stationDist >= nearFill.dist) return;
+            fillFromStation(input, best);
+          } else {
+            var near = nearFill.near;
+            var nearDist = near ? near.dist : Infinity;
+            if (best && stationDist <= nearDist) fillFromStation(input, best);
+            else if (near) fillFromPlace(input, near);
+          }
           nearFill.done = true;
         }
 
@@ -9710,29 +9747,31 @@ slot.map.on("click", function (e) {
               $("locGeo").disabled = false;
               var lat = pos.coords.latitude,
                 lng = pos.coords.longitude;
-              /* A favourite within 100 m is the same place to within GPS jitter,
-                 so it wins even when a public charger reads a metre or two
-                 nearer. Past that the reading is real, and the nearest place
-                 wins - which is what stops a favourite kilometres away beating
-                 the charger the driver is standing at. */
-              var fav = nearestFavourite(lat, lng, 100);
+              /* Home within 100 m is the same place to within GPS jitter, so it
+                 wins outright. Every other place - favourite or public charger -
+                 competes by true distance, so a favourite kilometres away can
+                 never beat the charger the driver is standing at. A known place
+                 more than 250 m away is not filled immediately either; the
+                 registry answer decides, and only a place that turns out to be
+                 nearest is used. */
+              var home = homeFavourite(lat, lng, 100);
               var near = nearestPlace(lat, lng);
-              var threshold = 1000;
-              var filled = "";
-              if (fav) {
-                filled = fav.address || fav.name;
+              var immediate = !home && near && near.dist <= 250 ? near : null;
+              var filled = false;
+              if (home) {
+                filled = home.address || home.name;
                 $("location").value = filled;
-                locGeo = { lat: +fav.lat, lng: +fav.lng, label: fav.name };
+                locGeo = { lat: +home.lat, lng: +home.lng, label: home.name };
                 $("sessMapBox").hidden = false;
                 setLocStatus(
                   TXT("toast.geoNear", {
-                    v: fav.name,
-                    d: Math.round(metresBetween(lat, lng, +fav.lat, +fav.lng)),
+                    v: home.name,
+                    d: Math.round(metresBetween(lat, lng, +home.lat, +home.lng)),
                   }),
                 );
-                if ($("fav").checked) $("favName").value = fav.name;
-                showPin("sessMap", +fav.lat, +fav.lng, fav.name, sessPinDragged);
-              } else if (near && near.dist <= threshold) {
+                if ($("fav").checked) $("favName").value = home.name;
+                showPin("sessMap", +home.lat, +home.lng, home.name, sessPinDragged);
+              } else if (immediate) {
                 filled = near.p.address || near.p.name;
                 $("location").value = near.p.address || near.p.name;
                 locGeo = {
@@ -9755,42 +9794,22 @@ slot.map.on("click", function (e) {
                   near.p.name,
                   sessPinDragged,
                 );
-              } else if (near) {
-                filled = near.p.address || near.p.name;
-                $("location").value = near.p.address || near.p.name;
-                locGeo = {
-                  lat: lat,
-                  lng: lng,
-                  label: near.p.name,
-                };
-                $("sessMapBox").hidden = false;
-                setLocStatus(
-                  TXT("toast.geoNearF", {
-                    v: near.p.name,
-                    d: Math.round(near.dist),
-                  }),
-                );
-                showPin("sessMap", lat, lng, near.p.name, sessPinDragged);
               } else {
+                /* Nothing within 250 m. Leave the field for the registry answer;
+                   if that finds nothing either, the deferred known place gets
+                   its chance in correctToNearestStation. */
                 locGeo = { lat: lat, lng: lng, label: "" };
                 $("sessMapBox").hidden = false;
-                setLocStatus(TXT("toast.geoNoNear"));
                 showPin("sessMap", lat, lng, "", sessPinDragged);
               }
-              /* The list, in every case above - including the one where a saved
-                 place filled the field. Until now, a favourite within 1000 m
-                 meant the charger registry was never asked, so the places you
-                 had never used were unreachable from this screen even when they
-                 were fifty metres away. The field is filled exactly as before;
-                 this only adds the choices underneath it, and - when no
-                 favourite is right here - lets the registry take the field if a
-                 charger turns out to be nearer. */
               var mine = ++nearToken;
               nearFill = {
                 mine: mine,
-                value: String(filled).trim(),
-                dist: fav ? 0 : near ? near.dist : Infinity,
-                done: !!fav,
+                value: filled ? $("location").value.trim() : "",
+                dist: home ? 0 : immediate ? immediate.dist : Infinity,
+                near: near || null,
+                filled: filled,
+                done: !!home,
               };
               renderNearby(capGroups(nearbyChargers(lat, lng, []), 2));
               loadNearStations(lat, lng, mine);
@@ -9879,6 +9898,9 @@ var stationCentre = null;
         function renderStations() {
           var box = $("stationList");
           if (!box) return;
+          /* The detail may be sitting inline in the list; move it out before the
+             list is rebuilt, or the rebuild destroys it and its cameras. */
+          parkDetail();
           if (!stationResults.length) {
             box.innerHTML = "";
             return;
@@ -9897,6 +9919,8 @@ var shown = stationResults;
 out.push(
               '<li class="station-row' +
                 (stationOpen === s.id ? " on" : "") +
+                '" data-station-id="' +
+                esc(s.id) +
                 '"><div>' +
                 '<button type="button" class="station-name" data-station-detail="' +
                 esc(s.id) +
@@ -9928,6 +9952,36 @@ var rest = stationAll.length - shown.length;
             var lab = $("stationMoreLabel");
             if (lab) lab.textContent = TXT("st.moreCount", { n: rest });
           }
+          inlineDetail();
+        }
+
+        /**
+         * Move the station detail out of the result list, if it is in there.
+         *
+         * The list is rebuilt by innerHTML, which would destroy an element
+         * living inside it. Parking the detail back in the stations panel first
+         * keeps the one node - and its loaded cameras - alive across a rebuild.
+         */
+        function parkDetail() {
+          var d = $("stationDetail");
+          var list = $("stationList");
+          if (!d || !list) return;
+          var panel = list.parentNode;
+          if (panel && d.parentNode !== panel) panel.appendChild(d);
+        }
+
+        /**
+         * Put the detail immediately under the selected row, so the poles, live
+         * status and road cameras open where the tap happened rather than below
+         * the whole list.
+         */
+        function inlineDetail() {
+          var d = $("stationDetail");
+          var list = $("stationList");
+          if (!d || !list) return;
+          var row = list.querySelector(".station-row.on");
+          if (!row || !row.parentNode) return;
+          row.parentNode.insertBefore(d, row.nextSibling);
         }
 
         function drawStationPins(list) {
@@ -11518,7 +11572,7 @@ function detachVehicle(id) {
         /* ---------- events ---------- */
         document.addEventListener("click", function (e) {
           var t = e.target.closest(
-            "[data-go],[data-v],[data-del],[data-edit],[data-ren],[data-rm],[data-use],[data-fedit],[data-fdel],[data-share],[data-leave],[data-unshare],[data-accept],[data-reject],[data-bin-restore],[data-bin-purge],[data-discard],[data-station-use],[data-station-detail],[data-station-close],[data-camera-find],[data-camera-full],[data-station-find]",
+            "[data-go],[data-v],[data-del],[data-edit],[data-ren],[data-rm],[data-use],[data-fedit],[data-fdel],[data-share],[data-leave],[data-unshare],[data-accept],[data-reject],[data-bin-restore],[data-bin-purge],[data-discard],[data-station-use],[data-station-detail],[data-station-close],[data-camera-find],[data-camera-full],[data-station-find],.station-row",
           );
           if (!t) return;
           if (t.hasAttribute("data-go")) {
@@ -11621,6 +11675,12 @@ function detachVehicle(id) {
           }
           if (t.hasAttribute("data-station-detail")) {
             openStationDetail(t.getAttribute("data-station-detail"));
+            return;
+          }
+          /* The whole row is a hitbox, not just the name button. The Use button
+             above is checked first, so it still wins where it overlaps. */
+          if (t.classList.contains("station-row")) {
+            openStationDetail(t.getAttribute("data-station-id"));
             return;
           }
           if (t.hasAttribute("data-station-close")) {

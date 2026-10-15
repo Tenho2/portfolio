@@ -545,6 +545,11 @@
       .side-nav {
         list-style: none;
       }
+      /* The charger-search tab exists only in the modern phone bar. Hidden by
+         class so the classic, wide and focus rails are untouched. */
+      .nav-stations {
+        display: none;
+      }
       .side-nav button {
         display: flex;
         align-items: center;
@@ -2115,6 +2120,9 @@
         gap: 0.75rem;
         padding: 0.6rem 0.8rem;
         background: var(--surface-2);
+        /* The whole row opens the detail, not just the name, so it reads as
+           one clickable target. */
+        cursor: pointer;
       }
       .station-row + .station-row {
         border-top: 1px solid var(--line);
@@ -2187,6 +2195,18 @@
         margin-top: 1rem;
         border-style: dashed;
         background: transparent;
+      }
+      /* When the detail is moved inline under the selected row it is part of the
+         list, not a card below it: drop the dashed sub-panel box and let a
+         single hairline carry the separation. */
+      #stationList #stationDetail {
+        margin: 0;
+        border: 0;
+        border-top: 1px solid var(--line);
+        border-radius: 0;
+      }
+      #stationDetail + .station-row {
+        border-top: 1px solid var(--line);
       }
       @media (max-width: 560px) {
         /* Stacked on a phone: the distance and the Use button are separate
@@ -2567,11 +2587,9 @@
          removed so the figures and the log sit directly on the page. Scoped to
          the modern layout, because the classic, wide and focus arrangements
          keep their own surfaces. Theme-aware: a light flat canvas by default,
-         the deep #0b0f19 when dark mode is on. The borders are stripped with
-         !important so no later component rule can paint an edge back in; the
-         KPI hairlines below re-add theirs with the same weight. */
+         the deep #0b0f19 when dark mode is on. The KPI tiles are the one
+         exception - they are cards in their own right, styled below. */
       body[data-layout="modern"] .panel,
-      body[data-layout="modern"] .stat,
       body[data-layout="modern"] .top {
         background: transparent !important;
         box-shadow: none !important;
@@ -2648,22 +2666,18 @@
       }
       body[data-layout="modern"] .stats {
         grid-template-columns: 1fr 1fr;
-        gap: 0;
+        gap: 0.65rem;
         margin-top: 0.75rem;
       }
+      /* The four key figures as a 2x2 card grid on the warm canvas. The tiles
+         are the one piece of chrome the modern dashboard keeps. */
       body[data-layout="modern"] .stat {
-        background: none;
-        border: 0;
-        /* The hairline partition is the only chrome left on a figure. It has to
-           carry !important to survive the border:none strip above. */
-        border-bottom: 1px solid var(--line) !important;
-        border-radius: 0;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 10px;
         box-shadow: none;
-        padding: 0.6rem 0.25rem;
+        padding: 0.85rem;
         text-align: left;
-      }
-      body.dark[data-layout="modern"] .stat {
-        border-bottom: 1px solid #1e293b !important;
       }
       /* Only the four key figures. The derived tiles - efficiency, cost per
          100 km, peak speed, mean duration - stay reachable through the log's
@@ -2727,6 +2741,21 @@
         border: 1px solid #10b981;
         border-radius: 4px;
         text-align: center;
+      }
+
+      /* On a phone the modern header is a clean bar - the vehicle selector and
+         the theme toggle - and the dashboard's own title and lead paragraph are
+         redundant, because the bottom bar already says which view is open. */
+      @media (max-width: 700px) {
+        body[data-layout="modern"] #dashboard > .panel > h2,
+        body[data-layout="modern"] #dashboard > .panel > .lead,
+        body[data-layout="modern"] .top h1 {
+          display: none;
+        }
+        /* The charger search is a tab in the modern phone bar. */
+        body[data-layout="modern"] .nav-stations {
+          display: block;
+        }
       }
 
       /* Telemetry log on a phone for the modern layout. The same two-line idea
