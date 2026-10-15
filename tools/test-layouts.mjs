@@ -36,6 +36,12 @@ const PAGES = [
   { name: "wide", file: "ev-tracker-wide.html" },
   { name: "focus", file: "ev-tracker-focus.html" },
   { name: "modern", file: "ev-tracker-modern.html" },
+  /* Experimental UIs: each loads app/ui/base.css + its own theme instead of
+     the shared app/app.css. */
+  { name: "hud", file: "ev-tracker-hud.html", ui: true },
+  { name: "brutal", file: "ev-tracker-brutal.html", ui: true },
+  { name: "editorial", file: "ev-tracker-editorial.html", ui: true },
+  { name: "glass", file: "ev-tracker-glass.html", ui: true },
 ];
 
 let pass = 0;
@@ -111,20 +117,39 @@ group("both layout pages exist and declare themselves", () => {
       `${p.file} declares data-layout="${p.name}"`,
       new RegExp(`<body[^>]*data-layout="${p.name}"`).test(read(p.file)),
     );
-    ok(
-      `${p.file} loads its own layout sheet`,
-      new RegExp(`href="app/layout-${p.name}\\.css"`).test(read(p.file)),
-    );
-    ok(
-      `${p.file} loads the shared design system`,
-      /href="app\/app\.css"/.test(read(p.file)),
-    );
+    if (p.ui) {
+      /* Experimental UIs share no styling with app.css. */
+      ok(
+        `${p.file} loads the UI base`,
+        /href="app\/ui\/base\.css"/.test(read(p.file)),
+      );
+      ok(
+        `${p.file} loads its own theme`,
+        new RegExp(`href="app/ui/${p.name}\\.css"`).test(read(p.file)),
+      );
+      ok(
+        `${p.file} does not load the shared sheet`,
+        !/href="app\/app\.css"/.test(read(p.file)),
+      );
+    } else {
+      ok(
+        `${p.file} loads its own layout sheet`,
+        new RegExp(`href="app/layout-${p.name}\\.css"`).test(read(p.file)),
+      );
+      ok(
+        `${p.file} loads the shared design system`,
+        /href="app\/app\.css"/.test(read(p.file)),
+      );
+    }
   }
 });
 
 group("the two pages are the same application", () => {
-  const [a, b] = PAGES.map((p) => markupOf(p.file));
-  ok("the markup is byte-identical", a === b);
+  const markups = PAGES.map((p) => markupOf(p.file));
+  ok(
+    "the markup is byte-identical across every page",
+    markups.every((m) => m === markups[0]),
+  );
   ok(
     "the shared modules are loaded identically",
     PAGES.every((p) => {
@@ -208,11 +233,10 @@ group("every layout the switcher offers is a real page", () => {
   ok("the switcher lists at least two layouts", listed.length >= 2);
   for (const file of listed) {
     ok(`${file} (offered by the switcher) exists`, existsSync(file));
-    ok(
-      `${file} loads a layout sheet that exists`,
-      (read(file).match(/href="(app\/layout-[^"]+\.css)"/) || [])[1] &&
-        existsSync((read(file).match(/href="(app\/layout-[^"]+\.css)"/) || [])[1]),
-    );
+    const sheet = (read(file).match(
+      /href="(app\/(?:layout-[^"]+|ui\/[^"]+)\.css)"/,
+    ) || [])[1];
+    ok(`${file} loads a stylesheet that exists`, !!sheet && existsSync(sheet));
   }
   for (const p of PAGES) {
     ok(`${p.file} is offered by the switcher`, listed.includes(p.file));

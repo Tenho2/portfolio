@@ -139,11 +139,10 @@
   body[data-layout="modern"] footer {
     padding-bottom: 5rem;
   }
-  /* Redundant on a phone: the quick-action grid and the month chart are desktop
-     furniture once the dashboard is a canvas and the add action is the centred
-     thumb button above. */
-  body[data-layout="modern"] #dashboard .qa,
-  body[data-layout="modern"] #chartPanel {
+  /* Redundant on a phone: the quick-action grid is desktop furniture once the
+     dashboard is a canvas and the add and charger actions are the centred
+     buttons above. The month chart stays: it is the dashboard's visualiser. */
+  body[data-layout="modern"] #dashboard .qa {
     display: none;
   }
 }

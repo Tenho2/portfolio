@@ -197,6 +197,14 @@
           { name: "wide", file: "ev-tracker-wide.html", label: "set.layoutWide" },
           { name: "focus", file: "ev-tracker-focus.html", label: "set.layoutFocus" },
           { name: "modern", file: "ev-tracker-modern.html", label: "set.layoutModern" },
+          { name: "hud", file: "ev-tracker-hud.html", label: "set.layoutHud" },
+          { name: "brutal", file: "ev-tracker-brutal.html", label: "set.layoutBrutal" },
+          {
+            name: "editorial",
+            file: "ev-tracker-editorial.html",
+            label: "set.layoutEditorial",
+          },
+          { name: "glass", file: "ev-tracker-glass.html", label: "set.layoutGlass" },
         ];
         function currentLayout() {
           var el = document.body && document.body.getAttribute("data-layout");
@@ -5750,65 +5758,51 @@ function say(msg) {
           return "hsl(" + PAYER_HUES[i % PAYER_HUES.length] + ",58%,46%)";
         }
 
+        /**
+         * The payer split on the log page: a donut and its legend.
+         *
+         * Drawn inline rather than only inside the Breakdown sheet, so the log
+         * page shows the visualiser at a glance. It reuses payBreakdown and
+         * payDonut, so the inline chart and the sheet cannot drift apart.
+         */
         function renderPayerChart(list) {
           var box = $("payerBoxChart");
           if (!box) return;
-          var t = payerTotals(list);
+          var d = payBreakdown(list);
           /* The breakdown button earns its place only once there is a split to
              break down. Before that it is a dead control. */
           var row = $("payerBreakdownRow");
-          if (row) row.hidden = !t.rows.length;
-          if (!t.rows.length) {
+          if (row) row.hidden = !d.rows.length;
+          if (!d.rows.length) {
             box.hidden = true;
+            box.innerHTML = "";
             return;
           }
-          var total = 0;
-          for (var i = 0; i < t.rows.length; i++) total += t.rows[i].cost;
           var legend = "";
-          var segs = "";
-          for (var j = 0; j < t.rows.length; j++) {
-            var r = t.rows[j];
-            var pct = total > 0 ? (r.cost / total) * 100 : 0;
+          for (var j = 0; j < d.rows.length; j++) {
+            var r = d.rows[j];
+            var pct = d.grand > 0 ? (r.cost / d.grand) * 100 : 0;
             legend +=
               '<li><span class="sw" style="background:' +
-              payerColour(j) +
+              r.colour +
               '" aria-hidden="true"></span><span class="nm">' +
               esc(r.name) +
               '</span><span class="val">' +
               fmtMoney(r.cost) +
               " · " +
               Math.round(pct) +
-              "% · " +
-              r.sessions +
-              "</span></li>";
-            segs +=
-              '<span class="seg" style="width:' +
-              pct.toFixed(3) +
-              "%;background:" +
-              payerColour(j) +
-              '" title="' +
-              esc(r.name + " " + fmtMoney(r.cost)) +
-              '"></span>';
+              "%</span></li>";
           }
-          if (t.unattributed > 0) {
+          if (d.hasUnassigned) {
             legend +=
-              '<li class="muted"><span class="sw none" aria-hidden="true"></span>' +
-              '<span class="nm">' +
-              TXT("pay.unattributed", { n: t.unattributedCount }) +
+              '<li class="muted"><span class="sw none" aria-hidden="true"></span><span class="nm">' +
+              TXT("pay.unattributed", { n: d.unassigned.sessions }) +
               '</span><span class="val">' +
-              fmtMoney(t.unattributed) +
+              fmtMoney(d.unassigned.cost) +
               "</span></li>";
           }
           box.hidden = false;
-          box.innerHTML =
-            '<div class="bar" role="img" aria-label="' +
-            TXT("pay.chartLabel", { v: veh() ? veh().name : "" }) +
-            '">' +
-            segs +
-            "</div>" +
-            "<ul>" +
-            legend +
-            "</ul>";
+          box.innerHTML = payDonut(d) + "<ul>" + legend + "</ul>";
         }
 
         /* ---------- the payer breakdown ----------
@@ -8873,16 +8867,33 @@ closeEdit();
           }
           return next();
         }
-        function nomUrl(q, limit) {
-          return (
+        function nomUrl(q, limit, near) {
+          var url =
             "https://nominatim.openstreetmap.org/search?format=jsonv2" +
             "&addressdetails=1&namedetails=1" +
             "&accept-language=fi" /* always Finnish names, whatever the browser asks for */ +
             "&limit=" +
             (limit || 6) +
             "&q=" +
-            encodeURIComponent(q)
-          );
+            encodeURIComponent(q);
+          /* A soft viewbox around a known point biases the result toward that
+             neighbourhood without excluding anything (bounded is deliberately
+             not set), so a bare street name resolves to the nearest one rather
+             than to whichever town Nominatim happens to rank first. */
+          if (near && isNum(near.lat) && isNum(near.lng)) {
+            var dLat = 0.4,
+              dLng = 0.6;
+            url +=
+              "&viewbox=" +
+              (near.lng - dLng) +
+              "," +
+              (near.lat + dLat) +
+              "," +
+              (near.lng + dLng) +
+              "," +
+              (near.lat - dLat);
+          }
+          return url;
         }
         /**
          * Choose the most specific hit from a Nominatim result list.
@@ -8925,6 +8936,30 @@ closeEdit();
             }
           }
           return best;
+        }
+        /**
+         * The hit nearest a reference point.
+         *
+         * A bare street name has no house number to prefer, so the useful
+         * choice is the nearest occurrence of that street - not whichever one
+         * Nominatim ranked first, which may be in another town. Falls back to
+         * the relevance-scored pick when no hit carries coordinates.
+         */
+        function pickNearestHit(res, ref, q) {
+          if (!res || !res.length) return null;
+          var best = null,
+            bestD = Infinity;
+          for (var i = 0; i < res.length; i++) {
+            var la = parseFloat(res[i].lat),
+              lo = parseFloat(res[i].lon);
+            if (!isFinite(la) || !isFinite(lo)) continue;
+            var d = metresBetween(ref.lat, ref.lng, la, lo);
+            if (d < bestD) {
+              bestD = d;
+              best = res[i];
+            }
+          }
+          return best || pickBestHit(res, q);
         }
         /** True when the text carries a house number, e.g. "Kostilantie 5". */
         function looksLikeHouseNumber(q) {
@@ -9159,6 +9194,33 @@ slot.map.on("click", function (e) {
          * rate limited, so it is deliberately a manual button rather than
          * something that fires on every keystroke.
          */
+        /**
+         * A reference point for the address lookup: the pin already on the form,
+         * or a current fix, so a bare street name resolves to the nearest one.
+         * Calls back with null when neither is available; the lookup still runs.
+         */
+        function geoReference(cb) {
+          var la = parseFloat($("fLat").value),
+            lo = parseFloat($("fLng").value);
+          if (isNum(la) && isNum(lo)) {
+            cb({ lat: la, lng: lo });
+            return;
+          }
+          if (!navigator.geolocation) {
+            cb(null);
+            return;
+          }
+          navigator.geolocation.getCurrentPosition(
+            function (p) {
+              cb({ lat: p.coords.latitude, lng: p.coords.longitude });
+            },
+            function () {
+              cb(null);
+            },
+            { enableHighAccuracy: false, timeout: 6000, maximumAge: 300000 },
+          );
+        }
+
         function geocode() {
           var q = $("fAddr").value.trim();
           if (!q) {
@@ -9171,50 +9233,56 @@ slot.map.on("click", function (e) {
             return;
           }
           $("geoStat").textContent = TXT("toast.looking", { q: q });
-          /* Several results, then choose the most specific one, so a street
-             number in the query actually resolves to that house. */
-          fetch(nomUrl(q, 10))
-            .then(function (r) {
-              if (!r.ok) throw new Error("http " + r.status);
-              return r.json();
-            })
-            .then(function (res) {
-              var hit = pickBestHit(res, q);
-              if (!hit) {
-                $("geoStat").textContent = TXT("toast.noMatch", { q: q });
-                return;
-              }
-              var short = shortAddress(hit);
-              var lat = parseFloat(hit.lat),
-                lng = parseFloat(hit.lon);
-              $("fLat").value = lat.toFixed(5);
-              $("fLng").value = lng.toFixed(5);
-              if (!$("fName").value.trim())
-                $("fName").value = hit.name || short || q;
-              if (short) $("fAddr").value = short;
-              showPin("map", lat, lng, hit.name || short, favPinDragged);
-              /* A successful lookup now stores the place straight away. Finding
-                 an address used to only fill the form, which read as "nothing
-                 happened" on the saved list until Save was pressed as well. */
-              /* Looking up a different address in the same form means a new
-                 place, not a silent overwrite of the one being edited. */
-              var beingEdited = editFav ? favById(editFav) : null;
-              if (beingEdited) {
-                var wasAddr = (beingEdited.address || "").toLowerCase();
-                if (
-                  wasAddr &&
-                  ($("fAddr").value || "").toLowerCase() !== wasAddr
-                )
-                  editFav = null;
-              }
-              saveFavourite();
-              $("geoStat").textContent = TXT("toast.found", {
-                v: short,
+          /* A known point biases the search and breaks ties: with a house number
+             the most specific hit wins, otherwise the nearest occurrence of the
+             street does, so a bare street name does not land in another town. */
+          geoReference(function (ref) {
+            fetch(nomUrl(q, 10, ref))
+              .then(function (r) {
+                if (!r.ok) throw new Error("http " + r.status);
+                return r.json();
+              })
+              .then(function (res) {
+                var hit =
+                  ref && !looksLikeHouseNumber(q)
+                    ? pickNearestHit(res, ref, q)
+                    : pickBestHit(res, q);
+                if (!hit) {
+                  $("geoStat").textContent = TXT("toast.noMatch", { q: q });
+                  return;
+                }
+                var short = shortAddress(hit);
+                var lat = parseFloat(hit.lat),
+                  lng = parseFloat(hit.lon);
+                $("fLat").value = lat.toFixed(5);
+                $("fLng").value = lng.toFixed(5);
+                if (!$("fName").value.trim())
+                  $("fName").value = hit.name || short || q;
+                if (short) $("fAddr").value = short;
+                showPin("map", lat, lng, hit.name || short, favPinDragged);
+                /* A successful lookup now stores the place straight away. Finding
+                   an address used to only fill the form, which read as "nothing
+                   happened" on the saved list until Save was pressed as well. */
+                /* Looking up a different address in the same form means a new
+                   place, not a silent overwrite of the one being edited. */
+                var beingEdited = editFav ? favById(editFav) : null;
+                if (beingEdited) {
+                  var wasAddr = (beingEdited.address || "").toLowerCase();
+                  if (
+                    wasAddr &&
+                    ($("fAddr").value || "").toLowerCase() !== wasAddr
+                  )
+                    editFav = null;
+                }
+                saveFavourite();
+                $("geoStat").textContent = TXT("toast.found", {
+                  v: short,
+                });
+              })
+              .catch(function () {
+                $("geoStat").textContent = TXT("toast.geoFail");
               });
-            })
-            .catch(function () {
-              $("geoStat").textContent = TXT("toast.geoFail");
-            });
+          });
         }
         function favPinDragged(lat, lng) {
           $("fLat").value = lat.toFixed(5);

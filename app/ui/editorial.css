@@ -1,0 +1,175 @@
+/* Experimental UI — "Editorial".
+ *
+ * Magazine/print: warm paper, serif headings, hairline rules, generous
+ * whitespace, restrained ink-and-oxblood palette. Reads like a report, not an
+ * app. Layered on app/ui/base.css.
+ */
+
+:root {
+  --bg: #fbf9f3;
+  --bg-2: #fbf9f3;
+  --surface: #fffdf8;
+  --surface-2: #f3efe3;
+  --surface-3: #ece6d6;
+  --line: #d9d2c2;
+  --text: #1b1a17;
+  --text-muted: #6f695d;
+  --primary: #7a1f2b;
+  --primary-ink: #fffdf8;
+  --accent: #1f4d3a;
+  --danger: #a11b1b;
+  --warn: #9a6b00;
+  --ok: #1f6b45;
+  --radius: 0;
+  --radius-sm: 0;
+  --shadow: none;
+  --font: Georgia, "Times New Roman", serif;
+  --font-head: Georgia, "Times New Roman", serif;
+}
+
+body {
+  font-size: 17px;
+  line-height: 1.65;
+}
+
+h1,
+h2,
+h3,
+h4,
+.top h1 {
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+h2 {
+  font-size: 1.7rem;
+}
+.panel > h2 {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 0.5rem;
+}
+.panel > p.lead {
+  font-style: italic;
+}
+
+.panel,
+.stat,
+.vcard,
+.item,
+.camera-card,
+.sheet-box,
+.confirm-box,
+.auth-box {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.panel {
+  border-top: 3px double var(--line);
+  padding: 1.5rem 0;
+}
+.stat {
+  border-top: 1px solid var(--line);
+  padding: 0.75rem 0;
+}
+.stat .n {
+  font-size: 1.8rem;
+  font-weight: 400;
+}
+.stat .l {
+  font-family: var(--font);
+  text-transform: none;
+  letter-spacing: 0.02em;
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+.btn {
+  border: 1px solid var(--text);
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font);
+  letter-spacing: 0.04em;
+}
+.btn:hover {
+  background: var(--text);
+  color: var(--surface);
+  filter: none;
+}
+.btn.ghost {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+input,
+select,
+textarea {
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+}
+
+.side {
+  border-right: 1px solid var(--line);
+  background: var(--surface);
+}
+.side-brand {
+  font-style: italic;
+  font-weight: 400;
+}
+.side-nav button {
+  border-left: 0;
+  font-family: var(--font);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.72rem;
+}
+.side-nav button[aria-current="page"] {
+  border-left: 0;
+  color: var(--primary);
+  background: transparent;
+}
+
+.top {
+  border-bottom: 3px double var(--line);
+}
+
+.qa button {
+  background: transparent;
+  border: 1px solid var(--line);
+}
+.station-list {
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+.station-row {
+  background: transparent;
+  border-bottom: 1px solid var(--line);
+}
+.station-row + .station-row,
+#stationDetail + .station-row,
+.station-row + #stationDetail {
+  border-top: 0;
+}
+.station-row.on {
+  background: var(--surface-2);
+}
+.station-name {
+  font-weight: 400;
+  font-style: italic;
+}
+.station-num {
+  background: transparent;
+  color: var(--primary);
+  border: 1px solid var(--primary);
+  border-radius: 50%;
+}
+.tag {
+  border: 1px solid var(--line);
+  border-radius: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.62rem;
+}

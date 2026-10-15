@@ -31,10 +31,10 @@
  * tools/test-sw-bump.mjs asserts that every shell file was touched, and that the
  * version moved with it.
  *
- * Last bumped: 2026-10-15, for the modern bottom-bar tabs, inline station
- * detail, full-row station hitbox, and the true-nearest "Near me".
+ * Last bumped: 2026-10-15, for the four experimental UIs (hud, brutal,
+ * editorial, glass) and their shared app/ui/ stylesheets.
  */
-const VERSION = "v63";
+const VERSION = "v64";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [
@@ -43,12 +43,21 @@ const SHELL = [
   "./ev-tracker-wide.html",
   "./ev-tracker-focus.html",
   "./ev-tracker-modern.html",
+  "./ev-tracker-hud.html",
+  "./ev-tracker-brutal.html",
+  "./ev-tracker-editorial.html",
+  "./ev-tracker-glass.html",
   "./app/app.css",
   "./app/app.js",
   "./app/layout-classic.css",
   "./app/layout-wide.css",
   "./app/layout-focus.css",
   "./app/layout-modern.css",
+  "./app/ui/base.css",
+  "./app/ui/hud.css",
+  "./app/ui/brutal.css",
+  "./app/ui/editorial.css",
+  "./app/ui/glass.css",
   "./app/i18n.js",
   "./app/storage.js",
   "./app/stations.js",
@@ -129,6 +138,10 @@ const PAGES = [
   "./ev-tracker-wide.html",
   "./ev-tracker-focus.html",
   "./ev-tracker-modern.html",
+  "./ev-tracker-hud.html",
+  "./ev-tracker-brutal.html",
+  "./ev-tracker-editorial.html",
+  "./ev-tracker-glass.html",
 ];
 
 function fallbackFor(url) {

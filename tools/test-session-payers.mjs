@@ -418,12 +418,14 @@ group("the chart keeps unclaimed money visually distinct", () => {
   ok("and it is a pattern, not a fill", /repeating-linear-gradient/.test(css));
 });
 
-group("the chart is a stacked bar, not a pie", () => {
-  /* With five people a pie is unreadable at phone width, and bars compare
-     shares more accurately than angles do. */
-  ok("it is a bar", /class="bar"/.test(fnSource("renderPayerChart")));
-  ok("built from segments", /class="seg"/.test(fnSource("renderPayerChart")));
-  ok("with a role and a label", /role="img" aria-label/.test(fnSource("renderPayerChart")));
+group("the log chart is a donut, drawn inline", () => {
+  /* The log page shows the payer split as a donut, the same picture the
+     Breakdown sheet draws, rather than only behind that sheet. */
+  const chart = fnSource("renderPayerChart");
+  const donut = fnSource("payDonut");
+  ok("it draws the donut", /payDonut\(/.test(chart));
+  ok("with a role and a label", /class="donut"/.test(donut) && /role="img" aria-label/.test(donut));
+  ok("and a legend beside it", /<ul>/.test(chart));
 });
 
 group("two people on one charge never share a colour", () => {
@@ -435,7 +437,7 @@ group("two people on one charge never share a colour", () => {
 });
 
 group("the chart appears only when it has something to say", () => {
-  ok("it is hidden with no splits", /if \(!t\.rows\.length\)[\s\S]{0,40}hidden = true/.test(fnSource("renderPayerChart")));
+  ok("it is hidden with no splits", /if \(!d\.rows\.length\)[\s\S]{0,40}hidden = true/.test(fnSource("renderPayerChart")));
   ok("and revealed when it does", /box\.hidden = false/.test(fnSource("renderPayerChart")));
   ok("the container is hidden in the markup", /id="payerBoxChart" hidden/.test(html));
 });

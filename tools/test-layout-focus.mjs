@@ -70,7 +70,7 @@ group("the shell folds from a rail into a bottom bar", () => {
 });
 
 group("the nav rail and primary actions use inline SVG", () => {
-  ok("six nav icons are inline SVG", (nav.match(/<svg/g) || []).length === 6);
+  ok("seven nav icons are inline SVG", (nav.match(/<svg/g) || []).length === 7);
   ok("five primary-action icons are inline SVG", (qa.match(/<svg/g) || []).length === 5);
   ok("the icons inherit the text colour", /stroke="currentColor"/.test(nav) && /stroke="currentColor"/.test(qa));
   ok("no emoji remain in the nav or the actions", !/📊|📝|📄|⭐|🗑️|⚙️|🛰️|📥|➕/.test(nav + qa));

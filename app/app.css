@@ -2679,12 +2679,9 @@
         padding: 0.85rem;
         text-align: left;
       }
-      /* Only the four key figures. The derived tiles - efficiency, cost per
-         100 km, peak speed, mean duration - stay reachable through the log's
-         edit sheet rather than competing for the glance. */
-      body[data-layout="modern"] .stats .stat:nth-child(n + 5) {
-        display: none;
-      }
+      /* All eight figures are shown: energy, distance, cost, time, efficiency,
+         cost per 100 km, average speed and average time. The 2x2 card grid
+         wraps to 2x4. */
       body[data-layout="modern"] .stat .n {
         font-size: 1.5rem;
         font-weight: 700;

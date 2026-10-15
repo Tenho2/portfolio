@@ -1,0 +1,161 @@
+/* Experimental UI — "HUD".
+ *
+ * Instrument-cluster read-out: near-black, monospace, a single neon-mint
+ * accent, hairline rules and corner ticks instead of cards. Figures are the
+ * subject; chrome is almost invisible. Layered on app/ui/base.css.
+ */
+
+:root {
+  --bg: #06080b;
+  --bg-2: #06080b;
+  --surface: #0a0f14;
+  --surface-2: #0d141b;
+  --surface-3: #111b24;
+  --line: #1b2833;
+  --text: #d7f6ec;
+  --text-muted: #5f8a80;
+  --primary: #34f5c5;
+  --primary-ink: #04140f;
+  --accent: #4cc9f0;
+  --danger: #ff5c7a;
+  --warn: #ffd166;
+  --ok: #34f5c5;
+  --radius: 2px;
+  --radius-sm: 2px;
+  --shadow: none;
+  --font: var(--font-mono);
+  --font-head: var(--font-mono);
+}
+
+/* A faint scanline wash over the whole canvas. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: repeating-linear-gradient(
+    0deg,
+    rgb(52 245 197 / 0.03) 0,
+    rgb(52 245 197 / 0.03) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+.side,
+.wrap,
+footer,
+.top,
+.sheet,
+.toast {
+  position: relative;
+  z-index: 2;
+}
+
+/* Panels become ruled sections, not cards. */
+.panel {
+  background: transparent;
+  border: 0;
+  border-left: 2px solid var(--primary);
+  border-radius: 0;
+  padding: 0.5rem 0 0.5rem 1rem;
+}
+.panel > h2 {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.9rem;
+  color: var(--primary);
+}
+.panel > p.lead {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* Figures: bare, monospace, with a hairline base. */
+.stats {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0 1.25rem;
+}
+.stat {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  padding: 0.5rem 0;
+}
+.stat .n {
+  color: var(--primary);
+  font-size: 1.4rem;
+  text-shadow: 0 0 12px rgb(52 245 197 / 0.35);
+}
+.stat .l {
+  color: var(--text-muted);
+  letter-spacing: 0.14em;
+}
+
+.btn {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.78rem;
+}
+.btn.ghost {
+  border-color: var(--line);
+}
+
+.qa button,
+.vcard,
+.item,
+.loc-near-row,
+.camera-card {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 0;
+}
+.qa button:hover,
+.vcard[aria-pressed="true"],
+.loc-near-row:hover {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary) inset;
+}
+
+.top {
+  border-bottom: 1px solid var(--line);
+}
+.top h1 {
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.95rem;
+}
+
+.station-list {
+  border-radius: 0;
+}
+.station-row {
+  background: transparent;
+}
+.station-row.on {
+  background: rgb(52 245 197 / 0.08);
+}
+.station-num {
+  border-radius: 0;
+}
+
+.sheet-box,
+.confirm-box,
+.auth-box {
+  border-radius: 0;
+  border: 1px solid var(--primary);
+}
+
+/* Corner ticks on the top strip. */
+.top::after {
+  content: "";
+  position: absolute;
+  right: 0.25rem;
+  top: 0.25rem;
+  width: 8px;
+  height: 8px;
+  border-top: 1px solid var(--primary);
+  border-right: 1px solid var(--primary);
+}

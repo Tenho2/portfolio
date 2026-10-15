@@ -1,0 +1,141 @@
+/* Experimental UI — "Brutal".
+ *
+ * Raw and graphic: off-white paper, 3px black borders, hard offset shadows,
+ * flat primary colours, heavy type, square corners. Nothing soft. Layered on
+ * app/ui/base.css.
+ */
+
+:root {
+  --bg: #fdfcf7;
+  --bg-2: #fdfcf7;
+  --surface: #ffffff;
+  --surface-2: #f2efe4;
+  --surface-3: #e7e2d2;
+  --line: #111111;
+  --text: #111111;
+  --text-muted: #555049;
+  --primary: #ff4d00;
+  --primary-ink: #111111;
+  --accent: #1d4ed8;
+  --danger: #d40000;
+  --warn: #e5a000;
+  --ok: #0a8f3c;
+  --radius: 0;
+  --radius-sm: 0;
+  --shadow: 5px 5px 0 #111111;
+  --font: "Arial Black", "Helvetica Neue", Arial, sans-serif;
+  --font-head: var(--font);
+}
+
+body {
+  background-image: radial-gradient(
+    rgb(0 0 0 / 0.06) 1px,
+    transparent 1px
+  );
+  background-size: 16px 16px;
+}
+
+h1,
+h2,
+h3,
+h4,
+.top h1 {
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  font-weight: 900;
+}
+
+.panel,
+.stat,
+.vcard,
+.qa button,
+.item,
+.loc-near-row,
+.camera-card,
+.sheet-box,
+.confirm-box,
+.auth-box,
+.sync-banner {
+  border: 3px solid var(--line);
+  border-radius: 0;
+  box-shadow: var(--shadow);
+  background: var(--surface);
+}
+
+.stat .n {
+  color: var(--text);
+  font-size: 1.7rem;
+}
+.stat .l {
+  color: var(--text-muted);
+}
+
+.btn {
+  border: 3px solid var(--line);
+  box-shadow: 3px 3px 0 var(--line);
+  border-radius: 0;
+  text-transform: uppercase;
+  font-weight: 900;
+  background: var(--primary);
+  color: var(--primary-ink);
+}
+.btn:active {
+  transform: translate(3px, 3px);
+  box-shadow: none;
+}
+.btn.ghost {
+  background: var(--surface);
+  color: var(--text);
+}
+.btn.sm {
+  box-shadow: 2px 2px 0 var(--line);
+}
+
+input,
+select,
+textarea {
+  border: 3px solid var(--line);
+  border-radius: 0;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.side {
+  border-right: 3px solid var(--line);
+}
+.side-nav button {
+  border-left: 0;
+  border-bottom: 3px solid transparent;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.side-nav button[aria-current="page"] {
+  border-bottom-color: var(--primary);
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.top {
+  border-bottom: 3px solid var(--line);
+}
+
+.station-list {
+  border: 3px solid var(--line);
+  border-radius: 0;
+}
+.station-row {
+  background: var(--surface);
+}
+.station-row.on {
+  background: var(--surface-3);
+}
+.station-num {
+  border-radius: 0;
+  border: 2px solid var(--line);
+}
+
+.tag {
+  border: 2px solid var(--line);
+  border-radius: 0;
+  color: var(--text);
+}

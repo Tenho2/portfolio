@@ -341,8 +341,8 @@ group("the four windows are all offered", () => {
 
 group("the trigger only appears when there is something to show", () => {
   ok("the button row starts hidden", /id="payerBreakdownRow" hidden/.test(html));
-  ok("and is revealed with the chart", /row\.hidden = !t\.rows\.length/.test(fnSource("renderPayerChart")));
-  ok("so a car with no splits never offers a dead control", /if \(!t\.rows\.length\)[\s\S]{0,60}hidden = true/.test(fnSource("renderPayerChart")));
+  ok("and is revealed with the chart", /row\.hidden = !d\.rows\.length/.test(fnSource("renderPayerChart")));
+  ok("so a car with no splits never offers a dead control", /if \(!d\.rows\.length\)[\s\S]{0,60}hidden = true/.test(fnSource("renderPayerChart")));
 });
 
 group("the sheet is narrow like a sheet, not a full page", () => {

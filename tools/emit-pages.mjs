@@ -22,7 +22,7 @@
  * Usage:  node tools/emit-pages.mjs
  */
 import { readFileSync, writeFileSync } from "node:fs";
-import { LAYOUTS, LINK_LINES, SCRIPT_LINES } from "../app/shell.mjs";
+import { LAYOUTS, linkLinesFor, SCRIPT_LINES } from "../app/shell.mjs";
 
 const SOURCE = "ev-tracker.html";
 
@@ -107,7 +107,7 @@ for (const entry of LAYOUTS) {
       .trimEnd() + ` data-layout="${layout}">`;
   const out = [
     ...head,
-    ...LINK_LINES.map((l) => l.replace("__LAYOUT__", layout)),
+    ...linkLinesFor(layout),
     "  </head>",
     bodyOpen,
     ...markup,
