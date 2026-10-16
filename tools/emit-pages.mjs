@@ -92,6 +92,26 @@ const markup = exciseBlock(
   "script",
 );
 
+/**
+ * Layouts whose body markup is deliberately NOT the shared markup.
+ *
+ * The experimental UIs are allowed to restructure the DOM rather than only
+ * restyle it, and hud is the first to do so. Its body lives in its own file so
+ * the generator stays idempotent while the shared head and the ordered script
+ * block are still produced from the one source. Everything else keeps the
+ * shared markup.
+ */
+const BODY_OVERRIDE = { hud: "tools/hud-body.html" };
+function markupFor(layout) {
+  const file = BODY_OVERRIDE[layout];
+  if (!file) return markup;
+  return exciseBlock(
+    excise(readFileSync(file, "utf8").split(/\r?\n/), "scripts:begin", "scripts:end"),
+    "script",
+    "script",
+  );
+}
+
 for (const entry of LAYOUTS) {
   const layout = entry.name;
   // The body tag is rewritten, not appended to: the source page may already
@@ -110,7 +130,7 @@ for (const entry of LAYOUTS) {
     ...linkLinesFor(layout),
     "  </head>",
     bodyOpen,
-    ...markup,
+    ...markupFor(layout),
     ...SCRIPT_LINES,
     "  </body>",
     "</html>",

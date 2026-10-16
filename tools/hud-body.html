@@ -1,0 +1,1655 @@
+    <a class="skip-link" href="#main-content" data-i18n="a11y.skip"></a>
+
+    <!-- Auth gate. An overlay until Supabase says who is signed in; base.css
+         hides it (and shows the shell) the moment that changes. -->
+    <section id="authView" aria-labelledby="authTitle">
+      <div class="auth-box">
+        <h1 id="authTitle">
+          <span aria-hidden="true">🔋</span>
+          <span data-i18n="brand"></span>
+        </h1>
+        <p class="lead" data-i18n="auth.lead"></p>
+        <form id="authForm" novalidate>
+          <div class="f">
+            <label for="authUser" data-i18n="auth.username"></label>
+            <input
+              type="text"
+              id="authUser"
+              autocomplete="username"
+              autocapitalize="none"
+              autocorrect="off"
+              spellcheck="false"
+              maxlength="40"
+              required
+              aria-required="true"
+            />
+            <div class="hint" data-i18n="auth.usernameHint"></div>
+          </div>
+          <div class="f">
+            <label for="authPass" data-i18n="auth.password"></label>
+            <input
+              type="password"
+              id="authPass"
+              autocomplete="current-password"
+              maxlength="72"
+              required
+              aria-required="true"
+            />
+          </div>
+          <div
+            id="authMsg"
+            class="auth-msg"
+            role="status"
+            aria-live="polite"
+            hidden
+          ></div>
+          <!-- The English text inside the tags is a fallback. applyI18n
+               overwrites it with the detected language, so the buttons are
+               never rendered as empty rectangles while the language boot runs. -->
+          <button
+            class="btn block"
+            type="submit"
+            id="authGo"
+            data-i18n="auth.signIn"
+          >
+            Sign in
+          </button>
+          <button
+            class="btn ghost block auth-alt"
+            type="button"
+            id="authToggle"
+            data-i18n="auth.needAccount"
+          >
+            Need an account? Register
+          </button>
+        </form>
+        <p
+          class="mini"
+          style="margin-top: 1.25rem"
+          data-i18n="auth.privacy"
+        ></p>
+      </div>
+    </section>
+
+    <!-- The cockpit. A single full-viewport deck: a fixed instrument rack on
+         the left and a wide stage to its right, instead of the classic
+         aside + main + footer that floated over one another. Navigation, status
+         and content are three nested bays, not three page regions. -->
+    <div class="hud-deck">
+      <aside class="side hud-rack">
+        <a class="side-brand" href="#dashboard"
+          ><span aria-hidden="true">🚗</span> <span data-i18n="brand"></span
+        ></a>
+        <nav class="hud-command" data-i18n-aria="a11y.nav">
+          <ul class="side-nav">
+            <li>
+              <button type="button" data-go="dashboard" aria-current="page">
+                <span class="ic" aria-hidden="true"
+                  ><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg></span
+                ><span data-i18n="nav.dashboard"></span>
+              </button>
+            </li>
+            <li>
+              <button type="button" data-go="add-session">
+                <span class="ic" aria-hidden="true"
+                  ><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></span
+                ><span data-i18n="nav.add"></span>
+              </button>
+            </li>
+            <li>
+              <button type="button" data-go="view-data">
+                <span class="ic" aria-hidden="true"
+                  ><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg></span
+                ><span data-i18n="nav.log"></span>
+              </button>
+            </li>
+            <li>
+              <button type="button" data-go="favourites">
+                <span class="ic" aria-hidden="true"
+                  ><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg></span
+                ><span data-i18n="nav.fav"></span>
+              </button>
+            </li>
+            <li>
+              <button type="button" data-go="bin">
+                <span class="ic" aria-hidden="true"
+                  ><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></span
+                ><span data-i18n="nav.bin"></span>
+                <span class="bin-count" id="binCount" hidden></span>
+              </button>
+            </li>
+            <li>
+              <button type="button" data-go="settings">
+                <span class="ic" aria-hidden="true"
+                  ><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></span
+                ><span data-i18n="nav.set"></span>
+              </button>
+            </li>
+            <!-- The charger search. Appended last so the existing tabs keep
+                 their indices; hidden everywhere except the modern phone bar. -->
+            <li class="nav-stations">
+              <button type="button" data-go="stations">
+                <span class="ic" aria-hidden="true"
+                  ><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="M15.6 15.6 21 21"></path><path d="M10.7 6.6 8.6 11h3.1l-1.6 3.8 3.3-4.6h-3.1z"></path></svg></span
+                ><span data-i18n="st.findCharger"></span>
+              </button>
+            </li>
+          </ul>
+        </nav>
+        <!-- The rack's own telemetry, beneath the commands. -->
+        <div class="who-mobile" id="whoMobile" hidden>
+          <button
+            type="button"
+            class="sync-badge sync-badge-mini"
+            id="syncBadgeM"
+            data-kind=""
+            aria-expanded="false"
+            aria-controls="syncPanel"
+            data-i18n-aria="sync.open"
+            hidden
+          ></button>
+          <span class="who-mobile-name" id="whoMobileName"></span>
+        </div>
+        <div class="badge" id="dbInfo"></div>
+      </aside>
+
+      <div class="hud-main">
+        <header class="top hud-head">
+          <h1><span id="who">Dashboard</span></h1>
+          <div class="top-right">
+            <select
+              class="head-veh"
+              id="headVeh"
+              data-i18n-aria="a11y.vehList"
+            ></select>
+            <label class="lang-wrap"
+              ><span class="mini" data-i18n="lang"></span
+              ><select id="langSel" data-i18n-aria="lang"></select
+            ></label>
+            <button
+              class="sync-badge"
+              id="syncBadge"
+              type="button"
+              data-kind=""
+              aria-expanded="false"
+              aria-controls="syncPanel"
+              data-i18n-aria="sync.open"
+              hidden
+            ></button>
+            <span class="user-chip" id="userChip" hidden
+              ><span class="nm" id="userName"></span
+            ></span>
+            <button class="tgl-wide" id="logoutBtn" type="button" hidden>
+              <span class="ic" aria-hidden="true">⎋</span>
+              <span id="logoutLabel" data-i18n="auth.logout">Log out</span>
+            </button>
+            <button
+              class="tgl"
+              id="themeBtn"
+              type="button"
+              data-i18n-aria="aria.theme"
+            >
+              <span aria-hidden="true">☀️</span>
+            </button>
+          </div>
+        </header>
+
+        <main class="wrap hud-stage" id="main-content">
+          <!-- ============ DASHBOARD ============ -->
+          <section class="view on hud-screen" id="dashboard">
+            <div class="hud-view-head">
+              <h2 class="hud-title">
+                <span aria-hidden="true">📊</span>
+                <span data-i18n="nav.dashboard"></span>
+              </h2>
+              <p class="lead hud-lead" data-i18n="dash.lead"></p>
+            </div>
+            <div class="hud-dash-grid">
+              <div class="hud-cell hud-cell-fleet">
+                <div id="vehWrap" hidden>
+                  <div
+                    class="mini"
+                    style="margin-bottom: 0.5rem"
+                    data-i18n="dash.pick"
+                  ></div>
+                  <div
+                    class="veh"
+                    id="vehList"
+                    role="group"
+                    data-i18n-aria="a11y.vehList"
+                  ></div>
+                </div>
+                <div
+                  class="sr-only"
+                  id="statsLive"
+                  role="status"
+                  aria-live="polite"
+                ></div>
+                <div
+                  class="stats"
+                  id="stats"
+                  role="group"
+                  data-i18n-aria="a11y.stats"
+                >
+                  <div class="stat">
+                    <div class="n" id="sEnergy">0 kWh</div>
+                    <div class="l" data-i18n="tile.kwh"></div>
+                  </div>
+                  <div class="stat" data-tile="dist">
+                    <div class="n" id="sDist">0 km</div>
+                    <div class="l" id="sDistLabel" data-i18n="tile.dist"></div>
+                  </div>
+                  <div class="stat">
+                    <div class="n" id="sCost">€0.00</div>
+                    <div class="l" data-i18n="tile.cost"></div>
+                  </div>
+                  <div class="stat">
+                    <div class="n" id="sDur">0 h</div>
+                    <div class="l" data-i18n="tile.time"></div>
+                  </div>
+                  <div class="stat" data-tile="eff">
+                    <div class="n" id="sEff">–</div>
+                    <div class="l" data-i18n="tile.kwh100"></div>
+                    <div class="sub" id="sEffNote"></div>
+                  </div>
+                  <div class="stat" data-tile="cost100">
+                    <div class="n" id="sCost100">–</div>
+                    <div class="l" data-i18n="tile.cost100"></div>
+                    <div class="sub" id="sCost100Note"></div>
+                  </div>
+                  <div class="stat">
+                    <div class="n" id="sSpeed">—</div>
+                    <div class="l" data-i18n="tile.speed"></div>
+                  </div>
+                  <div class="stat">
+                    <div class="n" id="sDurAvg">—</div>
+                    <div class="l" data-i18n="tile.duravg"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="hud-cell hud-cell-launch">
+                <div class="qa">
+                  <button type="button" data-go="add-session">
+                    <span class="ic" aria-hidden="true"
+                      ><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></span
+                    ><span data-i18n="nav.add"></span>
+                  </button>
+                  <button type="button" data-go="stations">
+                    <span class="ic" aria-hidden="true"
+                      ><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="2"></circle><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"></path></svg></span
+                    ><span data-i18n="st.find"></span>
+                  </button>
+                  <button type="button" data-go="view-data">
+                    <span class="ic" aria-hidden="true"
+                      ><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg></span
+                    ><span data-i18n="nav.log"></span>
+                  </button>
+                  <button type="button" data-go="settings">
+                    <span class="ic" aria-hidden="true"
+                      ><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></span
+                    ><span data-i18n="qa.import"></span>
+                  </button>
+                  <button type="button" data-go="settings">
+                    <span class="ic" aria-hidden="true"
+                      ><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></span
+                    ><span data-i18n="qa.addVehicle"></span>
+                  </button>
+                </div>
+                <div class="thumb-actions" id="thumbActions">
+                  <button type="button" class="btn thumb-add" data-go="add-session">
+                    <span aria-hidden="true">+</span>
+                    <span data-i18n="nav.add"></span>
+                  </button>
+                  <button type="button" class="btn thumb-stations" data-go="stations">
+                    <span class="ic" aria-hidden="true"
+                      ><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="M15.6 15.6 21 21"></path><path d="M10.7 6.6 8.6 11h3.1l-1.6 3.8 3.3-4.6h-3.1z"></path></svg></span>
+                    <span data-i18n="st.findCharger"></span>
+                  </button>
+                  <select
+                    class="thumb-veh"
+                    id="thumbVeh"
+                    data-i18n-aria="a11y.vehList"
+                  ></select>
+                </div>
+              </div>
+
+              <figure class="hud-cell hud-cell-scope">
+                <div class="chart-panel" id="chartPanel">
+                  <h3 data-i18n="chart.title"></h3>
+                  <p class="chart-note" id="chartNote" hidden></p>
+                  <div class="chartbox" id="chartBox" hidden>
+                    <canvas id="monthChart"></canvas>
+                  </div>
+                </div>
+              </figure>
+            </div>
+          </section>
+
+          <!-- ============ ADD SESSION ============ -->
+          <section class="view hud-screen" id="add-session">
+            <div class="hud-view-head">
+              <h2 class="hud-title">
+                <span aria-hidden="true">📝</span>
+                <span data-i18n="as.title"></span>
+              </h2>
+              <p class="lead hud-lead" id="formVeh"></p>
+            </div>
+            <form id="sForm" novalidate>
+              <div class="hud-form-grid">
+                <div class="hud-bay hud-bay-when">
+                  <fieldset class="hud-row">
+                    <legend class="sr-only" data-i18n="grp.when"></legend>
+                    <div class="f">
+                      <label for="date" data-i18n="as.date"></label
+                      ><input
+                        type="date"
+                        id="date"
+                        name="date"
+                        required
+                        aria-required="true"
+                      />
+                    </div>
+                    <div class="f">
+                      <label for="time" data-i18n="as.time"></label
+                      ><input
+                        type="time"
+                        id="time"
+                        name="time"
+                        step="1"
+                        required
+                        aria-required="true"
+                      />
+                    </div>
+                  </fieldset>
+                  <fieldset class="hud-row">
+                    <legend class="sr-only" data-i18n="grp.duration"></legend>
+                    <div class="f">
+                      <label for="duration" data-i18n="as.dur"></label>
+                      <input
+                        type="time"
+                        id="duration"
+                        name="duration"
+                        step="1"
+                        required
+                        aria-required="true"
+                        aria-describedby="durHint"
+                      />
+                      <div class="hint" id="durHint">
+                        <span data-i18n="as.durHint"></span>
+                        <span id="durHintNow" aria-live="polite"></span>
+                      </div>
+                    </div>
+                    <div class="f">
+                      <label for="mileage" data-i18n="as.mileage"></label
+                      ><input
+                        type="number"
+                        id="mileage"
+                        name="mileage"
+                        min="0"
+                        step="0.1"
+                        data-i18n-ph="ph.mileage"
+                      />
+                    </div>
+                  </fieldset>
+                </div>
+
+                <div class="hud-bay hud-bay-place">
+                  <div class="f loc-f">
+                    <label
+                      for="location"
+                      data-i18n="as.location"
+                      id="locationLabel"
+                    ></label>
+                    <div class="addrow" style="margin: 0">
+                      <input
+                        type="text"
+                        id="location"
+                        name="location"
+                        data-i18n-ph="ph.loc"
+                        required
+                        aria-required="true"
+                        list="favOptions"
+                        autocomplete="off"
+                        role="combobox"
+                        aria-expanded="false"
+                        aria-controls="locSuggest"
+                        aria-describedby="locStat"
+                      />
+                      <button
+                        class="btn ghost"
+                        type="button"
+                        id="locFind"
+                        data-i18n="as.find"
+                      ></button>
+                      <button
+                        class="btn ghost"
+                        type="button"
+                        id="locGeo"
+                      ><span class="ic" aria-hidden="true">🧭</span
+                      ><span data-i18n="as.myloc"></span>
+                      </button>
+                    </div>
+                    <ul class="suggest" id="locSuggest" role="listbox" hidden></ul>
+                    <div class="loc-near" id="locNear" hidden></div>
+                    <div class="chips" id="favQuick" hidden></div>
+                    <div
+                      class="hint"
+                      id="locStat"
+                      role="status"
+                      aria-live="polite"
+                    ></div>
+                  </div>
+                  <div id="sessMapBox" hidden>
+                    <div
+                      id="sessMap"
+                      data-i18n-aria="aria.sessMap"
+                      role="application"
+                      tabindex="0"
+                    ></div>
+                    <div
+                      class="mini"
+                      style="margin-top: 0.4rem"
+                      data-i18n="as.mapDrag"
+                    ></div>
+                    <div
+                      class="mini"
+                      id="sessMapMsg"
+                      hidden
+                      data-i18n="as.mapOff"
+                    ></div>
+                  </div>
+                </div>
+
+                <div class="hud-bay hud-bay-meter">
+                  <div class="hud-row">
+                    <div class="f">
+                      <label for="energy" data-i18n="as.energy"></label
+                      ><input
+                        type="number"
+                        id="energy"
+                        name="energy"
+                        min="0"
+                        step="0.01"
+                        data-i18n-ph="ph.energy"
+                        required
+                        aria-required="true"
+                      />
+                    </div>
+                    <div class="f">
+                      <label for="cost" data-i18n="as.total"></label
+                      ><input
+                        type="number"
+                        id="cost"
+                        name="cost"
+                        min="0"
+                        step="0.01"
+                        data-i18n-ph="ph.auto"
+                        aria-describedby="priceHint"
+                      />
+                      <div class="hint" id="priceHint"></div>
+                    </div>
+                  </div>
+                  <div class="f">
+                    <label for="ppkCents" data-i18n="as.price"></label>
+                    <div class="addrow" style="margin: 0; max-width: 320px">
+                      <input
+                        type="number"
+                        id="ppkCents"
+                        min="0"
+                        max="99"
+                        step="1"
+                        inputmode="numeric"
+                        aria-describedby="ppkCentsHint"
+                        data-i18n-aria="aria.cents"
+                      />
+                      <span
+                        class="unit"
+                        aria-hidden="true"
+                        data-i18n="as.centsUnit"
+                      ></span>
+                    </div>
+                    <div class="hint" id="ppkCentsHint"></div>
+                  </div>
+                  <fieldset class="hud-row">
+                    <legend class="sr-only" data-i18n="grp.soc"></legend>
+                    <div class="f">
+                      <label for="socStart" data-i18n="as.socStart"></label
+                      ><input
+                        type="number"
+                        id="socStart"
+                        name="socStart"
+                        min="0"
+                        max="100"
+                        step="1"
+                        data-i18n-ph="ph.soc"
+                      />
+                    </div>
+                    <div class="f">
+                      <label for="socEnd" data-i18n="as.socEnd"></label
+                      ><input
+                        type="number"
+                        id="socEnd"
+                        name="socEnd"
+                        min="0"
+                        max="100"
+                        step="1"
+                        data-i18n-ph="ph.soc"
+                      />
+                    </div>
+                  </fieldset>
+                </div>
+
+                <div class="hud-bay hud-bay-billing">
+                  <fieldset class="hud-row" id="payerBox">
+                    <legend data-i18n="grp.payers"></legend>
+                    <div class="f">
+                      <span class="lbl" data-i18n="as.paidBy"></span>
+                      <div id="payerRows"></div>
+                      <div class="addrow">
+                        <button type="button" class="btn sm ghost" id="payerAdd">
+                          <span aria-hidden="true">+</span>
+                          <span data-i18n="as.addPayer"></span>
+                        </button>
+                      </div>
+                      <div class="chk" id="payerExcludeWrap" hidden>
+                        <input type="checkbox" id="payerExclude" /><label
+                          for="payerExclude"
+                          data-i18n="as.excludeMe"
+                        ></label>
+                      </div>
+                      <div class="hint" id="payerHint"></div>
+                    </div>
+                  </fieldset>
+                  <datalist id="payerNames"></datalist>
+                </div>
+
+                <div class="hud-bay hud-bay-notes">
+                  <div class="f">
+                    <label for="notes" data-i18n="as.notes"></label
+                    ><textarea
+                      id="notes"
+                      name="notes"
+                      rows="3"
+                      data-i18n-ph="ph.notes"
+                    ></textarea>
+                  </div>
+                  <div class="hud-flags">
+                    <div class="chk">
+                      <input type="checkbox" id="fast" name="fast" /><label
+                        for="fast"
+                        data-i18n="as.fast"
+                      ></label>
+                    </div>
+                    <div class="chk">
+                      <input type="checkbox" id="home" name="home" /><label
+                        for="home"
+                        data-i18n="as.home"
+                      ></label>
+                    </div>
+                    <div class="chk">
+                      <input type="checkbox" id="fav" name="fav" /><label
+                        for="fav"
+                        data-i18n="as.saveFav"
+                      ></label>
+                    </div>
+                  </div>
+                  <div class="f" id="favNameWrap" hidden>
+                    <label for="favName" data-i18n="as.favName"></label
+                    ><input
+                      type="text"
+                      id="favName"
+                      maxlength="40"
+                      data-i18n-ph="ph.favname"
+                      aria-describedby="favNameHint"
+                    />
+                    <div class="hint" id="favNameHint" data-i18n="as.favHint"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="hud-commit">
+                <button class="btn block" type="submit" id="saveBtn">
+                  <span class="ic" aria-hidden="true">💾</span
+                  ><span data-i18n="nav.add"></span>
+                </button>
+              </div>
+            </form>
+          </section>
+
+          <!-- ============ LOG / VIEW DATA ============ -->
+          <section class="view hud-screen" id="view-data">
+            <div class="hud-view-head">
+              <h2 class="hud-title">
+                <span aria-hidden="true">📄</span>
+                <span data-i18n="nav.log"></span>
+              </h2>
+              <p class="lead hud-lead" id="logLead"></p>
+            </div>
+            <div class="hud-log-tools">
+              <div class="payer-chart" id="payerBoxChart" hidden></div>
+              <div class="addrow" id="payerBreakdownRow" hidden>
+                <button type="button" class="btn ghost" id="payerBreakdownBtn">
+                  <span aria-hidden="true">◔</span>
+                  <span data-i18n="pay.breakdown"></span>
+                </button>
+              </div>
+            </div>
+            <figure class="hud-log-frame">
+              <div class="tbl-wrap">
+                <table id="logTable">
+                  <thead>
+                    <tr>
+                      <th scope="col" data-i18n="th.date"></th>
+                      <th scope="col" data-i18n="th.time"></th>
+                      <th scope="col" data-i18n="th.dur"></th>
+                      <th scope="col" data-i18n="th.loc"></th>
+                      <th scope="col" data-i18n="th.energy"></th>
+                      <th scope="col" data-i18n="th.speed"></th>
+                      <th scope="col" data-i18n="th.mileage"></th>
+                      <th scope="col" data-i18n="th.cost"></th>
+                      <th scope="col" data-i18n="th.tags"></th>
+                      <th scope="col" data-i18n="th.notes"></th>
+                      <th scope="col">
+                        <span class="mini" data-i18n="th.del"></span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody id="logBody"></tbody>
+                </table>
+              </div>
+            </figure>
+          </section>
+
+          <!-- ============ SETTINGS ============ -->
+          <section class="view hud-screen" id="settings">
+            <p class="res bad" id="panelError" role="alert" hidden></p>
+            <div class="hud-settings-grid">
+              <section class="hud-section">
+                <h2 class="hud-title">
+                  <span aria-hidden="true">👤</span>
+                  <span data-i18n="set.account"></span>
+                </h2>
+                <div class="item" id="accountRow" hidden>
+                  <span class="nm" id="accountName"></span>
+                  <span class="mt" id="accountMeta"></span>
+                  <button type="button" class="btn sm ghost" id="logoutBtn2">
+                    <span class="ic" aria-hidden="true">⎋</span
+                    ><span data-i18n="auth.logout"></span>
+                  </button>
+                </div>
+                <p class="mini" id="accountSignedOut" data-i18n="set.accountOut"></p>
+                <div class="hud-row">
+                  <div class="f">
+                    <label for="langSel2" data-i18n="lang"></label>
+                    <select id="langSel2" data-i18n-aria="lang"></select>
+                  </div>
+                  <div class="f">
+                    <label for="themeSel" data-i18n="set.theme"></label>
+                    <select id="themeSel" data-i18n-aria="set.theme"></select>
+                  </div>
+                  <div class="f">
+                    <label for="navAlignSel" data-i18n="set.navAlign"></label>
+                    <select id="navAlignSel" data-i18n-aria="set.navAlign"></select>
+                  </div>
+                </div>
+              </section>
+
+              <section class="hud-section">
+                <h2 class="hud-title">
+                  <span aria-hidden="true">🚗</span>
+                  <span data-i18n="set.vehicles"></span>
+                </h2>
+                <p class="lead hud-lead" data-i18n="set.vehiclesLead"></p>
+                <div class="list" id="vehSettings"></div>
+                <div class="addrow-fields">
+                  <div class="f">
+                    <label for="vName" data-i18n="as.vehicle"></label>
+                    <input
+                      type="text"
+                      id="vName"
+                      data-i18n-ph="ph.vehname"
+                      maxlength="40"
+                      data-i18n-aria="aria.newveh"
+                    />
+                  </div>
+                  <div class="f">
+                    <label for="vOdo" data-i18n="as.initialOdo"></label>
+                    <input
+                      type="number"
+                      id="vOdo"
+                      min="0"
+                      step="1"
+                      data-i18n-ph="ph.initialodo"
+                      data-i18n-aria="aria.initialodo"
+                      aria-describedby="vOdoHint"
+                    />
+                  </div>
+                  <button
+                    class="btn sec"
+                    type="button"
+                    id="vSave"
+                    data-i18n="set.saveVehicle"
+                  >
+                    Save vehicle
+                  </button>
+                </div>
+                <div class="hint" id="vOdoHint" data-i18n="set.initialOdoLead"></div>
+              </section>
+
+              <section class="hud-section" id="redeemPanel" hidden>
+                <h2 class="hud-title">
+                  <span aria-hidden="true">🔑</span>
+                  <span data-i18n="set.redeem"></span>
+                </h2>
+                <p class="lead hud-lead" data-i18n="set.redeemLead"></p>
+                <div class="addrow-fields" style="margin-top: 0">
+                  <div class="f" style="max-width: 240px">
+                    <label for="redeemCode" data-i18n="set.redeemLabel"></label>
+                    <input
+                      type="text"
+                      id="redeemCode"
+                      maxlength="10"
+                      autocomplete="off"
+                      autocapitalize="characters"
+                      spellcheck="false"
+                      data-i18n-ph="ph.redeemcode"
+                      data-i18n-aria="aria.redeemcode"
+                      aria-describedby="redeemHint"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    class="btn sec"
+                    id="redeemGo"
+                    data-i18n="set.redeemGo"
+                  ></button>
+                </div>
+                <div class="hint" id="redeemHint" data-i18n="set.redeemHint"></div>
+                <div
+                  class="hint"
+                  id="redeemStat"
+                  role="status"
+                  aria-live="polite"
+                ></div>
+              </section>
+
+              <section class="hud-section" id="sharePanel" hidden>
+                <h2 class="hud-title">
+                  <span aria-hidden="true">👥</span>
+                  <span data-i18n="set.share"></span>
+                </h2>
+                <p class="lead hud-lead">
+                  <span id="shareVehName"></span>
+                  <span id="shareLead" data-i18n="set.shareLead"></span>
+                </p>
+                <div id="shareBody"></div>
+              </section>
+
+              <section class="hud-section">
+                <h2 class="hud-title">
+                  <span aria-hidden="true">🌆</span>
+                  <span data-i18n="set.defTitle"></span>
+                </h2>
+                <p class="lead hud-lead" data-i18n="set.defLead"></p>
+                <div class="hud-row">
+                  <div class="f">
+                    <label for="defLoc" data-i18n="set.defLoc"></label>
+                    <select id="defLoc"></select>
+                    <div class="hint" data-i18n="set.defLocHint"></div>
+                  </div>
+                  <div class="f">
+                    <label for="defHour" data-i18n="set.defHour"></label>
+                    <select id="defHour"></select>
+                    <div class="hint" data-i18n="set.defHourHint"></div>
+                  </div>
+                </div>
+                <div class="chk" style="margin-top: 0.25rem">
+                  <input type="checkbox" id="defGeo" />
+                  <label for="defGeo" data-i18n="set.defGeo"></label>
+                </div>
+                <div class="hint" data-i18n="set.defGeoHint"></div>
+              </section>
+
+              <section class="hud-section">
+                <h2 class="hud-title">
+                  <span aria-hidden="true">💶</span>
+                  <span data-i18n="set.price"></span>
+                </h2>
+                <p class="lead hud-lead" data-i18n="set.priceLead"></p>
+                <div class="hud-row">
+                  <div class="f" style="max-width: 220px">
+                    <label for="ppk" data-i18n="set.priceEur"></label
+                    ><input type="number" id="ppk" min="0" step="0.01" value="0.20" />
+                  </div>
+                  <div class="f" style="max-width: 220px">
+                    <label for="ppkHint" data-i18n="set.priceCents"></label
+                    ><input
+                      type="text"
+                      id="ppkHint"
+                      readonly
+                      data-i18n-aria="aria.cents"
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section class="hud-section">
+                <h2 class="hud-title">
+                  <span aria-hidden="true">💾</span>
+                  <span data-i18n="set.export"></span>
+                </h2>
+                <p class="lead hud-lead" data-i18n="set.exportLead"></p>
+                <div class="hud-row">
+                  <div class="f" style="max-width: 320px">
+                    <label for="scope" data-i18n="set.scope"></label
+                    ><select id="scope">
+                      <option value="all" data-i18n="set.allVehicles"></option>
+                    </select>
+                  </div>
+                </div>
+                <div class="qa" style="margin-top: 0.5rem">
+                  <button type="button" id="exCsv">
+                    <span class="ic" aria-hidden="true">📄</span
+                    ><span data-i18n="set.exportCsv"></span>
+                  </button>
+                  <button type="button" id="exJson">
+                    <span class="ic" aria-hidden="true">{ }</span
+                    ><span data-i18n="set.exportJson"></span>
+                  </button>
+                  <button type="button" class="btn ghost" id="tplCsv">
+                    <span class="ic" aria-hidden="true">📝</span
+                    ><span data-i18n="set.tplCsv"></span>
+                  </button>
+                  <button type="button" class="btn ghost" id="tplJson">
+                    <span class="ic" aria-hidden="true">{ }</span
+                    ><span data-i18n="set.tplJson"></span>
+                  </button>
+                </div>
+              </section>
+
+              <section class="hud-section">
+                <h2 class="hud-title">
+                  <span aria-hidden="true">🗄️</span>
+                  <span data-i18n="set.data"></span>
+                </h2>
+                <p class="lead hud-lead" data-i18n="set.dataLead"></p>
+                <div class="f" style="max-width: 22rem">
+                  <label for="layoutSel" data-i18n="set.layout"></label>
+                  <select id="layoutSel"></select>
+                  <div class="hint" data-i18n="set.layoutHint"></div>
+                </div>
+                <p class="mini" id="buildRow"></p>
+                <div class="qa" style="margin-top: 0">
+                  <button type="button" id="backup">
+                    <span class="ic" aria-hidden="true">⬇️</span
+                    ><span data-i18n="set.backup"></span>
+                  </button>
+                  <button type="button" class="btn ghost" id="diagBtn">
+                    <span class="ic" aria-hidden="true">🩺</span
+                    ><span data-i18n="set.diag"></span>
+                  </button>
+                  <button type="button" class="btn warn" id="restoreBtn">
+                    <span class="ic" aria-hidden="true">⬆️</span
+                    ><span data-i18n="set.restore"></span>
+                  </button>
+                  <button type="button" class="btn warn" id="clearBtn">
+                    <span class="ic" aria-hidden="true">🧹</span
+                    ><span data-i18n="set.clear"></span>
+                  </button>
+                  <button type="button" class="btn dgr" id="wipeBtn">
+                    <span class="ic" aria-hidden="true">🗑️</span
+                    ><span data-i18n="set.wipe"></span>
+                  </button>
+                </div>
+                <input
+                  type="file"
+                  id="restoreFile"
+                  accept="application/json"
+                  hidden
+                />
+                <div class="qa" style="margin-top: 1.25rem">
+                  <button type="button" class="btn dgr" id="resetDeviceBtn">
+                    <span class="ic" aria-hidden="true">🧨</span
+                    ><span data-i18n="set.resetDevice"></span>
+                  </button>
+                </div>
+                <div class="hint" data-i18n="set.resetDeviceHint"></div>
+              </section>
+
+              <section class="hud-section">
+                <h2 class="hud-title">
+                  <span aria-hidden="true">📥</span>
+                  <span data-i18n="im.title"></span>
+                </h2>
+                <p class="lead hud-lead" data-i18n-html="im.lead"></p>
+                <div class="f" style="max-width: 420px" id="impTargetWrap" hidden>
+                  <label for="impTarget" data-i18n="im.target"></label>
+                  <select id="impTarget"></select>
+                  <div class="hint" data-i18n="im.targetLead"></div>
+                </div>
+                <div class="f" style="max-width: 420px">
+                  <label for="impFile" data-i18n="im.choose"></label>
+                  <input
+                    type="file"
+                    id="impFile"
+                    accept=".csv,.tsv,.txt,.json,text/csv,text/tab-separated-values,application/json"
+                  />
+                </div>
+                <div class="addrow" style="margin-top: 0">
+                  <button type="button" class="btn sec" id="impGo" data-i18n="im.go"></button>
+                  <span class="mini" data-i18n="im.tplNote"></span>
+                </div>
+                <div id="impResult" hidden></div>
+                <details class="howto">
+                  <summary data-i18n="how.title"></summary>
+                  <h4 data-i18n="how.cols"></h4>
+                  <p data-i18n-html="how.p1"></p>
+                  <table class="fmt">
+                    <thead>
+                      <tr>
+                        <th data-i18n="how.th1"></th>
+                        <th data-i18n="how.th2"></th>
+                        <th data-i18n="how.th3"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><code>date</code></td>
+                        <td data-i18n="tag.yes"></td>
+                        <td data-i18n-html="how.date"></td>
+                      </tr>
+                      <tr>
+                        <td><code>time</code></td>
+                        <td data-i18n="tag.yes"></td>
+                        <td data-i18n-html="how.time"></td>
+                      </tr>
+                      <tr>
+                        <td><code>location</code></td>
+                        <td data-i18n="tag.yes"></td>
+                        <td data-i18n-html="how.loc"></td>
+                      </tr>
+                      <tr>
+                        <td><code>energy</code></td>
+                        <td data-i18n="tag.yes"></td>
+                        <td data-i18n-html="how.energy"></td>
+                      </tr>
+                      <tr>
+                        <td><code>duration</code></td>
+                        <td data-i18n="tag.no"></td>
+                        <td data-i18n-html="how.dur"></td>
+                      </tr>
+                      <tr>
+                        <td>
+                          <code>Start SoC (%)</code>,
+                          <code>End SoC (%)</code>
+                        </td>
+                        <td data-i18n="tag.no"></td>
+                        <td data-i18n-html="how.soc"></td>
+                      </tr>
+                      <tr>
+                        <td><code>mileage</code></td>
+                        <td data-i18n="tag.no"></td>
+                        <td data-i18n-html="how.mileage"></td>
+                      </tr>
+                      <tr>
+                        <td><code>cost</code></td>
+                        <td data-i18n="tag.no"></td>
+                        <td data-i18n-html="how.cost"></td>
+                      </tr>
+                      <tr>
+                        <td><code>vehicle</code></td>
+                        <td data-i18n="tag.no"></td>
+                        <td data-i18n="how.vehicle"></td>
+                      </tr>
+                      <tr>
+                        <td><code>notes</code></td>
+                        <td data-i18n="tag.no"></td>
+                        <td data-i18n="how.notes"></td>
+                      </tr>
+                      <tr>
+                        <td>
+                          <code>fast</code>, <code>home</code>,
+                          <code>favourite</code>
+                        </td>
+                        <td data-i18n="tag.no"></td>
+                        <td data-i18n-html="how.flags"></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <h4 data-i18n="how.csv"></h4>
+                  <pre class="sample">
+date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fast,home,favourite
+2026-09-28,08:15,00:45,Supercharger Vaasa,52.4,20,80,45000,12.50,Vehicle 1,150 kW 20-80%,yes,no,yes
+2026-09-20,19:40,01:30,Home,30,35,80,44810,,Vehicle 1,,no,yes,no</pre
+                  >
+                  <h4 data-i18n="how.tsvTitle"></h4>
+                  <p data-i18n="how.tsv"></p>
+                  <h4 data-i18n="how.json"></h4>
+                  <p data-i18n-html="how.jsonP"></p>
+                  <pre class="sample">
+[
+  {
+    "date": "2026-09-28",
+    "time": "08:15",
+    "duration": "00:45",
+    "location": "Supercharger Vaasa",
+  "energy": 52.4,
+  "socStart": 20,
+  "socEnd": 80,
+  "mileage": 45000,
+    "cost": 12.5,
+    "vehicle": "Vehicle 1",
+    "notes": "150 kW",
+    "fast": true,
+    "home": false,
+    "favourite": true
+  }
+]</pre
+                  >
+                  <h4 data-i18n="how.notes2"></h4>
+                  <ul>
+                    <li data-i18n="how.n1"></li>
+                    <li data-i18n-html="how.n2"></li>
+                    <li data-i18n="how.n3"></li>
+                  </ul>
+                </details>
+              </section>
+            </div>
+          </section>
+
+          <!-- ============ BIN ============ -->
+          <section class="view hud-screen" id="bin">
+            <section class="hud-section">
+              <h2 class="hud-title">
+                <span aria-hidden="true">🗑️</span>
+                <span data-i18n="bin.title"></span>
+              </h2>
+              <p class="lead hud-lead" data-i18n="bin.lead"></p>
+              <div class="qa" style="margin-top: 0">
+                <button type="button" class="btn dgr" id="emptyBinBtn">
+                  <span class="ic" aria-hidden="true">🔥</span
+                  ><span data-i18n="bin.empty"></span>
+                </button>
+              </div>
+              <div class="hint" style="margin-top: 0.5rem" data-i18n="bin.emptyHint"></div>
+              <div id="binBody"></div>
+            </section>
+          </section>
+
+          <!-- ============ STATIONS ============ -->
+          <section class="view hud-screen" id="stations">
+            <section class="hud-section">
+              <h2 class="hud-title">
+                <span aria-hidden="true">🛰️</span>
+                <span data-i18n="st.title"></span>
+              </h2>
+              <p class="lead hud-lead" data-i18n="st.lead"></p>
+              <div class="qa" style="margin-top: 0">
+                <button type="button" class="btn sm" id="stationFindBtn" data-station-find>
+                  <span class="ic" aria-hidden="true">📍</span
+                  ><span data-i18n="st.findNear"></span>
+                </button>
+                <button type="button" class="btn sm" id="cameraFindBtn" data-camera-find>
+                  <span class="ic" aria-hidden="true">📷</span
+                  ><span data-i18n="cam.find"></span>
+                </button>
+              </div>
+              <div class="hint" role="status" aria-live="polite" id="stationStat"></div>
+              <div class="hint" role="status" aria-live="polite" id="cameraStat"></div>
+              <div class="camera-grid" id="cameraList"></div>
+              <p class="mini" data-i18n="cam.note"></p>
+              <div class="mapbox" id="stationMapBox" hidden>
+                <div id="stationMap"></div>
+              </div>
+              <div class="list" id="stationList"></div>
+              <button type="button" class="btn sm" id="stationMore" hidden>
+                <span id="stationMoreLabel"></span>
+              </button>
+              <div class="hud-detail" id="stationDetail" hidden></div>
+              <p class="mini" data-i18n="st.source"></p>
+            </section>
+          </section>
+
+          <!-- ============ FAVOURITES ============ -->
+          <section class="view hud-screen" id="favourites">
+            <div class="hud-fav-grid">
+              <section class="hud-section">
+                <h2 class="hud-title">
+                  <span aria-hidden="true">⭐</span>
+                  <span data-i18n="fav.title"></span>
+                </h2>
+                <p class="lead hud-lead" data-i18n="fav.lead"></p>
+                <div class="f">
+                  <label for="fName" data-i18n="fav.name"></label>
+                  <input
+                    type="text"
+                    id="fName"
+                    maxlength="40"
+                    data-i18n-ph="ph.favname"
+                    required
+                    aria-required="true"
+                  />
+                </div>
+                <div class="f">
+                  <label for="fAddr" data-i18n="fav.address"></label>
+                  <div class="addrow" style="margin: 0">
+                    <input
+                      type="text"
+                      id="fAddr"
+                      data-i18n-ph="ph.addr"
+                      data-i18n-aria="aria.addr"
+                    />
+                    <button
+                      type="button"
+                      class="btn ghost"
+                      id="fFind"
+                      data-i18n="fav.find"
+                    ></button>
+                  </div>
+                  <div
+                    class="hint"
+                    id="geoStat"
+                    role="status"
+                    aria-live="polite"
+                  ></div>
+                </div>
+                <fieldset class="hud-row">
+                  <legend class="sr-only" data-i18n="grp.coords"></legend>
+                  <div class="f">
+                    <label for="fLat" data-i18n="fav.lat"></label
+                    ><input
+                      type="number"
+                      id="fLat"
+                      step="any"
+                      placeholder="63.0950"
+                    />
+                  </div>
+                  <div class="f">
+                    <label for="fLng" data-i18n="fav.lng"></label
+                    ><input
+                      type="number"
+                      id="fLng"
+                      step="any"
+                      placeholder="21.6160"
+                    />
+                  </div>
+                </fieldset>
+                <div id="mapBox">
+                  <div
+                    id="map"
+                    data-i18n-aria="aria.map"
+                    role="application"
+                    tabindex="0"
+                  ></div>
+                  <div id="mapMsg" class="mini" hidden data-i18n="fav.mapOff"></div>
+                </div>
+                <div class="hud-row">
+                  <div class="f" style="max-width: 200px">
+                    <label for="fPrice" data-i18n="fav.price"></label
+                    ><input
+                      type="number"
+                      id="fPrice"
+                      min="0"
+                      step="0.01"
+                      data-i18n-ph="ph.favprice"
+                      aria-describedby="fPriceHint"
+                    />
+                  </div>
+                  <div class="f" style="max-width: 200px">
+                    <label for="fPriceCents" data-i18n="fav.priceCents"></label
+                    ><input
+                      type="number"
+                      id="fPriceCents"
+                      min="0"
+                      max="99"
+                      step="1"
+                      data-i18n-ph="ph.favcents"
+                      data-i18n-aria="aria.favcents"
+                    />
+                  </div>
+                </div>
+                <div class="hint" id="fPriceHint" data-i18n="fav.priceHint"></div>
+                <div
+                  class="hint"
+                  id="fPriceMirror"
+                  role="status"
+                  aria-live="polite"
+                ></div>
+                <div class="addrow">
+                  <button
+                    type="button"
+                    class="btn sec"
+                    id="fSave"
+                    data-i18n="fav.save"
+                  ></button>
+                  <button
+                    type="button"
+                    class="btn ghost"
+                    id="fClear"
+                    data-i18n="fav.clear"
+                  ></button>
+                </div>
+              </section>
+
+              <section class="hud-section">
+                <h2 class="hud-title">
+                  <span aria-hidden="true">📍</span>
+                  <span data-i18n="fav.saved"></span>
+                </h2>
+                <div class="qa" style="margin-top: 0">
+                  <button
+                    type="button"
+                    class="btn ghost recommended"
+                    id="favGeoBtn"
+                  >
+                    <span class="ic" aria-hidden="true">🛰️</span
+                    ><span data-i18n="fav.geoMissing"></span>
+                  </button>
+                </div>
+                <div class="hint" id="favGeoStat" role="status" aria-live="polite"></div>
+                <div class="list" id="favList"></div>
+              </section>
+            </div>
+          </section>
+        </main>
+
+        <footer class="hud-foot" data-i18n="foot"></footer>
+      </div>
+    </div>
+
+    <div class="sheet" id="editSheet">
+      <div
+        class="sheet-box"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="editTitle"
+      >
+        <h3 id="editTitle" data-i18n="ed.title"></h3>
+        <p class="mini" id="editFor"></p>
+        <form id="editForm" novalidate>
+          <fieldset class="row">
+            <legend class="sr-only" data-i18n="grp.when"></legend>
+            <div class="f">
+              <label for="eDate" data-i18n="as.date"></label
+              ><input type="date" id="eDate" required aria-required="true" />
+            </div>
+            <div class="f">
+              <label for="eTime" data-i18n="as.time"></label
+              ><input
+                type="time"
+                id="eTime"
+                step="1"
+                required
+                aria-required="true"
+              />
+            </div>
+          </fieldset>
+          <fieldset class="row">
+            <legend class="sr-only" data-i18n="grp.duration"></legend>
+            <div class="f">
+              <label for="eDuration" data-i18n="as.dur"></label
+              ><input
+                type="time"
+                id="eDuration"
+                step="1"
+                required
+                aria-required="true"
+                aria-describedby="eDurHint"
+              />
+              <div class="hint" id="eDurHint" data-i18n="as.durHint"></div>
+            </div>
+            <div class="f">
+              <label for="eMileage" data-i18n="as.mileage"></label
+              ><input
+                type="number"
+                id="eMileage"
+                min="0"
+                step="0.1"
+              />
+            </div>
+          </fieldset>
+          <div class="f">
+            <label for="eLocation" data-i18n="as.location"></label
+            ><input
+              type="text"
+              id="eLocation"
+              list="favOptions"
+              required
+              aria-required="true"
+            />
+          </div>
+          <div class="row">
+            <div class="f">
+              <label for="eEnergy" data-i18n="as.energy"></label
+              ><input
+                type="number"
+                id="eEnergy"
+                min="0"
+                step="0.01"
+                required
+                aria-required="true"
+              />
+            </div>
+            <div class="f">
+              <label for="eCost" data-i18n="ed.cost"></label
+              ><input
+                type="number"
+                id="eCost"
+                min="0"
+                step="0.01"
+                data-i18n-ph="ph.auto"
+              />
+            </div>
+          </div>
+          <fieldset class="row" id="ePayerBox">
+            <legend data-i18n="grp.payers"></legend>
+            <div class="f">
+              <span class="lbl" data-i18n="as.paidBy"></span>
+              <div id="ePayerRows"></div>
+              <div class="addrow">
+                <button type="button" class="btn sm ghost" id="ePayerAdd">
+                  <span aria-hidden="true">+</span>
+                  <span data-i18n="as.addPayer"></span>
+                </button>
+              </div>
+              <div class="chk" id="ePayerExcludeWrap" hidden>
+                <input type="checkbox" id="ePayerExclude" /><label
+                  for="ePayerExclude"
+                  data-i18n="as.excludeMe"
+                ></label>
+              </div>
+              <div class="hint" id="ePayerHint"></div>
+            </div>
+          </fieldset>
+          <fieldset class="row">
+            <legend class="sr-only" data-i18n="grp.soc"></legend>
+            <div class="f">
+              <label for="eSocStart" data-i18n="as.socStart"></label
+              ><input
+                type="number"
+                id="eSocStart"
+                min="0"
+                max="100"
+                step="1"
+                data-i18n-ph="ph.soc"
+              />
+            </div>
+            <div class="f">
+              <label for="eSocEnd" data-i18n="as.socEnd"></label
+              ><input
+                type="number"
+                id="eSocEnd"
+                min="0"
+                max="100"
+                step="1"
+                data-i18n-ph="ph.soc"
+              />
+            </div>
+          </fieldset>
+          <div class="f">
+            <label for="eNotes" data-i18n="as.notes"></label
+            ><textarea id="eNotes" rows="3"></textarea>
+          </div>
+          <div class="chk">
+            <input type="checkbox" id="eFast" /><label
+              for="eFast"
+              data-i18n="as.fast"
+            ></label>
+          </div>
+          <div class="chk">
+            <input type="checkbox" id="eHome" /><label
+              for="eHome"
+              data-i18n="as.home"
+            ></label>
+          </div>
+          <div class="chk">
+            <input type="checkbox" id="eFav" /><label
+              for="eFav"
+              data-i18n="ed.fav"
+            ></label>
+          </div>
+          <div class="addrow" style="margin-top: 1.25rem">
+            <button
+              class="btn"
+              type="submit"
+              id="eSave"
+              data-i18n="ed.save"
+            ></button>
+            <button
+              class="btn ghost"
+              type="button"
+              id="eCancel"
+              data-i18n="ed.cancel"
+            ></button>
+            <button
+              class="btn dgr"
+              type="button"
+              id="eDelete"
+              data-i18n="ed.del"
+            ></button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="sheet" id="payBreakSheet">
+      <div
+        class="sheet-box pay-box"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="payBreakTitle"
+      >
+        <h3 id="payBreakTitle" data-i18n="pay.breakdown"></h3>
+        <button
+          type="button"
+          class="btn sm ghost sheet-x"
+          data-pay-close
+          aria-label="Close"
+          data-i18n-aria="confirm.cancel"
+        >
+          <span aria-hidden="true">×</span>
+        </button>
+        <div class="seg-group" id="payRange" role="radiogroup" aria-labelledby="payBreakTitle">
+          <div class="seg-opt">
+            <input type="radio" name="payRange" id="payRangeAll" value="all" checked />
+            <label for="payRangeAll" data-i18n="pay.rangeAll"></label>
+          </div>
+          <div class="seg-opt">
+            <input type="radio" name="payRange" id="payRangeMonth" value="month" />
+            <label for="payRangeMonth" data-i18n="pay.rangeMonth"></label>
+          </div>
+          <div class="seg-opt">
+            <input type="radio" name="payRange" id="payRangeYear" value="year" />
+            <label for="payRangeYear" data-i18n="pay.rangeYear"></label>
+          </div>
+          <div class="seg-opt">
+            <input type="radio" name="payRange" id="payRangeLast" value="last" />
+            <label for="payRangeLast" data-i18n="pay.rangeLast"></label>
+          </div>
+        </div>
+        <div id="payBreakBody"></div>
+        <p class="mini" id="payBreakNote" hidden></p>
+      </div>
+    </div>
+
+    <div class="sheet" id="vehSheet">
+      <div
+        class="sheet-box"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="vehTitle"
+      >
+        <h3 id="vehTitle" data-i18n="set.editVehicle"></h3>
+        <p class="mini" data-i18n="set.initialOdoLead"></p>
+        <form id="vehForm" novalidate>
+          <fieldset class="row">
+            <legend class="sr-only" data-i18n="grp.vehicle"></legend>
+            <div class="f">
+              <label for="vfName" data-i18n="as.vehicle"></label
+              ><input
+                type="text"
+                id="vfName"
+                maxlength="40"
+                required
+                aria-required="true"
+                aria-describedby="vfNameHint"
+              />
+              <div class="hint" id="vfNameHint" data-i18n="set.vehNameHelp"></div>
+            </div>
+            <div class="f">
+              <label for="vfOdo" data-i18n="as.initialOdo"></label
+              ><input
+                type="number"
+                id="vfOdo"
+                min="0"
+                step="1"
+                data-i18n-ph="ph.initialodo"
+                aria-describedby="vfOdoHint"
+              />
+              <div class="hint" id="vfOdoHint" data-i18n="set.initialOdoHelp"></div>
+            </div>
+          </fieldset>
+          <fieldset class="row cap">
+            <legend class="sr-only" data-i18n="grp.capacity"></legend>
+            <div class="f">
+              <span class="lbl" id="vfCapLbl" data-i18n="set.capacity"></span>
+              <div class="cap-row">
+                <input
+                  type="number"
+                  id="vfGross"
+                  min="0"
+                  step="0.1"
+                  data-i18n-ph="ph.capGross"
+                  aria-describedby="vfCapHint"
+                />
+                <span class="dim" id="vfCapTimes" data-i18n="set.capTimes"></span>
+              </div>
+            </div>
+            <div class="f">
+              <label for="vfUsable" data-i18n="set.capUsable"></label
+              ><input
+                type="number"
+                id="vfUsable"
+                min="0"
+                step="0.01"
+                data-i18n-ph="ph.capUsable"
+                aria-describedby="vfCapHint"
+              />
+            </div>
+          </fieldset>
+          <div class="cap-mode" role="radiogroup" aria-labelledby="vfCapLbl">
+            <div class="cap-opt">
+              <input type="radio" name="vfCapMode" id="vfCapGrossMode" value="gross" checked />
+              <label for="vfCapGrossMode" data-i18n="set.capGrossMode"></label>
+            </div>
+            <div class="cap-opt">
+              <input type="radio" name="vfCapMode" id="vfCapNetMode" value="net" />
+              <label for="vfCapNetMode" data-i18n="set.capNetMode"></label>
+            </div>
+          </div>
+          <div class="hint" id="vfCapHint"></div>
+          <div class="addrow" style="margin-top: 1.25rem">
+            <button class="btn" type="submit" data-i18n="ed.save"></button>
+            <button
+              class="btn ghost"
+              type="button"
+              id="vfCancel"
+              data-i18n="ed.cancel"
+            ></button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="sheet" id="confirmSheet">
+      <div
+        class="sheet-box confirm-box"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="confirmTitle"
+        aria-describedby="confirmBody"
+      >
+        <h3 id="confirmTitle">
+          <span aria-hidden="true" id="confirmIcon">⚠️</span>
+          <span id="confirmHeading" data-i18n="confirm.title"></span>
+        </h3>
+        <p id="confirmBody" data-i18n="confirm.body"></p>
+        <div class="f" id="confirmExpect" hidden>
+          <label
+            for="confirmExpectInput"
+            id="confirmExpectLabel"
+            data-i18n="confirm.typeToConfirm"
+          ></label>
+          <input
+            type="text"
+            id="confirmExpectInput"
+            autocomplete="off"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck="false"
+          />
+          <div class="hint" id="confirmExpectHint"></div>
+        </div>
+        <div class="addrow confirm-actions">
+          <button
+            class="btn dgr"
+            type="button"
+            id="confirmOk"
+            data-i18n="confirm.ok"
+          >
+            Confirm
+          </button>
+          <button
+            class="btn ghost danger-ghost"
+            type="button"
+            id="confirmAlt"
+            hidden
+          ></button>
+          <button
+            class="btn ghost"
+            type="button"
+            id="confirmCancel"
+            data-i18n="confirm.cancel"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <div id="syncBanner" class="sync-banner" role="alert" hidden>
+      <span class="sync-banner-msg" id="syncBannerMsg"></span>
+      <button type="button" class="btn sm ghost" id="syncBannerBtn">
+        <span data-i18n="sync.open"></span>
+      </button>
+    </div>
+
+    <div class="sheet" id="syncPanel">
+      <div
+        class="sheet-box confirm-box"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="syncPanelTitle"
+      >
+        <h3 id="syncPanelTitle">
+          <span aria-hidden="true">🔄</span>
+          <span data-i18n="sync.title"></span>
+        </h3>
+        <p class="mini" data-i18n="sync.lead"></p>
+        <div class="qa" style="margin-top: 0.5rem">
+          <button type="button" class="btn ghost" id="syncRetryBtn">
+            <span class="ic" aria-hidden="true">🔁</span
+            ><span data-i18n="sync.retryNow"></span>
+          </button>
+          <span class="mini" id="syncCountdown" hidden></span>
+        </div>
+        <div id="syncBody"></div>
+        <div class="addrow confirm-actions">
+          <button class="btn ghost" type="button" id="syncCloseBtn">
+            <span data-i18n="confirm.close"></span>
+          </button>
+        </div>
+      </div>
+    </div>

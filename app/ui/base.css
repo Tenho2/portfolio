@@ -854,6 +854,12 @@ table.fmt th {
 .item .mt {
   color: var(--text-muted);
 }
+.fav-price {
+  color: var(--primary);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 .shared-tag {
   font-size: 0.7rem;
   color: var(--accent);
@@ -1206,6 +1212,19 @@ table.fmt th {
 }
 
 /* ---------- auth ---------- */
+/* The auth gate. The app shell stays hidden until Supabase says who is signed
+   in; the login view is hidden the moment that changes. Without both halves the
+   login banner stays on screen over the signed-in app. */
+body.need-auth .side,
+body.need-auth .wrap,
+body.need-auth footer,
+body.need-auth .skip-link,
+body.need-auth .hud-deck {
+  display: none !important;
+}
+body:not(.need-auth) #authView {
+  display: none !important;
+}
 .auth-box {
   max-width: 420px;
   margin: 8vh auto;

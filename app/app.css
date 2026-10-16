@@ -1230,6 +1230,12 @@
         font-size: 0.8rem;
         color: var(--text-muted);
       }
+      .fav-price {
+        font-size: 0.8rem;
+        color: var(--primary);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
       .addrow {
         display: flex;
         gap: 0.6rem;

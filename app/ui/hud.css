@@ -3,6 +3,12 @@
  * Instrument-cluster read-out: near-black, monospace, a single neon-mint
  * accent, hairline rules and corner ticks instead of cards. Figures are the
  * subject; chrome is almost invisible. Layered on app/ui/base.css.
+ *
+ * This page is structurally its own layout, not a recolour: the body is a
+ * full-viewport cockpit deck (a sticky instrument rack plus a wide stage with
+ * per-view grids) rather than the classic aside/main/footer over a stack of
+ * .panel cards. The rules below define that structure; the token block and the
+ * component overrides keep the instrument identity.
  */
 
 :root {
@@ -43,36 +49,197 @@ body::before {
   );
 }
 
-.side,
-.wrap,
-footer,
-.top,
-.sheet,
-.toast {
+/* ---------- cockpit deck ---------- */
+.hud-deck {
   position: relative;
   z-index: 2;
+  display: grid;
+  grid-template-columns: var(--side-w) minmax(0, 1fr);
+  min-height: 100vh;
 }
 
-/* Panels become ruled sections, not cards. */
-.panel {
-  background: transparent;
-  border: 0;
-  border-left: 2px solid var(--primary);
-  border-radius: 0;
-  padding: 0.5rem 0 0.5rem 1rem;
+/* The instrument rack. Overrides the classic fixed rail. */
+.hud-rack {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  inset: auto;
+  width: auto;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.25rem 0;
+  overflow-y: auto;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
 }
-.panel > h2 {
+.hud-command {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.hud-rack .badge {
+  padding: 0 1.25rem;
+}
+
+.hud-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.hud-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  margin: 0;
+  padding: 0.5rem 1rem;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+}
+.hud-stage {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-left: 0;
+  padding: 1rem 1.25rem 2.5rem;
+}
+.hud-foot {
+  margin-left: 0;
+  padding: 1rem 1.25rem 2rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  border-top: 1px solid var(--line);
+}
+
+/* ---------- view chrome (replaces .panel) ---------- */
+.hud-screen {
+  display: none;
+}
+.hud-screen.on {
+  display: block;
+}
+.hud-view-head {
+  margin-bottom: 1rem;
+}
+.hud-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   text-transform: uppercase;
   letter-spacing: 0.12em;
   font-size: 0.9rem;
   color: var(--primary);
 }
-.panel > p.lead {
-  font-size: 0.8rem;
+.hud-lead {
   color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
 }
 
-/* Figures: bare, monospace, with a hairline base. */
+/* Dashboard: readouts, launcher and scope in one grid. */
+.hud-dash-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  grid-template-areas:
+    "fleet launch"
+    "scope launch";
+}
+.hud-cell {
+  min-width: 0;
+}
+.hud-cell-fleet {
+  grid-area: fleet;
+}
+.hud-cell-launch {
+  grid-area: launch;
+}
+.hud-cell-scope {
+  grid-area: scope;
+  margin: 0;
+}
+.hud-cell-launch .qa {
+  grid-template-columns: 1fr;
+  margin-top: 0;
+}
+
+/* Add session: a 12-column readout board of bays. */
+.hud-form-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+}
+.hud-bay {
+  grid-column: span 6;
+  padding: 0.75rem 1rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--primary);
+}
+.hud-bay-when {
+  grid-column: span 5;
+}
+.hud-bay-place {
+  grid-column: span 7;
+}
+.hud-bay-meter {
+  grid-column: span 6;
+}
+.hud-bay-billing {
+  grid-column: span 6;
+}
+.hud-bay-notes {
+  grid-column: span 12;
+}
+.hud-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.hud-row > .f {
+  flex: 1 1 150px;
+  min-width: 0;
+}
+.hud-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.hud-commit {
+  margin-top: 1rem;
+}
+
+/* Log: tools above a ruled frame instead of a card. */
+.hud-log-tools {
+  margin-bottom: 0.75rem;
+}
+.hud-log-frame {
+  margin: 0;
+}
+.hud-log-frame .tbl-wrap {
+  border: 1px solid var(--line);
+}
+
+/* Settings and favourites: dashboard-style tessellation of ruled sections. */
+.hud-settings-grid,
+.hud-fav-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  align-items: start;
+}
+.hud-section {
+  padding: 0.75rem 1rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--primary);
+}
+.hud-detail {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border: 1px dashed var(--line);
+}
+
+/* ---------- component identity ---------- */
 .stats {
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 0 1.25rem;
@@ -119,9 +286,6 @@ footer,
   box-shadow: 0 0 0 1px var(--primary) inset;
 }
 
-.top {
-  border-bottom: 1px solid var(--line);
-}
 .top h1 {
   text-transform: uppercase;
   letter-spacing: 0.16em;
@@ -158,4 +322,87 @@ footer,
   height: 8px;
   border-top: 1px solid var(--primary);
   border-right: 1px solid var(--primary);
+}
+
+/* ---------- responsive ---------- */
+@media (max-width: 980px) {
+  .hud-dash-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "fleet"
+      "launch"
+      "scope";
+  }
+}
+
+@media (max-width: 820px) {
+  .hud-deck {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .hud-rack {
+    position: static;
+    top: auto;
+    height: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    overflow: visible;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .hud-rack .side-brand,
+  .hud-rack .badge {
+    display: none;
+  }
+  .hud-command {
+    order: 2;
+    flex: 1 1 100%;
+  }
+  .hud-rack .side-nav {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+  .hud-rack .side-nav li {
+    flex: 0 0 auto;
+  }
+  .hud-rack .side-nav button {
+    flex-direction: column;
+    gap: 0.1rem;
+    width: auto;
+    padding: 0.4rem 0.5rem;
+    border-left: 0;
+    border-bottom: 2px solid transparent;
+    font-size: 0.62rem;
+    text-align: center;
+  }
+  .hud-rack .side-nav button[aria-current="page"] {
+    border-left-color: transparent;
+    border-bottom-color: var(--primary);
+  }
+  .hud-head {
+    position: static;
+  }
+  .hud-stage,
+  .hud-foot {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+  .hud-stage {
+    padding-bottom: 4rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .hud-bay,
+  .hud-bay-when,
+  .hud-bay-place,
+  .hud-bay-meter,
+  .hud-bay-billing,
+  .hud-bay-notes {
+    grid-column: 1 / -1;
+  }
 }

@@ -7376,8 +7376,8 @@ if (!yes) return false;
               esc(f.name) +
               (fp === null
                 ? ""
-                : ' <span class="mt">💶 ' +
-                  esc(fmtCents(Math.round(fp * 100))) +
+                : ' <span class="fav-price">💶 ' +
+                  esc(TXT("fav.priceBadge", { v: fmtCents(Math.round(fp * 100)) })) +
                   "</span>") +
               '<br><span class="mt">' +
               esc(f.address) +
@@ -8608,6 +8608,54 @@ closeEdit();
           return f && isNum(f.price) && f.price >= 0 ? +f.price : null;
         }
         /**
+         * Apply a place's own price to the Add Session form.
+         *
+         * The form's price field is the euro-per-kWh one, mirrored into whole
+         * cents; setPriceCents writes both, recalcFromPrice turns it into a cost
+         * when the energy is known, and syncCents refreshes the hints. The field
+         * stays an ordinary input, so whatever is typed afterwards wins.
+         *
+         * @param {number|string} price  euro per kWh, or null/empty for "none"
+         * @param {boolean} quiet  suppress the confirmation toast
+         * @returns {boolean} whether a price was applied
+         */
+        function applyFavPrice(price, quiet) {
+          if (!isNum(price) || +price < 0) return false;
+          var c = Math.round(+price * 100);
+          setPriceCents(c);
+          recalcFromPrice();
+          syncCents();
+          if (!quiet) toast(TXT("toast.favPrice", { p: fmtCents(c) }));
+          return true;
+        }
+        /** The saved favourite whose name or address equals `text`, or null. */
+        function favouriteForText(text) {
+          var v = String(text || "").trim().toLowerCase();
+          if (!v) return null;
+          for (var i = 0; i < favs.length; i++) {
+            var f = favs[i];
+            if (!f || f.deletedAt) continue;
+            if (
+              String(f.address || "").trim().toLowerCase() === v ||
+              String(f.name || "").trim().toLowerCase() === v
+            )
+              return f;
+          }
+          return null;
+        }
+        /** The nearest saved favourite within `maxM` of a point, or null. */
+        function favouriteNear(lat, lng, maxM) {
+          if (!isNum(lat) || !isNum(lng)) return null;
+          var best = null;
+          for (var i = 0; i < favs.length; i++) {
+            var f = favs[i];
+            if (!f || f.deletedAt || !isNum(f.lat) || !isNum(f.lng)) continue;
+            var d = metresBetween(lat, lng, +f.lat, +f.lng);
+            if (d <= maxM && (!best || d < best.d)) best = { f: f, d: d };
+          }
+          return best ? best.f : null;
+        }
+        /**
          * Load a favourite into the form for editing.
          * @param {Object} f  a favourite from the favs array
          */
@@ -9346,6 +9394,13 @@ slot.map.on("click", function (e) {
             hit.name || short,
             sessPinDragged,
           );
+          /* An address picked here may be a saved favourite under a slightly
+             different spelling; match it by text, then by a tight proximity so
+             the pin cannot land on the wrong place. */
+          var f =
+            favouriteForText(short || hit.display_name) ||
+            favouriteNear(locGeo.lat, locGeo.lng, 40);
+          if (f) applyFavPrice(favPrice(f), true);
         }
         function sessPinDragged(lat, lng) {
           locGeo.lat = lat;
@@ -9440,6 +9495,9 @@ slot.map.on("click", function (e) {
                 lat: +f.lat,
                 lng: +f.lng,
                 kind: "favourite",
+                /* Carried so a selection made by proximity can apply the place's
+                   own price, not just its position. */
+                price: favPrice(f),
               });
             }
           }
@@ -9553,6 +9611,10 @@ slot.map.on("click", function (e) {
                 lat: +fv.lat,
                 lng: +fv.lng,
                 kind: "favourite",
+                /* Inlined rather than favPrice(fv) so this function stays
+                   runnable in the test sandbox, which injects isNum but not the
+                   price helper. */
+                price: isNum(fv.price) && fv.price >= 0 ? +fv.price : null,
               });
             }
           }
@@ -9664,7 +9726,11 @@ slot.map.on("click", function (e) {
                   p.lng +
                   '" data-near-name="' +
                   esc(p.name || p.address || "") +
-                  '">' +
+                  '"' +
+                  (isNum(p.price) && p.price >= 0
+                    ? ' data-near-price="' + esc(String(p.price)) + '"'
+                    : "") +
+                  ">" +
                   '<span class="loc-near-name">' +
                   esc(p.name || TXT("st.unnamed")) +
                   "</span>" +
@@ -9743,6 +9809,8 @@ slot.map.on("click", function (e) {
           if (box) box.hidden = false;
           showPin("sessMap", p.lat, p.lng, p.name, sessPinDragged);
           if ($("fav").checked) $("favName").value = p.name;
+          /* A favourite selected by proximity applies its own price too. */
+          applyFavPrice(p.price, true);
           setLocStatus(TXT("toast.geoNear", { v: p.name, d: Math.round(near.dist) }));
         }
 
@@ -9779,9 +9847,12 @@ slot.map.on("click", function (e) {
         }
 
         /** Put a suggested place into the form, pin it, and close the list. */
-        function useNearbyPlace(lat, lng, name) {
+        function useNearbyPlace(lat, lng, name, price) {
           $("location").value = name || "";
           locGeo = { lat: +lat, lng: +lng, label: name || "" };
+          /* A row that carries a saved favourite's price applies it here, so
+             picking a place from the list fills the rate as well as the name. */
+          applyFavPrice(price, false);
           var box = $("sessMapBox");
           if (box) box.hidden = false;
           var list = $("locNear");
@@ -9839,6 +9910,8 @@ slot.map.on("click", function (e) {
                 );
                 if ($("fav").checked) $("favName").value = home.name;
                 showPin("sessMap", +home.lat, +home.lng, home.name, sessPinDragged);
+                /* Home is a favourite, so its own rate applies when it fills. */
+                applyFavPrice(favPrice(home), true);
               } else if (immediate) {
                 filled = near.p.address || near.p.name;
                 $("location").value = near.p.address || near.p.name;
@@ -9862,6 +9935,7 @@ slot.map.on("click", function (e) {
                   near.p.name,
                   sessPinDragged,
                 );
+                applyFavPrice(near.p.price, true);
               } else {
                 /* Nothing within 250 m. Leave the field for the registry answer;
                    if that finds nothing either, the deferred known place gets
@@ -11705,6 +11779,7 @@ function detachVehicle(id) {
               t.getAttribute("data-near-lat"),
               t.getAttribute("data-near-lng"),
               t.getAttribute("data-near-name"),
+              t.getAttribute("data-near-price"),
             );
             return;
           }
@@ -12780,6 +12855,13 @@ $("syncBadge").addEventListener("click", function () {
           lookupLocation();
         });
         $("location").addEventListener("input", onLocInput);
+        /* Committed from the datalist or on blur: if the value names a saved
+           favourite, apply its price. Typing never auto-fills, so a rate is not
+           clobbered mid-edit. */
+        $("location").addEventListener("change", function () {
+          var f = favouriteForText(this.value);
+          if (f) applyFavPrice(favPrice(f), true);
+        });
         $("location").addEventListener("keydown", function (e) {
           var ul = $("locSuggest");
           var items = ul.querySelectorAll ? ul.querySelectorAll("li") : [];

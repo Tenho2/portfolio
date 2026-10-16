@@ -1,30 +1,39 @@
 /**
- * The two layout pages cannot drift.
+ * The layout pages cannot drift.
  *
  * Why this file exists
- *   ev-tracker.html and ev-tracker-wide.html are the same application: identical
- *   markup, identical app/app.js, identical storage keys, identical account. The
- *   only difference is one attribute and one stylesheet. Everything else being
- *   equal is the whole safety argument - app/app.js looks up roughly 170 element
- *   ids unconditionally while wiring its handlers, so any divergence in the
- *   markup is a page that throws before the application starts.
+ *   Four of the eight pages - classic, wide, focus and modern - are the same
+ *   application: identical markup, identical app/app.js, identical storage keys,
+ *   identical account. The only difference is one attribute and one stylesheet.
+ *   Everything else being equal is the whole safety argument - app/app.js looks
+ *   up roughly 200 element ids unconditionally while wiring its handlers, so any
+ *   divergence in the markup is a page that throws before the application starts.
  *
  *   That argument cannot be left as a comment. Someone adding a field to the
  *   session form on one page, or fixing a label on one page, produces a working
  *   application and a broken one side by side, and the symptom is reported by a
  *   user on whichever page was missed.
  *
+ *   The four experimental UIs (hud, brutal, editorial, glass) load app/ui/base.css
+ *   plus their own theme instead of app/app.css, and they are deliberately
+ *   allowed to restructure the DOM rather than only recolour it - hud does. So
+ *   the byte-identical assertion applies only to the shared-markup family. The
+ *   experimental pages are held to the contract that actually matters: every id
+ *   the shared app looks up must still exist, whichever way the DOM is arranged.
+ *
  * What it checks
- *   1. Both pages exist and declare a layout.
- *   2. Their markup is identical apart from the <body> layout attribute and the
- *      layout stylesheet href.
- *   3. Both load the same four shared modules, in the same order, last-first as
- *      app/app.js.
- *   4. Neither page inlines CSS or JS any more.
- *   5. The layout stylesheets only arrange what app/app.css defines - they may
+ *   1. Every page exists and declares a layout.
+ *   2. The shared-markup pages have identical markup apart from the <body>
+ *      layout attribute and the layout stylesheet href.
+ *   3. The experimental pages keep every id the shared markup has, so a rewrite
+ *      cannot silently break app/app.js.
+ *   4. Every page loads the same four shared modules, in the same order,
+ *      last-first as app/app.js.
+ *   5. No page inlines CSS or JS any more.
+ *   6. The layout stylesheets only arrange what app/app.css defines - they may
  *      not restyle a component's colour, border or focus ring, because that is
- *      the part both pages share.
- *   6. The generator is stable: re-running it must change nothing.
+ *      the part the shared-markup pages share.
+ *   7. The generator is stable: re-running it must change nothing.
  *
  *   node tools/test-layouts.mjs
  */
@@ -43,6 +52,11 @@ const PAGES = [
   { name: "editorial", file: "ev-tracker-editorial.html", ui: true },
   { name: "glass", file: "ev-tracker-glass.html", ui: true },
 ];
+
+/* Two families. The shared-markup pages must stay byte-identical; the
+   experimental UIs may restructure, but must keep the same ids. */
+const CORE = PAGES.filter((p) => !p.ui);
+const UI = PAGES.filter((p) => p.ui);
 
 let pass = 0;
 const failures = [];
@@ -77,6 +91,11 @@ function markupOf(file) {
     .join("\n")
     /* The only permitted difference: the layout attribute on <body>. */
     .replace(/\s*data-layout="[^"]*"/g, "");
+}
+
+/** The static ids declared in a markup block. */
+function idsOf(markup) {
+  return new Set([...markup.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]));
 }
 
 /**
@@ -144,11 +163,11 @@ group("both layout pages exist and declare themselves", () => {
   }
 });
 
-group("the two pages are the same application", () => {
-  const markups = PAGES.map((p) => markupOf(p.file));
+group("the shared-markup pages are the same application", () => {
+  const coreMarkups = CORE.map((p) => markupOf(p.file));
   ok(
-    "the markup is byte-identical across every page",
-    markups.every((m) => m === markups[0]),
+    "the markup is byte-identical across the shared-markup pages",
+    coreMarkups.every((m) => m === coreMarkups[0]),
   );
   ok(
     "the shared modules are loaded identically",
@@ -160,8 +179,8 @@ group("the two pages are the same application", () => {
       return order.every((i) => i > 0) && order[0] < order[1] && order[1] < order[2];
     }),
   );
-  /* The whole point of the split: one copy of the application logic. If either
-     page grew an inline <script> again, there would be a second copy to keep in
+  /* The whole point of the split: one copy of the application logic. If a page
+     grew an inline <script> again, there would be a second copy to keep in
      step, which is the problem the split exists to remove. */
   for (const p of PAGES) {
     const src = read(p.file);
@@ -170,6 +189,31 @@ group("the two pages are the same application", () => {
   }
   ok("there is one application script", existsSync("app/app.js"));
   ok("there is one stylesheet", existsSync("app/app.css"));
+});
+
+group("the experimental pages restructure without breaking the id contract", () => {
+  /* The experimental UIs may arrange the DOM however they like, but app/app.js
+     looks up ~200 ids unconditionally, so every one of them has to survive the
+     rewrite. This is the check that makes a real restructure safe: hud has a
+     visibly different DOM yet cannot drop an element the app reaches for. */
+  const coreMarkup = markupOf(CORE[0].file);
+  const coreIds = idsOf(coreMarkup);
+  for (const p of UI) {
+    const markup = markupOf(p.file);
+    const ids = idsOf(markup);
+    const missing = [...coreIds].filter((id) => !ids.has(id));
+    ok(
+      `${p.file} keeps every id the shared app looks up (${missing.length} missing)`,
+      missing.length === 0,
+    );
+    for (const id of missing.slice(0, 12))
+      failures.push(`${p.file} dropped the id "${id}" the app looks up`);
+  }
+  /* And the restructure is deliberate, not a relabelled skin: hud's markup must
+     differ from the shared markup and must not keep the .panel wrappers. */
+  const hud = CORE.length ? markupOf("ev-tracker-hud.html") : "";
+  ok("hud markup differs from the shared markup", hud !== coreMarkup);
+  ok("hud drops the shared .panel wrappers", !/class="panel/.test(read("ev-tracker-hud.html")));
 });
 
 group("the layout sheets only arrange what the shared sheet defines", () => {

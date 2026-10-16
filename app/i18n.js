@@ -137,6 +137,7 @@
       "fav.del": "Delete",
       "fav.noCoords": " · no coordinates",
       "fav.uses": "{n} use(s)",
+      "fav.priceBadge": "{v} / kWh",
       "fav.empty":
         "No favourites yet — name one above, or tick “Save this location as a favourite” when logging a session.",
       "set.vehicles": "Vehicles",
@@ -915,6 +916,7 @@
       "fav.del": "Poista",
       "fav.noCoords": " · ei koordinaatteja",
       "fav.uses": "{n} käyttökertaa",
+      "fav.priceBadge": "{v} / kWh",
       "fav.empty":
         "Ei vielä suosikkeja — nimeä yksi ylhäältä tai valitse “Tallenna tämä paikka suosikiksi” lisätessäsi latausta.",
       "set.vehicles": "Ajoneuvot",
@@ -1699,6 +1701,7 @@
       "fav.del": "Ta bort",
       "fav.noCoords": " · inga koordinater",
       "fav.uses": "{n} användning(ar)",
+      "fav.priceBadge": "{v} / kWh",
       "fav.empty":
         "Inga favoriter än — namnge en ovan, eller kryssa i ”Spara den här platsen som favorit” när du loggar en session.",
       "set.vehicles": "Fordon",
