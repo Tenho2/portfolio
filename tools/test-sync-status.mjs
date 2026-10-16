@@ -272,6 +272,30 @@ group("a delete waiting to reach the server is shown, and is not discardable", (
   is("it is not reported as held", row.held, false);
 });
 
+group("a charge whose vehicle is not on the device is an orphan", () => {
+  /* A session pointing at a vehicle that is not here gets refused forever by
+     the sessions trigger (P0001, vehicle_rank 0). It is not a permission the
+     owner can grant, so unlike notYet it must be discardable. */
+  is(
+    "the marker is its own kind",
+    t.classifyRefusal({ code: "ORPHAN", message: "vehicle not on this device" }),
+    "orphan",
+  );
+  t.seed({
+    syncDirty: { vehicles: {}, sessions: {} },
+    syncStalled: {
+      vehicles: {},
+      sessions: { sOrphan: { reason: "orphan", kind: "orphan", code: "ORPHAN" } },
+    },
+    sessions: [ses("sOrphan")],
+  });
+  const rows = t.unsyncedRows();
+  const r = rows.find((x) => x.id === "sOrphan");
+  is("it is listed", r !== undefined, true);
+  is("it is not reported as waiting for approval", r.held, false);
+  is("it IS discardable", r.hard, true);
+});
+
 group("stalledCount spans both tables", () => {
   t.seed({
     syncDirty: { vehicles: {}, sessions: {} },

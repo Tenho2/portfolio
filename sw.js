@@ -34,7 +34,7 @@
  * Last bumped: 2026-10-15, for the four experimental UIs (hud, brutal,
  * editorial, glass) and their shared app/ui/ stylesheets.
  */
-const VERSION = "v65";
+const VERSION = "v66";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [

@@ -1,0 +1,48 @@
+-- EV Multi-Tracker: winter / summer season per charging session.
+-- Run this in the Supabase SQL editor AFTER 13-session-payers.sql.
+-- Dashboard -> SQL Editor -> New query -> paste -> Run.
+--
+-- Everything here is idempotent.
+--
+-- What it does
+--   Adds ONE column, public.sessions.winter (boolean, not null, default false).
+--
+-- Why a stored flag and not just the month
+--   Consumption is seasonal: cold weather and winter tyres move a car's
+--   kWh/100 km by tens of percent, and averaging the two together describes
+--   neither. The app defaults the flag from the session date's month
+--   (November to March reads as winter), but the month is only a guess - a
+--   mild December on summer tyres, or an early cold snap in October, is real -
+--   so the user's own tick is what is stored and what the split uses.
+--
+-- Default false, not null
+--   Every existing row predates the concept and reads as "summer/summer
+--   conditions", which is the harmless default: it does not remove a charge
+--   from the winter figure the user can still reclassify, and it keeps the
+--   column a plain boolean the client can send without null handling.
+--
+-- What it does NOT touch
+--   No policy, no trigger, no grant. Supabase grants table-level privileges,
+--   and RLS on sessions works at row level, so a new column is readable and
+--   writable by exactly the people who could already read and write the row.
+--
+-- Idempotency
+--   add column if not exists, so re-running is a no-op rather than an error.
+
+alter table public.sessions
+  add column if not exists winter boolean not null default false;
+
+-- ---------------------------------------------------------------------------
+-- Verify after running (expect one row):
+--   select column_name, data_type, is_nullable, column_default
+--     from information_schema.columns
+--    where table_name = 'sessions' and column_name = 'winter';
+--
+-- Reclassify a session (example): mark the charge with a given id as winter.
+--   update public.sessions set winter = true where id = '<uuid>';
+--
+-- Sanity check the split for one vehicle:
+--   select winter, count(*), round(sum(energy)::numeric, 1) as kwh
+--     from public.sessions
+--    where vehicle_id = '<uuid>' and deleted_at is null
+--    group by winter;

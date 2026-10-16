@@ -600,6 +600,10 @@
         /* records that only exist locally because the cloud write failed; they are
    retried on the next successful pull so offline work is never lost */
         var syncDirty = { vehicles: {}, sessions: {} };
+        /* Set once the server has told us sessions.winter does not exist yet
+           (migration 14 not run). The field is then omitted from every push so
+           an un-migrated database cannot block a charge. */
+        var winterColumnMissing = false;
         /* ids deleted locally that the server has not confirmed removing yet */
         var syncDeleted = { vehicles: {}, sessions: {} };
         /** Remember a row whose write failed so it can be retried. */
@@ -843,6 +847,7 @@ for (var a = 0; a < vi.length; a++) {
             fast: !!s.fast,
             home: !!s.home,
             fav: !!s.fav,
+            winter: !!s.winter,
             lat: isNum(s.lat) ? num(s.lat) : null,
             lng: isNum(s.lng) ? num(s.lng) : null,
             socStart: soc(s.socStart),
@@ -907,6 +912,7 @@ function rowVehicle(r) {
             fast: !!r.fast,
             home: !!r.home,
             fav: !!r.fav,
+            winter: !!r.winter,
             lat: isNum(r.lat) ? num(r.lat) : null,
             lng: isNum(r.lng) ? num(r.lng) : null,
             socStart: soc(r.socStart),
@@ -983,6 +989,10 @@ function rowVehicle(r) {
              than about the row. */
           if (code === "42501") return "wrong";
           if (code === "P0001") return "notYet";
+          /* Our own marker, synthesized client-side before any request: the
+             charge points at a vehicle that is not on this device. It is not a
+             permission the owner can grant, so unlike notYet it IS discardable. */
+          if (code === "ORPHAN") return "orphan";
           /* No usable code, so fall back to the wording. PostgREST does not
              always report one. */
           if (
@@ -1171,7 +1181,8 @@ function rowVehicle(r) {
                "vehicle update". */
             operation: what,
             row: id,
-            vehicle: kind === "vehicles" ? diagRowName(id) : undefined,
+            vehicle:
+              kind === "vehicles" ? diagRowName(id) : diagSessionVehicle(id),
             /* Whether this device believes the server already has the row. That
                decides insert vs update, so it belongs next to the operation. */
             confirmed: kind === "vehicles" ? diagRowConfirmed(id) : undefined,
@@ -1261,6 +1272,27 @@ function rowVehicle(r) {
           try {
             var v = vehById(id) || vehicleAnywhere(id);
             return v ? v.name : "(not on this device)";
+          } catch (e) {
+            return "(lookup failed)";
+          }
+        }
+        /**
+         * Which vehicle a session belongs to, for the diagnostics report.
+         *
+         * The report printed "vehicle: undefined" for every session, because it
+         * only resolved a name for the vehicles table. That is precisely the
+         * field a P0001 needs: the refusal is about the session's vehicle, and
+         * the reader could not see which one (or that it was missing).
+         */
+        function diagSessionVehicle(id) {
+          try {
+            var s = sessionAnywhere(id);
+            if (!s) return "(session not on this device)";
+            if (!s.vehicleId) return "(no vehicle id)";
+            var v = vehById(s.vehicleId);
+            return v
+              ? v.name + " (" + s.vehicleId + ")"
+              : s.vehicleId + " (vehicle not on this device)";
           } catch (e) {
             return "(lookup failed)";
           }
@@ -1727,9 +1759,53 @@ function copyDiagnostics() {
          * @param {Object} s   local session object
          * @returns {Promise<boolean>} true when the server accepted it
          */
+        /**
+         * Can this session be pushed yet?
+         *
+         * A session is only insertable once its vehicle exists on the server:
+         * the BEFORE INSERT trigger in supabase/04-roles.sql refuses any row
+         * whose vehicle_rank() is below 2, and a vehicle this device has not
+         * pushed yet has no rank at all. Checking first turns the three refused
+         * round trips an orphan used to cost into none, and stops the sync panel
+         * filling with rows the user cannot act on.
+         *
+         * @param {Object} s
+         * @returns {"ok"|"wait"|"orphan"}
+         */
+        function sessionVehicleReady(s) {
+          if (!s || !s.vehicleId) return "orphan";
+          var v = vehById(s.vehicleId);
+          if (!v) return "orphan";
+          if (v.provisional) return "wait";
+          if (syncDirty.vehicles[v.id] || syncStalled.vehicles[v.id])
+            return "wait";
+          return "ok";
+        }
         function syncSession(s) {
           if (!syncOn() || !s) return Promise.resolve(false);
           if (!syncOnline()) {
+            markDirty("sessions", s.id);
+            return Promise.resolve(false);
+          }
+          /* Never ship a charge whose vehicle cannot accept it. An orphan is
+             recorded and offered for discard; a vehicle still on its way is
+             simply retried once it lands, without spending an attempt or a
+             round trip. This is the loop the ghost vehicle caused: the session
+             was pushed before the vehicle existed, refused with P0001, held, and
+             retried forever. */
+          var ready = sessionVehicleReady(s);
+          if (ready === "orphan") {
+            clearDirty("sessions", s.id);
+            markStalled("sessions", s.id, "orphan", {
+              code: "ORPHAN",
+              message:
+                "this charge points at a vehicle that is not on this device",
+            });
+            armStallBanner();
+            syncFail("session upsert");
+            return Promise.resolve(false);
+          }
+          if (ready === "wait") {
             markDirty("sessions", s.id);
             return Promise.resolve(false);
           }
@@ -1738,14 +1814,37 @@ syncQueue.pending++;
                sleeping phone leaves this unsettled forever: the row stays dirty,
                the backoff keeps re-issuing it, and the user watches "retrying"
                with nothing to act on. */
+            var payload = sessionRow(s);
+            /* Until migration 14 is run there is no winter column, and PostgREST
+               rejects the whole row (PGRST204) rather than ignoring the unknown
+               field. Rather than let that block every charge, the field is
+               dropped for this and every later push, and the reason is said
+               once. This is what keeps a brand-new feature from becoming the
+               next sync blocker. */
+            if (winterColumnMissing) delete payload.winter;
             return timed(
-              authClient
-                .from("sessions")
-                .upsert(sessionRow(s), { onConflict: "id" }),
+              authClient.from("sessions").upsert(payload, { onConflict: "id" }),
             )
               .then(function (res) {
                 syncQueue.pending--;
                 var e = res && res.error;
+                if (
+                  e &&
+                  String(e.code || e.error_code || "") === "PGRST204" &&
+                  /winter/i.test(String(e.message || ""))
+                ) {
+                  if (!winterColumnMissing) {
+                    winterColumnMissing = true;
+                    if (window.console && window.console.warn)
+                      window.console.warn(
+                        "[sync] the sessions.winter column is missing; run " +
+                          "supabase/14-session-winter.sql. Charges still sync, " +
+                          "without their season, until it is run.",
+                      );
+                    toast(TXT("toast.winterNeedsSql"));
+                  }
+                  return syncSession(s);
+                }
                 if (e)
                   return failPush("sessions", s.id, "session upsert", e);
                 clearDirty("sessions", s.id);
@@ -3460,6 +3559,25 @@ function saveFavs() {
           $("date").value = n.y + "-" + n.m + "-" + n.d;
           $("time").value = n.h + ":" + n.i;
         }
+        /* ---------- season (winter / summer) ----------
+           The box follows the session date's month (November to March reads as
+           winter) until the user ticks it by hand; from then on the manual
+           choice is kept. A mild December on summer tyres, or an early cold snap
+           in October, is real, so the month is only the default and the flag
+           that is stored - and that the seasonal split uses - is the user's. */
+        var winterTouched = false;
+        function winterByMonth(dateStr) {
+          var m = String(dateStr || "").match(/^\d{4}-(\d{2})/);
+          if (!m) return false;
+          var n = +m[1];
+          return n === 11 || n === 12 || n === 1 || n === 2 || n === 3;
+        }
+        function defaultWinter(force) {
+          var c = $("winter");
+          if (!c) return;
+          if (winterTouched && !force) return;
+          c.checked = winterByMonth($("date") ? $("date").value : "");
+        }
         function hmToHours(v) {
           var p = String(v == null ? "" : v)
             .trim()
@@ -3845,6 +3963,13 @@ function hoursToHM(h, alwaysSeconds) {
                hidden: the difference between "12 charges" and "12 charges,
                11 of them measured" is the whole point. */
             unattributed: 0,
+            /* The extreme measured legs, in kWh/100 km, and the distance of the
+               newest measured leg. Null until at least one leg carries energy -
+               a start gap covers distance but consumes no logged charge, so it
+               must not enter the spread. */
+            min100: null,
+            max100: null,
+            lastKm: null,
           };
           var start = num(initialOdo);
           /* OLDEST FIRST, and said so because sorted() is the other way round:
@@ -3894,6 +4019,13 @@ function hoursToHM(h, alwaysSeconds) {
               out.km += d;
               out.kwh += num(prev.energy);
               out.cost += costOf(prev);
+              out.lastKm = d;
+              var pe100 = num(prev.energy);
+              if (pe100 > 0) {
+                var per100 = (pe100 / d) * 100;
+                if (out.min100 === null || per100 < out.min100) out.min100 = per100;
+                if (out.max100 === null || per100 > out.max100) out.max100 = per100;
+              }
             }
             prev = cur;
           }
@@ -3956,6 +4088,146 @@ function hoursToHM(h, alwaysSeconds) {
             if (num(cur.mileage) > 0) prev = cur;
           }
           return out;
+        }
+
+        /**
+         * Mean energy per charging session, over the sessions that recorded any.
+         *
+         * A blank energy field is "not written down", not a zero-kWh charge, so
+         * it is excluded from both the sum and the count rather than dragging the
+         * mean toward zero.
+         * @param {Array} list
+         * @returns {{kwh: ?number, n: number}}
+         */
+        function avgPerSession(list) {
+          var sum = 0,
+            n = 0;
+          for (var i = 0; i < (list || []).length; i++) {
+            var e = num(list[i] && list[i].energy);
+            if (e > 0) {
+              sum += e;
+              n++;
+            }
+          }
+          return { kwh: n ? sum / n : null, n: n };
+        }
+
+        /**
+         * Consumption split by season, measured one leg at a time.
+         *
+         * The same "walk oldest to newest and credit a leg to the charge that
+         * powered it" rule as legStats(), so a winter leg is the drive that
+         * followed a winter charge. A leg is bucketed by its START session's
+         * winter flag, which is why this cannot simply filter the list first: the
+         * drive from the last summer charge to the first winter one is one leg,
+         * and filtering would pair two charges the driver never drove between.
+         *
+         * kWh/100 km prefers the battery (SoC) figure, but only when it covers
+         * every leg in that season; a half-covered season would divide all the
+         * kilometres by some of the energy and read impossibly efficient.
+         *
+         * @param {Array} list      sessions for one vehicle
+         * @param {number} initialOdo the vehicle's starting odometer, or 0
+         * @param {number} capacity the vehicle's USABLE capacity, 0 if unset
+         * @returns {{winter: Object, summer: Object}} each with km, kwh, legs, kwh100
+         */
+        function seasonSplit(list, initialOdo, capacity) {
+          var cap = num(capacity);
+          var out = {
+            winter: { km: 0, kwh: 0, socKwh: 0, legs: 0, socLegs: 0, kwh100: null },
+            summer: { km: 0, kwh: 0, socKwh: 0, legs: 0, socLegs: 0, kwh100: null },
+          };
+          var start = num(initialOdo);
+          /* Oldest first; see legStats for why that is not the default. */
+          var s = sorted(list || []).slice().reverse();
+          var prev = null;
+          for (var i = 0; i < s.length; i++) {
+            var cur = s[i];
+            var cm = num(cur.mileage);
+            if (!(cm > 0)) continue;
+            if (!prev) {
+              /* The first measured reading. With an initial odometer there is a
+                 leg from it, carrying no charge at its start, so it only adds
+                 distance and is filed under the reading's own season. */
+              if (start > 0) {
+                var d0 = cm - start;
+                if (d0 > 0) {
+                  var b0 = cur.winter ? out.winter : out.summer;
+                  b0.km += d0;
+                  b0.legs++;
+                }
+              }
+              prev = cur;
+              continue;
+            }
+            var d = cm - num(prev.mileage);
+            if (d > 0) {
+              var b = prev.winter ? out.winter : out.summer;
+              b.legs++;
+              b.km += d;
+              b.kwh += num(prev.energy);
+              if (cap > 0) {
+                var pe = soc(prev.socEnd),
+                  cs = soc(cur.socStart);
+                if (pe !== null && cs !== null && pe - cs > 0) {
+                  b.socKwh += ((pe - cs) / 100) * cap;
+                  b.socLegs++;
+                }
+              }
+            }
+            prev = cur;
+          }
+          ["winter", "summer"].forEach(function (k) {
+            var b = out[k];
+            if (b.km <= 0) return;
+            var useSoc = b.socLegs > 0 && b.socLegs === b.legs;
+            b.kwh100 = ((useSoc ? b.socKwh : b.kwh) / b.km) * 100;
+          });
+          return out;
+        }
+
+        /**
+         * Estimate the pack's current usable capacity from the charges that
+         * moved it a long way.
+         *
+         * A charge adds `energy` kWh and lifts the state of charge by
+         * `socEnd - socStart`, so the implied pack size is
+         * energy / (delta / 100). Only a large delta is used: at a 5-point jump
+         * the rounding of either percentage is a large share of the answer, while
+         * a 30-point charge makes it small. The MEDIAN is taken rather than the
+         * mean, because one mistyped percentage should not move the figure the
+         * user is watching for degradation.
+         *
+         * @param {Array} list
+         * @param {number} rated the vehicle's stored usable capacity, 0 if unset
+         * @returns {?{est:number, samples:number, rated:?number, soh:?number}}
+         */
+        function batteryHealth(list, rated) {
+          var MIN_DELTA = 30;
+          var est = [];
+          for (var i = 0; i < (list || []).length; i++) {
+            var s = list[i];
+            var a = soc(s && s.socStart),
+              b = soc(s && s.socEnd),
+              e = num(s && s.energy);
+            if (a === null || b === null) continue;
+            var d = b - a;
+            if (d >= MIN_DELTA && e > 0) est.push(e / (d / 100));
+          }
+          if (!est.length) return null;
+          est.sort(function (x, y) {
+            return x - y;
+          });
+          var mid = est.length >> 1;
+          var median =
+            est.length % 2 ? est[mid] : (est[mid - 1] + est[mid]) / 2;
+          var r = num(rated);
+          return {
+            est: median,
+            samples: est.length,
+            rated: r > 0 ? r : null,
+            soh: r > 0 ? (median / r) * 100 : null,
+          };
         }
 
         function totals(list, initialOdo) {
@@ -6270,6 +6542,7 @@ function say(msg) {
           $("sCost").textContent = fmtMoney(T.cost);
           $("sDur").textContent = T.h.toFixed(1) + " h";
           renderConsumption(sel, v);
+          renderAnalytics(sel, v);
           $("sSpeed").textContent = fmtKw(speedTotal(sel));
           /* The tile shows the real mean whatever the sample size - it reports what
              the data says rather than what we would prefill, so it is not
@@ -6472,7 +6745,14 @@ renderScopePicker();
                   ) +
                   "</span></button>"
                 : "") +
-              (vehicles.length > 1 && mine
+              /* Removing the car stays with the owner, but the button is now
+                 ALWAYS offered - including for the last remaining vehicle. It
+                 used to require vehicles.length > 1, which is exactly the state
+                 a stuck "ghost" vehicle ends up in: the one car the user needs
+                 to be rid of was the one the interface refused to give a button.
+                 doRemoveVehicle re-creates a clean default if the list empties,
+                 so the app always has a vehicle to render against. */
+              (mine
                 ? '<button type="button" class="btn sm dgr" data-rm="' +
                   esc(vehicles[k].id) +
                   '" aria-label="' +
@@ -6481,6 +6761,20 @@ renderScopePicker();
                   }) +
                   '"><span aria-hidden="true">' +
                   TXT("set.remove") +
+                  "</span></button>"
+                : "") +
+              /* The local escape hatch. Offered for a car that is not ours, or
+                 one the device and the server disagree about, and it touches
+                 nothing on the server: the row and its sessions are taken off
+                 this device, which is what unsticks a ghost vehicle the server
+                 will not let us write to. */
+              (!mine || vehicles[k].provisional || hasSyncProblem(vehicles[k].id)
+                ? '<button type="button" class="btn sm ghost" data-forget="' +
+                  esc(vehicles[k].id) +
+                  '" aria-label="' +
+                  TXT("a11y.forgetVeh", { v: esc(vehicles[k].name) }) +
+                  '"><span aria-hidden="true">' +
+                  TXT("set.forget") +
                   "</span></button>"
                 : "") +
               "</div>";
@@ -7501,6 +7795,17 @@ if (!yes) return false;
             key: "favourite",
             re: ["favourite", "favorite", "fav", "favouriteLocation"],
           },
+          {
+            key: "winter",
+            re: [
+              "winter",
+              "wintertyres",
+              "wintertires",
+              "winterconditions",
+              "wintermode",
+              "season",
+            ],
+          },
         ];
         function normHeader(v) {
           return String(v == null ? "" : v)
@@ -7821,6 +8126,10 @@ for (i = 0; i < IMPORT_COLS.length; i++) {
                auto-created. The CSV header "Favourite" still resolves to the
                `favourite` column and is read through this line. */
               fav: isYes(get("favourite")),
+            /* The season, defaulted from the date on the add form but read
+               straight from the file here so an explicit "no" survives a round
+               trip. */
+            winter: isYes(get("winter")),
             created: Date.now(),
           };
         }
@@ -8115,9 +8424,9 @@ vehiclesAdded = vehicles.length - before;
           download(
             "ev-import-template.csv",
             "\ufeff" +
-              "date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fast,home,favourite\n" +
-              "2026-09-28,08:15,00:45,Supercharger Vaasa,52.4,20,80,45000,12.50,Vehicle 1,150 kW 20-80%,yes,no,yes\n" +
-              "2026-09-20,19:40,01:30,Home,30,35,80,44810,,Vehicle 1,,no,yes,no\n",
+              "date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fast,home,favourite,winter\n" +
+              "2026-09-28,08:15,00:45,Supercharger Vaasa,52.4,20,80,45000,12.50,Vehicle 1,150 kW 20-80%,yes,no,yes,no\n" +
+              "2026-01-20,19:40,01:30,Home,30,35,80,44810,,Vehicle 1,,no,yes,no,yes\n",
             "text/csv;charset=utf-8",
           );
           toast(TXT("toast.tplCsv"));
@@ -8140,6 +8449,7 @@ vehiclesAdded = vehicles.length - before;
                   fast: true,
                   home: false,
                   favourite: true,
+                  winter: false,
                 },
               ],
               null,
@@ -8413,6 +8723,7 @@ vehiclesAdded = vehicles.length - before;
           $("eFast").checked = !!s.fast;
           $("eHome").checked = !!s.home;
           $("eFav").checked = !!s.fav;
+          if ($("eWinter")) $("eWinter").checked = !!s.winter;
           /* Load the split after eCost, so a legacy charge pre-fills the
              signed-in user's amount from the known cost. */
           editLoadPayers(s);
@@ -8469,6 +8780,7 @@ if (!$("editForm").reportValidity()) return;
           s.fast = $("eFast").checked;
           s.home = $("eHome").checked;
           s.fav = $("eFav").checked;
+          s.winter = $("eWinter") ? $("eWinter").checked : false;
           s.vehicleId = v.id;
           /* The split travels with the row exactly as on the add form: an empty
              array means nobody recorded, which is different from one person at
@@ -10831,6 +11143,8 @@ function hasKey(key) {
                guard below: an empty time field is not neutral in Chrome, it
                becomes the clock. */
             stampDefaults();
+            /* Derive the season from the date the form just offered. */
+            defaultWinter();
             fillDurationIfEmpty();
           }
           /* Leaving the station view drops the remembered position. It was only
@@ -10911,7 +11225,8 @@ function hasKey(key) {
           });
           binned.vehicles.push(v);
           binned.sessions = binned.sessions.concat(gone);
-          if (cur >= vehicles.length) cur = vehicles.length - 1;
+          ensureVehicle();
+          if (cur >= vehicles.length) cur = Math.max(0, vehicles.length - 1);
           save();
           render();
           toast(TXT("toast.vehBinned", { v: v.name }));
@@ -11432,6 +11747,108 @@ function detachVehicle(id) {
             return true;
           });
         }
+        /**
+         * Is this device and the server at odds about a vehicle?
+         *
+         * Decides whether to offer the local escape hatch. A vehicle in the
+         * stalled queue, or one carrying a charge that could not be written, is
+         * exactly the row the user needs a way out of.
+         * @param {string} vehicleId
+         * @returns {boolean}
+         */
+        function hasSyncProblem(vehicleId) {
+          if (!vehicleId) return false;
+          if (syncStalled.vehicles[vehicleId]) return true;
+          for (var i = 0; i < sessions.length; i++) {
+            var s = sessions[i];
+            if (s.vehicleId === vehicleId && syncStalled.sessions[s.id])
+              return true;
+          }
+          return false;
+        }
+        /** A brand-new default vehicle, matching the one boot creates. */
+        function newDefaultVehicle() {
+          return {
+            id: uuid(),
+            name: TXT("veh.default"),
+            icon: "🚗",
+            initialOdometer: 0,
+            capacity: null,
+            userId: ownerId() || null,
+            /* Provisional when signed in, so it is not pushed until a pull has
+               confirmed the account has no vehicle of its own. */
+            provisional: !!ownerId(),
+          };
+        }
+        /** Never leave the app with no vehicle to render against. */
+        function ensureVehicle() {
+          if (vehicles.length) return;
+          vehicles = [newDefaultVehicle()];
+          cur = 0;
+        }
+        /**
+         * Take one vehicle and its charge history off THIS DEVICE, and nothing
+         * else.
+         *
+         * Deliberately not doRemoveVehicle: that marks the rows dirty and pushes
+         * them, which cannot work for the rows this exists for - a vehicle the
+         * server has never seen, or one this account may not write. It is the
+         * only action that clears a stuck local ghost, and it is safe on any
+         * row because nothing leaves the device.
+         * @param {string} id
+         * @returns {Promise<boolean>}
+         */
+        function forgetVehicle(id) {
+          var v = vehById(id);
+          if (!v) return Promise.resolve(false);
+          return askConfirm(
+            TXT("toast.forgetQ", { v: v.name, n: ofVehicle(id).length }),
+            {
+              heading: "confirm.forgetVehicle",
+              ok: "confirm.forget",
+              irreversible: "confirm.irreversibleForget",
+            },
+          ).then(function (yes) {
+            if (!yes) return false;
+            doForgetVehicle(id);
+            return true;
+          });
+        }
+        function doForgetVehicle(id) {
+          var v = vehById(id);
+          if (!v) return;
+          var gone = sessions.filter(function (s) {
+            return s.vehicleId === id;
+          });
+          vehicles = vehicles.filter(function (x) {
+            return x.id !== id;
+          });
+          sessions = sessions.filter(function (s) {
+            return s.vehicleId !== id;
+          });
+          /* Drop any of its rows already in the bin too, so a charge the user
+             just got rid of cannot reappear. */
+          binned.vehicles = binned.vehicles.filter(function (x) {
+            return x.id !== id;
+          });
+          binned.sessions = binned.sessions.filter(function (s) {
+            return s.vehicleId !== id;
+          });
+          for (var i = 0; i < gone.length; i++) {
+            clearDirty("sessions", gone[i].id);
+            clearStalled("sessions", gone[i].id);
+            forgetAttempts("sessions", gone[i].id);
+          }
+          clearDirty("vehicles", id);
+          clearStalled("vehicles", id);
+          forgetAttempts("vehicles", id);
+          ensureVehicle();
+          if (cur >= vehicles.length) cur = Math.max(0, vehicles.length - 1);
+          save();
+          render();
+          renderSyncPanel();
+          toast(TXT("toast.forgot", { v: v.name, n: gone.length }));
+        }
         /* ---------- usable battery capacity ----------
            Gross and usable are entered in one place and only the usable figure is
            kept. 95% is a middle-of-the-road guess - real ratios run from about
@@ -11537,6 +11954,18 @@ function detachVehicle(id) {
               byCharge !== null &&
               Math.abs(bySoc - byCharge) / Math.max(bySoc, byCharge) > DIVERGE_PCT;
             if (apart) parts.push(TXT("tile.disagree"));
+            /* The spread and the newest leg, so the headline figure is read
+               against something: a mean of 18 with a best of 12 and a worst of
+               34 tells a different story from a flat 18. */
+            if (legs.max100 !== null)
+              parts.push(
+                TXT("tile.bestWorst", {
+                  b: legs.min100.toFixed(1),
+                  w: legs.max100.toFixed(1),
+                }),
+              );
+            if (legs.lastKm !== null)
+              parts.push(TXT("tile.lastLeg", { n: Math.round(legs.lastKm) }));
             if (!parts.length && legs.unattributed > 0)
               parts.push(
                 TXT("tile.noLegs", { n: Math.round(legs.unattributed) }),
@@ -11554,6 +11983,69 @@ function detachVehicle(id) {
                 ? TXT("tile.costLegs", { n: legs.legs })
                 : "";
           }
+        }
+
+        /**
+         * The extra analytics tiles: mean charge size, the seasonal split, and
+         * the estimated battery capacity.
+         *
+         * Kept apart from renderConsumption so the headline efficiency figure and
+         * its provenance stay in one place, and these read as the secondary
+         * readouts they are.
+         * @param {Array} sel  sessions for the active vehicle
+         * @param {Object} v   the vehicle
+         */
+        function renderAnalytics(sel, v) {
+          var avg = avgPerSession(sel);
+          if ($("sAvgKwh"))
+            $("sAvgKwh").textContent = avg.kwh === null ? "—" : avg.kwh.toFixed(1);
+          if ($("sAvgKwhNote")) {
+            /* Weighted cost per kWh actually paid: total money over total energy.
+               This is NOT the mean of each charge's unit price - a 50 kWh charge
+               and a 5 kWh one must not count equally - so it is computed here
+               rather than averaged from per-session figures. */
+            var sumK = 0,
+              sumC = 0;
+            for (var i = 0; i < sel.length; i++) {
+              var e = num(sel[i].energy);
+              if (e > 0) {
+                sumK += e;
+                sumC += costOf(sel[i]);
+              }
+            }
+            $("sAvgKwhNote").textContent = avg.n
+              ? TXT("tile.avgkwhNote", {
+                  n: avg.n,
+                  p: sumK > 0 ? fmtMoney(sumC / sumK) : "—",
+                })
+              : TXT("tile.na");
+          }
+
+          var split = seasonSplit(sel, v.initialOdometer, v.capacity);
+          function fillSeason(idNum, idNote, b) {
+            if ($(idNum))
+              $(idNum).textContent =
+                b.kwh100 === null ? "—" : b.kwh100.toFixed(1);
+            if ($(idNote))
+              $(idNote).textContent =
+                b.kwh100 === null
+                  ? TXT("tile.na")
+                  : TXT("tile.seasonNote", { n: b.legs });
+          }
+          fillSeason("sWinter", "sWinterNote", split.winter);
+          fillSeason("sSummer", "sSummerNote", split.summer);
+
+          var bh = batteryHealth(sel, v.capacity);
+          if ($("sSoh")) $("sSoh").textContent = bh ? bh.est.toFixed(1) : "—";
+          if ($("sSohNote"))
+            $("sSohNote").textContent = bh
+              ? bh.soh === null
+                ? TXT("tile.sohNote", { n: bh.samples })
+                : TXT("tile.sohNoteRated", {
+                    n: bh.samples,
+                    p: Math.round(bh.soh),
+                  })
+              : TXT("tile.sohNone");
         }
 
         function openVeh(id) {
@@ -11671,6 +12163,7 @@ function detachVehicle(id) {
             "Fast",
             "Home",
             "Favourite",
+            "Winter",
             "Notes",
           ];
           var q = function (v) {
@@ -11703,6 +12196,7 @@ function detachVehicle(id) {
               s.fast ? "yes" : "no",
               s.home ? "yes" : "no",
               s.fav ? "yes" : "no",
+              s.winter ? "yes" : "no",
               s.notes || "",
             ]
               .map(q)
@@ -11714,7 +12208,7 @@ function detachVehicle(id) {
         /* ---------- events ---------- */
         document.addEventListener("click", function (e) {
           var t = e.target.closest(
-            "[data-go],[data-v],[data-del],[data-edit],[data-ren],[data-rm],[data-use],[data-fedit],[data-fdel],[data-share],[data-leave],[data-unshare],[data-accept],[data-reject],[data-bin-restore],[data-bin-purge],[data-discard],[data-station-use],[data-station-detail],[data-station-close],[data-camera-find],[data-camera-full],[data-station-find],.station-row",
+            "[data-go],[data-v],[data-del],[data-edit],[data-ren],[data-rm],[data-forget],[data-use],[data-fedit],[data-fdel],[data-share],[data-leave],[data-unshare],[data-accept],[data-reject],[data-bin-restore],[data-bin-purge],[data-discard],[data-station-use],[data-station-detail],[data-station-close],[data-camera-find],[data-camera-full],[data-station-find],.station-row",
           );
           if (!t) return;
           if (t.hasAttribute("data-go")) {
@@ -11762,6 +12256,10 @@ function detachVehicle(id) {
           }
           if (t.hasAttribute("data-rm")) {
             removeVehicle(t.getAttribute("data-rm"));
+            return;
+          }
+          if (t.hasAttribute("data-forget")) {
+            forgetVehicle(t.getAttribute("data-forget"));
             return;
           }
           if (t.hasAttribute("data-share")) {
@@ -12654,6 +13152,7 @@ $("syncBadge").addEventListener("click", function () {
             fast: d.fast.checked,
             home: d.home.checked,
             fav: d.fav.checked,
+            winter: d.winter ? d.winter.checked : false,
             lat: isNum(locGeo.lat) ? locGeo.lat : null,
             lng: isNum(locGeo.lng) ? locGeo.lng : null,
             created: Date.now(),
@@ -12689,7 +13188,11 @@ $("syncBadge").addEventListener("click", function () {
           }
           f.reset();
           $("favNameWrap").hidden = true;
+          /* reset() clears the season box, so re-derive it from the freshly
+             stamped date rather than leaving the next charge unclassified. */
+          winterTouched = false;
           stampDefaults();
+          defaultWinter(true);
           costAuto = false;
           priceAuto = false;
           energyAuto = false;
@@ -12724,6 +13227,14 @@ $("syncBadge").addEventListener("click", function () {
               $("favName").value = $("location").value.trim();
             $("favName").focus();
           }
+        });
+        /* Season default and its manual override. The month drives the box until
+           the user touches it; after that the explicit choice is kept. */
+        $("winter").addEventListener("change", function () {
+          winterTouched = true;
+        });
+        $("date").addEventListener("change", function () {
+          defaultWinter();
         });
         $("payerAdd").addEventListener("click", addPayer);
         $("payerExclude").addEventListener("change", toggleExcludeMe);

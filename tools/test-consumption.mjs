@@ -81,6 +81,15 @@ const legStats = new Function(
 const socLegStats = new Function(
   `${fnSource("sorted")}${fnSource("num")}${fnSource("isNum")}${fnSource("soc")}${fnSource("socLegStats")}; return socLegStats;`,
 )();
+const avgPerSession = new Function(
+  `${fnSource("num")}${fnSource("avgPerSession")}; return avgPerSession;`,
+)();
+const seasonSplit = new Function(
+  `${fnSource("sorted")}${fnSource("num")}${fnSource("isNum")}${fnSource("soc")}${fnSource("seasonSplit")}; return seasonSplit;`,
+)();
+const batteryHealth = new Function(
+  `${fnSource("num")}${fnSource("isNum")}${fnSource("soc")}${fnSource("batteryHealth")}; return batteryHealth;`,
+)();
 
 /* `costOf` falls back to energy x `price`, and `price` is app state. Held here so
    a test can predict the number rather than depending on a global. */
@@ -282,6 +291,88 @@ group("every kWh is accounted for exactly once", () => {
       total,
     );
   }
+});
+
+group("average energy per session ignores blanks, not zeroes", () => {
+  const a = avgPerSession([
+    { energy: 40 },
+    { energy: 60 },
+    { energy: 0 },
+    { energy: "" },
+  ]);
+  is("only the two real charges count", a.n, 2);
+  is("their mean", a.kwh, 50);
+  const none = avgPerSession([{ energy: 0 }, { energy: "" }, {}]);
+  is("no real charge means no figure", none.kwh, null);
+  is("and no sample", none.n, 0);
+});
+
+group("consumption splits by the season of the charge that powered the leg", () => {
+  const list = [
+    { date: "2026-01-10", mileage: 1000, energy: 50, winter: true, socStart: 20, socEnd: 80 },
+    { date: "2026-07-10", mileage: 1300, energy: 30, winter: false, socStart: 20, socEnd: 80 },
+    { date: "2026-07-20", mileage: 1600, energy: 40, winter: false, socStart: 20, socEnd: 80 },
+  ];
+  /* The winter leg runs 1000 -> 1300, powered by the winter charge. The summer
+     leg runs 1300 -> 1600, powered by the first summer charge. The newest
+     charge is held back, as in legStats. */
+  const charge = seasonSplit(list, 0, 0);
+  is("one winter leg", charge.winter.legs, 1);
+  is("300 km in winter", charge.winter.km, 300);
+  near("winter, from charging", charge.winter.kwh100, (50 / 300) * 100, 0.01);
+  is("one summer leg", charge.summer.legs, 1);
+  near("summer, from charging", charge.summer.kwh100, (30 / 300) * 100, 0.01);
+  /* With a capacity, the battery method covers every leg in each season, so it
+     is preferred - exactly as the headline tile does. */
+  const battery = seasonSplit(list, 0, 73.53);
+  near("winter, from the battery", battery.winter.kwh100, (0.6 * 73.53) / 3, 0.01);
+  near("summer, from the battery", battery.summer.kwh100, (0.6 * 73.53) / 3, 0.01);
+  is(
+    "a season with no measured drive has no figure",
+    seasonSplit(
+      [{ date: "2026-07-01", mileage: 100, energy: 10, winter: false }],
+      0,
+      0,
+    ).winter.kwh100,
+    null,
+  );
+});
+
+group("battery capacity is estimated only from large SoC jumps", () => {
+  const rows = [
+    { socStart: 10, socEnd: 60, energy: 36.75 }, // 50 pts -> 73.5 kWh
+    { socStart: 20, socEnd: 55, energy: 25.7 }, // 35 pts -> 73.43 kWh
+    { socStart: 40, socEnd: 50, energy: 8 }, // 10 pts -> ignored
+    { socStart: 30, socEnd: 70, energy: 29.4 }, // 40 pts -> 73.5 kWh
+  ];
+  const h = batteryHealth(rows, 73.53);
+  is("only the big jumps are used", h.samples, 3);
+  near("the median capacity", h.est, 73.5, 0.05);
+  near("state of health percent", h.soh, (73.5 / 73.53) * 100, 0.5);
+  const noRated = batteryHealth(rows, 0);
+  is("no rated capacity means no state of health", noRated.soh, null);
+  is("but the estimate still exists", noRated.est !== null, true);
+  is(
+    "too small a jump gives nothing at all",
+    batteryHealth([{ socStart: 40, socEnd: 50, energy: 8 }], 73.53),
+    null,
+  );
+});
+
+group("the spread and the newest leg are reported", () => {
+  const legs = legStats(
+    [
+      s("2026-10-01", 1000, 50),
+      s("2026-10-05", 1100, 20),
+      s("2026-10-09", 1400, 10),
+    ],
+    0,
+  );
+  /* 1000 -> 1100 carries the first charge (50/100 = 50); 1100 -> 1400 carries
+     the second (20/300 = 6.67). The newest charge is held back. */
+  near("the best leg", legs.min100, 6.666, 0.01);
+  near("the worst leg", legs.max100, 50, 0.01);
+  is("the newest measured leg is 300 km", legs.lastKm, 300);
 });
 
 console.log(`\n${pass} passed, ${failures.length} failed`);

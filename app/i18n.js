@@ -58,6 +58,18 @@
       "tile.cost100": "Avg cost / 100 km",
       "tile.speed": "Avg charge speed",
       "tile.duravg": "Avg session duration",
+      "tile.avgkwh": "Avg energy / session",
+      "tile.avgkwhNote": "{n} charges · {p} per kWh paid",
+      "tile.winter": "Winter kWh/100km",
+      "tile.summer": "Summer kWh/100km",
+      "tile.seasonNote": "{n} measured legs",
+      "tile.soh": "Est. battery capacity",
+      "tile.sohNote": "{n} charges ≥30%",
+      "tile.sohNoteRated": "{n} charges · {p}% of rated",
+      "tile.sohNone": "needs a charge ≥30% SoC",
+      "tile.na": "not enough data",
+      "tile.bestWorst": "best {b} / worst {w}",
+      "tile.lastLeg": "last leg {n} km",
       "as.title": "Add charging session",
       "as.date": "Date",
       "as.time": "Time",
@@ -84,6 +96,7 @@
       "as.fast": "Fast charging session",
       "as.home": "Home charging session",
       "as.saveFav": "Save this location as a favourite",
+      "as.winter": "Winter conditions / winter tyres",
       "as.favName": "Favourite name",
       "as.favHint":
         "Leave empty to use the location text. You can add a map position later in Favourites.",
@@ -146,6 +159,7 @@
       "set.saveVehicle": "Save vehicle",
       "set.rename": "Rename",
       "set.remove": "Remove",
+      "set.forget": "Remove local data",
       "set.price": "Energy price",
       "set.priceLead":
         "Used for any session where the cost is left empty. The same value is editable in whole euro cents on the Add session page.",
@@ -206,6 +220,8 @@
       "how.notes": "Any text",
       "how.flags":
         "<code>yes</code>/<code>no</code>, <code>true</code>/<code>false</code>, or <code>1</code>/<code>0</code>",
+      "how.winter":
+        "<code>yes</code>/<code>no</code>. Defaults from the date's month (November to March is winter); the stored value is what the seasonal figures use.",
       "how.csv": "Example CSV",
       "how.tsvTitle": "TSV",
       "how.tsv":
@@ -265,6 +281,11 @@
       "toast.wipeQ":
         "Delete all vehicles, every stored session and all favourites? This cannot be undone.",
       "toast.remQ": "Remove {v} and its {n} session(s)?",
+      "toast.forgetQ":
+        "Take {v} and its {n} session(s) off this device? Nothing is removed from the server.",
+      "toast.forgot": "{v} removed from this device ({n} sessions)",
+      "toast.winterNeedsSql":
+        "Running an older database: charges sync, but their season is not stored. Run supabase/14-session-winter.sql to keep it.",
       "toast.delQ": "Delete this session at {loc}?",
       "toast.renQ": "New name for {v}",
       "toast.delFavQ": "Delete the favourite “{n}”?",
@@ -362,6 +383,7 @@
       "a11y.deleteFav": "Delete favourite: {v}",
       "a11y.renameVeh": "Rename vehicle: {v}",
       "a11y.removeVeh": "Remove vehicle: {v}",
+      "a11y.forgetVeh": "Remove local data for vehicle: {v}",
       "grp.when": "When the session happened",
       "grp.duration": "How long and how far",
       "grp.soc": "State of charge, start and end",
@@ -401,6 +423,10 @@
       "confirm.remove": "Remove vehicle",
       "confirm.deleteEverything": "Delete everything",
       "confirm.removeVehicle": "Remove this vehicle?",
+      "confirm.forgetVehicle": "Remove this vehicle from this device?",
+      "confirm.forget": "Remove local data",
+      "confirm.irreversibleForget":
+        "The vehicle and its sessions are removed from THIS DEVICE only. If they are on the server they will download again on the next sync.",
       "confirm.deleteSession": "Delete this session?",
       "confirm.deleteFav": "Delete this favourite?",
       "confirm.clearSessions": "Clear all sessions?",
@@ -507,6 +533,7 @@
         "waiting for the owner to approve your access",
       "sync.reason.wrong":
         "the server would not accept this row (row-level security)",
+      "sync.reason.orphan": "its vehicle is not on this device",
       "toast.legacyMoved":
         "{n} piece(s) of unsynced data from an earlier version were moved to the signed-out area. Sign out to see them.",
       "toast.discardQ": "Discard {v} and {n} item(s) from this device?",
@@ -836,6 +863,18 @@
       "tile.cost100": "keskim. €/100 km",
       "tile.speed": "keskim. latausteho",
       "tile.duravg": "keskim. latausaika",
+      "tile.avgkwh": "Keskim. energia / lataus",
+      "tile.avgkwhNote": "{n} latausta · {p} / kWh maksettu",
+      "tile.winter": "Talvi kWh/100km",
+      "tile.summer": "Kesä kWh/100km",
+      "tile.seasonNote": "{n} mitattua osuutta",
+      "tile.soh": "Arvioitu akun kapasiteetti",
+      "tile.sohNote": "{n} latausta ≥30 %",
+      "tile.sohNoteRated": "{n} latausta · {p} % nimellisestä",
+      "tile.sohNone": "vaatii latauksen, jonka SoC ≥30 %",
+      "tile.na": "ei riittävästi tietoja",
+      "tile.bestWorst": "paras {b} / huonoin {w}",
+      "tile.lastLeg": "viimeisin osuus {n} km",
       "as.title": "Lisää lataus",
       "as.date": "Päivämäärä",
       "as.time": "Aika",
@@ -862,6 +901,7 @@
       "as.fast": "Pikalataus",
       "as.home": "Kotilataus",
       "as.saveFav": "Tallenna tämä paikka suosikiksi",
+      "as.winter": "Talviolosuhteet / talvirenkaat",
       "as.favName": "Suosikin nimi",
       "as.favHint":
         "Jätä tyhjäksi, jos haluat käyttää paikan tekstiä. Karttakohteen voit lisätä myöhemmin Suosikissa.",
@@ -925,6 +965,7 @@
       "set.saveVehicle": "Tallenna ajoneuvo",
       "set.rename": "Nimeä uudelleen",
       "set.remove": "Poista",
+      "set.forget": "Poista laitteen tiedot",
       "set.price": "Energian hinta",
       "set.priceLead":
         "Käytetään latauksiin, joissa kustannus jätetään tyhjäksi. Sama arvo on muokattavissa kokonaisina eurosentteinä Lisää lataus -näkymässä.",
@@ -986,6 +1027,8 @@
       "how.notes": "Vapaa teksti",
       "how.flags":
         "<code>kyllä</code>/<code>ei</code>, <code>true</code>/<code>false</code> tai <code>1</code>/<code>0</code>",
+      "how.winter":
+        "<code>kyllä</code>/<code>ei</code>. Oletus tulee päivämäärän kuukaudesta (marras–maalis = talvi); tallennettu arvo ratkaisee kausiluvut.",
       "how.csv": "CSV-esimerkki",
       "how.tsvTitle": "TSV",
       "how.tsv":
@@ -1046,6 +1089,11 @@
       "toast.wipeQ":
         "Poistetaanko kaikki ajoneuvot, kaikki lataukset ja kaikki suosikit? Tätä ei voi perua.",
       "toast.remQ": "Poistetaanko {v} ja sen {n} latausta?",
+      "toast.forgetQ":
+        "Poistetaanko {v} ja sen {n} latausta tästä laitteesta? Palvelimelta ei poisteta mitään.",
+      "toast.forgot": "{v} poistettu tästä laitteesta ({n} latausta)",
+      "toast.winterNeedsSql":
+        "Käytössä vanhempi tietokanta: lataukset synkronoituvat, mutta niiden kautta ei tallenneta. Suorita supabase/14-session-winter.sql.",
       "toast.delQ": "Poistetaanko lataus paikassa {loc}?",
       "toast.renQ": "Uusi nimi ajoneuvulle {v}",
       "toast.delFavQ": "Poistetaanko suosikki “{n}”?",
@@ -1148,6 +1196,7 @@
       "a11y.deleteFav": "Poista suosikki: {v}",
       "a11y.renameVeh": "Nimeä ajoneuvo uudelleen: {v}",
       "a11y.removeVeh": "Poista ajoneuvo: {v}",
+      "a11y.forgetVeh": "Poista ajoneuvon laitetiedot: {v}",
       "grp.when": "Milloin lataus tapahtui",
       "grp.duration": "Kesto ja matka",
       "grp.soc": "Akun varaus, alku ja loppu",
@@ -1191,6 +1240,10 @@
       "confirm.remove": "Poista ajoneuvo",
       "confirm.deleteEverything": "Poista kaikki",
       "confirm.removeVehicle": "Poistetaanko ajoneuvo?",
+      "confirm.forgetVehicle": "Poistetaanko tämä ajoneuvo tästä laitteesta?",
+      "confirm.forget": "Poista laitteen tiedot",
+      "confirm.irreversibleForget":
+        "Ajoneuvo ja sen lataukset poistetaan VAIN TÄSTÄ LAITTEESTA. Jos ne ovat palvelimella, ne latautuvat uudelleen seuraavassa synkronoinnissa.",
       "confirm.deleteSession": "Poistetaanko lataus?",
       "confirm.deleteFav": "Poistetaanko suosikki?",
       "confirm.clearSessions": "Tyhjennetäänkö kaikki lataukset?",
@@ -1292,6 +1345,7 @@
       "sync.reason.notYet": "odottaa omistajan hyväksyntää",
       "sync.reason.wrong":
         "palvelin ei hyväksynyt tätä riviä (rivitason suojaus)",
+      "sync.reason.orphan": "sen ajoneuvo ei ole tällä laitteella",
       "toast.legacyMoved":
         "{n} synkronointematonta tietoa vanhemmasta versiosta siirrettiin uloskirjautuneen tilaan. Kirjaudu ulos nähdäksesi ne.",
       "toast.discardQ": "Hylätäänkö {v} ja {n} kohdetta tältä laitteelta?",
@@ -1621,6 +1675,18 @@
       "tile.cost100": "medel kr / 100 km",
       "tile.speed": "medel laddningseffekt",
       "tile.duravg": "medel sessionstid",
+      "tile.avgkwh": "Medelenergi / session",
+      "tile.avgkwhNote": "{n} laddningar · {p} / kWh betalt",
+      "tile.winter": "Vinter kWh/100km",
+      "tile.summer": "Sommar kWh/100km",
+      "tile.seasonNote": "{n} uppmätta sträckor",
+      "tile.soh": "Uppskattad batterikapacitet",
+      "tile.sohNote": "{n} laddningar ≥30 %",
+      "tile.sohNoteRated": "{n} laddningar · {p} % av nominell",
+      "tile.sohNone": "kräver en laddning med SoC ≥30 %",
+      "tile.na": "för lite data",
+      "tile.bestWorst": "bäst {b} / sämst {w}",
+      "tile.lastLeg": "senaste sträcka {n} km",
       "as.title": "Lägg till laddningssession",
       "as.date": "Datum",
       "as.time": "Tid",
@@ -1647,6 +1713,7 @@
       "as.fast": "Snabbladdning",
       "as.home": "Hemmaladdning",
       "as.saveFav": "Spara den här platsen som favorit",
+      "as.winter": "Vinterförhållanden / vinterdäck",
       "as.favName": "Favoritens namn",
       "as.favHint":
         "Lämna tomt för att använda platsens text. Kartposition kan läggas till senare under Favoriter.",
@@ -1710,6 +1777,7 @@
       "set.saveVehicle": "Spara fordon",
       "set.rename": "Byt namn",
       "set.remove": "Ta bort",
+      "set.forget": "Ta bort lokala data",
       "set.price": "Energipris",
       "set.priceLead":
         "Används för sessioner där kostnaden lämnas tom. Samma värde går att ändra i hela eurocent på sidan Lägg till session.",
@@ -1771,6 +1839,8 @@
       "how.notes": "Valfri text",
       "how.flags":
         "<code>ja</code>/<code>nej</code>, <code>true</code>/<code>false</code> eller <code>1</code>/<code>0</code>",
+      "how.winter":
+        "<code>ja</code>/<code>nej</code>. Standard från datumets månad (november–mars är vinter); det sparade värdet styr säsongssiffrorna.",
       "how.csv": "CSV-exempel",
       "how.tsvTitle": "TSV",
       "how.tsv":
@@ -1832,6 +1902,11 @@
       "toast.wipeQ":
         "Ta bort alla fordon, alla sessioner och alla favoriter? Det går inte att ångra.",
       "toast.remQ": "Ta bort {v} och dess {n} session(er)?",
+      "toast.forgetQ":
+        "Ta bort {v} och dess {n} session(er) från den här enheten? Inget tas bort från servern.",
+      "toast.forgot": "{v} borttagen från den här enheten ({n} sessioner)",
+      "toast.winterNeedsSql":
+        "Äldre databas: laddningar synkas, men deras säsong sparas inte. Kör supabase/14-session-winter.sql.",
       "toast.delQ": "Ta bort sessionen på {loc}?",
       "toast.renQ": "Nytt namn för {v}",
       "toast.delFavQ": "Ta bort favoriten ”{n}”?",
@@ -1932,6 +2007,7 @@
       "a11y.deleteFav": "Ta bort favorit: {v}",
       "a11y.renameVeh": "Byt namn på fordon: {v}",
       "a11y.removeVeh": "Ta bort fordon: {v}",
+      "a11y.forgetVeh": "Ta bort lokala data för fordon: {v}",
       "grp.when": "När sessionen skedde",
       "grp.duration": "Längd och sträcka",
       "grp.soc": "Batterinivå, start och slut",
@@ -1974,6 +2050,10 @@
       "confirm.remove": "Ta bort fordon",
       "confirm.deleteEverything": "Ta bort allt",
       "confirm.removeVehicle": "Ta bort det här fordonet?",
+      "confirm.forgetVehicle": "Ta bort det här fordonet från enheten?",
+      "confirm.forget": "Ta bort lokala data",
+      "confirm.irreversibleForget":
+        "Fordonet och dess sessioner tas bort ENDAST FRÅN DEN HÄR ENHETEN. Om de finns på servern laddas de ner igen vid nästa synkning.",
       "confirm.deleteSession": "Ta bort den här sessionen?",
       "confirm.deleteFav": "Ta bort den här favoriten?",
       "confirm.clearSessions": "Rensa alla sessioner?",
@@ -2075,6 +2155,7 @@
       "sync.reason.notYet": "väntar på att ägaren godkänner din åtkomst",
       "sync.reason.wrong":
         "servern accepterade inte den här posten (radnivåskydd)",
+      "sync.reason.orphan": "dess fordon finns inte på den här enheten",
       "toast.legacyMoved":
         "{n} osynkade datauppgifter från en äldre version flyttades till det utloggade området. Logga ut för att se dem.",
       "toast.discardQ": "Kasta {v} och {n} post(er) från den här enheten?",

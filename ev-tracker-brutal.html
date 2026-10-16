@@ -357,6 +357,26 @@
               <div class="n" id="sDurAvg">—</div>
               <div class="l" data-i18n="tile.duravg"></div>
             </div>
+            <div class="stat">
+              <div class="n" id="sAvgKwh">—</div>
+              <div class="l" data-i18n="tile.avgkwh"></div>
+              <div class="sub" id="sAvgKwhNote"></div>
+            </div>
+            <div class="stat">
+              <div class="n" id="sWinter">—</div>
+              <div class="l" data-i18n="tile.winter"></div>
+              <div class="sub" id="sWinterNote"></div>
+            </div>
+            <div class="stat">
+              <div class="n" id="sSummer">—</div>
+              <div class="l" data-i18n="tile.summer"></div>
+              <div class="sub" id="sSummerNote"></div>
+            </div>
+            <div class="stat">
+              <div class="n" id="sSoh">—</div>
+              <div class="l" data-i18n="tile.soh"></div>
+              <div class="sub" id="sSohNote"></div>
+            </div>
           </div>
           <!-- Mid-screen thumb action zone. Shown only by the focus layout
                (app/app.css hides it everywhere else): the two controls a thumb
@@ -666,6 +686,12 @@
               <input type="checkbox" id="fav" name="fav" /><label
                 for="fav"
                 data-i18n="as.saveFav"
+              ></label>
+            </div>
+            <div class="chk">
+              <input type="checkbox" id="winter" name="winter" /><label
+                for="winter"
+                data-i18n="as.winter"
               ></label>
             </div>
             <div class="f" id="favNameWrap" hidden>
@@ -1107,14 +1133,19 @@
                   <td data-i18n="tag.no"></td>
                   <td data-i18n-html="how.flags"></td>
                 </tr>
+                <tr>
+                  <td><code>winter</code></td>
+                  <td data-i18n="tag.no"></td>
+                  <td data-i18n="how.winter"></td>
+                </tr>
               </tbody>
             </table>
 
             <h4 data-i18n="how.csv"></h4>
             <pre class="sample">
-date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fast,home,favourite
-2026-09-28,08:15,00:45,Supercharger Vaasa,52.4,20,80,45000,12.50,Vehicle 1,150 kW 20-80%,yes,no,yes
-2026-09-20,19:40,01:30,Home,30,35,80,44810,,Vehicle 1,,no,yes,no</pre
+date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fast,home,favourite,winter
+2026-09-28,08:15,00:45,Supercharger Vaasa,52.4,20,80,45000,12.50,Vehicle 1,150 kW 20-80%,yes,no,yes,no
+2026-01-20,19:40,01:30,Home,30,35,80,44810,,Vehicle 1,,no,yes,no,yes</pre
             >
 
             <h4 data-i18n="how.tsvTitle"></h4>
@@ -1138,7 +1169,8 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
     "notes": "150 kW",
     "fast": true,
     "home": false,
-    "favourite": true
+    "favourite": true,
+    "winter": false
   }
 ]</pre
             >
@@ -1522,6 +1554,12 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             <input type="checkbox" id="eFav" /><label
               for="eFav"
               data-i18n="ed.fav"
+            ></label>
+          </div>
+          <div class="chk">
+            <input type="checkbox" id="eWinter" /><label
+              for="eWinter"
+              data-i18n="as.winter"
             ></label>
           </div>
           <div class="addrow" style="margin-top: 1.25rem">
