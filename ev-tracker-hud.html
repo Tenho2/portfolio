@@ -344,6 +344,19 @@
                 </div>
               </div>
 
+              <figure class="hud-cell hud-cell-scope">
+                <div class="chart-panel" id="chartPanel">
+                  <h3 data-i18n="chart.title"></h3>
+                  <p class="chart-note" id="chartNote" hidden></p>
+                  <div class="chartbox" id="chartBox" hidden>
+                    <canvas id="monthChart"></canvas>
+                  </div>
+                </div>
+              </figure>
+
+              <!-- The quick actions sit at the bottom of the screen, last, so
+                   the figures and the chart lead and the launcher is a footer
+                   rather than the first thing a thumb hits. -->
               <div class="hud-cell hud-cell-launch">
                 <div class="qa">
                   <button type="button" data-go="add-session">
@@ -372,6 +385,9 @@
                     ><span data-i18n="qa.addVehicle"></span>
                   </button>
                 </div>
+                <!-- Kept in the DOM with the ids app.js fills, but permanently
+                     hidden: the launcher above covers both actions, so these
+                     were only ever duplicates. -->
                 <div class="thumb-actions" id="thumbActions">
                   <button type="button" class="btn thumb-add" data-go="add-session">
                     <span aria-hidden="true">+</span>
@@ -389,16 +405,6 @@
                   ></select>
                 </div>
               </div>
-
-              <figure class="hud-cell hud-cell-scope">
-                <div class="chart-panel" id="chartPanel">
-                  <h3 data-i18n="chart.title"></h3>
-                  <p class="chart-note" id="chartNote" hidden></p>
-                  <div class="chartbox" id="chartBox" hidden>
-                    <canvas id="monthChart"></canvas>
-                  </div>
-                </div>
-              </figure>
             </div>
           </section>
 

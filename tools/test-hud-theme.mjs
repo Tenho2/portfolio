@@ -16,6 +16,7 @@
 import { readFileSync } from "node:fs";
 
 const css = readFileSync("app/ui/hud.css", "utf8");
+const base = readFileSync("app/ui/base.css", "utf8");
 const app = readFileSync("app/app.js", "utf8");
 const storage = readFileSync("app/storage.js", "utf8");
 const i18n = readFileSync("app/i18n.js", "utf8");
@@ -118,6 +119,34 @@ group("the button markup is the HUD's, not the shared layouts'", () => {
   /* The shared pages must NOT have picked any of this up. */
   ok("classic keeps its sun/moon button", /id="themeBtn"[\s\S]{0,180}<span aria-hidden="true">☀️<\/span>/.test(classic));
   ok("classic has no red-mode button", !/hud-red-btn/.test(classic));
+});
+
+group("the HUD dashboard leads with figures, not duplicated buttons", () => {
+  /* The launcher must come after the readouts and the chart in the markup, and
+     the grid must place it last, or "below the stats and chart" is only true by
+     accident of a media query. */
+  const scope = hud.indexOf("hud-cell-scope");
+  const launch = hud.indexOf("hud-cell-launch");
+  ok("the scope comes before the launcher", scope > 0 && launch > scope);
+  ok(
+    "the grid stacks the launcher last",
+    /grid-template-areas:\s*"fleet scope"\s*"launch launch"/.test(css),
+  );
+  /* The mid-screen duplicates are permanently hidden; the ids stay in the DOM
+     because app.js fills #thumbVeh and the id-parity guard requires them. */
+  ok(
+    "the thumb zone is permanently hidden",
+    /\.hud-stage \.thumb-actions\s*\{\s*display:\s*none/.test(css),
+  );
+});
+
+group("the vehicle rows wrap instead of overflowing", () => {
+  /* The overflow was base.css only: app.css already wrapped, which is why the
+     classic family was fine and the UI themes were not. */
+  ok(
+    "base.css .item allows wrapping",
+    /\.item\s*\{[^}]*flex-wrap:\s*wrap/.test(base),
+  );
 });
 
 console.log(`\n${pass} passed, ${failures.length} failed`);

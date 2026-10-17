@@ -162,14 +162,14 @@ body::before {
   margin-bottom: 0.75rem;
 }
 
-/* Dashboard: readouts, launcher and scope in one grid. */
+/* Dashboard: readouts and scope on top, the launcher as a footer beneath them. */
 .hud-dash-grid {
   display: grid;
   gap: 1rem;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   grid-template-areas:
-    "fleet launch"
-    "scope launch";
+    "fleet scope"
+    "launch launch";
 }
 .hud-cell {
   min-width: 0;
@@ -185,8 +185,12 @@ body::before {
   margin: 0;
 }
 .hud-cell-launch .qa {
-  grid-template-columns: 1fr;
   margin-top: 0;
+}
+/* The mid-screen thumb zone duplicates the launcher. It stays in the DOM only
+   because app.js fills #thumbVeh, but it is never shown on the HUD. */
+.hud-stage .thumb-actions {
+  display: none;
 }
 
 /* Add session: a 12-column readout board of bays. */
@@ -386,8 +390,8 @@ body.red-mode .hud-red-btn {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
       "fleet"
-      "launch"
-      "scope";
+      "scope"
+      "launch";
   }
 }
 

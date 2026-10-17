@@ -10448,6 +10448,38 @@ var rest = stationAll.length - shown.length;
           row.parentNode.insertBefore(d, row.nextSibling);
         }
 
+        /**
+         * Put the "you are here" dot on the stations map.
+         *
+         * The search origin IS the device position: findStationsNearMe is the
+         * only caller of runStationSearch and it asks the browser for a fix. So
+         * the dot is drawn at the same point the map is centred on, and it is
+         * what turns "ten chargers within 10 km" into "the one 300 m behind me".
+         * It is replaced, never stacked, on the next draw.
+         */
+        function drawUserLocation(slot, lat, lng) {
+          if (!slot || !slot.map || !isNum(lat) || !isNum(lng)) return;
+          try {
+            if (slot.userPin) {
+              slot.map.removeLayer(slot.userPin);
+              slot.userPin = null;
+            }
+            var m = L.circleMarker([+lat, +lng], {
+              className: "user-loc",
+              radius: 8,
+              color: "#ffffff",
+              weight: 3,
+              fillColor: "#2b7fff",
+              fillOpacity: 1,
+            });
+            m.bindPopup(TXT("st.youAreHere"));
+            m.addTo(slot.map);
+            slot.userPin = m;
+          } catch (e) {
+            /* a marker is cosmetic; it must never break the search */
+          }
+        }
+
         function drawStationPins(list) {
           var slot = maps["stationMap"];
           if (!slot || !slot.map) return;
@@ -10573,6 +10605,17 @@ function runStationSearch(lat, lng) {
                    there puts a confident green marker next to the words "no
                    stations", which is worse than an empty map. */
                 drawStationPins([]);
+                /* The map still opens, with the driver's own dot centred. A
+                   blank canvas beside "no stations" reads as a broken search,
+                   and knowing where you are is useful even with nothing found. */
+                loadLeaflet(function () {
+                  var slot = getMap("stationMap");
+                  if (!slot || !slot.map) return;
+                  try {
+                    drawUserLocation(slot, lat, lng);
+                    slot.map.setView([lat, lng], 13);
+                  } catch (e) {}
+                });
                 return;
               }
               /* The true total, not the five on screen. Saying "5 stations" when the search
@@ -10593,8 +10636,21 @@ function runStationSearch(lat, lng) {
                 var slot = getMap("stationMap");
                 if (!slot || !slot.map) return;
                 try {
-                  slot.map.setView([lat, lng], 13);
                   drawStationPins(stationSlice(stationResults));
+                  /* The driver's own position, shown next to the chargers and
+                     framed with them so both are visible at once. */
+                  drawUserLocation(slot, lat, lng);
+                  var pts = [[lat, lng]];
+                  for (var pi = 0; pi < slot.stationPins.length; pi++) {
+                    var ll = slot.stationPins[pi].getLatLng();
+                    pts.push([ll.lat, ll.lng]);
+                  }
+                  if (pts.length > 1)
+                    slot.map.fitBounds(L.latLngBounds(pts), {
+                      padding: [30, 30],
+                      maxZoom: 15,
+                    });
+                  else slot.map.setView([lat, lng], 13);
                 } catch (e) {}
               });
             })
@@ -11062,8 +11118,19 @@ function hasKey(key) {
                 var slot = getMap("stationMap");
                 if (!slot || !slot.map) return;
                 try {
-                  slot.map.setView([lat, lng], 11);
                   drawCameraPins(cameraResults);
+                  drawUserLocation(slot, lat, lng);
+                  var cpts = [[lat, lng]];
+                  for (var ci = 0; ci < (slot.cameraPins || []).length; ci++) {
+                    var cll = slot.cameraPins[ci].getLatLng();
+                    cpts.push([cll.lat, cll.lng]);
+                  }
+                  if (cpts.length > 1)
+                    slot.map.fitBounds(L.latLngBounds(cpts), {
+                      padding: [30, 30],
+                      maxZoom: 14,
+                    });
+                  else slot.map.setView([lat, lng], 11);
                 } catch (e) {}
               });
             })

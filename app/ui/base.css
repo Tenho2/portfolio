@@ -378,6 +378,9 @@ footer {
   font-weight: 600;
   cursor: pointer;
   text-decoration: none;
+  /* A long label wraps inside the viewport instead of widening the row. */
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 .btn:hover {
   filter: brightness(1.06);
@@ -631,6 +634,9 @@ fieldset.row > .f,
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 0.6rem;
   margin-top: 1rem;
+  /* Grid items default to min-width:auto, which lets a wide label push the
+     track (and the page) wider than the viewport. */
+  min-width: 0;
 }
 .qa button {
   display: flex;
@@ -643,6 +649,8 @@ fieldset.row > .f,
   border-radius: var(--radius);
   color: var(--text);
   cursor: pointer;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .qa button:hover {
   border-color: var(--primary);
@@ -838,7 +846,10 @@ table.fmt th {
 .item {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  row-gap: 0.5rem;
   gap: 0.6rem;
+  min-width: 0;
   padding: 0.55rem 0.7rem;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
@@ -847,7 +858,7 @@ table.fmt th {
 }
 .item .nm {
   flex: 1 1 auto;
-  min-width: 0;
+  min-width: 8rem;
   overflow: hidden;
   text-overflow: ellipsis;
 }

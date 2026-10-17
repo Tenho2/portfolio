@@ -849,6 +849,40 @@ await group("results go to their own diagnostics section", () => {
   ok("a lookup is never filed as an error", !/diag\("station/.test(app));
 });
 
+await group("the map shows the driver where they are", () => {
+  const i18n = readFileSync("app/i18n.js", "utf8");
+  ok("a user-location helper exists", /function drawUserLocation\(/.test(app));
+  ok(
+    "it is a circular dot, not a numbered pin",
+    /drawUserLocation[\s\S]{0,600}circleMarker/.test(app),
+  );
+  ok(
+    "the charger search places it",
+    /drawStationPins\(stationSlice\(stationResults\)\);[\s\S]{0,200}drawUserLocation\(slot, lat, lng\)/.test(app),
+  );
+  ok(
+    "the camera search places it too",
+    /drawCameraPins\(cameraResults\);[\s\S]{0,200}drawUserLocation\(slot, lat, lng\)/.test(app),
+  );
+  /* Framed over the dot and the pins, so the dot cannot sit off-screen behind
+     a ring of charged-from markers. */
+  ok(
+    "the view is framed over the dot and the pins",
+    (app.match(/fitBounds\(L\.latLngBounds/g) || []).length >= 2,
+  );
+  ok("its popup is labelled", /TXT\("st\.youAreHere"\)/.test(app));
+  ok(
+    "the label is translated in all three languages",
+    (i18n.match(/"st\.youAreHere":/g) || []).length === 3,
+  );
+  /* Even with nothing found, the map opens on the driver's dot rather than a
+     blank canvas. */
+  ok(
+    "it is placed even when no chargers are found",
+    /drawStationPins\(\[\]\);[\s\S]{0,700}drawUserLocation\(slot, lat, lng\)/.test(app),
+  );
+});
+
 /* The suite is only meaningful if it is running. A module that stopped
    publishing its interface would make every call above throw rather than
    quietly pass, but a group that stopped executing would look like a pass. */
