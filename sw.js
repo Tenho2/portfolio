@@ -31,10 +31,9 @@
  * tools/test-sw-bump.mjs asserts that every shell file was touched, and that the
  * version moved with it.
  *
- * Last bumped: 2026-10-15, for the four experimental UIs (hud, brutal,
- * editorial, glass) and their shared app/ui/ stylesheets.
+ * Last bumped: 2026-10-17, for the HUD mobile nav moved to a fixed bottom bar.
  */
-const VERSION = "v68";
+const VERSION = "v69";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [
