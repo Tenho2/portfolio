@@ -12,25 +12,52 @@
  */
 
 :root {
-  --bg: #06080b;
-  --bg-2: #06080b;
-  --surface: #0a0f14;
-  --surface-2: #0d141b;
-  --surface-3: #111b24;
-  --line: #1b2833;
-  --text: #d7f6ec;
-  --text-muted: #5f8a80;
-  --primary: #34f5c5;
+  --bg: #040608;
+  --bg-2: #040608;
+  --surface: #06090a;
+  --surface-2: #090d0e;
+  --surface-3: #0c1214;
+  --line: #121f1a;
+  --text: #adc1b7;
+  --text-muted: #4f6e62;
+  --primary: #52b788;
   --primary-ink: #04140f;
-  --accent: #4cc9f0;
-  --danger: #ff5c7a;
-  --warn: #ffd166;
-  --ok: #34f5c5;
+  --accent: #6fae9c;
+  --danger: #c96a6a;
+  --warn: #c9a35a;
+  --ok: #52b788;
+  /* The dim glow and the scanline tint are tokens so the red-mode block can
+     retint both without re-declaring a single component rule. Both are
+     deliberately faint: this is a dimmed cockpit, not a neon sign. */
+  --glow: rgb(82 183 136 / 0.16);
+  --scan: rgb(82 183 136 / 0.012);
   --radius: 2px;
   --radius-sm: 2px;
   --shadow: none;
   --font: var(--font-mono);
   --font-head: var(--font-mono);
+}
+
+/* Night-vision red. Every component already reads these tokens, so setting the
+   palette here re-skins the whole cockpit; --glow and --scan keep the wash and
+   the figures in the same deep red instead of the green they default to. */
+body.red-mode {
+  --bg: #050203;
+  --bg-2: #050203;
+  --surface: #0a0303;
+  --surface-2: #120505;
+  --surface-3: #180707;
+  --line: #240c0d;
+  --text: #e09f9f;
+  --text-muted: #803b3d;
+  --primary: #d9383a;
+  --primary-ink: #1a0303;
+  --accent: #e0763a;
+  --danger: #ff6b6b;
+  --warn: #e0a03a;
+  --ok: #d9776a;
+  --glow: rgb(217 56 58 / 0.18);
+  --scan: rgb(217 56 58 / 0.012);
 }
 
 /* A faint scanline wash over the whole canvas. */
@@ -42,10 +69,10 @@ body::before {
   z-index: 1;
   background: repeating-linear-gradient(
     0deg,
-    rgb(52 245 197 / 0.03) 0,
-    rgb(52 245 197 / 0.03) 1px,
+    var(--scan) 0,
+    var(--scan) 1px,
     transparent 1px,
-    transparent 3px
+    transparent 4px
   );
 }
 
@@ -254,7 +281,7 @@ body::before {
 .stat .n {
   color: var(--primary);
   font-size: 1.4rem;
-  text-shadow: 0 0 12px rgb(52 245 197 / 0.35);
+  text-shadow: 0 0 10px var(--glow);
 }
 .stat .l {
   color: var(--text-muted);
@@ -270,6 +297,35 @@ body::before {
   border-color: var(--line);
 }
 
+/* The HUD header button is the red-mode switch, not a colour toggle: a target
+   with a label, wider than the square icon button base.css draws. */
+.hud-red-btn {
+  width: auto;
+  height: auto;
+  min-height: 34px;
+  gap: 0.4rem;
+  padding: 0.3rem 0.7rem;
+}
+.hud-red-btn .ic {
+  display: inline-flex;
+  font-size: 1rem;
+  line-height: 1;
+}
+.hud-red-btn .hud-red-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+body.red-mode .hud-red-btn {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+/* The Settings Appearance (light/dark) selector is meaningless on a permanently
+   dark cockpit; the header switch is the whole control. */
+.hud-theme-field {
+  display: none;
+}
+
 .qa button,
 .vcard,
 .item,
@@ -283,7 +339,7 @@ body::before {
 .vcard[aria-pressed="true"],
 .loc-near-row:hover {
   border-color: var(--primary);
-  box-shadow: 0 0 0 1px var(--primary) inset;
+  box-shadow: 0 0 0 1px var(--glow) inset;
 }
 
 .top h1 {
@@ -299,7 +355,7 @@ body::before {
   background: transparent;
 }
 .station-row.on {
-  background: rgb(52 245 197 / 0.08);
+  background: var(--glow);
 }
 .station-num {
   border-radius: 0;
@@ -385,6 +441,17 @@ body::before {
   }
   .hud-head {
     position: static;
+  }
+  /* On a phone the switch collapses back to its square icon; the label would
+     crowd the single-row header. The accessible name is set by script. */
+  .hud-red-btn {
+    width: 38px;
+    height: 38px;
+    min-height: 0;
+    padding: 0;
+  }
+  .hud-red-btn .hud-red-label {
+    display: none;
   }
   .hud-stage,
   .hud-foot {

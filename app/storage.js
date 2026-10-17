@@ -24,6 +24,10 @@
      preference, so it is global too. */
   var K_THEME = "theme";
   var K_NAVALIGN = "navAlign";
+  /* Night-vision red for the HUD layout. Like the theme and the navigation
+     handedness, it describes the device rather than the account, so it is a
+     global key and not part of any account's bucket. */
+  var K_REDMODE = "redMode";
 
   /**
    * The full key set for one account's bucket.
@@ -62,6 +66,7 @@
       n: pre + "shareNames",
       t: K_THEME,
       na: K_NAVALIGN,
+      rm: K_REDMODE,
     };
   }
 

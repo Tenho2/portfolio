@@ -75,6 +75,12 @@
           } catch (e) {
             /* button labels are cosmetic; never block the language switch over them */
           }
+          /* The theme button's accessible name is set by script on the HUD
+             (red mode), and applyI18n has just reset it to the generic
+             aria.theme, so it is re-applied here in the new language. */
+          try {
+            syncThemeButton();
+          } catch (e) {}
           /* Re-translate the confirmation dialog too: it is built once, so its
              static labels would otherwise stay in the previous language. */
           try {
@@ -217,6 +223,10 @@
           for (var j = 0; j < LAYOUT_PAGES.length; j++)
             if (LAYOUT_PAGES[j].file === here) return LAYOUT_PAGES[j].name;
           return LAYOUT_PAGES[0].name;
+        }
+        /* The one layout whose header button is not a colour toggle. */
+        function isHud() {
+          return currentLayout() === "hud";
         }
         function otherLayout() {
           var cur = currentLayout();
@@ -13421,7 +13431,55 @@ $("syncBadge").addEventListener("click", function () {
           if (s) s.textContent = icon;
           else b.textContent = icon;
         }
+        /* ---------- red mode (HUD only) ----------
+           The HUD is a permanently dark cockpit, so a light/dark toggle means
+           nothing there. On that one layout the header button becomes a
+           night-vision red switch instead: it sets a body class the HUD sheet
+           re-skins from, and remembers the choice per device like the theme. */
+        function redModeOn() {
+          return document.body.classList.contains("red-mode");
+        }
+        function toggleRedMode() {
+          var on = document.body.classList.toggle("red-mode");
+          try {
+            localStorage.setItem(K.rm, on ? "on" : "off");
+          } catch (e) {
+            /* the mode applies now; only the remembered choice is lost */
+          }
+          syncThemeButton();
+          renderChart();
+        }
+        /**
+         * Keep the header theme button honest for whichever layout is running.
+         *
+         * Shared layouts: the sun/moon colour toggle. HUD: the red-mode switch -
+         * a target that fills in when night vision is on, with a visible label
+         * and an action-worded accessible name that flips with the state
+         * (aria-pressed carries the state itself, per toggle-button practice).
+         */
+        function syncThemeButton() {
+          var b = $("themeBtn");
+          if (!b) return;
+          if (isHud()) {
+            var on = redModeOn();
+            var ic = b.querySelector(".ic") || b.querySelector("span");
+            if (ic) ic.textContent = on ? "●" : "◎";
+            b.setAttribute("aria-pressed", on ? "true" : "false");
+            b.setAttribute(
+              "aria-label",
+              TXT(on ? "aria.redModeDisable" : "aria.redModeEnable"),
+            );
+            return;
+          }
+          b.removeAttribute("aria-pressed");
+          setThemeIcon(document.body.classList.contains("dark") ? "🌙" : "☀️");
+        }
         $("themeBtn").addEventListener("click", function () {
+          /* On the HUD this button is the red-mode switch, not a colour toggle. */
+          if (isHud()) {
+            toggleRedMode();
+            return;
+          }
           var d = document.body.classList.toggle("dark");
           setThemeIcon(d ? "🌙" : "☀️");
           try {
@@ -13552,10 +13610,13 @@ $("eDelete").addEventListener("click", function () {
         });
 
         /* ---------- boot ---------- */
-        if (localStorage.getItem(K.t) === "dark") {
+        if (localStorage.getItem(K.t) === "dark")
           document.body.classList.add("dark");
-          setThemeIcon("🌙");
-        }
+        /* Red mode is a HUD-only preference. It is applied only on that layout,
+           and before the first button sync, so the toggle lands already correct. */
+        if (isHud() && localStorage.getItem(K.rm) === "on")
+          document.body.classList.add("red-mode");
+        syncThemeButton();
         applyNavAlign(localStorage.getItem(K.na));
         /* Before the first read, so the signed-out bucket is already whole. The
            module reports how many slots it moved rather than showing a toast
