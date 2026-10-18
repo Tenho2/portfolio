@@ -6458,6 +6458,9 @@ function say(msg) {
             n: sessions.length,
             v: vehicles.length,
           });
+          /* Keep the favourite submit label tied to the editing state across
+             re-renders, so a language switch cannot desync it. */
+          syncFavSaveLabel();
 
           var multi = vehicles.length > 1;
           $("vehWrap").hidden = !multi;
@@ -8978,6 +8981,16 @@ closeEdit();
           return best ? best.f : null;
         }
         /**
+         * The submit label follows the editing state and nothing else, so it can
+         * never get stuck on "Update favourite" after the form has moved on to a
+         * new entry. Called wherever `editFav` changes, and on every render, so a
+         * language switch cannot desync it either.
+         */
+        function syncFavSaveLabel() {
+          var b = $("fSave");
+          if (b) b.textContent = TXT(editFav ? "fav.update" : "fav.save");
+        }
+        /**
          * Load a favourite into the form for editing.
          * @param {Object} f  a favourite from the favs array
          */
@@ -8992,7 +9005,7 @@ closeEdit();
             syncFavCents();
           }
           editFav = f.id || null;
-          $("fSave").textContent = f.id ? TXT("fav.update") : TXT("fav.save");
+          syncFavSaveLabel();
           if (isNum(f.lat) && isNum(f.lng))
             showPin("map", f.lat, f.lng, f.name, favPinDragged);
         }
@@ -9006,7 +9019,7 @@ closeEdit();
           if ($("fPriceCents")) $("fPriceCents").value = "";
           if ($("fPriceMirror")) $("fPriceMirror").textContent = "";
           editFav = null;
-          $("fSave").textContent = TXT("fav.save");
+          syncFavSaveLabel();
           $("geoStat").textContent = TXT("fav.findHint");
           clearPin("map");
         }
@@ -9050,7 +9063,10 @@ closeEdit();
           }
           saveFavs();
           renderFavs();
-          fillFavForm(f);
+          /* Reset to a fresh entry. Leaving the form in edit mode after a save is
+             what left the button reading "Update favourite" for the next, new
+             address, so the following save overwrote the entry just added. */
+          clearFavForm();
           toast(
             TXT(isNum(f.lat) ? "toast.favSavedMap" : "toast.favSavedNo", {
               v: f.name,
@@ -9084,8 +9100,10 @@ closeEdit();
         function editFavById(id) {
           var f = favById(id);
           if (!f) return;
-          fillFavForm(f);
+          /* Navigate first: entering the view resets the form for a new entry,
+             so the fill has to happen after it or it would be wiped. */
           go("favourites");
+          fillFavForm(f);
           $("fName").focus();
         }
         /**
@@ -10664,6 +10682,53 @@ function runStationSearch(lat, lng) {
             });
         }
 
+        /**
+         * Search for chargers near a typed city or address.
+         *
+         * Uses the same Nominatim lookup the favourites form uses, then hands the
+         * coordinates to the normal station search, so the map, the list and the
+         * road cameras all behave exactly as they do for "near me". A typed place
+         * has no accuracy figure, so the fix-quality note is suppressed.
+         */
+        function stationAddressSearch() {
+          var input = $("stationAddr");
+          var q = input ? String(input.value || "").trim() : "";
+          if (!q) {
+            toast(TXT("toast.locFirst"));
+            if (input) input.focus();
+            return;
+          }
+          if (!navigator.onLine) {
+            setStationStatus(TXT("st.offline"));
+            return;
+          }
+          var btn = $("stationAddrBtn");
+          if (btn) btn.disabled = true;
+          setStationStatus(TXT("st.searching"));
+          fetch(nomUrl(q, 1))
+            .then(function (r) {
+              if (!r.ok) throw new Error("http " + r.status);
+              return r.json();
+            })
+            .then(function (res) {
+              var hit = pickBestHit(res, q);
+              var lat = hit ? parseFloat(hit.lat) : NaN;
+              var lng = hit ? parseFloat(hit.lon) : NaN;
+              if (!isFinite(lat) || !isFinite(lng)) {
+                setStationStatus(TXT("toast.noMatch", { q: q }));
+                return;
+              }
+              stationFixM = null;
+              runStationSearch(lat, lng);
+            })
+            .catch(function () {
+              setStationStatus(TXT("st.lookupFailed", { e: "network" }));
+            })
+            .then(function () {
+              if (btn) btn.disabled = false;
+            });
+        }
+
         function findStationsNearMe() {
           /* The button is disabled only for the duration of one fix, and re-enabled
            whatever the outcome. Leaving it disabled was a dead control: a
@@ -11236,6 +11301,11 @@ function hasKey(key) {
             setCameraStatus("");
           }
           if (id === "favourites") {
+            /* Arriving at the view means "add a favourite"; editing re-fills the
+               form after the navigation (editFavById). Without this the last
+               edited entry stayed in the form with an "Update" button, and the
+               next new address overwrote it. */
+            clearFavForm();
             loadLeaflet(function () {
               if (maps["map"] && maps["map"].map)
                 setTimeout(function () {
@@ -12285,7 +12355,7 @@ function detachVehicle(id) {
         /* ---------- events ---------- */
         document.addEventListener("click", function (e) {
           var t = e.target.closest(
-            "[data-go],[data-v],[data-del],[data-edit],[data-ren],[data-rm],[data-forget],[data-use],[data-fedit],[data-fdel],[data-share],[data-leave],[data-unshare],[data-accept],[data-reject],[data-bin-restore],[data-bin-purge],[data-discard],[data-station-use],[data-station-detail],[data-station-close],[data-camera-find],[data-camera-full],[data-station-find],.station-row",
+            "[data-go],[data-v],[data-del],[data-edit],[data-ren],[data-rm],[data-forget],[data-use],[data-fedit],[data-fdel],[data-share],[data-leave],[data-unshare],[data-accept],[data-reject],[data-bin-restore],[data-bin-purge],[data-discard],[data-station-use],[data-station-detail],[data-station-close],[data-station-addr],[data-camera-find],[data-camera-full],[data-station-find],.station-row",
           );
           if (!t) return;
           if (t.hasAttribute("data-go")) {
@@ -12405,6 +12475,10 @@ function detachVehicle(id) {
             closeStationDetail();
             return;
           }
+          if (t.hasAttribute("data-station-addr")) {
+            stationAddressSearch();
+            return;
+          }
           if (t.hasAttribute("data-station-find")) findStationsNearMe();
           if (t.hasAttribute("data-camera-find")) findCamerasNearMe();
           /* The full-size picture opens in a new tab. Loading 264 KB into the
@@ -12444,6 +12518,13 @@ function detachVehicle(id) {
           stationResults = stationAll.slice(0, next);
           renderStations();
           drawStationPins(stationSlice(stationResults));
+        });
+        /* Enter in the address field searches, like the button. */
+        $("stationAddr").addEventListener("keydown", function (e) {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            stationAddressSearch();
+          }
         });
         /* The role dropdown carries its target in one attribute because the
            share panel is rebuilt from scratch on every render and cannot keep

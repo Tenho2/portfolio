@@ -19,7 +19,7 @@
   --surface-3: #0c1214;
   --line: #121f1a;
   --text: #adc1b7;
-  --text-muted: #4f6e62;
+  --text-muted: #7a998c;
   --primary: #52b788;
   --primary-ink: #04140f;
   --accent: #6fae9c;
@@ -31,6 +31,9 @@
      deliberately faint: this is a dimmed cockpit, not a neon sign. */
   --glow: rgb(82 183 136 / 0.16);
   --scan: rgb(82 183 136 / 0.012);
+  /* A faint fill for clickable things, so they read as controls rather than
+     floating text. Retinted with the rest of the palette in red mode. */
+  --tint: rgb(82 183 136 / 0.05);
   --radius: 2px;
   --radius-sm: 2px;
   --shadow: none;
@@ -58,6 +61,7 @@ body.red-mode {
   --ok: #d9776a;
   --glow: rgb(217 56 58 / 0.18);
   --scan: rgb(217 56 58 / 0.012);
+  --tint: rgb(217 56 58 / 0.06);
 }
 
 /* A faint scanline wash over the whole canvas. */
@@ -301,6 +305,16 @@ body::before {
   border-color: var(--line);
 }
 
+/* The HUD keeps a single price field: the Euro mirror is clutter, so it is
+   hidden and the cents field takes the row. */
+.f:has(> #fPrice) {
+  display: none;
+}
+.f:has(> #fPriceCents) {
+  max-width: none !important;
+  flex: 1 1 200px;
+}
+
 /* The HUD header button is the red-mode switch, not a colour toggle: a target
    with a label, wider than the square icon button base.css draws. */
 .hud-red-btn {
@@ -330,12 +344,13 @@ body.red-mode .hud-red-btn {
   display: none;
 }
 
+.btn:not(.ghost),
 .qa button,
 .vcard,
 .item,
 .loc-near-row,
 .camera-card {
-  background: transparent;
+  background: var(--tint);
   border: 1px solid var(--line);
   border-radius: 0;
 }
@@ -436,6 +451,30 @@ body.red-mode .hud-red-btn {
   }
   .hud-rack .side-nav li {
     flex: 0 0 auto;
+  }
+  /* Five tabs in thumb order: Dashboard, Add, Log, Stations, Settings.
+     Favourites and the bin are reached from Settings and the log, so they are
+     not tabs; the station search is. Order is explicit rather than relying on
+     source order, so the markup can move without re-shuffling the bar. */
+  .hud-rack .side-nav li:nth-child(4),
+  .hud-rack .side-nav li:nth-child(5) {
+    display: none;
+  }
+  .hud-rack .nav-stations {
+    display: block;
+    order: 4;
+  }
+  .hud-rack .side-nav li:nth-child(1) {
+    order: 1;
+  }
+  .hud-rack .side-nav li:nth-child(2) {
+    order: 2;
+  }
+  .hud-rack .side-nav li:nth-child(3) {
+    order: 3;
+  }
+  .hud-rack .side-nav li:nth-child(6) {
+    order: 5;
   }
   .hud-rack .side-nav button {
     flex-direction: column;

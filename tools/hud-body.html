@@ -1123,6 +1123,21 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                 <span data-i18n="st.title"></span>
               </h2>
               <p class="lead hud-lead" data-i18n="st.lead"></p>
+              <div class="addrow" style="margin-top: 0">
+                <input
+                  type="text"
+                  id="stationAddr"
+                  data-i18n-ph="st.addrPh"
+                  autocomplete="off"
+                />
+                <button
+                  type="button"
+                  class="btn sec"
+                  id="stationAddrBtn"
+                  data-station-addr
+                  data-i18n="st.addrGo"
+                ></button>
+              </div>
               <div class="qa" style="margin-top: 0">
                 <button type="button" class="btn sm" id="stationFindBtn" data-station-find>
                   <span class="ic" aria-hidden="true">📍</span

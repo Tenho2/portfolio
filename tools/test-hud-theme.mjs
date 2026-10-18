@@ -48,7 +48,7 @@ group("the default cockpit is a relaxed, low-glare green", () => {
   ok("the neon mint is gone", !/#34f5c5/.test(css));
   ok("the primary is the sage green", /--primary:\s*#52b788/.test(root));
   ok("the body text is the humble pale green", /--text:\s*#adc1b7/.test(root));
-  ok("the muted text is dimmed", /--text-muted:\s*#4f6e62/.test(root));
+  ok("the muted text is legible", /--text-muted:\s*#7a998c/.test(root));
   ok("the rules are barely-visible", /--line:\s*#121f1a/.test(root));
   ok("the background is near black", /--bg:\s*#040608/.test(root));
   ok("surfaces step up only slightly", /--surface:\s*#06090a/.test(root) && /--surface-2:\s*#090d0e/.test(root) && /--surface-3:\s*#0c1214/.test(root));

@@ -31,9 +31,10 @@
  * tools/test-sw-bump.mjs asserts that every shell file was touched, and that the
  * version moved with it.
  *
- * Last bumped: 2026-10-17, for the HUD mobile nav moved to a fixed bottom bar.
+ * Last bumped: 2026-10-18, for the favourites form-state reset, the station
+ * address search, and the HUD bottom-nav order / contrast / single price field.
  */
-const VERSION = "v69";
+const VERSION = "v70";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [
