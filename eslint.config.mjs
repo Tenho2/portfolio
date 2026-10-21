@@ -65,6 +65,10 @@ const rules = {
 
   /* A soft warning: Object.prototype methods are sometimes shadowed by data. */
   "no-prototype-builtins": "warn",
+  /* Catches a BOM or non-breaking space that reached the middle of a source
+     file. It is invisible in every editor and turns into a syntax error only
+     when the file is compiled on a different toolchain. */
+  "no-irregular-whitespace": "error",
 
   /* Style rules that produced noise rather than bugs. Explicit, so a future
      reader does not "helpfully" enable them. */
@@ -104,6 +108,18 @@ export default [
         /* Published by app/stations.js, which runs before this script. */
         StationData: "readonly",
       },
+    },
+    linterOptions: { reportUnusedDisableDirectives: "error" },
+    rules,
+  },
+  {
+    /* The service worker is a classic script with worker globals, not browser
+       ones. Linting it closes the last shell file the narrow pass skipped. */
+    files: ["sw.js"],
+    languageOptions: {
+      ...language,
+      sourceType: "script",
+      globals: { ...globals.serviceworker, ...globals.browser },
     },
     linterOptions: { reportUnusedDisableDirectives: "error" },
     rules,

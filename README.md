@@ -116,14 +116,15 @@ to the page therefore brings it under test automatically.
 : linted statically instead, below.
 
 `eslint.config.mjs` / `npm run lint:code`
-: Static analysis for `app/*.js`, `app/shell.mjs`, `tools/*.mjs` and the config
-: itself. Deliberately narrow: `no-undef`, `no-unused-vars`, `no-redeclare`,
-: `no-dupe-keys`, `no-unreachable` and the assignment/comparison rules that catch
-: real mistakes. Style rules (`eqeqeq`, `no-var`, `prefer-const`, `no-console`,
-: `camelcase`) are explicitly off: this code base uses loose null checks, `var`
-: and function hoisting on purpose, and its console diagnostics are intended.
-: `--max-warnings=0`, so a warning fails the build. The first run removed real
-: dead code (see the lint-noise note below).
+: Static analysis for `app/*.js`, `app/shell.mjs`, `tools/*.mjs`, `sw.js` and
+: the config itself. Deliberately narrow: `no-undef`, `no-unused-vars`,
+: `no-redeclare`, `no-dupe-keys`, `no-unreachable`, `no-irregular-whitespace`
+: and the assignment/comparison rules that catch real mistakes. Style rules
+: (`eqeqeq`, `no-var`, `prefer-const`, `no-console`, `camelcase`) are explicitly
+: off: this code base uses loose null checks, `var` and function hoisting on
+: purpose, and its console diagnostics are intended. `--max-warnings=0`, so a
+: warning fails the build. The first run removed real dead code (see the
+: lint-noise note below).
 
 `tools/check-sql.mjs`
 : Static checks for the migrations, because there is no PostgreSQL on the
@@ -156,6 +157,18 @@ station pagination variable were assigned and never used; `toast.geoDenied` was
 a duplicate key in all three complete language blocks, so one translation was
 silently unreachable; and an unused `ak` binding was redeclared in the same
 function. All were removed or renamed.
+
+A later audit with the full ESLint **recommended** set, including `sw.js`, found
+one more real issue: a stray `U+FEFF` BOM at the start of a line in
+`tools/test-ui.mjs`. Editors hide it and JavaScript tolerates it as whitespace,
+which is why nothing failed; `no-irregular-whitespace` now catches it. With that
+fixed, the recommended set reports **0 problems** across `app/*.js`,
+`tools/*.mjs`, `sw.js` and the config.
+
+The same audit with style rules enabled reports **1,797 warnings** — 1,590
+`no-var`, 189 `no-console`, 18 `eqeqeq` — which is exactly why they stay off.
+The codebase has almost no _logic_ lint left; what remains is a deliberate ES5
+house style.
 
 Two helpers are deliberately kept although the app does not call them:
 `setPayerDraft()` and `payerTotals()` are extracted by

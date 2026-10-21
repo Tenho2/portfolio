@@ -614,7 +614,7 @@ group("a failed import destroys nothing", () => {
   );
 });
 
-﻿group("an admin can edit a shared vehicle, but never reassign it", () => {
+group("an admin can edit a shared vehicle, but never reassign it", () => {
   const sql = readFileSync("supabase/04-roles.sql", "utf8");
   /* A with check only sees the NEW row, so `user_id = auth.uid()` there did not
      mean "the owner may not change" - it meant "only the owner may write at

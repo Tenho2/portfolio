@@ -68,6 +68,10 @@ reversed one deliberate design decision.
   counter, a dead station page variable and duplicate `toast.geoDenied` keys in
   all three complete languages. `setPayerDraft` and `payerTotals` are test-only;
   they carry an explicit disable comment rather than a blanket exclusion.
+  A later full-recommended audit, including `sw.js`, found one stray `U+FEFF`
+  BOM in `tools/test-ui.mjs`; it is fixed, `no-irregular-whitespace` is now on,
+  and `sw.js` is in the lint scope. The style profile would add ~1,797 warnings
+  (1,590 `no-var`, 189 `no-console`), so those rules stay deliberately off.
 
 ## The week before (2026-10-11 → 2026-10-18, 22 commits)
 
