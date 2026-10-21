@@ -9,9 +9,9 @@ belongs in [README.md](README.md); this file is the part that goes stale.
 | -------------- | --------------------------------------------------------------------------- |
 | HEAD           | `e88b730` — commit and push are the user's job (see ground rules below)     |
 | Working tree   | **dirty on purpose**: the ESLint cleanup is uncommitted                     |
-| Service worker | `v72`                                                                       |
+| Service worker | `v73`                                                                       |
 | Build stamp    | `2026-10-21`                                                                |
-| Tests          | 2001 assertions, 0 failures, across 30 suites (`npm run check`)             |
+| Tests          | 2016 assertions, 0 failures, across 30 suites (`npm run check`)             |
 | Database       | migration `15-vehicle-baseline` **must be run before deploying this build** |
 
 The assertion total is the sum of the per-suite counts; `tools/test-i18n-markup.mjs`
@@ -43,7 +43,14 @@ reversed one deliberate design decision.
   while setting another.
 - **Retro scanlines are opt-in and off by default.** The HUD checkbox writes a
   global `scanlines` preference; `hud.css` draws `body::before` only under
-  `body.show-scanlines`.
+  `body.show-scanlines`. The enabled wash is 3% ink on a 1px/3px line so the
+  toggle is perceptible; at 1.2%/4px it was indistinguishable from off.
+- **A Settings checkbox no longer blocks the update reload.** The
+  `controllerchange` guard postpones reload only for controls holding
+  unsubmitted text (`isTypingTarget`). Previously any focused input - including
+  a checkbox just ticked - skipped the reload, leaving the page on the previous
+  `app.js` and `hud.css` while the new HTML was already loaded. That presents as
+  a checkbox that appears inert and scanlines that will not turn off.
 - **HUD destructive buttons are readable.** `hud.css` replaced `base.css`'s red
   fill with `--tint` but inherited its dark ink (`#2a0808`), so delete buttons
   were dark red on near-black. A later `.btn.dgr` rule now uses `--danger` as ink
@@ -209,6 +216,11 @@ wholesale.
   mostly balanced. The real check is `npm run check`.
 - Bump `VERSION` in `sw.js` on every shell change; `tools/test-sw-bump.mjs` and a
   pre-commit hook both enforce it.
+- **The update reload is guarded by typing, not by focus.** `isTypingTarget()`
+  returns true only for text-like inputs and textareas. A checkbox, radio,
+  button or select has already committed, so it must not postpone the
+  `controllerchange` reload; doing so left a page mixing new HTML with old
+  cached `app.js`/`hud.css`, which looks exactly like a broken setting.
 - **ESLint is deliberately narrow.** `eslint.config.mjs` turns style rules
   (`eqeqeq`, `no-var`, `prefer-const`, `no-console`) explicitly off; enabling
   them would bury the logic findings in 14k lines of deliberate ES5. Add a rule

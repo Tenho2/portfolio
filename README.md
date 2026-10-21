@@ -183,7 +183,7 @@ files that a static host can serve as they are.
 | ------------------------ | ------ | ------------------------------------ |
 | `ev-tracker.html`        | 1,904  | markup, classic layout               |
 | `ev-tracker-wide.html`   | 1,904  | markup, wide layout                  |
-| `app/app.js`             | 14,046 | application logic                    |
+| `app/app.js`             | 14,076 | application logic                    |
 | `app/app.css`            | 2,921  | the shared design system             |
 | `app/layout-classic.css` | 17     | the classic navigation shell         |
 | `app/layout-wide.css`    | 182    | the wide navigation shell            |
@@ -191,7 +191,7 @@ files that a static host can serve as they are.
 | `app/storage.js`         | 202    | per-account local storage keys       |
 | `app/shell.mjs`          | 109    | how the eight pages are assembled    |
 | `app/ui/base.css`        | 1,425  | shared base for the experimental UIs |
-| `app/ui/hud.css`         | 538    | the HUD cockpit theme                |
+| `app/ui/hud.css`         | 540    | the HUD cockpit theme                |
 
 Classic `<script src>` rather than ES modules on purpose: it keeps the page
 working from `file://` with no build step, and each file gets its own scope, so
@@ -530,7 +530,12 @@ changing the app.
       preference and the manifest start page redirects to it. This also fixes the
       installed PWA always launching into `classic`.
 - [x] **Retro scanlines toggle.** HUD-only, opt-in and off by default, stored as
-      a device preference; the wash is drawn only under `body.show-scanlines`.
+      a device preference; the wash is drawn only under `body.show-scanlines` and
+      is strong enough to see when enabled (3% ink, 1px line every 3px).
+- [x] **A pending update applies after a Settings toggle.** The
+      `controllerchange` reload was skipped for any focused input, including a
+      checkbox, so the page could keep old `app.js`/`hud.css` beside new HTML.
+      Only text-entry controls postpone the reload now.
 - [x] **Appearance survives a reload.** Theme, red mode and scanlines are
       restored together by one `restoreAppearance()` using `classList.toggle`, so no
       preference can overwrite another.

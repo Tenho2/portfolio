@@ -13999,6 +13999,41 @@ $("eDelete").addEventListener("click", function () {
          app is fully usable without it, and a rejected promise here would be
          an unhandled rejection for the user. */
       var swReloading = false;
+      /**
+       * Whether focus is in a control that can hold unsubmitted text.
+       *
+       * Only those justify postponing a reload: losing a half-typed session is
+       * real data loss. A checkbox or a select has already committed its value
+       * when it fires, so treating it like a text field meant that ticking a
+       * setting during a service-worker update skipped the reload - and left
+       * the page running the previous app.js and stylesheets while the new HTML
+       * was already on screen. That is exactly the "I ticked the box and
+       * nothing changed" state.
+       *
+       * @param {?Element} a the focused element
+       * @returns {boolean}
+       */
+      function isTypingTarget(a) {
+        if (!a) return false;
+        if (a.tagName === "TEXTAREA") return true;
+        if (a.tagName !== "INPUT") return false;
+        var type = String(a.type || "text").toLowerCase();
+        return (
+          type === "text" ||
+          type === "search" ||
+          type === "email" ||
+          type === "password" ||
+          type === "url" ||
+          type === "tel" ||
+          type === "number" ||
+          type === "date" ||
+          type === "time" ||
+          type === "datetime-local" ||
+          type === "month" ||
+          type === "week" ||
+          type === "file"
+        );
+      }
       window.addEventListener("load", function () {
         if (!("serviceWorker" in navigator)) return;
         if (location.protocol !== "http:" && location.protocol !== "https:")
@@ -14031,15 +14066,10 @@ $("eDelete").addEventListener("click", function () {
           if (swReloading) return;
           /* Reloading while somebody is halfway through typing a session would
              throw their entry away, so leave them on the current build; the
-             next navigation picks the new one up. */
-          var a = document.activeElement;
-          if (
-            a &&
-            (a.tagName === "INPUT" ||
-              a.tagName === "TEXTAREA" ||
-              a.tagName === "SELECT")
-          )
-            return;
+             next navigation picks the new one up. A checkbox, radio or select
+             has already committed, so it must NOT block the reload - that is
+             how a Settings toggle could leave the page on old scripts. */
+          if (isTypingTarget(document.activeElement)) return;
           swReloading = true;
           location.reload();
         });

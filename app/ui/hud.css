@@ -27,10 +27,12 @@
   --warn: #c9a35a;
   --ok: #52b788;
   /* The dim glow and the scanline tint are tokens so the red-mode block can
-     retint both without re-declaring a single component rule. Both are
-     deliberately faint: this is a dimmed cockpit, not a neon sign. */
+     retint both without re-declaring a single component rule. The wash is
+     deliberately faint, but it has to be perceptible when the user asks for it:
+     at 0.012 it was indistinguishable from "off", which made the Retro
+     scanlines checkbox look broken. */
   --glow: rgb(82 183 136 / 0.16);
-  --scan: rgb(82 183 136 / 0.012);
+  --scan: rgb(82 183 136 / 0.03);
   /* A faint fill for clickable things, so they read as controls rather than
      floating text. Retinted with the rest of the palette in red mode. */
   --tint: rgb(82 183 136 / 0.05);
@@ -60,7 +62,7 @@ body.red-mode {
   --warn: #e0a03a;
   --ok: #d9776a;
   --glow: rgb(217 56 58 / 0.18);
-  --scan: rgb(217 56 58 / 0.012);
+  --scan: rgb(217 56 58 / 0.03);
   --tint: rgb(217 56 58 / 0.06);
 }
 
@@ -78,7 +80,7 @@ body.show-scanlines::before {
     var(--scan) 0,
     var(--scan) 1px,
     transparent 1px,
-    transparent 4px
+    transparent 3px
   );
 }
 

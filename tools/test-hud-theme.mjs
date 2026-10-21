@@ -64,6 +64,12 @@ group("the glow and the scanlines are dim and token-driven", () => {
   /* A dimmed cockpit: the glow is a whisper, not a halo. */
   const glow = (root.match(/--glow:\s*rgb\([^)]*\/\s*([\d.]+)\)/) || [])[1];
   ok("the glow alpha is faint (<= 0.2)", !!glow && Number(glow) <= 0.2);
+  /* But the scanlines are opt-in, so when they ARE on they have to be visible.
+     At 0.012 the checkbox made no perceptible difference and looked broken. */
+  const scan = (root.match(/--scan:\s*rgb\([^)]*\/\s*([\d.]+)\)/) || [])[1];
+  ok("the scanline alpha is perceptible (>= 0.02)", !!scan && Number(scan) >= 0.02);
+  ok("and still subtle (<= 0.08)", !!scan && Number(scan) <= 0.08);
+  ok("the lines are close-set, like the original cockpit", /transparent 1px,\s*transparent 3px/.test(css));
 });
 
 group("red mode re-skins the whole palette by token", () => {

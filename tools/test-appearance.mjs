@@ -60,6 +60,9 @@ const layoutRedirectTarget = new Function(
     "; return layoutRedirectTarget;",
 )();
 const bootClasses = new Function(`${fnSource("bootClasses")}; return bootClasses;`)();
+const isTypingTarget = new Function(
+  `${fnSource("isTypingTarget")}; return isTypingTarget;`,
+)();
 
 /* app/storage.js is a classic script that publishes onto window. */
 function loadStorage(localStorage) {
@@ -162,6 +165,32 @@ group("one preference cannot wipe another at boot", () => {
      previous attempt produced. */
   ok("it never assigns className", !/className\s*=/.test(restore));
   ok("it re-syncs the header button", /syncThemeButton\(\)/.test(restore));
+});
+
+group("a pending update is not blocked by a checkbox", () => {
+  /* The controllerchange reload used to be skipped for ANY focused input. That
+     meant ticking "Retro scanlines" during a service-worker update left the
+     page running the old app.js and hud.css while the new HTML was already on
+     screen - a checkbox that appears to do nothing and scanlines that stay on. */
+  const el = (tagName, type) => ({ tagName, type });
+  is("nothing focused", isTypingTarget(null), false);
+  is("a button", isTypingTarget(el("BUTTON", undefined)), false);
+  is("a checkbox", isTypingTarget(el("INPUT", "checkbox")), false);
+  is("a radio", isTypingTarget(el("INPUT", "radio")), false);
+  is("a select", isTypingTarget(el("SELECT", undefined)), false);
+  is("a text field", isTypingTarget(el("INPUT", "text")), true);
+  is("an input with no type (text by default)", isTypingTarget(el("INPUT", "")), true);
+  is("a number field", isTypingTarget(el("INPUT", "number")), true);
+  is("a textarea", isTypingTarget(el("TEXTAREA", undefined)), true);
+  is("a pending file choice", isTypingTarget(el("INPUT", "file")), true);
+  ok(
+    "the reload guard consults it",
+    /if \(isTypingTarget\(document\.activeElement\)\) return;/.test(app),
+  );
+  ok(
+    "and no longer blocks on the bare INPUT tag",
+    !/a\.tagName === "INPUT"[\s\S]{0,120}a\.tagName === "TEXTAREA"/.test(app),
+  );
 });
 
 group("the documentation matches the behaviour", () => {
