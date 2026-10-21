@@ -58,12 +58,6 @@ function group(name, fn) {
 }
 
 /* The app's own helpers, built from its own source. */
-const num = new Function(`${fnSource("num")}; return num;`)();
-const isNum = new Function(`${fnSource("isNum")}; return isNum;`)();
-const soc = new Function(
-  `${fnSource("isNum")}${fnSource("num")}${fnSource("soc")}; return soc;`,
-)();
-const sorted = new Function(`${fnSource("sorted")}; return sorted;`)();
 /* `costOf` falls back to energy x `price`, which is app state rather than a
    function. Supplied here at a known value so the cost assertions can predict
    the number instead of depending on whatever the user last typed. */

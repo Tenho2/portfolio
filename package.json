@@ -13,10 +13,13 @@
     "fmt:check": "prettier --check \"*.{json,md}\"",
     "fmt:html": "prettier --write \"*.html\"",
     "lint:html": "html-validate \"*.html\"",
-    "lint:js": "node tools/check-inline-js.mjs && node tools/check-sql.mjs",
+    "lint:code": "eslint app tools eslint.config.mjs --max-warnings=0",
+    "lint:js": "node tools/check-inline-js.mjs && node tools/check-sql.mjs && npm run lint:code",
     "verify": "npm run check && npm run fmt"
   },
   "devDependencies": {
+    "eslint": "^9.39.5",
+    "globals": "^17.13.0",
     "html-validate": "^9.7.1",
     "jsdom": "^30.1.2",
     "prettier": "^3.4.2"

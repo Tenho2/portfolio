@@ -37,7 +37,7 @@
  *
  *   node tools/test-layouts.mjs
  */
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 
 const PAGES = [
@@ -71,7 +71,6 @@ function group(name, fn) {
 }
 
 const read = (f) => readFileSync(f, "utf8");
-const appCss = read("app/app.css");
 const layoutCss = {
   classic: read("app/layout-classic.css"),
   wide: read("app/layout-wide.css"),

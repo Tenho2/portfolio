@@ -228,12 +228,6 @@
         function isHud() {
           return currentLayout() === "hud";
         }
-        function otherLayout() {
-          var cur = currentLayout();
-          for (var i = 0; i < LAYOUT_PAGES.length; i++)
-            if (LAYOUT_PAGES[i].name !== cur) return LAYOUT_PAGES[i];
-          return LAYOUT_PAGES[0];
-        }
         /** The file for a remembered layout name, or null if it is not a page. */
         function layoutFileFor(name) {
           for (var i = 0; i < LAYOUT_PAGES.length; i++)
@@ -383,24 +377,6 @@
               Math.sin(dLng / 2) *
               Math.sin(dLng / 2);
           return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
-        }
-        /**
-         * When this place was last used, as a timestamp, or -1.
-         * Compared per place, not globally: the newest session overall is
-         * arbitrary when two saved chargers are close together.
-         */
-        function lastUsedAt(f) {
-          if (!f) return -1;
-          var want = (f.address || f.name || "").toLowerCase();
-          var best = -1;
-          for (var i = 0; i < sessions.length; i++) {
-            var s = sessions[i];
-            if (!s || s.deletedAt) continue;
-            if (String(s.location || "").toLowerCase() !== want) continue;
-            var t = Date.parse((s.date || "") + "T" + (s.time || "00:00"));
-            if (isFinite(t) && t > best) best = t;
-          }
-          return best;
         }
         /**
          * Put a saved place into the form.
@@ -2034,11 +2010,6 @@ function retryDeleted() {
    table is not installed yet, so a single-user install is unaffected. */
         var shares = {};
         var sharesChecked = false;
-        function shareTableReady() {
-          return (
-            sharesChecked && Object.keys(shares).length >= 0 && sharesAvailable
-          );
-        }
         var sharesAvailable = false;
         /**
          * Load who may drive each vehicle.
@@ -2499,7 +2470,6 @@ function roleSelect(vehicleId, userId, current, id, who) {
                 .toUpperCase();
 if (code) {
                   shareCodeCache[vehicleId] = code;
-                  codesAvailable = true;
                   delete shareCodeProblems[vehicleId];
                 }
               return code;
@@ -2512,7 +2482,6 @@ if (code) {
               var msg = String((e && e.message) || "").toLowerCase();
               var missing =
                 /does not exist|404|not found|pgrst/i.test(msg);
-              if (missing) codesAvailable = false;
               /* Why the code is absent, so the panel can say it instead of
                  spinning forever. ensure_share_code raises P0001 "vehicle does
                  not belong to this user" both when the caller is not the owner
@@ -2696,8 +2665,6 @@ function redeemShareCode(code) {
 
         /* ---------- sharing user interface ---------- */
         var shareTarget = null;
-        var shareCodeCache = {};
-        var codesAvailable = false;
         var shareNames = {};
         /** Read the invited-names cache for the CURRENT bucket.
          *
@@ -4605,7 +4572,6 @@ if (who !== lastAccount) {
                 sharesChecked = false;
                 shareCodeCache = {};
                 shareCodeProblems = {};
-                codesAvailable = false;
 shareTarget = null;
               /* renderShare() is the only thing that hides or rewrites the share
                  panel, and every call site was guarded on shareTarget, which is
@@ -5696,6 +5662,11 @@ function say(msg) {
           return out;
         }
 
+        /* Test-only helper: tools/test-session-payers.mjs extracts it by name to
+           pin how a restored split is loaded. Kept rather than deleted because
+           the assertion documents the intended edit-sheet behaviour; the live
+           edit path currently inlines the same loop in loadEditPayers(). */
+        // eslint-disable-next-line no-unused-vars -- extracted by test-session-payers.mjs
         function setPayerDraft(list) {
           payerDraft = [];
           var src = Array.isArray(list) ? list : [];
@@ -6073,6 +6044,10 @@ function say(msg) {
            person, which reads as though an absent row were an assertion about
            a person. It is not one; it is an absence of information.
         */
+        /* Test-only helper: tools/test-session-payers.mjs extracts it by name to
+           pin the split arithmetic. The live breakdown is payBreakdown(); kept
+           so the accounting stays covered. */
+        // eslint-disable-next-line no-unused-vars -- extracted by test-session-payers.mjs
         function payerTotals(list) {
           var byName = {};
           var order = [];
@@ -7331,7 +7306,6 @@ function retryNow() {
          */
         async function resetThisDevice() {
           var name = $("accountName").textContent || "";
-          var keys = [];
           /* Two gates in one dialog: the warning is the body, the typed word is
              the button. The OK button stays disabled until the word matches
              exactly, so there is nothing to get wrong after the prompt appears. */
@@ -8235,9 +8209,7 @@ for (i = 0; i < IMPORT_COLS.length; i++) {
         function importText(text, fileName) {
           var name = String(fileName || "").toLowerCase();
           var errors = [],
-            made = [],
-            vehiclesAdded = 0,
-            before = vehicles.length;
+            made = [];
           var isJson = /\.json$/.test(name) || /^\s*[[{]/.test(text);
           /* Declared here rather than inside the JSON branch below: the apply
              step after the parse reads all three, and a CSV import never enters
@@ -8263,9 +8235,6 @@ if (data && !Array.isArray(data) && Array.isArray(data.sessions)) {
                    the price changed and phantom vehicles in memory, all while
                    reporting "nothing was imported". The next unrelated save from
                    any edit then made those permanent. */
-                var pendFavs = null;
-                var pendPrice = null;
-                var pendVehAdds = [];
                 if (Array.isArray(data.favourites)) {
                   pendFavs = data.favourites;
                 }
@@ -8370,7 +8339,6 @@ for (var c = 0; c < head.length; c++) {
               errors.push(TXT("err.ignored", { c: unknown.join(", ") }));
             }
           }
-vehiclesAdded = vehicles.length - before;
             if (!made.length) {
               showImport(
                 "bad",
@@ -8443,7 +8411,6 @@ vehiclesAdded = vehicles.length - before;
                   baselineKwh100: posOrNull(pa.baselineKwh100),
                   baselineKm: posOrNull(pa.baselineKm),
                 });
-                vehiclesAdded++;
               }
               for (var m = 0; m < made.length; m++) sessions.push(made[m]);
               save();
@@ -9195,22 +9162,6 @@ closeEdit();
           go("favourites");
           fillFavForm(f);
           $("fName").focus();
-        }
-        /**
-         * Delete a favourite after confirmation.
-         * @param {string} id  favourite id
-         */
-        function delFav(id) {
-          var f = favById(id);
-          if (!f) return;
-          return askConfirm(TXT("toast.delFavQ", { n: f.name }), {
-            heading: "confirm.deleteFav",
-            ok: "confirm.delete",
-          }).then(function (yes) {
-            if (!yes) return false;
-            doDeleteFav(id);
-            return true;
-          });
         }
         /**
          * Create or update a favourite from a saved session, so ticking
@@ -10423,7 +10374,6 @@ var STATION_PAGE = 10;
         var stationAll = [];
         var stationResults = [];
 var stationCentre = null;
-          var stationPage = 0;
           var stationOpen = null;
           /* Bumped by every search and every camera load. A response whose token
              no longer matches is discarded rather than rendered. */
@@ -11133,7 +11083,6 @@ function hasKey(key) {
         var STATION_CAMERA_RADIUS_M = 10000;
         var CAMERA_NEAREST = 6;
         var cameraResults = [];
-        var cameraCentre = null;
 
         function setCameraStatus(t) {
           var el = $("cameraStat");
@@ -11243,7 +11192,6 @@ function hasKey(key) {
             .then(function (rows) {
               if (mine !== cameraToken) return;
               cameraResults = rows.slice(0, CAMERA_NEAREST);
-              cameraCentre = { lat: lat, lng: lng };
               var box = $("cameraList");
               if (!cameraResults.length) {
                 setCameraStatus(TXT("cam.none", { r: CAMERA_RADIUS_M / 1000 }));
@@ -11583,19 +11531,6 @@ binned.sessions = still;
           toast(TXT("toast.restored"));
           markDirty("vehicles", id);
           syncVehicle(v);
-        }
-        /** Remove one favourite location. Called after the user confirms. */
-        function doDeleteFav(id) {
-          var f = null;
-          for (var i = 0; i < favs.length; i++) if (favs[i].id === id) f = favs[i];
-          if (!f) return;
-          favs = favs.filter(function (x) {
-            return x.id !== id;
-          });
-          if (editFav === id) clearFavForm();
-          saveFavs();
-            render();
-            toast(TXT("toast.delFav"));
         }
         /** Move every session to the bin, keeping vehicles and favourites. Reversible:
             the confirmation says so and the bin lists everything it took. */
@@ -13413,8 +13348,7 @@ $("syncBadge").addEventListener("click", function () {
          * @returns {{value: number, label: string}}
          */
         function mileageFloor(vehicleId, date, excludeId) {
-          var floor = 0,
-            label = "";
+          var label = "";
           var base = 0;
           for (var vi = 0; vi < vehicles.length; vi++)
             if (vehicles[vi] && vehicles[vi].id === vehicleId)

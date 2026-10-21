@@ -20,9 +20,8 @@
  *   node tools/test-station-ui.mjs
  */
 import { readFileSync } from "node:fs";
-import { appSource, fnSource, pageSource } from "./app-source.mjs";
+import { fnSource, pageSource } from "./app-source.mjs";
 
-const app = appSource();
 const html = pageSource();
 const css = readFileSync("app/app.css", "utf8");
 /* Translations live in their own module now, not in the app script. */
@@ -120,7 +119,6 @@ group("the selected station row is readable in dark mode", () => {
      the 3:1 floor for large text. */
   const surface3 = darkVar("--surface-3");
   const text = darkVar("--text");
-  const muted = darkVar("--text-muted");
   const naive = ratio(text, surface3);
   ok(
     `the token alone would give only ${naive && naive.toFixed(2)}:1`,

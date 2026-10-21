@@ -7,9 +7,9 @@ belongs in [README.md](README.md); this file is the part that goes stale.
 
 |                |                                                                             |
 | -------------- | --------------------------------------------------------------------------- |
-| HEAD           | `91fb55e` — commit and push are the user's job (see ground rules below)     |
-| Working tree   | **dirty on purpose**: 2026-10-21 work is uncommitted                        |
-| Service worker | `v71`                                                                       |
+| HEAD           | `e88b730` — commit and push are the user's job (see ground rules below)     |
+| Working tree   | **dirty on purpose**: the ESLint cleanup is uncommitted                     |
+| Service worker | `v72`                                                                       |
 | Build stamp    | `2026-10-21`                                                                |
 | Tests          | 2001 assertions, 0 failures, across 30 suites (`npm run check`)             |
 | Database       | migration `15-vehicle-baseline` **must be run before deploying this build** |
@@ -53,6 +53,14 @@ reversed one deliberate design decision.
 - **Docs.** README's layout section now describes eight pages, the migration
   table lists every file incl. 15, and `## To do` records this feedback round and
   moves the three finished items (mobile log, payer split, `focus`) to Done.
+- **ESLint is in the build** (`eslint.config.mjs`, `npm run lint:code`, run by
+  `npm run check` with `--max-warnings=0`). Deliberately narrow: logic rules
+  only, style rules explicitly off. The first pass removed real dead code
+  (`otherLayout`, `lastUsedAt`, `shareTableReady`, `delFav`, `doDeleteFav`), a
+  duplicated share-code cache, a write-only `codesAvailable`, an unused import
+  counter, a dead station page variable and duplicate `toast.geoDenied` keys in
+  all three complete languages. `setPayerDraft` and `payerTotals` are test-only;
+  they carry an explicit disable comment rather than a blanket exclusion.
 
 ## The week before (2026-10-11 → 2026-10-18, 22 commits)
 
@@ -201,6 +209,11 @@ wholesale.
   mostly balanced. The real check is `npm run check`.
 - Bump `VERSION` in `sw.js` on every shell change; `tools/test-sw-bump.mjs` and a
   pre-commit hook both enforce it.
+- **ESLint is deliberately narrow.** `eslint.config.mjs` turns style rules
+  (`eqeqeq`, `no-var`, `prefer-const`, `no-console`) explicitly off; enabling
+  them would bury the logic findings in 14k lines of deliberate ES5. Add a rule
+  only when it catches a class of real bug, and keep `--max-warnings=0` honest
+  by annotating genuine exceptions with a reason.
 
 ## Current shape of the data model
 

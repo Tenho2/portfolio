@@ -596,7 +596,12 @@ group("a failed import destroys nothing", () => {
   ok("the price is committed after the bail-out", priceWrite > bail);
   ok("favourites are committed after the bail-out", imp.indexOf("if (pendFavs)") > bail);
   ok("vehicles are committed after the bail-out", imp.indexOf("pendVehAdds.length") > bail);
-  ok("the pending values are collected, not applied", /var pendFavs = null;/.test(imp));
+  ok(
+    "the pending values are collected, not applied",
+    /* Declared once, before the JSON branch, because the apply step after the
+       parse reads all three and a CSV import never enters that branch. */
+    /var pendFavs = null,/.test(imp),
+  );
   /* Replacing favourites must replace their bin too, or loadFavs() re-reads the
      old one and a place ends up both live and binned. */
   ok("the favourites bin key is replaced as well", /localStorage\.setItem\(K\.bf, JSON\.stringify\(\[\]\)\);/.test(imp));

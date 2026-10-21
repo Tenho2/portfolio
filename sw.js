@@ -32,10 +32,10 @@
  * version moved with it.
  *
  * Last bumped: 2026-10-21, for the vehicle consumption baseline, the opt-in
- * HUD scanlines toggle and readable destructive buttons, and remembering the
- * layout and appearance across launches.
+ * HUD scanlines toggle and readable destructive buttons, remembering the
+ * layout and appearance across launches, and the ESLint dead-code cleanup.
  */
-const VERSION = "v71";
+const VERSION = "v72";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [

@@ -308,8 +308,6 @@
       "toast.geoFail2": "Address lookup failed (offline or blocked).",
       "toast.geoNone": "This browser cannot share your location.",
       "toast.geoWait": "Waiting for location permission…",
-      "toast.geoDenied":
-        "Location permission was denied. You can still search for the address.",
       "toast.geoUnavail": "Your location is not available right now.",
       "toast.geoError": "Could not read your location.",
       "toast.geoPerm": "You can still search for the address.",
@@ -1135,8 +1133,6 @@
       "toast.geoFail2": "Osoitehaku epäonnistui (offline tai estetty).",
       "toast.geoNone": "Tämä selain ei voi jakaa sijaintiasi.",
       "toast.geoWait": "Odotetaan sijaintilupaa…",
-      "toast.geoDenied":
-        "Sijaintilupa evättiin. Voit silti hakea osoitteen haulla.",
       "toast.geoUnavail": "Sijaintiasi ei ole juuri nyt käytettävissä.",
       "toast.geoError": "Sijaintia ei voitu lukea.",
       "toast.geoPerm": "Voit silti hakea osoitteen haulla.",
@@ -1968,8 +1964,6 @@
         "Adresssökningen misslyckades (offline eller blockerad).",
       "toast.geoNone": "Den här webbläsaren kan inte dela din plats.",
       "toast.geoWait": "Väntar på platsbehörighet…",
-      "toast.geoDenied":
-        "Platsbehörighet nekades. Du kan fortfarande söka adressen.",
       "toast.geoUnavail": "Din plats är inte tillgänglig just nu.",
       "toast.geoError": "Kunde inte läsa din plats.",
       "toast.geoPerm": "Du kan fortfarande söka adressen.",
@@ -2662,9 +2656,9 @@
     var ar = scope.querySelectorAll("[data-i18n-aria]");
     for (var m = 0; m < ar.length; m++) {
       var a = ar[m],
-        ak = a.getAttribute("data-i18n-aria");
-      if (ak) {
-        a.setAttribute("aria-label", t(ak));
+        akey = a.getAttribute("data-i18n-aria");
+      if (akey) {
+        a.setAttribute("aria-label", t(akey));
         ariaNameCache.push(a);
       }
     }

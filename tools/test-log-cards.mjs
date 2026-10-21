@@ -22,9 +22,8 @@
  *   node tools/test-log-cards.mjs
  */
 import { readFileSync } from "node:fs";
-import { appSource, fnSource, pageSource } from "./app-source.mjs";
+import { fnSource, pageSource } from "./app-source.mjs";
 
-const app = appSource();
 const i18n = readFileSync("app/i18n.js", "utf8");
 const css = readFileSync("app/app.css", "utf8");
 

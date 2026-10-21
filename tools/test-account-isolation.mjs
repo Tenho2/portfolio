@@ -101,8 +101,6 @@ const loadLocDefaultsInto = new Function(
 `,
 );
 
-const isNum = new Function(`${fnSource("isNum")}; return isNum;`)();
-
 /* The bin object is module-level in the app and SURVIVES an account switch - it
    is the whole reason this bug existed. So every switch below reuses one object
    rather than making a fresh one. That detail is the test: with a fresh object
@@ -110,10 +108,6 @@ const isNum = new Function(`${fnSource("isNum")}; return isNum;`)();
    broken code while proving nothing. */
 function oneBin() {
   return { favs: [], sessions: [], vehicles: [] };
-}
-
-function emptyBin() {
-  return oneBin();
 }
 
 /* A deleted favourite belonging to account A. The street address is the

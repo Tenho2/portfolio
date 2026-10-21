@@ -69,9 +69,6 @@ const checkSplit = new Function(
   `var SHARE_EPS = ${SHARE_EPS};` +
     `${fnSource("num")}${fnSource("normPayer")}${fnSource("payerListOf")}${fnSource("checkSplit")}; return checkSplit;`,
 )();
-const costOf = new Function(
-  `${fnSource("num")}${fnSource("isNum")}${fnSource("hasCost")}${fnSource("costOf")}; return costOf;`,
-)();
 const payerTotals = new Function(
   `var price = 0.2;` +
     `${fnSource("num")}${fnSource("isNum")}${fnSource("hasCost")}${fnSource("costOf")}` +

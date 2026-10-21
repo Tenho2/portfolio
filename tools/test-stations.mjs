@@ -307,7 +307,7 @@ await group("a search inside Finland uses the cache and does not re-fetch", asyn
 });
 
 await group("the cache is per device, not per account", () => {
-  const { S, store } = loadModule();
+  const { S } = loadModule();
   ok("the key is a fixed device key", S.K_STATIONS === "ev.v1.stations");
   /* It must NOT carry an account id, or every sign-in would download 23 MB and
      the cache would be empty exactly when it is needed most. */

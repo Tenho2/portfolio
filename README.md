@@ -111,8 +111,19 @@ to the page therefore brings it under test automatically.
 : as a blank element with no error anywhere.
 
 `tools/check-inline-js.mjs`
-: Compiles each inline `<script>` block, because all the JavaScript is inline
-: and `node --check` has nothing to look at otherwise.
+: Compiles every inline `<script>` block (currently `index.html`), because an
+: inline block has no file for `node --check` to look at. External modules are
+: linted statically instead, below.
+
+`eslint.config.mjs` / `npm run lint:code`
+: Static analysis for `app/*.js`, `app/shell.mjs`, `tools/*.mjs` and the config
+: itself. Deliberately narrow: `no-undef`, `no-unused-vars`, `no-redeclare`,
+: `no-dupe-keys`, `no-unreachable` and the assignment/comparison rules that catch
+: real mistakes. Style rules (`eqeqeq`, `no-var`, `prefer-const`, `no-console`,
+: `camelcase`) are explicitly off: this code base uses loose null checks, `var`
+: and function hoisting on purpose, and its console diagnostics are intended.
+: `--max-warnings=0`, so a warning fails the build. The first run removed real
+: dead code (see the lint-noise note below).
 
 `tools/check-sql.mjs`
 : Static checks for the migrations, because there is no PostgreSQL on the
@@ -135,6 +146,28 @@ never reaches a phone — which is how a whole feature went missing while it
 looked present locally. It compares the `VERSION` value rather than merely
 noticing that `sw.js` was touched, since editing its comment is not a bump.
 
+### What the first lint pass found
+
+The narrow config is worth its keep because it found things no behavioural test
+could: `otherLayout()`, `lastUsedAt()`, `shareTableReady()`, `delFav()` and
+`doDeleteFav()` were dead; `shareCodeCache` was declared twice and
+`codesAvailable` was written four times and never read; an import counter and a
+station pagination variable were assigned and never used; `toast.geoDenied` was
+a duplicate key in all three complete language blocks, so one translation was
+silently unreachable; and an unused `ak` binding was redeclared in the same
+function. All were removed or renamed.
+
+Two helpers are deliberately kept although the app does not call them:
+`setPayerDraft()` and `payerTotals()` are extracted by
+`tools/test-session-payers.mjs` to pin split arithmetic. They carry an explicit
+`eslint-disable-next-line` with the reason rather than a blanket exclusion, so
+the decision is visible at the declaration.
+
+Style is **not** the target. Prettier already owns formatting, and the explicit
+`off` list above is there to keep this from turning into a 14k-line churn that
+buries the logic findings. A linter that reports three hundred style opinions
+and no bugs trains people to ignore it.
+
 ### A note on file size
 
 `ev-tracker.html` started as one 12,800-line file: ~1,500 CSS, ~1,900 i18n data
@@ -150,11 +183,11 @@ files that a static host can serve as they are.
 | ------------------------ | ------ | ------------------------------------ |
 | `ev-tracker.html`        | 1,904  | markup, classic layout               |
 | `ev-tracker-wide.html`   | 1,904  | markup, wide layout                  |
-| `app/app.js`             | 14,112 | application logic                    |
+| `app/app.js`             | 14,046 | application logic                    |
 | `app/app.css`            | 2,921  | the shared design system             |
 | `app/layout-classic.css` | 17     | the classic navigation shell         |
 | `app/layout-wide.css`    | 182    | the wide navigation shell            |
-| `app/i18n.js`            | 2,738  | translations for all four languages  |
+| `app/i18n.js`            | 2,732  | translations for all four languages  |
 | `app/storage.js`         | 202    | per-account local storage keys       |
 | `app/shell.mjs`          | 109    | how the eight pages are assembled    |
 | `app/ui/base.css`        | 1,425  | shared base for the experimental UIs |
