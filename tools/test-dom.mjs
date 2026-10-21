@@ -247,7 +247,7 @@ group("the vehicle editor explains both of its fields", () => {
   const sheet = document.getElementById("vehSheet");
   is("the sheet exists", !!sheet, true);
   if (!sheet) return;
-  for (const id of ["vfName", "vfOdo"]) {
+  for (const id of ["vfName", "vfOdo", "vfBaseKwh", "vfBaseKm"]) {
     const field = document.getElementById(id);
     is(`${id} exists`, !!field, true);
     if (!field) continue;

@@ -140,7 +140,7 @@
            toLocaleDateString: it is read by whoever ends up doing support, and
            a build stamp that changes shape with the interface language is
            awkward to quote over a phone. */
-        var APP_BUILD = "2026-10-11";
+        var APP_BUILD = "2026-10-21";
         function buildStamp() {
           var p = APP_BUILD.split("-");
           if (p.length !== 3) return APP_BUILD;
@@ -234,6 +234,56 @@
             if (LAYOUT_PAGES[i].name !== cur) return LAYOUT_PAGES[i];
           return LAYOUT_PAGES[0];
         }
+        /** The file for a remembered layout name, or null if it is not a page. */
+        function layoutFileFor(name) {
+          for (var i = 0; i < LAYOUT_PAGES.length; i++)
+            if (LAYOUT_PAGES[i].name === name) return LAYOUT_PAGES[i].file;
+          return null;
+        }
+        /**
+         * Where the canonical start page should send this boot, or null to stay.
+         *
+         * Only `classic` (ev-tracker.html, the manifest's start_url) redirects.
+         * Opening a layout page directly is a deliberate act and is honoured;
+         * otherwise every link would bounce back to whatever was chosen last,
+         * and a section of the app would be unreachable by URL.
+         *
+         * Kept pure so the redirect contract can be tested without a browser.
+         * @param {string} current the layout of the page being booted
+         * @param {?string} stored the remembered layout name
+         * @returns {?string} a page file, or null
+         */
+        function layoutRedirectTarget(current, stored) {
+          if (current !== "classic") return null;
+          if (!stored || stored === "classic") return null;
+          return layoutFileFor(stored);
+        }
+        /** Remember the chosen layout. A device preference, like the theme. */
+        function rememberLayout(name) {
+          try {
+            localStorage.setItem(K.layout, name);
+          } catch (e) {
+            /* the navigation still works; only the memory is lost */
+          }
+        }
+        /**
+         * Send the start page to the remembered layout, if there is one.
+         * @returns {boolean} true when a navigation has been started
+         */
+        function restoreLayout() {
+          var stored = null;
+          try {
+            stored = localStorage.getItem(K.layout);
+          } catch (e) {
+            return false;
+          }
+          var target = layoutRedirectTarget(currentLayout(), stored);
+          if (!target) return false;
+          /* replace rather than assign, so Back does not bounce between the
+             start page and the layout the user actually wants. */
+          location.replace(target + location.hash);
+          return true;
+        }
         function renderLayoutPicker() {
           var sel = $("layoutSel");
           if (!sel) return;
@@ -252,6 +302,10 @@
             for (var k = 0; k < LAYOUT_PAGES.length; k++)
               if (LAYOUT_PAGES[k].name === sel.value) target = LAYOUT_PAGES[k];
             if (!target || target.name === currentLayout()) return;
+            /* Remembered before the navigation: the next launch of the start
+               page has to know where to go, and a page unload is too late to
+               rely on anything that happens after this line. */
+            rememberLayout(target.name);
             /* Same page, same origin, so the fragment survives the navigation
                and the other page boots straight into the same view. */
             location.href = target.file + location.hash;
@@ -517,6 +571,14 @@
                  read as "no usable energy at all" rather than "unknown". */
               if (vehicles[vi] && !isNum(vehicles[vi].capacity))
                 vehicles[vi].capacity = null;
+              /* The consumption baseline is a pair. Either half alone is not
+                 usable (a figure without the distance it covered cannot be
+                 weighted), so a missing or impossible half is nulled here and
+                 the editor is the only way to set it again. */
+              if (vehicles[vi])
+                vehicles[vi].baselineKwh100 = posOrNull(vehicles[vi].baselineKwh100);
+              if (vehicles[vi])
+                vehicles[vi].baselineKm = posOrNull(vehicles[vi].baselineKm);
             }
           try {
             sessions = JSON.parse(localStorage.getItem(K.s)) || [];
@@ -824,6 +886,11 @@ for (var a = 0; a < vi.length; a++) {
             battery_capacity_kwh: isNum(v.capacity)
               ? num(v.capacity)
               : null,
+            /* The driver's own starting point, in the pair the maths needs.
+               Both or neither: a figure without the distance it covered cannot
+               be weighted, so an incomplete pair is stored as null. */
+            baseline_consumption_kwh_100km: posOrNull(v.baselineKwh100),
+            baseline_distance_km: posOrNull(v.baselineKm),
             /* null means live. A timestamp means the row is in the bin and the
                client is expected to keep it out of the live arrays. */
             deleted_at: v.deletedAt || null,
@@ -889,6 +956,11 @@ function rowVehicle(r) {
               capacity: isNum(r.battery_capacity_kwh)
                 ? num(r.battery_capacity_kwh)
                 : null,
+              /* Absent on every row written before migration 15. posOrNull
+                 reads that as "no baseline" and leaves the measured figures
+                 exactly as they were. */
+              baselineKwh100: posOrNull(r.baseline_consumption_kwh_100km),
+              baselineKm: posOrNull(r.baseline_distance_km),
               userId: r.user_id || null,
               deletedAt: r.deleted_at || null,
               /* It came from the server, so the server already has it. syncVehicle
@@ -3747,6 +3819,18 @@ function hoursToHM(h, alwaysSeconds) {
         }
         function isNum(v) {
           return v !== null && v !== undefined && v !== "" && isFinite(v);
+        }
+        /**
+         * A positive optional number, or null.
+         *
+         * Zero is not "unset": for a baseline consumption or the distance it was
+         * measured over, zero is an impossible value, and storing it would let a
+         * half-filled editor look like a complete pair to the arithmetic.
+         * @param {*} v
+         * @returns {?number}
+         */
+        function posOrNull(v) {
+          return isNum(v) && num(v) > 0 ? num(v) : null;
         }
 
         /* ---------- locale ----------
@@ -7308,6 +7392,8 @@ function retryNow() {
               '<option value="dark">' + TXT("set.themeDark") + "</option>";
             th.value = document.body.classList.contains("dark") ? "dark" : "light";
           }
+          var sc = $("scanlinesChk");
+          if (sc) sc.checked = scanlinesOn();
           var na = $("navAlignSel");
           if (na) {
             na.innerHTML =
@@ -8352,6 +8438,10 @@ vehiclesAdded = vehicles.length - before;
                   /* Carried through a backup restore, so a vehicle that had a
                      capacity set does not silently lose it on the way in. */
                   capacity: isNum(pa.capacity) ? num(pa.capacity) : null,
+                  /* The baseline is a pair too; a backup taken after it was set
+                     must restore both halves or it would quietly stop anchoring. */
+                  baselineKwh100: posOrNull(pa.baselineKwh100),
+                  baselineKm: posOrNull(pa.baselineKm),
                 });
                 vehiclesAdded++;
               }
@@ -12044,6 +12134,44 @@ function detachVehicle(id) {
         }
 
         /**
+         * Blend a measured consumption figure with the vehicle's entered
+         * baseline.
+         *
+         * A sparse log is a noisy one: two charges 14 km apart can produce a
+         * four-figure kWh/100km from a perfectly ordinary car. A figure the
+         * driver already trusts - a trip computer's long-term average, or the
+         * previous tracker - is genuine evidence, and the honest way to combine
+         * evidence is a weighted mean over the distance each covers:
+         *
+         *     (measured kWh + baseline/100 x baseline km)
+         *     ------------------------------------------ x 100
+         *            (measured km + baseline km)
+         *
+         * The baseline therefore fades as real data arrives instead of being a
+         * permanent override, and it is never mixed into the raw method figures
+         * used to warn that the two methods disagree.
+         *
+         * With no measured distance at all the baseline is returned as-is; the
+         * tile labels it as the entered baseline rather than as a measurement.
+         * With no usable baseline the measured figure is returned unchanged.
+         *
+         * @param {number} kwh measured energy (0 when nothing is measured)
+         * @param {number} km measured distance (0 when nothing is measured)
+         * @param {?number} baselineKwh100 the entered baseline, kWh/100km
+         * @param {?number} baselineKm the distance that baseline covered
+         * @returns {?number} kWh/100km, or null when neither source exists
+         */
+        function anchoredConsumption(kwh, km, baselineKwh100, baselineKm) {
+          var bq = posOrNull(baselineKwh100);
+          var bk = posOrNull(baselineKm);
+          var measured = km > 0;
+          if (bq === null || bk === null)
+            return measured ? (kwh / km) * 100 : null;
+          if (!measured) return bq;
+          return ((kwh + (bq / 100) * bk) / (km + bk)) * 100;
+        }
+
+        /**
  * The consumption tiles.
  *
  * Two independent measurements, and they are not interchangeable:
@@ -12079,7 +12207,21 @@ function detachVehicle(id) {
           var byCharge = legs.km > 0 ? (legs.kwh / legs.km) * 100 : null;
           var bySoc = soc.km > 0 ? (soc.kwh / soc.km) * 100 : null;
 
-          var main = bySoc !== null ? bySoc : byCharge;
+          /* The battery method wins where it exists, exactly as before. The
+             baseline then anchors whichever method supplied the headline; the
+             raw figures below stay raw so a disagreement still shows. */
+          var useSoc = bySoc !== null;
+          var byKwh = useSoc ? soc.kwh : legs.kwh;
+          var byKm = useSoc ? soc.km : legs.km;
+          var hasBase =
+            posOrNull(v.baselineKwh100) !== null &&
+            posOrNull(v.baselineKm) !== null;
+          var main = anchoredConsumption(
+            byKwh,
+            byKm,
+            v.baselineKwh100,
+            v.baselineKm,
+          );
           if (eff) eff.textContent = main === null ? "—" : main.toFixed(1);
 
           if (effNote) {
@@ -12093,6 +12235,19 @@ function detachVehicle(id) {
                   v: byCharge.toFixed(1),
                 }),
               );
+            }
+            /* Say when the headline is not purely measured. A figure that has
+               been anchored still has to declare it, or it reads as arithmetic
+               on data the user believes they alone supplied. */
+            if (hasBase) {
+              if (byKm > 0) {
+                parts.push(
+                  TXT("tile.baseline", {
+                    v: num(v.baselineKwh100).toFixed(1),
+                    n: Math.round(num(v.baselineKm)),
+                  }),
+                );
+              } else parts.push(TXT("tile.baselineOnly"));
             }
             /* Divergence is worth a word of its own: it is usually a data
                problem, and a data problem the user can fix. */
@@ -12213,6 +12368,10 @@ function detachVehicle(id) {
              overwrites it. */
           $("vfGross").value = "";
           $("vfUsable").value = isNum(v.capacity) ? String(v.capacity) : "";
+          $("vfBaseKwh").value = isNum(v.baselineKwh100)
+            ? String(v.baselineKwh100)
+            : "";
+          $("vfBaseKm").value = isNum(v.baselineKm) ? String(v.baselineKm) : "";
           var gm = $("vfCapGrossMode");
           if (gm) gm.checked = true;
           capDerive();
@@ -12244,6 +12403,13 @@ function detachVehicle(id) {
           v.initialOdometer =
             $("vfOdo").value === "" ? 0 : Math.max(0, num($("vfOdo").value));
           v.capacity = capRead();
+          /* A baseline is only meaningful as a pair, and the editor accepts
+             each box on its own so a person can fill them in either order. An
+             impossible figure (zero, negative, or a consumption above 100
+             kWh/100km) is nulled rather than saved and silently distrusted. */
+          var baseKwh = posOrNull($("vfBaseKwh").value);
+          v.baselineKwh100 = baseKwh !== null && baseKwh <= 100 ? baseKwh : null;
+          v.baselineKm = posOrNull($("vfBaseKm").value);
           /* Renaming the placeholder makes it real. Without this, syncPull still
              treats the row as a guess and discards it on the next pull, which is
              how renaming the default vehicle appeared to work for a moment and
@@ -12800,6 +12966,12 @@ function detachVehicle(id) {
         $("themeSel").addEventListener("change", function () {
           applyThemeSel(this.value);
         });
+        /* HUD-only markup; guarded so the shared layouts, which have no such
+           control, wire nothing rather than throwing on a null. */
+        if ($("scanlinesChk"))
+          $("scanlinesChk").addEventListener("change", function () {
+            applyScanlines(this.checked);
+          });
         $("navAlignSel").addEventListener("change", function () {
           applyNavAlign(this.value);
         });
@@ -13597,6 +13769,72 @@ $("syncBadge").addEventListener("click", function () {
           syncThemeButton();
           renderChart();
         }
+        /* ---------- retro scanlines (HUD only) ----------
+           A decorative wash, so it is opt-in and off until asked for. The class
+           is the whole state: the sheet draws body::before only when it is
+           present, and the checkbox reads it back, so nothing can disagree. */
+        function scanlinesOn() {
+          return document.body.classList.contains("show-scanlines");
+        }
+        function applyScanlines(on) {
+          document.body.classList.toggle("show-scanlines", !!on);
+          try {
+            localStorage.setItem(K.scan, on ? "on" : "off");
+          } catch (e) {
+            /* the texture applies now; only the remembered choice is lost */
+          }
+        }
+        /**
+         * The body classes a stored appearance turns into.
+         *
+         * Pure, so the boot contract can be tested without a browser. Red mode
+         * and scanlines are HUD-only: the cockpit is the only permanently dark
+         * layout, and carrying either class onto a shared page would be state
+         * with no stylesheet behind it. `dark` is the shared colour theme and
+         * applies wherever the page defines one.
+         *
+         * @param {{theme: ?string, redMode: ?string, scanlines: ?string}} stored
+         * @param {boolean} hud whether this page is the HUD layout
+         * @returns {{dark: boolean, red: boolean, scan: boolean}}
+         */
+        function bootClasses(stored, hud) {
+          var s = stored || {};
+          return {
+            dark: s.theme === "dark",
+            red: !!hud && s.redMode === "on",
+            /* Opt-in: absent (never set) is off, not on. */
+            scan: !!hud && s.scanlines === "on",
+          };
+        }
+        function readPreference(key) {
+          try {
+            return localStorage.getItem(key);
+          } catch (e) {
+            return null;
+          }
+        }
+        /**
+         * Apply the remembered appearance at boot.
+         *
+         * classList.toggle, never className =: assigning the whole class
+         * attribute would drop the other preferences and any class the page
+         * came with. Each preference is independent, and each has to survive a
+         * reload on its own.
+         */
+        function restoreAppearance() {
+          var c = bootClasses(
+            {
+              theme: readPreference(K.t),
+              redMode: readPreference(K.rm),
+              scanlines: readPreference(K.scan),
+            },
+            isHud(),
+          );
+          document.body.classList.toggle("dark", c.dark);
+          document.body.classList.toggle("red-mode", c.red);
+          document.body.classList.toggle("show-scanlines", c.scan);
+          syncThemeButton();
+        }
         /**
          * Keep the header theme button honest for whichever layout is running.
          *
@@ -13758,13 +13996,13 @@ $("eDelete").addEventListener("click", function () {
         });
 
         /* ---------- boot ---------- */
-        if (localStorage.getItem(K.t) === "dark")
-          document.body.classList.add("dark");
-        /* Red mode is a HUD-only preference. It is applied only on that layout,
-           and before the first button sync, so the toggle lands already correct. */
-        if (isHud() && localStorage.getItem(K.rm) === "on")
-          document.body.classList.add("red-mode");
-        syncThemeButton();
+        /* A remembered layout sends the canonical start page (the manifest's
+           start_url) straight to the chosen page. Direct links to a layout page
+           are honoured; restoreLayout() is a no-op everywhere but classic. */
+        if (restoreLayout()) return;
+        /* Before the first read, so the interface never paints in the wrong
+           theme and then flips. */
+        restoreAppearance();
         applyNavAlign(localStorage.getItem(K.na));
         /* Before the first read, so the signed-out bucket is already whole. The
            module reports how many slots it moved rather than showing a toast

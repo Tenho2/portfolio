@@ -28,12 +28,22 @@
      handedness, it describes the device rather than the account, so it is a
      global key and not part of any account's bucket. */
   var K_REDMODE = "redMode";
+  /* Which layout page the device launches into. A device preference, not an
+     account one: a shared phone should not put the next person into the previous
+     person's cockpit. Read on the canonical start page, which redirects to the
+     remembered layout; a direct link to any layout page is still honoured. */
+  var K_LAYOUT = "layout";
+  /* The HUD's decorative scanline wash. Opt-in, global and off until chosen:
+     it is a texture, not a setting the car needs. */
+  var K_SCANLINES = "scanlines";
 
   /**
    * The full key set for one account's bucket.
    * @param {?string} userId null means the signed-out bucket.
    * @returns {{v: string, s: string, bv: string, bs: string, p: string,
-   *            df: string, f: string, n: string, t: string, na: string}}
+   *            df: string, f: string, bf: string, fr: string, n: string,
+   *            t: string, na: string, rm: string, layout: string,
+   *            scan: string}}
    */
   function keysFor(userId) {
     var pre = userId ? "ev.v1." + userId + "." : "ev.v1.local.";
@@ -67,6 +77,8 @@
       t: K_THEME,
       na: K_NAVALIGN,
       rm: K_REDMODE,
+      layout: K_LAYOUT,
+      scan: K_SCANLINES,
     };
   }
 
@@ -179,6 +191,8 @@
        exact mistake this module exists to prevent. */
     theme: K_THEME,
     navAlign: K_NAVALIGN,
+    layout: K_LAYOUT,
+    scanlines: K_SCANLINES,
     current: function () {
       return current;
     },

@@ -1,23 +1,60 @@
 # Where we left off
 
-Written at the end of the 2026-10-18 session. Durable engineering knowledge
+Written at the end of the 2026-10-21 session. Durable engineering knowledge
 belongs in [README.md](README.md); this file is the part that goes stale.
 
 ## State
 
-|                |                                                                                 |
-| -------------- | ------------------------------------------------------------------------------- |
-| HEAD           | `9f16e4a` — commit and push are the user's job (see ground rules below)         |
-| Working tree   | clean at time of writing                                                        |
-| Service worker | `v70`                                                                           |
-| Build stamp    | `2026-10-18`                                                                    |
-| Tests          | 1909 assertions, 0 failures, across 30 suites (`npm test`)                      |
-| Database       | migrations `10-leave-share`, `12-vehicle-capacity`, `13-session-payers` applied |
+|                |                                                                             |
+| -------------- | --------------------------------------------------------------------------- |
+| HEAD           | `91fb55e` — commit and push are the user's job (see ground rules below)     |
+| Working tree   | **dirty on purpose**: 2026-10-21 work is uncommitted                        |
+| Service worker | `v71`                                                                       |
+| Build stamp    | `2026-10-21`                                                                |
+| Tests          | 2001 assertions, 0 failures, across 30 suites (`npm run check`)             |
+| Database       | migration `15-vehicle-baseline` **must be run before deploying this build** |
 
 The assertion total is the sum of the per-suite counts; `tools/test-i18n-markup.mjs`
 reports by group rather than printing a number, so it is not in that figure.
 
-## Since the last handover (2026-10-11 → 2026-10-18, 22 commits)
+## Since the last handover (2026-10-18 → 2026-10-21)
+
+The 2026-10-21 feedback round touched the vehicle model and the HUD, and
+reversed one deliberate design decision.
+
+- **Consumption baseline** (`supabase/15-vehicle-baseline.sql`). The vehicle
+  editor takes an optional baseline consumption and the distance it covered.
+  `anchoredConsumption()` blends that with measured data as a weighted mean, so a
+  sparse log no longer reports four-figure kWh/100 km. The baseline is never
+  mixed into the raw figures used for the "methods disagree" warning, and the
+  tile says when the headline is anchored or baseline-only. Migration 15 must be
+  applied **before** the client ships: `vehicleRow()` writes both columns, and a
+  database without them answers `42703` on every vehicle save.
+- **Layout is now remembered.** This reverses the earlier "deliberately not
+  remembered" decision, because the manifest `start_url` is always
+  `ev-tracker.html`, so an installed PWA launched back into classic. The picker
+  stores the choice; the canonical start page redirects to it with
+  `location.replace` + hash and skips its own boot. Direct links to a layout page
+  are honoured and do not rewrite the preference. `tools/test-guard.mjs` was
+  updated: the picker is now _expected_ to remember.
+- **Appearance is restored in one place.** `bootClasses()` + `restoreAppearance()`
+  toggle `dark`, `red-mode` and `show-scanlines` independently with
+  `classList.toggle`. Assigning `className` is what would wipe one preference
+  while setting another.
+- **Retro scanlines are opt-in and off by default.** The HUD checkbox writes a
+  global `scanlines` preference; `hud.css` draws `body::before` only under
+  `body.show-scanlines`.
+- **HUD destructive buttons are readable.** `hud.css` replaced `base.css`'s red
+  fill with `--tint` but inherited its dark ink (`#2a0808`), so delete buttons
+  were dark red on near-black. A later `.btn.dgr` rule now uses `--danger` as ink
+  on the tint.
+- **HUD bottom bar is Dashboard, Log, Add, Stations, Settings.** Log precedes
+  Add on the phone bar; the flex `order` rules encode it, not source order.
+- **Docs.** README's layout section now describes eight pages, the migration
+  table lists every file incl. 15, and `## To do` records this feedback round and
+  moves the three finished items (mobile log, payer split, `focus`) to Done.
+
+## The week before (2026-10-11 → 2026-10-18, 22 commits)
 
 The one week between the previous handover and this one was dense: the layout
 system went from **two** pages to **eight**, and the whole app was split into a
@@ -57,6 +94,9 @@ shared design system plus independent UI themes.
   `brutal`, `editorial`, `glass`.
 - `app/shell.mjs` holds `LAYOUTS` and `linkLinesFor(layout)`; `tools/emit-pages.mjs`
   writes every page. Never hand-edit a generated `ev-tracker-*.html`.
+- The chosen layout is a **global device key** (`layout`), written by the picker.
+  `ev-tracker.html` (the manifest `start_url`) redirects to it at boot; any other
+  page boots as itself. See `layoutRedirectTarget()` / `restoreLayout()`.
 - Shared markup lives in `ev-tracker.html`; the **HUD overrides its body** from
   `tools/hud-body.html` (`BODY_OVERRIDE` in `emit-pages.mjs`). A change that
   should appear on the HUD goes in `hud-body.html`, not `ev-tracker.html`.
@@ -101,17 +141,36 @@ wholesale.
 
 ## Next
 
+- **Run migration 15 before deploying.** The client writes the two baseline
+  columns on every vehicle save; without the migration that is `42703`.
 - **Pick the keeper UI** from the four experimental layouts and delete the rest.
+  Do not prune unprompted.
 - **Empty-bin ownership/cascade bug** — still unfixed, separate from detached
   shared-car rows. Verify before starting; it may have moved.
-- README `## To do` — written, but review it against the current eight-layout
-  reality.
+- **Human eyes on the HUD.** The new destructive-button colour and the
+  scanlines-off default were judged by code and contrast maths, not on a device.
 
 ## Traps worth knowing
 
 - **Generated pages.** Edit `ev-tracker.html` (shared) or `tools/hud-body.html`
   (HUD), then `node tools/emit-pages.mjs`. `test-layouts.mjs` also runs the
   generator and asserts it is a no-op, so an unstable generator fails the suite.
+- **Layout memory only redirects `classic`.** `layoutRedirectTarget()` refuses
+  every other current layout, so a direct link to any layout page is honoured
+  (otherwise that page becomes unreachable by URL). The preference is written by
+  the picker, not by every page load. `location.replace` keeps Back sane.
+- **Appearance classes are independent.** `restoreAppearance()` uses
+  `classList.toggle` once per class. Never assign `className` there: it drops
+  `dark`, `red-mode` or `show-scanlines` while setting another, and the loss is
+  invisible until the next reload.
+- **`hud.css` `.btn.dgr` must stay after `.btn:not(.ghost)`.** Both rules have
+  the same specificity; the tint rule replaces `base.css`'s red fill but the dark
+  ink from `.btn.dgr` still applies, which is exactly the invisible delete button.
+- **A consumption baseline is a pair.** A consumption figure without the distance
+  it covered cannot be weighted, so `posOrNull` keeps each half nullable and the
+  arithmetic ignores an incomplete pair. Zero is invalid, not "unset".
+- **Baseline columns are written on every vehicle save.** Run migration 15 before
+  shipping the client; a missing column is `42703` on every write.
 - **HUD is a separate DOM and stylesheet family.** `app/ui/*` never reads a token
   from `app/app.css`; a change meant for the HUD goes in `hud-body.html` +
   `app/ui/hud.css`.
@@ -148,6 +207,10 @@ wholesale.
 - `vehicles.battery_capacity_kwh numeric null` — **usable** capacity, the only
   figure the maths reads. `null` means "not set" and is deliberately different
   from `0`.
+- `vehicles.baseline_consumption_kwh_100km` and `baseline_distance_km`, both
+  `numeric null` (migration 15) — the driver's own figure and the distance it
+  covers. They are only used as a pair, as a weighted anchor on the headline
+  consumption. `null` means no baseline; the measured figures are unchanged.
 - Capacity mode (gross/usable) is **not stored**, so no flag can disagree with the
   number it produced. Gross pre-fills usable at 95% in the editor.
 - Consumption is reported two ways — from charging energy, and from battery level

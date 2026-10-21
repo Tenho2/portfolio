@@ -86,9 +86,14 @@ group("the slices the layout switcher is checked with are real", () => {
      about, so if it ever stops matching, they stop meaning anything. */
   ok("the picker really does navigate", /location\.href/.test(picker));
   ok("the picker really does read the fragment", /location\.hash/.test(picker));
-  /* The negatives, which are the ones worth guarding. */
-  ok("the picker writes nothing to storage", !/localStorage/.test(picker));
-  ok("the picker saves no preference", !/setItem/.test(picker));
+  /* The layout is a remembered device preference since 2026-10-21, so the
+     picker must record the choice before the page unloads. It goes through the
+     one helper rather than touching a key name here: storage naming belongs to
+     app/storage.js. */
+  ok(
+    "the picker remembers the choice before navigating",
+    /rememberLayout\(target\.name\)[\s\S]{0,400}location\.href/.test(picker),
+  );
   ok("the picker deletes nothing", !/removeItem/.test(picker));
   /* And the slice must not have grown to cover half the application, which
      would make the negatives pass for the wrong reason. */

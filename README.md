@@ -146,17 +146,19 @@ the boundary between modules, which is how `LANGS is not defined` and then
 The split is complete. Nothing is generated into `dist/`; the pages are plain
 files that a static host can serve as they are.
 
-| File                     | Lines | Contents                            |
-| ------------------------ | ----- | ----------------------------------- |
-| `ev-tracker.html`        | 1,508 | markup, classic layout              |
-| `ev-tracker-wide.html`   | 1,508 | markup, wide layout                 |
-| `app/app.js`             | 9,259 | application logic                   |
-| `app/app.css`            | 1,616 | the shared design system            |
-| `app/layout-classic.css` | 17    | the classic navigation shell        |
-| `app/layout-wide.css`    | 182   | the wide navigation shell           |
-| `app/i18n.js`            | 2,177 | translations for all four languages |
-| `app/storage.js`         | 173   | per-account local storage keys      |
-| `app/shell.mjs`          | 79    | how the two pages are assembled     |
+| File                     | Lines  | Contents                             |
+| ------------------------ | ------ | ------------------------------------ |
+| `ev-tracker.html`        | 1,904  | markup, classic layout               |
+| `ev-tracker-wide.html`   | 1,904  | markup, wide layout                  |
+| `app/app.js`             | 14,112 | application logic                    |
+| `app/app.css`            | 2,921  | the shared design system             |
+| `app/layout-classic.css` | 17     | the classic navigation shell         |
+| `app/layout-wide.css`    | 182    | the wide navigation shell            |
+| `app/i18n.js`            | 2,738  | translations for all four languages  |
+| `app/storage.js`         | 202    | per-account local storage keys       |
+| `app/shell.mjs`          | 109    | how the eight pages are assembled    |
+| `app/ui/base.css`        | 1,425  | shared base for the experimental UIs |
+| `app/ui/hud.css`         | 538    | the HUD cockpit theme                |
 
 Classic `<script src>` rather than ES modules on purpose: it keeps the page
 working from `file://` with no build step, and each file gets its own scope, so
@@ -176,8 +178,10 @@ The upgrade to `type="module"` — which would turn a cross-module reference int
 load-time error instead of a separate scope — is a separate change and needs
 `file://` to stop working.
 
-### The two layouts
+### The layout pages
 
+There are eight: `classic` (`ev-tracker.html`), `wide`, `focus`, `modern`, and
+the four experimental UIs `hud`, `brutal`, `editorial` and `glass`.
 `ev-tracker.html` is the original: a fixed 250 px rail on the left, which becomes
 a sticky strip of icons below 820 px and a single bar below 560 px.
 `ev-tracker-wide.html` is the same application arranged differently — a permanent
@@ -185,22 +189,37 @@ top bar with the navigation labels always visible, and a content column capped s
 a line of text never runs the width of a large display. It suits a tablet, a desk
 or a head unit read from further away than a phone.
 
-**They are the same application, not two builds.** Identical markup, the same
-`app/app.js`, the same storage keys and the same account; only the arrangement
-differs, and only in CSS. That matters because `app/app.js` looks up roughly 170
-element ids while wiring its handlers with no per-page guard, so a layout with its
-own markup would have to reproduce every one of them exactly — and any divergence
-would be a page that throws before the application starts.
+**The four shared layouts are the same application, not four builds.** Identical
+markup, the same `app/app.js`, the same storage keys and the same account; only
+the arrangement differs, and only in CSS. That matters because `app/app.js` looks
+up roughly 200 element ids while wiring its handlers with no per-page guard, so a
+layout with its own markup would have to reproduce every one of them exactly —
+and any divergence would be a page that throws before the application starts.
+The experimental UIs load `app/ui/base.css` plus their own theme instead, and may
+restructure the DOM; `hud` does, with its body in `tools/hud-body.html`.
+`tools/test-layouts.mjs` holds them to the contract that matters: every id the
+shared markup declares must still exist on every experimental page.
+
+Never hand-edit a generated `ev-tracker-*.html`. Edit `ev-tracker.html` (shared)
+or `tools/hud-body.html` (HUD), then run `node tools/emit-pages.mjs`.
 
 Switch with **Settings → Data → Layout**, or from the home page. It is a
 navigation, not a migration: nothing is moved, re-imported or copied, and your
 data and account are the same either way. The current view is carried in the
 fragment, so switching from the middle of the log lands you in the log.
 
-The choice is deliberately **not remembered** between the two pages. Whichever
-one you are on when you close the tab is the one you return to, because a stored
-preference would need one page to override the other — and the picker is on both
-pages, so there is nothing to remember it for.
+The chosen layout **is remembered** as a device preference. `ev-tracker.html` is
+the manifest's `start_url`, so it is the page a home-screen launch hits; on boot
+it redirects to the stored layout (carrying the hash) and skips the rest of its
+own boot. Opening any layout page directly is still honoured — a link to
+`ev-tracker-hud.html` stays on the HUD rather than bouncing back — and only a
+change made through the picker updates the preference. The redirect is
+`location.replace`, so Back does not shuttle between the start page and the
+layout the user actually wanted.
+
+Theme, HUD red mode and the HUD's retro scanlines are device preferences too.
+All four are restored at boot through `classList.toggle`, one class each, so no
+preference can wipe another. The scanline wash is opt-in and off by default.
 
 `npm run build:pages` regenerates both pages from `app/shell.mjs` and the checked-in
 markup. Run it after editing the `<head>` or the shared markup; it is idempotent,
@@ -347,18 +366,31 @@ repository, and no server-side code.
 
 Migrations must be pasted into the Supabase SQL editor **in numeric order**:
 
-| Order | File                          | What it does                                                 |
-| ----- | ----------------------------- | ------------------------------------------------------------ |
-| 1     | `supabase/01-schema.sql`      | `vehicle_shares`, sharing helpers, RLS policies              |
-| 3     | `supabase/03-share-codes.sql` | 6-character share codes                                      |
-| 4     | `supabase/04-roles.sql`       | Roles (viewer/driver/admin), owner approval, tightened RLS   |
-| 5     | `supabase/05-trash.sql`       | `deleted_at` for the recoverable bin                         |
-| 6     | `supabase/06-owner-stamp.sql` | `BEFORE INSERT` trigger stamping `user_id` from `auth.uid()` |
-| —     | `supabase/07-diagnose.sql`    | Read-only. Tells apart the causes of a `42501` refusal.      |
+| Order | File                               | What it does                                                       |
+| ----- | ---------------------------------- | ------------------------------------------------------------------ |
+| 1     | `supabase/01-schema.sql`           | `vehicle_shares`, sharing helpers, RLS policies                    |
+| 3     | `supabase/03-share-codes.sql`      | 6-character share codes                                            |
+| 4     | `supabase/04-roles.sql`            | Roles (viewer/driver/admin), owner approval, tightened RLS         |
+| 5     | `supabase/05-trash.sql`            | `deleted_at` for the recoverable bin                               |
+| 6     | `supabase/06-owner-stamp.sql`      | `BEFORE INSERT` trigger stamping `user_id` from `auth.uid()`       |
+| —     | `supabase/07-diagnose.sql`         | Read-only. Tells apart the causes of a `42501` refusal.            |
+| —     | `supabase/08-owners.sql`           | Read-only. Which account owns which vehicle, without `auth.uid()`. |
+| —     | `supabase/09-whoami.sql`           | Read-only. Identity probe for authenticated requests.              |
+| 10    | `supabase/10-leave-share.sql`      | Lets a driver leave a car that was shared with them                |
+| 12    | `supabase/12-vehicle-capacity.sql` | Usable battery capacity per vehicle                                |
+| 13    | `supabase/13-session-payers.sql`   | `session_payers`: who paid what on a shared charge                 |
+| 14    | `supabase/14-session-winter.sql`   | `sessions.winter`, stored rather than inferred from the month      |
+| 15    | `supabase/15-vehicle-baseline.sql` | Baseline consumption and the distance it covers                    |
 
 Every one is idempotent, so re-running is safe. Each ends with a query that
-confirms it worked. `07-diagnose.sql` is the exception: it is only SELECTs and
-makes no changes, so it is safe to run at any time.
+confirms it worked. `07-diagnose.sql`, `08-owners.sql` and `09-whoami.sql` are
+the exceptions: they are only SELECTs and make no changes, so they are safe to
+run at any time.
+
+**Migration 15 must run before the client that writes the baseline columns is
+deployed.** `vehicleRow()` sends `baseline_consumption_kwh_100km` and
+`baseline_distance_km` on every vehicle write; against a database without them,
+Postgres answers `42703` and no vehicle can be saved.
 
 **There is no 02, and that is not a mistake.** It held a sessions trigger and
 four policies, and `04-roles.sql` recreates every one of them, so it was removed
@@ -448,33 +480,40 @@ Ordered roughly by what is worth doing next. Open questions that need a human
 answer are marked; they are not code tasks and should not be "fixed" by
 changing the app.
 
-### Mobile-readable charge log
+### 2026-10-21 feedback round
 
-The log is an eleven-column table with `min-width: 760px` and `nowrap`, so on a
-phone it is a horizontal scroll with no context on which column you are reading.
+- [x] **Consumption baseline.** The vehicle editor takes an optional baseline
+      consumption and the distance it covered. The headline kWh/100 km is a weighted
+      mean of measured data and that baseline, so a sparse log stops swinging between
+      impossible figures; the provenance line says when the figure is anchored.
+      Migration `15-vehicle-baseline.sql` must be run before this client is deployed.
+- [x] **Readable destructive buttons in the HUD.** `hud.css` replaced
+      `base.css`'s red fill with the faint tint but still inherited its dark ink, so
+      delete buttons were dark red on near-black. `.btn.dgr` now uses `--danger` as
+      ink on the tint.
+- [x] **HUD bottom-bar order.** Dashboard, Log, Add, Stations, Settings: with
+      "you are here" on the way to a tab, the log is the more common visit.
+- [x] **Remember the layout.** The chosen layout is stored as a global device
+      preference and the manifest start page redirects to it. This also fixes the
+      installed PWA always launching into `classic`.
+- [x] **Retro scanlines toggle.** HUD-only, opt-in and off by default, stored as
+      a device preference; the wash is drawn only under `body.show-scanlines`.
+- [x] **Appearance survives a reload.** Theme, red mode and scanlines are
+      restored together by one `restoreAppearance()` using `classList.toggle`, so no
+      preference can overwrite another.
 
-The treatment is **one DOM styled two ways** — not a second renderer. Two
-renderers drift apart, and sorting, selection and editing would have to be
-written twice. Cells carry `data-label`, shown as labels through `::before` in
-card layout below ~700px, with the table parts set to `display: block` only at
-that breakpoint so the desktop table keeps its semantics.
+### Done since the last review
 
-### Shared-charge payer split
-
-Charge a shared car partly and record who paid. Migration
-`13-session-payers.sql` — the number is free because the temporary `11` probe
-was removed rather than renumbered.
-
-Decided already: split per session rather than per car; older charges with no
-payer are excluded from the split and counted separately; the picker defaults
-to the signed-in user; the charge log shows a pie chart per vehicle.
-
-### The `focus` layout
-
-`classic` and `wide` exist. `focus` does not: deep indigo-slate, mint `#10B981`,
-hairline borders, no gradients or glass, a desktop rail and a mobile bottom bar,
-inline monochrome SVG icons in place of emoji. `tools/emit-pages.mjs` and
-`tools/test-layouts.mjs` both have to learn a third layout.
+- **Mobile-readable charge log.** One DOM styled two ways: `data-label` cells and
+  a card layout below ~700px, with the desktop table left intact.
+- **Shared-charge payer split.** `13-session-payers.sql`, per-session splits, the
+  payer picker and the breakdown chart. Older charges with no payer are counted
+  separately rather than guessed at.
+- **The `focus` layout.** Shipped, along with `wide`, `modern`, `hud`, `brutal`,
+  `editorial` and `glass`. `classic`, `wide`, `focus` and `modern` share
+  `app/app.css`; the four experimental UIs load `app/ui/base.css` plus their own
+  theme. Which experimental UI is the keeper is still an open question — see
+  `HANDOVER.md`.
 
 ### Known bugs
 
@@ -495,6 +534,7 @@ inline monochrome SVG icons in place of emoji. `tools/emit-pages.mjs` and
 - **Two logged sessions report 357 kWh/100km.** No road car does that; a real EV
   is 15–25. The attribution logic is verified by `tools/test-consumption.mjs`,
   so the data is the suspect, not the code. Do not adjust the calculation to fit.
+  A baseline anchors the headline but does not repair a wrong reading.
 
 - **What was in the leaked bin?** The account-switch fix covers deleted
   _favourites_, because those are the only bin that was not reset on switch.
@@ -507,4 +547,7 @@ inline monochrome SVG icons in place of emoji. `tools/emit-pages.mjs` and
   harness exercises the failure and success paths but cannot reproduce a real
   User-Agent request.
 - No browser visual review is available in the development environment, so
-  layout and contrast work is finished only when a human has looked at it.
+  layout and contrast work is finished only when a human has looked at it. That
+  applies to the new HUD destructive-button colour and the scanlines default.
+- Run `supabase/15-vehicle-baseline.sql` before deploying this build. Until it is
+  applied, every vehicle write fails with `42703`.

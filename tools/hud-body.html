@@ -725,6 +725,16 @@
                     <select id="navAlignSel" data-i18n-aria="set.navAlign"></select>
                   </div>
                 </div>
+                <!-- A texture, not a setting the car needs: opt-in, off until
+                     asked for. HUD-only markup; the shared pages have no such
+                     control and the wiring is guarded. -->
+                <div class="hud-row">
+                  <div class="chk">
+                    <input type="checkbox" id="scanlinesChk" />
+                    <label for="scanlinesChk" data-i18n="set.scanlines"></label>
+                  </div>
+                </div>
+                <div class="hint" data-i18n="set.scanlinesLead"></div>
               </section>
 
               <section class="hud-section">
@@ -1608,6 +1618,39 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             </div>
           </div>
           <div class="hint" id="vfCapHint"></div>
+          <!-- The driver's own starting point, used as a weighted anchor while
+               the log is sparse. Optional, and only usable as a pair: a figure
+               without the distance it covered cannot be weighted. -->
+          <fieldset class="row base">
+            <legend class="sr-only" data-i18n="grp.baseline"></legend>
+            <div class="f">
+              <label
+                for="vfBaseKwh"
+                data-i18n="set.baselineConsumption"
+              ></label
+              ><input
+                type="number"
+                id="vfBaseKwh"
+                min="0"
+                max="100"
+                step="0.1"
+                data-i18n-ph="ph.baselineKwh"
+                aria-describedby="vfBaseHint"
+              />
+            </div>
+            <div class="f">
+              <label for="vfBaseKm" data-i18n="set.baselineDistance"></label
+              ><input
+                type="number"
+                id="vfBaseKm"
+                min="0"
+                step="1"
+                data-i18n-ph="ph.baselineKm"
+                aria-describedby="vfBaseHint"
+              />
+            </div>
+          </fieldset>
+          <div class="hint" id="vfBaseHint" data-i18n="set.baselineLead"></div>
           <div class="addrow" style="margin-top: 1.25rem">
             <button class="btn" type="submit" data-i18n="ed.save"></button>
             <button

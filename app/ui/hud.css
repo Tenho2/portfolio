@@ -64,8 +64,10 @@ body.red-mode {
   --tint: rgb(217 56 58 / 0.06);
 }
 
-/* A faint scanline wash over the whole canvas. */
-body::before {
+/* A faint scanline wash over the whole canvas. Opt-in: it is drawn only when
+   the body carries show-scanlines, so a cockpit nobody has configured is
+   clean, and the retro texture is a deliberate choice rather than a default. */
+body.show-scanlines::before {
   content: "";
   position: fixed;
   inset: 0;
@@ -354,6 +356,15 @@ body.red-mode .hud-red-btn {
   border: 1px solid var(--line);
   border-radius: 0;
 }
+/* The tint above replaces the fill base.css gives .btn.dgr, but the dark ink
+   base.css pairs with that fill is still inherited - dark red on near-black,
+   which reads as no text at all. Restore a destructive control as bright red
+   ink on the usual faint fill, after the tint rule so it wins the tie. */
+.btn.dgr {
+  background: var(--tint);
+  border-color: var(--danger);
+  color: var(--danger);
+}
 .qa button:hover,
 .vcard[aria-pressed="true"],
 .loc-near-row:hover {
@@ -452,7 +463,7 @@ body.red-mode .hud-red-btn {
   .hud-rack .side-nav li {
     flex: 0 0 auto;
   }
-  /* Five tabs in thumb order: Dashboard, Add, Log, Stations, Settings.
+  /* Five tabs in thumb order: Dashboard, Log, Add, Stations, Settings.
      Favourites and the bin are reached from Settings and the log, so they are
      not tabs; the station search is. Order is explicit rather than relying on
      source order, so the markup can move without re-shuffling the bar. */
@@ -467,11 +478,13 @@ body.red-mode .hud-red-btn {
   .hud-rack .side-nav li:nth-child(1) {
     order: 1;
   }
+  /* Reading the log comes before writing a new entry: the common visit is to
+     check what was logged, and Add moves one slot further from the thumb. */
   .hud-rack .side-nav li:nth-child(2) {
-    order: 2;
+    order: 3;
   }
   .hud-rack .side-nav li:nth-child(3) {
-    order: 3;
+    order: 2;
   }
   .hud-rack .side-nav li:nth-child(6) {
     order: 5;

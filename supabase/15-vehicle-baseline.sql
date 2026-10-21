@@ -1,0 +1,79 @@
+-- EV Multi-Tracker: a baseline consumption figure per vehicle.
+-- Run this in the Supabase SQL editor AFTER 14-session-winter.sql.
+-- Dashboard -> SQL Editor -> New query -> paste -> Run.
+--
+-- Everything here is idempotent.
+--
+-- What it does
+--   Adds TWO columns to public.vehicles:
+--
+--     baseline_consumption_kwh_100km  the figure the driver already trusts
+--     baseline_distance_km            the distance it was measured over
+--
+-- Why a baseline is needed at all
+--   Consumption is measured from the log, and a sparse log is a noisy one.
+--   Three charges over 80 km can produce 12 kWh/100km or 40 from the same car,
+--   depending on where the readings fell. A figure the driver brings from
+--   before this app - a trip computer's long-term average, or a previous
+--   tracker - is evidence too, and the arithmetic can use it as one.
+--
+--   So the two are combined as a weighted mean:
+--
+--     (measured kWh + baseline kWh/100km/100 x baseline km)
+--     ----------------------------------------------------- x 100
+--               (measured km + baseline km)
+--
+--   The baseline is not a separate method and never replaces a measurement.
+--   It behaves as extra kilometres of evidence: with 100 measured kilometres
+--   against a 5,000 km baseline it is a gentle anchor, and by 20,000 measured
+--   kilometres it is negligible. That is exactly the behaviour wanted for a
+--   new car and exactly the behaviour wanted for a well-used one.
+--
+-- Why two columns, both nullable
+--   A consumption figure without its distance cannot be weighted - 18
+--   kWh/100km over 50 km and over 50,000 km mean very different things - so
+--   the pair is required before either is used. Both blank means "no
+--   baseline", which is the normal state and behaves exactly as before.
+--
+--   Nullable rather than defaulted to 0: 0 is a real (impossible) figure,
+--   whereas null is "not set". The editor rejects zero and negative values,
+--   and the maths ignores an incomplete pair rather than guessing.
+--
+--   No CHECK constraint on purpose, for the same reason as migration 12: an
+--   old backup containing a blank or odd value must not turn a restore into a
+--   hard failure. The editor clamps what a person types; an import is
+--   normalised on the way in.
+--
+-- What it does NOT touch
+--   No policy, no trigger, no grant. RLS on vehicles works at row level
+--   ("accessible by members", "your own rows"), and Supabase grants
+--   table-level privileges, so a new column is readable and writable by
+--   exactly the people who could already read and write the row.
+--
+-- Idempotency
+--   add column if not exists, so re-running is a no-op rather than an error.
+
+alter table public.vehicles
+  add column if not exists baseline_consumption_kwh_100km numeric;
+
+alter table public.vehicles
+  add column if not exists baseline_distance_km numeric;
+
+-- ---------------------------------------------------------------------------
+-- Verify after running (expect two rows):
+--   select column_name, data_type, is_nullable
+--     from information_schema.columns
+--    where table_name = 'vehicles'
+--      and column_name in ('baseline_consumption_kwh_100km',
+--                          'baseline_distance_km')
+--    order by column_name;
+--
+-- Set a baseline for a vehicle (example: 18.4 kWh/100km over 12,000 km):
+--   update public.vehicles
+--      set baseline_consumption_kwh_100km = 18.4,
+--          baseline_distance_km = 12000
+--    where name = 'Tucson';
+--
+-- Read it back with the id you will need:
+--   select id, name, baseline_consumption_kwh_100km, baseline_distance_km
+--     from public.vehicles order by name;

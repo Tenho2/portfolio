@@ -483,6 +483,9 @@
       "set.navAlign": "Navigation alignment",
       "set.navRight": "Right-handed",
       "set.navLeft": "Left-handed",
+      "set.scanlines": "Retro scanlines",
+      "set.scanlinesLead":
+        "A faint CRT texture over the cockpit. Off by default; the choice is remembered on this device.",
       "set.resetDevice": "Sign out and clear this device",
       "set.resetDeviceHint":
         "Removes this device's copy of every account, then signs you out. Nothing is deleted on the server.",
@@ -716,6 +719,13 @@
       "set.capHintNone": "No capacity set, so consumption is measured from charged energy instead.",
       "ph.capGross": "e.g. 77.4",
       "ph.capUsable": "e.g. 73.53",
+      "set.baselineConsumption": "Baseline consumption (kWh/100 km)",
+      "set.baselineDistance": "Baseline distance (km)",
+      "set.baselineLead":
+        "Optional. A figure from before this log, weighted by the distance it covers: it steadies the average while the log is sparse and fades as real data arrives. Both boxes are needed; leave them blank to use only measured data.",
+      "ph.baselineKwh": "e.g. 18.4",
+      "ph.baselineKm": "e.g. 12000",
+      "grp.baseline": "Consumption baseline",
       "grp.capacity": "Battery capacity",
       "grp.payers": "Who paid",
       "as.paidBy": "Split this charge between",
@@ -743,6 +753,8 @@
       "tile.fromCharging": "from charging, {n} charges ({v} kWh/100km)",
       "tile.disagree": "the two do not agree",
       "tile.noLegs": "{n} kWh not yet measured",
+      "tile.baseline": "anchored to your {v} kWh/100km baseline over {n} km",
+      "tile.baselineOnly": "your baseline; no measured legs yet",
       "tile.costLegs": "over {n} charges",
       "toast.leaveQ": "Stop using {v}? The car leaves your list. {n} charging session(s) you can see go to this device's bin, where you can still read them until you empty it. The owner keeps everything, and the server will not show you these sessions again.",
       "toast.leavePendingQ": "Withdraw your request for {v}? The owner will no longer see it waiting.",
@@ -1304,6 +1316,9 @@
       "set.navAlign": "Navigoinnin puoli",
       "set.navRight": "Oikeakätinen",
       "set.navLeft": "Vasenkätinen",
+      "set.scanlines": "Retro-juovat",
+      "set.scanlinesLead":
+        "Hento CRT-kuvio ohjaamossa. Oletuksena pois päältä; valinta muistetaan tällä laitteella.",
       "set.resetDevice": "Kirjaudu ulos ja tyhjennä tämä laite",
       "set.resetDeviceHint":
         "Poistaa tämän laitteen kopion kaikista tileistä ja kirjaa ulos. Palvelimelta ei poisteta mitään.",
@@ -1535,6 +1550,13 @@
       "set.capHintNone": "Kapasiteettia ei ole asetettu, joten kulutus lasketaan ladatusta energiasta.",
       "ph.capGross": "esim. 77,4",
       "ph.capUsable": "esim. 73,53",
+      "set.baselineConsumption": "Peruskulutus (kWh/100 km)",
+      "set.baselineDistance": "Peruskulutuksen matka (km)",
+      "set.baselineLead":
+        "Valinnainen. Ennen tätä lokia tiedossa ollut lukema, painotettuna sen kattamalla matkalla: se vakauttaa keskiarvoa harvan lokin aikana ja hälvenee, kun oikeaa dataa kertyy. Molemmat kentät tarvitaan; jätä tyhjäksi, jos haluat käyttää vain mitattua dataa.",
+      "ph.baselineKwh": "esim. 18,4",
+      "ph.baselineKm": "esim. 12000",
+      "grp.baseline": "Kulutuksen perustaso",
       "grp.capacity": "Akun kapasiteetti",
       "grp.payers": "Kuka maksoi",
       "as.paidBy": "Jaa tämä lataus henkilöille",
@@ -1562,6 +1584,9 @@
       "tile.fromCharging": "latauksen mukaan, {n} latausta ({v} kWh/100km)",
       "tile.disagree": "menetelmät eivät täsmää",
       "tile.noLegs": "{n} kWh ei mitattu vielä",
+      "tile.baseline":
+        "ankkuroitu peruskulutukseesi {v} kWh/100km ({n} km)",
+      "tile.baselineOnly": "peruskulutuksesi; mitattuja siirtymiä ei vielä ole",
       "tile.costLegs": "{n} latauksen yli",
       "toast.leaveQ": "Lopetetaanko {v} käyttö? Auto poistuu listaltasi. Näkyvissäsi olevaa {n} latausta siirtyy laitteesi roskakoriin, jossa ne ovat luettavissa, kunnes tyhjennät sen. Omistaja säilyttää kaiken, eikä palvelin enää näytä näitä latauksia sinulle.",
       "toast.leavePendingQ": "Peruutetaanko pyyntösi ajoneuvoon {v}? Omistaja ei enää näe sitä odottavana.",
@@ -2120,6 +2145,9 @@
       "set.navAlign": "Navigeringssida",
       "set.navRight": "Högerhänt",
       "set.navLeft": "Vänsterhänt",
+      "set.scanlines": "Retro-scanlines",
+      "set.scanlinesLead":
+        "En svag CRT-textur över cockpiten. Av som standard; valet sparas på den här enheten.",
       "set.resetDevice": "Logga ut och töm den här enheten",
       "set.resetDeviceHint":
         "Tar bort den här enhetens kopia av alla konton och loggar ut. Inget raderas på servern.",
@@ -2363,11 +2391,21 @@
       "set.capHintNone":
         "Ingen kapacitet angiven, s? f?rbrukningen m?ts fr?n laddad energi ist?llet.",
       "ph.capUsable": "t.ex. 73,53",
+      "set.baselineConsumption": "Basförbrukning (kWh/100 km)",
+      "set.baselineDistance": "Bassträcka (km)",
+      "set.baselineLead":
+        "Valfritt. En siffra från tiden före den här loggen, viktad med sträckan den täcker: den stabiliserar medelvärdet när loggen är gles och tonar bort när riktiga data kommer in. Båda fälten behövs; lämna dem tomma för att bara använda uppmätta data.",
+      "ph.baselineKwh": "t.ex. 18,4",
+      "ph.baselineKm": "t.ex. 12000",
+      "grp.baseline": "Förbrukningsbas",
       "grp.capacity": "Batterikapacitet",
       "tile.fromBattery": "från batterinivå, {n} sträckor",
       "tile.fromCharging": "från laddning, {n} laddningar ({v} kWh/100km)",
       "tile.disagree": "metoderna stämmer inte överens",
       "tile.noLegs": "{n} kWh ännu inte mätta",
+      "tile.baseline":
+        "förankrad i din basförbrukning {v} kWh/100km över {n} km",
+      "tile.baselineOnly": "din basförbrukning; inga uppmätta sträckor ännu",
       "tile.costLegs": "över {n} laddningar",
       "toast.leaveQ": "Sluta använda {v}? Bilen försvinner från din lista. De {n} laddningar du kan ser flyttas till den här enhetens papperskorg, där du fortfarande kan läsa dem tills du tömmer den. Ägaren behåller allt, och servern visar dig inte dessa laddningar igen.",
       "toast.leavePendingQ": "Ta tillbaka din förfrågan om {v}? Ägaren ser den inte längre som väntande.",

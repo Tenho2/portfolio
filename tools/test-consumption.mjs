@@ -29,6 +29,8 @@ import { readFileSync } from "node:fs";
 import { appSource, fnSource } from "./app-source.mjs";
 
 const html = readFileSync("ev-tracker.html", "utf8");
+const hudHtml = readFileSync("tools/hud-body.html", "utf8");
+const migration = readFileSync("supabase/15-vehicle-baseline.sql", "utf8");
 const app = appSource();
 
 let pass = 0;
@@ -89,6 +91,11 @@ const seasonSplit = new Function(
 )();
 const batteryHealth = new Function(
   `${fnSource("num")}${fnSource("isNum")}${fnSource("soc")}${fnSource("batteryHealth")}; return batteryHealth;`,
+)();
+/* The baseline anchor depends only on its arguments, so it is lifted out and
+   tested directly rather than through renderConsumption's DOM. */
+const anchoredConsumption = new Function(
+  `${fnSource("num")}${fnSource("isNum")}${fnSource("posOrNull")}${fnSource("anchoredConsumption")}; return anchoredConsumption;`,
 )();
 
 /* `costOf` falls back to energy x `price`, and `price` is app state. Held here so
@@ -226,6 +233,76 @@ group("the two methods are independent and both plausible", () => {
   is("but they cover the same distance", charged.km, battery.km);
 });
 
+group("a baseline anchors a sparse figure instead of replacing it", () => {
+  /* The reported shape: one 14 km leg carrying 50 kWh is 357 kWh/100km. A
+     driver-supplied baseline of 18.4 over 12,000 km is far more informative
+     than three charges' worth of noise, and the weighted mean says so without
+     discarding the measurement. */
+  near("the raw sparse figure", anchoredConsumption(50, 14, null, null), 357.14, 0.05);
+  is("no measured distance and no baseline is null", anchoredConsumption(0, 0, null, null), null);
+
+  const sparse = anchoredConsumption(50, 14, 18, 5000);
+  /* (50 + 0.18 * 5000) / (14 + 5000) * 100 = 18.947 */
+  near("anchored near the baseline", sparse, 18.95, 0.05);
+  ok("which is a plausible car, unlike 357", sparse > 15 && sparse < 25);
+
+  /* The baseline is evidence, not an override: the more real distance there
+     is, the less it moves the answer. */
+  const wellUsed = anchoredConsumption(3000, 15000, 18, 5000);
+  near("15,000 measured km pulls toward the raw figure", wellUsed, 19.5, 0.05);
+  ok("the same baseline moves it by less than 1", Math.abs(wellUsed - 20) < 1);
+  ok("while it moved the 14 km figure by hundreds", Math.abs(sparse - 357.14) > 300);
+});
+
+group("a baseline alone is labelled, never invented", () => {
+  /* A new car with a baseline and no legs yet should show something useful;
+     renderConsumption labels it as the entered figure rather than a measurement. */
+  is("no measured data returns the baseline", anchoredConsumption(0, 0, 18, 5000), 18);
+  ok("and the tile has a label for exactly that", /tile\.baselineOnly/.test(app));
+  ok("and a label for an anchored figure", /tile\.baseline\b/.test(app));
+  ok("the anchored provenance names both numbers", /tile\.baseline[\s\S]{0,120}baselineKm/.test(app));
+});
+
+group("an incomplete or impossible baseline is ignored", () => {
+  /* Half a pair cannot be weighted: a figure with no distance behind it says
+     nothing about how much evidence it is. */
+  near("consumption without distance", anchoredConsumption(50, 14, 18, null), 357.14, 0.05);
+  near("distance without consumption", anchoredConsumption(50, 14, null, 5000), 357.14, 0.05);
+  near("zero consumption", anchoredConsumption(50, 14, 0, 5000), 357.14, 0.05);
+  near("zero distance", anchoredConsumption(50, 14, 18, 0), 357.14, 0.05);
+  near("negative values", anchoredConsumption(50, 14, -18, -5000), 357.14, 0.05);
+  near("strings that are not numbers", anchoredConsumption(50, 14, "x", "y"), 357.14, 0.05);
+});
+
+group("the baseline is stored as a pair and carried through sync", () => {
+  ok("the shared editor has both boxes", /id="vfBaseKwh"/.test(html) && /id="vfBaseKm"/.test(html));
+  ok("the HUD editor has both boxes", /id="vfBaseKwh"/.test(hudHtml) && /id="vfBaseKm"/.test(hudHtml));
+  ok("the editor explains both", /id="vfBaseHint"/.test(html) && /set\.baselineLead/.test(html));
+  ok("saving clamps an impossible consumption", /baseKwh !== null && baseKwh <= 100/.test(app));
+  ok("saving keeps the distance as a positive number", /v\.baselineKm = posOrNull\(\$\("vfBaseKm"\)\.value\)/.test(app));
+  ok(
+    "vehicleRow sends both columns",
+    /baseline_consumption_kwh_100km: posOrNull\(v\.baselineKwh100\)/.test(app) &&
+      /baseline_distance_km: posOrNull\(v\.baselineKm\)/.test(app),
+  );
+  ok(
+    "rowVehicle reads both columns back",
+    /baselineKwh100: posOrNull\(r\.baseline_consumption_kwh_100km\)/.test(app) &&
+      /baselineKm: posOrNull\(r\.baseline_distance_km\)/.test(app),
+  );
+  ok("old vehicles normalise to null", /baselineKwh100 = posOrNull/.test(app));
+  ok(
+    "a backup restore carries the pair",
+    /baselineKwh100: posOrNull\(pa\.baselineKwh100\)/.test(app) &&
+      /baselineKm: posOrNull\(pa\.baselineKm\)/.test(app),
+  );
+  ok(
+    "migration 15 adds both columns idempotently",
+    /add column if not exists baseline_consumption_kwh_100km numeric/.test(migration) &&
+      /add column if not exists baseline_distance_km numeric/.test(migration),
+  );
+});
+
 group("cost per 100 km is on the leg basis too", () => {
   /* The newest charge's money belongs to kilometres not yet driven. Charging
      it against the driven distance is the same error as the kWh one. */
@@ -260,7 +337,8 @@ group("the tiles name the method instead of showing a bare number", () => {
   ok("the cost tile has a provenance line too", /id="sCost100Note"/.test(html));
   ok("both methods are named", /tile\.fromBattery/.test(app) && /tile\.fromCharging/.test(app));
   ok("disagreement is surfaced", /tile\.disagree/.test(app));
-  ok("the battery method is preferred", /bySoc !== null \? bySoc : byCharge/.test(app));
+  ok("the battery method is preferred", /var useSoc = bySoc !== null/.test(app));
+  ok("the headline figure is anchored to the baseline", /anchoredConsumption\(/.test(app));
   /* Money cannot be read off a battery percentage. */
   ok("cost per 100 km uses the charging method only", /legs\.cost \/ legs\.km/.test(app));
 });
