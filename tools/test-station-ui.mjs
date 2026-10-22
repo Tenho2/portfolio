@@ -189,8 +189,8 @@ group("the panel is reachable from the pin", () => {
   /* The panel itself is shared markup and must exist on both pages. */
   is("the classic page has it", /id="stationDetail"/.test(html), true);
   is(
-    "the wide page has it",
-    /id="stationDetail"/.test(readFileSync("ev-tracker-wide.html", "utf8")),
+    "a second shared page has it",
+    /id="stationDetail"/.test(readFileSync("ev-tracker-focus.html", "utf8")),
     true,
   );
 });

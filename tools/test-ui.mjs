@@ -29,12 +29,12 @@ import { readFileSync } from "node:fs";
  * have matched against markup alone and passed without testing a thing.
  */
 const html = readFileSync("ev-tracker.html", "utf8");
-const wide = readFileSync("ev-tracker-wide.html", "utf8");
+const focusPage = readFileSync("ev-tracker-focus.html", "utf8");
 const storage = readFileSync("app/storage.js", "utf8");
 const appJs = readFileSync("app/app.js", "utf8");
 const appCss = readFileSync("app/app.css", "utf8");
 const layoutClassic = readFileSync("app/layout-classic.css", "utf8");
-const layoutWide = readFileSync("app/layout-wide.css", "utf8");
+const layoutFocus = readFileSync("app/layout-focus.css", "utf8");
 
 let pass = 0;
 const failures = [];
@@ -54,7 +54,7 @@ function group(name, fn) {
 /* Stylesheet only, comments stripped: a rule named in a comment is not a rule,
    and a comment can contain braces that look like one. */
 const stripCss = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/<!--[\s\S]*?-->/g, "");
-const style = stripCss(`${appCss}\n${layoutClassic}\n${layoutWide}`);
+const style = stripCss(`${appCss}\n${layoutClassic}\n${layoutFocus}`);
 
 /* Strip comments so prose is not read as code: a comment naming a variable is
    otherwise indistinguishable from a reference to it. */
@@ -69,7 +69,7 @@ const stripJs = (s) => s.replace(/<!--[\s\S]*?-->/g, "").replace(/\/\*[\s\S]*?\*
  * either half alone cannot answer them. The two layouts are both included so an
  * assertion cannot pass because a pattern happens to appear in only one of them.
  */
-const code = [html, wide, appJs].map(stripJs).join("\n");
+const code = [html, focusPage, appJs].map(stripJs).join("\n");
 
 /**
  * The text between two markers, so an assertion describes one function's body
@@ -729,6 +729,18 @@ group("the app can never fall back to a private of another module", () => {
   ok("storage publishes only EV_STORAGE", /window\.EV_STORAGE\s*=/.test(storage));
   ok("no LANGS in the app script", !/(?<![.\w"'])LANGS\b/.test(code));
   ok("no ORDER in the app script", !/(?<![.\w"'])ORDER\b/.test(code));
+});
+
+group("warning buttons keep readable ink", () => {
+  /* .btn supplies white ink; .btn.warn only set the amber fill, so "Restore
+     backup" and "Clear sessions" were white-on-amber at 1.9:1 - visually blank. */
+  const rule = /\.btn\.warn\s*\{([^}]*)\}/.exec(appCss);
+  ok("the warning rule exists", !!rule);
+  if (rule) {
+    ok("it keeps the amber fill", /background:\s*var\(--warn\)/.test(rule[1]));
+    ok("and supplies dark ink", /color:\s*#1f1300/.test(rule[1]));
+    ok("not inherited white", !/color:\s*#fff/.test(rule[1]));
+  }
 });
 
 console.log(`\n${pass} passed, ${failures.length} failed`);

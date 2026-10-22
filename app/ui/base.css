@@ -232,12 +232,6 @@ textarea {
   max-width: var(--maxw);
   margin: 0 auto;
 }
-footer {
-  margin-left: var(--side-w);
-  padding: 1.5rem 1.25rem 2.5rem;
-  color: var(--text-muted);
-  font-size: 0.8rem;
-}
 
 .top {
   display: flex;
@@ -1228,7 +1222,6 @@ table.fmt th {
    login banner stays on screen over the signed-in app. */
 body.need-auth .side,
 body.need-auth .wrap,
-body.need-auth footer,
 body.need-auth .skip-link,
 body.need-auth .hud-deck {
   display: none !important;
@@ -1355,14 +1348,8 @@ body:not(.need-auth) #authView {
     font-size: 0.62rem;
     text-align: center;
   }
-  .wrap,
-  footer {
-    margin-left: 0;
-  }
   .wrap {
-    padding-bottom: 5rem;
-  }
-  footer {
+    margin-left: 0;
     padding-bottom: 5rem;
   }
   /* Keep the phone header to one row: the vehicle picker and the theme toggle

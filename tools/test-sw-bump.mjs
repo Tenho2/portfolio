@@ -34,16 +34,28 @@ import { readFileSync, existsSync } from "node:fs";
  */
 const SHELL = [
   "ev-tracker.html",
-  "ev-tracker-wide.html",
+  "ev-tracker-focus.html",
+  "ev-tracker-modern.html",
+  "ev-tracker-hud.html",
+  "ev-tracker-brutal.html",
+  "ev-tracker-editorial.html",
+  "ev-tracker-win31.html",
   "index.html",
   "sw.js",
   "manifest.json",
   "app/app.css",
   "app/app.js",
   "app/layout-classic.css",
-  "app/layout-wide.css",
+  "app/layout-focus.css",
+  "app/layout-modern.css",
+  "app/ui/base.css",
+  "app/ui/hud.css",
+  "app/ui/brutal.css",
+  "app/ui/editorial.css",
+  "app/ui/win31.css",
   "app/i18n.js",
   "app/storage.js",
+  "app/stations.js",
 ];
 
 let pass = 0;
@@ -98,11 +110,19 @@ if (changedAll === null || untracked === null) {
       : committedVersion[1] !== workingVersion[1];
 
   /* An added file under app/ only counts once some page actually loads it,
-     otherwise an unrelated scratch file would demand a version bump. Both
-     layout pages are consulted, because either one may be the page that
-     references a shared module - checking only ev-tracker.html would call
-     app/app.js unreferenced whenever the wide page were the one touched. */
-  const pageText = ["ev-tracker.html", "ev-tracker-wide.html"]
+     otherwise an unrelated scratch file would demand a version bump. Every
+     shared-markup page is consulted, because any one of them may be the page
+     that references a shared module - checking one would call app/app.js
+     unreferenced whenever another page were the one touched. */
+  const pageText = [
+    "ev-tracker.html",
+    "ev-tracker-focus.html",
+    "ev-tracker-modern.html",
+    "ev-tracker-hud.html",
+    "ev-tracker-brutal.html",
+    "ev-tracker-editorial.html",
+    "ev-tracker-win31.html",
+  ]
     .filter((f) => existsSync(f))
     .map((f) => readFileSync(f, "utf8"))
     .join("\n");

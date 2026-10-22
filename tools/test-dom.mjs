@@ -31,7 +31,7 @@ import { JSDOM } from "jsdom";
  * edits one page's markup by hand, this suite silently stops covering the other
  * and the edit lands on whichever page was not in the loop.
  *
- * Override with EV_PAGE=ev-tracker-wide.html to check the other one directly.
+ * Override with EV_PAGE=ev-tracker-focus.html to check another shared page directly.
  */
 const PAGE = process.env.EV_PAGE || "ev-tracker.html";
 const html = readFileSync(PAGE, "utf8");
@@ -334,7 +334,7 @@ group("switching layout is a navigation and nothing more", () => {
   /* Both pages must carry it, or one of them has no way to reach the other. */
   ok(
     "both pages carry the picker",
-    ["ev-tracker.html", "ev-tracker-wide.html"].every((f) =>
+    ["ev-tracker.html", "ev-tracker-focus.html"].every((f) =>
       readFileSync(f, "utf8").includes('id="layoutSel"'),
     ),
   );
@@ -346,7 +346,7 @@ group("both pages are covered by this run", () => {
      ever diverges them, this fails loudly instead of the second page quietly
      losing its coverage. tools/test-layouts.mjs asserts the same thing in
      detail; this is the local reminder. */
-  const other = readFileSync("ev-tracker-wide.html", "utf8");
+  const other = readFileSync("ev-tracker-focus.html", "utf8");
   const markup = (src) =>
     src
       .split(/\r?\n/)

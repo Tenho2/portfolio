@@ -43,7 +43,7 @@ function group(name, fn) {
   console.log(`${failures.length - before ? "FAIL" : "ok  "}  ${name}`);
 }
 
-for (const page of ["ev-tracker.html", "ev-tracker-wide.html"]) {
+for (const page of ["ev-tracker.html", "ev-tracker-focus.html"]) {
   group(`the log table exists and is identifiable on ${page}`, () => {
     const html = pageSource(page);
     ok("the table has an id", /<table id="logTable"/.test(html));

@@ -25,41 +25,37 @@
  * because a navigation is network-first; an installed PWA launched from the
  * home screen can come straight out of the cache without any request at all.
  *
- * The list grew when the app was split: there are now two layout pages, and both
- * the CSS and the application logic are separate files that two pages share. A
- * file missing from this list is served stale and nothing complains - so
- * tools/test-sw-bump.mjs asserts that every shell file was touched, and that the
- * version moved with it.
+ * The list grew when the app was split: every layout page, and the CSS and
+ * application logic they share, is a separate file. A file missing from this
+ * list is served stale and nothing complains - so tools/test-sw-bump.mjs
+ * asserts that every shell file was touched, and that the version moved with it.
  *
- * Last bumped: 2026-10-21, for the vehicle consumption baseline, the opt-in
- * HUD scanlines toggle and readable destructive buttons, remembering the
- * layout and appearance across launches, the ESLint dead-code cleanup, and the
- * update-reload fix that stops a Settings checkbox leaving a page on old assets.
+ * Last bumped: 2026-10-22, for archiving Wide and Glass, removing the false
+ * footer claim, fixing the warning-button ink, adding seasonal baselines and
+ * the scanline intensity control, and the new Windows 3.1 theme.
  */
-const VERSION = "v73";
+const VERSION = "v74";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [
   "./",
   "./ev-tracker.html",
-  "./ev-tracker-wide.html",
   "./ev-tracker-focus.html",
   "./ev-tracker-modern.html",
   "./ev-tracker-hud.html",
   "./ev-tracker-brutal.html",
   "./ev-tracker-editorial.html",
-  "./ev-tracker-glass.html",
+  "./ev-tracker-win31.html",
   "./app/app.css",
   "./app/app.js",
   "./app/layout-classic.css",
-  "./app/layout-wide.css",
   "./app/layout-focus.css",
   "./app/layout-modern.css",
   "./app/ui/base.css",
   "./app/ui/hud.css",
   "./app/ui/brutal.css",
   "./app/ui/editorial.css",
-  "./app/ui/glass.css",
+  "./app/ui/win31.css",
   "./app/i18n.js",
   "./app/storage.js",
   "./app/stations.js",
@@ -125,10 +121,10 @@ async function cacheFirst(request) {
 /*
  * Which cached page a given navigation falls back to.
  *
- * There are two pages, and an offline navigation has to be answered with the one
- * that was actually asked for. A single hardcoded ./ev-tracker.html was fine
- * while there was one page; with two, a cached fallback to the wrong one shows
- * the classic layout when the user asked for the wide one, which looks like the
+ * There are several pages, and an offline navigation has to be answered with the
+ * one that was actually asked for. A single hardcoded ./ev-tracker.html was fine
+ * while there was one page; with several, a cached fallback to the wrong one
+ * shows the classic layout when the user asked for another, which looks like the
  * setting silently not sticking.
  *
  * ignoreSearch because the page is reached as "#log" - the fragment is not part
@@ -137,13 +133,12 @@ async function cacheFirst(request) {
  */
 const PAGES = [
   "./ev-tracker.html",
-  "./ev-tracker-wide.html",
   "./ev-tracker-focus.html",
   "./ev-tracker-modern.html",
   "./ev-tracker-hud.html",
   "./ev-tracker-brutal.html",
   "./ev-tracker-editorial.html",
-  "./ev-tracker-glass.html",
+  "./ev-tracker-win31.html",
 ];
 
 function fallbackFor(url) {

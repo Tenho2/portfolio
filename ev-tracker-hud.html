@@ -784,9 +784,15 @@
                      asked for. HUD-only markup; the shared pages have no such
                      control and the wiring is guarded. -->
                 <div class="hud-row">
-                  <div class="chk">
-                    <input type="checkbox" id="scanlinesChk" />
-                    <label for="scanlinesChk" data-i18n="set.scanlines"></label>
+                  <div class="f">
+                    <label for="scanlinesSel" data-i18n="set.scanlines"></label>
+                    <select id="scanlinesSel" data-i18n-aria="set.scanlines">
+                      <option value="0" data-i18n="set.scanOff"></option>
+                      <option value="10" data-i18n="set.scan10"></option>
+                      <option value="20" data-i18n="set.scan20"></option>
+                      <option value="30" data-i18n="set.scan30"></option>
+                      <option value="40" data-i18n="set.scan40"></option>
+                    </select>
                   </div>
                 </div>
                 <div class="hint" data-i18n="set.scanlinesLead"></div>
@@ -1371,8 +1377,6 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             </div>
           </section>
         </main>
-
-        <footer class="hud-foot" data-i18n="foot"></footer>
       </div>
     </div>
 
@@ -1701,6 +1705,36 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                 min="0"
                 step="1"
                 data-i18n-ph="ph.baselineKm"
+                aria-describedby="vfBaseHint"
+              />
+            </div>
+            <div class="f">
+              <label
+                for="vfBaseSummer"
+                data-i18n="set.baselineSummer"
+              ></label
+              ><input
+                type="number"
+                id="vfBaseSummer"
+                min="0"
+                max="100"
+                step="0.1"
+                data-i18n-ph="ph.baselineSummer"
+                aria-describedby="vfBaseHint"
+              />
+            </div>
+            <div class="f">
+              <label
+                for="vfBaseWinter"
+                data-i18n="set.baselineWinter"
+              ></label
+              ><input
+                type="number"
+                id="vfBaseWinter"
+                min="0"
+                max="100"
+                step="0.1"
+                data-i18n-ph="ph.baselineWinter"
                 aria-describedby="vfBaseHint"
               />
             </div>

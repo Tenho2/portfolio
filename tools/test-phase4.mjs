@@ -50,7 +50,7 @@ const app = appSource();
    "Reuse the position the station search already resolved". */
 const code = app.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "));
 const html = readFileSync("ev-tracker.html", "utf8");
-const wide = readFileSync("ev-tracker-wide.html", "utf8");
+const focusPage = readFileSync("ev-tracker-focus.html", "utf8");
 const i18 = readFileSync("app/i18n.js", "utf8");
 
 function value(lang, key) {
@@ -270,7 +270,7 @@ group("a far favourite never outranks a closer charger", () => {
 });
 
 group("the list is a real control, not decoration", () => {
-  for (const [name, doc] of [["classic", html], ["wide", wide]]) {
+  for (const [name, doc] of [["classic", html], ["focus", focusPage]]) {
     ok(`${name} has the container`, /id="locNear"/.test(doc));
     ok(`${name} keeps it hidden until filled`, /id="locNear" hidden/.test(doc));
   }

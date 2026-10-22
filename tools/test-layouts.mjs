@@ -2,7 +2,7 @@
  * The layout pages cannot drift.
  *
  * Why this file exists
- *   Four of the eight pages - classic, wide, focus and modern - are the same
+ *   The three shared-markup pages - classic, focus and modern - are the same
  *   application: identical markup, identical app/app.js, identical storage keys,
  *   identical account. The only difference is one attribute and one stylesheet.
  *   Everything else being equal is the whole safety argument - app/app.js looks
@@ -14,7 +14,7 @@
  *   application and a broken one side by side, and the symptom is reported by a
  *   user on whichever page was missed.
  *
- *   The four experimental UIs (hud, brutal, editorial, glass) load app/ui/base.css
+ *   The four experimental UIs (hud, brutal, editorial, win31) load app/ui/base.css
  *   plus their own theme instead of app/app.css, and they are deliberately
  *   allowed to restructure the DOM rather than only recolour it - hud does. So
  *   the byte-identical assertion applies only to the shared-markup family. The
@@ -42,7 +42,6 @@ import { execFileSync } from "node:child_process";
 
 const PAGES = [
   { name: "classic", file: "ev-tracker.html" },
-  { name: "wide", file: "ev-tracker-wide.html" },
   { name: "focus", file: "ev-tracker-focus.html" },
   { name: "modern", file: "ev-tracker-modern.html" },
   /* Experimental UIs: each loads app/ui/base.css + its own theme instead of
@@ -50,7 +49,7 @@ const PAGES = [
   { name: "hud", file: "ev-tracker-hud.html", ui: true },
   { name: "brutal", file: "ev-tracker-brutal.html", ui: true },
   { name: "editorial", file: "ev-tracker-editorial.html", ui: true },
-  { name: "glass", file: "ev-tracker-glass.html", ui: true },
+  { name: "win31", file: "ev-tracker-win31.html", ui: true },
 ];
 
 /* Two families. The shared-markup pages must stay byte-identical; the
@@ -73,7 +72,6 @@ function group(name, fn) {
 const read = (f) => readFileSync(f, "utf8");
 const layoutCss = {
   classic: read("app/layout-classic.css"),
-  wide: read("app/layout-wide.css"),
   focus: read("app/layout-focus.css"),
   modern: read("app/layout-modern.css"),
 };

@@ -46,7 +46,7 @@ function group(name, fn) {
 
 const app = appSource();
 const html = readFileSync("ev-tracker.html", "utf8");
-const wide = readFileSync("ev-tracker-wide.html", "utf8");
+const focusPage = readFileSync("ev-tracker-focus.html", "utf8");
 
 import { readFileSync } from "node:fs";
 
@@ -182,9 +182,9 @@ group("hmToHours still parses a duration, not a clock", () => {
 });
 
 group("both pages carry the same change", () => {
-  for (const f of [html, wide]) {
-    ok(`step="1" present (${f === html ? "classic" : "wide"})`, /id="duration"[\s\S]{0,400}?step="1"/.test(f));
-    ok(`no #durSec (${f === html ? "classic" : "wide"})`, !f.includes('id="durSec"'));
+  for (const f of [html, focusPage]) {
+    ok(`step="1" present (${f === html ? "classic" : "focus"})`, /id="duration"[\s\S]{0,400}?step="1"/.test(f));
+    ok(`no #durSec (${f === html ? "classic" : "focus"})`, !f.includes('id="durSec"'));
   }
 });
 

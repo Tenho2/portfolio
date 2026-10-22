@@ -1,21 +1,53 @@
 # Where we left off
 
-Written at the end of the 2026-10-21 session. Durable engineering knowledge
+Written at the end of the 2026-10-22 session. Durable engineering knowledge
 belongs in [README.md](README.md); this file is the part that goes stale.
 
 ## State
 
-|                |                                                                             |
-| -------------- | --------------------------------------------------------------------------- |
-| HEAD           | `e88b730` — commit and push are the user's job (see ground rules below)     |
-| Working tree   | **dirty on purpose**: the ESLint cleanup is uncommitted                     |
-| Service worker | `v73`                                                                       |
-| Build stamp    | `2026-10-21`                                                                |
-| Tests          | 2016 assertions, 0 failures, across 30 suites (`npm run check`)             |
-| Database       | migration `15-vehicle-baseline` **must be run before deploying this build** |
+|                |                                                                              |
+| -------------- | ---------------------------------------------------------------------------- |
+| HEAD           | `3a75e62` — commit and push are the user's job (see ground rules below)      |
+| Working tree   | **dirty on purpose**: the 2026-10-22 layout/settings batch is uncommitted    |
+| Service worker | `v74`                                                                        |
+| Build stamp    | `2026-10-22`                                                                 |
+| Tests          | 2062 assertions, 0 failures, across 30 suites (`npm run check`)              |
+| Database       | migrations `15-vehicle-baseline` and `16-vehicle-seasonal-baseline` required |
 
 The assertion total is the sum of the per-suite counts; `tools/test-i18n-markup.mjs`
 reports by group rather than printing a number, so it is not in that figure.
+
+## 2026-10-22: archive, contrast, seasonal baselines, scanline levels, Win 3.1
+
+- **Wide and Glass are archived, not deleted.** Their pages, stylesheets and the
+  wide test live under `archive/` (see `archive/README.md`). They are gone from
+  `LAYOUTS`, `LAYOUT_PAGES`, `SHELL`/`PAGES`, the manifest shortcut, the home-page
+  link and every test fixture. Stored preferences are rewritten at boot:
+  `wide → classic`, `glass → hud`. Transitional redirect stubs at the old URLs are
+  the next deployment step; they are not in the active layout lists.
+- **The false footer text is gone.** The `foot` key claimed data stayed in the
+  browser although sync exists. The footer element, its three translations and
+  its now-dead CSS were removed.
+- **Restore/Clear are readable.** Both are `.btn.warn`; the shared `.btn` gives
+  white ink and `.btn.warn` only set an amber fill (1.9:1). `app.css` now gives it
+  dark ink, and `hud.css` gives it warning-coloured ink on the tint, the same
+  pattern as `.btn.dgr`.
+- **Seasonal baselines.** Migration 16 adds summer/winter consumption columns.
+  The vehicle editor keeps the all-year figure and adds two seasonal fields that
+  share `baseline_distance_km`. The winter/summer tiles anchor to their own value
+  and fall back to the all-year one; the headline stays on the all-year anchor.
+- **Scanlines are adjustable.** The HUD checkbox became Off / 10 / 20 / 30 / 40%.
+  The level is stored in the existing `scanlines` key (`"on"` maps to 20) and
+  drives `--scan-alpha` through `data-scanlines`. Labels are relative intensity:
+  the alphas are 2/3/5/8%, not literal percentages.
+- **Windows 3.1 theme.** New shared-markup UI theme (`app/ui/win31.css`): teal
+  desktop, gray windows, hard inset/outset bevels, navy title bars, black text,
+  square controls, dotted focus, plus a charcoal dark variant. No body override;
+  `test-win31-theme.mjs` pins the palette/bevels and `test-layouts` pins the id
+  contract.
+- **Test fixtures** that used `ev-tracker-wide.html` as the second shared page now
+  use `ev-tracker-focus.html`. `test-sw-bump.mjs` now lists every active shell
+  file instead of only classic/wide, closing a stale-cache blind spot.
 
 ## Since the last handover (2026-10-18 → 2026-10-21)
 
@@ -109,13 +141,15 @@ shared design system plus independent UI themes.
 
 ## Layouts & the generator
 
-- **Eight pages**, all generated: `classic`, `wide`, `focus`, `modern`, `hud`,
-  `brutal`, `editorial`, `glass`.
+- **Seven active pages**, all generated: `classic`, `focus`, `modern`, `hud`,
+  `brutal`, `editorial`, `win31`. `wide` and `glass` are archived in `archive/`
+  and are not built.
 - `app/shell.mjs` holds `LAYOUTS` and `linkLinesFor(layout)`; `tools/emit-pages.mjs`
   writes every page. Never hand-edit a generated `ev-tracker-*.html`.
 - The chosen layout is a **global device key** (`layout`), written by the picker.
   `ev-tracker.html` (the manifest `start_url`) redirects to it at boot; any other
   page boots as itself. See `layoutRedirectTarget()` / `restoreLayout()`.
+  `RETIRED_LAYOUTS` maps archived names: `wide → classic`, `glass → hud`.
 - Shared markup lives in `ev-tracker.html`; the **HUD overrides its body** from
   `tools/hud-body.html` (`BODY_OVERRIDE` in `emit-pages.mjs`). A change that
   should appear on the HUD goes in `hud-body.html`, not `ev-tracker.html`.
@@ -124,6 +158,8 @@ shared design system plus independent UI themes.
 - `tools/test-layouts.mjs` treats the two families differently: the **shared-markup
   pages** must be byte-identical to each other, while the **experimental pages**
   may restructure but must keep every id `app.js` looks up.
+- Old URLs for archived layouts need a transitional redirect stub for one release;
+  they are not part of `LAYOUTS`/`PAGES`, so a missing stub is a 404, not a fallback.
 
 ## Ground rules — read before touching git
 
@@ -141,9 +177,9 @@ oversight.
 ## Open questions
 
 **1. Which experimental UI stays? — OPEN.**
-`hud`, `brutal`, `editorial` and `glass` were built as four options to compare.
-Once the user picks one, the other three (page + theme) are deleted. Do not prune
-them unprompted.
+`hud`, `brutal`, `editorial` and `win31` are the active experiments. Wide and Glass
+are already archived. Once the user picks a keeper, the rest can be archived the
+same way; do not prune them unprompted.
 
 **2. HUD red mode — a deliberate divergence.**
 The HUD header button is not the light/dark toggle; it is a night-vision red
@@ -160,14 +196,16 @@ wholesale.
 
 ## Next
 
-- **Run migration 15 before deploying.** The client writes the two baseline
-  columns on every vehicle save; without the migration that is `42703`.
-- **Pick the keeper UI** from the four experimental layouts and delete the rest.
-  Do not prune unprompted.
+- **Run migrations 15 and 16 before deploying.** The client writes the baseline
+  columns on every vehicle save; without them that is `42703`.
+- **Delete the archived-layout stubs after one release.** `ev-tracker-wide.html`
+  and `ev-tracker-glass.html` currently redirect to `ev-tracker.html`; the real
+  archived copies live under `archive/`.
+- **Pick the keeper UI** from HUD/Brutal/Editorial/Win31. Do not prune unprompted.
 - **Empty-bin ownership/cascade bug** — still unfixed, separate from detached
   shared-car rows. Verify before starting; it may have moved.
-- **Human eyes on the HUD.** The new destructive-button colour and the
-  scanlines-off default were judged by code and contrast maths, not on a device.
+- **Human eyes on the new themes.** The warning-button inks, scanline levels and
+  Windows 3.1 palette were judged by code and contrast maths, not on a device.
 
 ## Traps worth knowing
 
@@ -182,14 +220,28 @@ wholesale.
   `classList.toggle` once per class. Never assign `className` there: it drops
   `dark`, `red-mode` or `show-scanlines` while setting another, and the loss is
   invisible until the next reload.
-- **`hud.css` `.btn.dgr` must stay after `.btn:not(.ghost)`.** Both rules have
-  the same specificity; the tint rule replaces `base.css`'s red fill but the dark
-  ink from `.btn.dgr` still applies, which is exactly the invisible delete button.
+- **`hud.css` `.btn.dgr` and `.btn.warn` must stay after `.btn:not(.ghost)`.** Both
+  generic rules have the same specificity as the variant; the tint rule replaces
+  `base.css`'s fill but the variant ink still applies. `.btn.dgr` was dark red on
+  near-black; `.btn.warn` was dark on dark. The shared `.btn.warn` also needed its
+  own dark ink because `.btn` supplies white.
 - **A consumption baseline is a pair.** A consumption figure without the distance
   it covered cannot be weighted, so `posOrNull` keeps each half nullable and the
   arithmetic ignores an incomplete pair. Zero is invalid, not "unset".
-- **Baseline columns are written on every vehicle save.** Run migration 15 before
-  shipping the client; a missing column is `42703` on every write.
+- **Seasonal baselines share `baseline_distance_km`.** Summer/winter values fall
+  back to the all-year figure; the headline stays on the all-year anchor. The
+  seasonal tile's `anchored` flag drives a provenance note.
+- **Baseline columns are written on every vehicle save.** Run migrations 15 and 16
+  before shipping the client; a missing column is `42703` on every write.
+- **Scanline levels are relative.** `--scan-alpha` is 2/3/5/8% for the 10/20/30/40
+  labels. The old `"on"` value maps to 20; `applyScanlines` writes the level to
+  `data-scanlines` and the class is only present when it is non-zero.
+- **Windows 3.1 is a CSS-only UI theme.** It uses the shared markup and must not
+  load `app/app.css`. `test-win31-theme.mjs` pins palette/bevels; `test-layouts`
+  pins the id contract. Generic `.btn` rules must not erase `.warn`/`.dgr` ink.
+- **Wide fixtures are gone.** Tests that used `ev-tracker-wide.html` as the second
+  shared page now use `ev-tracker-focus.html`; the archived page is a redirect stub.
+  `test-sw-bump.mjs` lists every active shell file, not just classic/wide.
 - **HUD is a separate DOM and stylesheet family.** `app/ui/*` never reads a token
   from `app/app.css`; a change meant for the HUD goes in `hud-body.html` +
   `app/ui/hud.css`.
@@ -237,9 +289,14 @@ wholesale.
   figure the maths reads. `null` means "not set" and is deliberately different
   from `0`.
 - `vehicles.baseline_consumption_kwh_100km` and `baseline_distance_km`, both
-  `numeric null` (migration 15) — the driver's own figure and the distance it
+  `numeric null` (migration 15) - the driver's own figure and the distance it
   covers. They are only used as a pair, as a weighted anchor on the headline
   consumption. `null` means no baseline; the measured figures are unchanged.
+- `vehicles.baseline_summer_kwh_100km` and `baseline_winter_kwh_100km`, both
+  `numeric null` (migration 16) - seasonal anchors for the summer/winter tiles,
+  sharing `baseline_distance_km`. They fall back to the all-year figure. The
+  headline remains on the all-year anchor, so a mixed history is never assigned a
+  season.
 - Capacity mode (gross/usable) is **not stored**, so no flag can disagree with the
   number it produced. Gross pre-fills usable at 95% in the editor.
 - Consumption is reported two ways — from charging energy, and from battery level

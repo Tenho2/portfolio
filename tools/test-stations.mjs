@@ -41,7 +41,7 @@ async function group(name, fn) {
 }
 
 const html = readFileSync("ev-tracker.html", "utf8");
-const wide = readFileSync("ev-tracker-wide.html", "utf8");
+const focusPage = readFileSync("ev-tracker-focus.html", "utf8");
 const app = readFileSync("app/app.js", "utf8");
 const mod = readFileSync("app/stations.js", "utf8");
 const shell = readFileSync("app/shell.mjs", "utf8");
@@ -490,7 +490,7 @@ await group("cameras are parsed, with a real image url", () => {
 });
 
 await group("the camera screen exists and says what these cameras are", () => {
-  for (const [name, doc] of [["classic", html], ["wide", wide]]) {
+  for (const [name, doc] of [["classic", html], ["focus", focusPage]]) {
     ok(`${name} has a camera button`, /id="cameraFindBtn"/.test(doc));
     ok(`${name} has a camera list`, /id="cameraList"/.test(doc));
     ok(`${name} has a live status region for it`, /id="cameraStat"[^>]*aria-live|aria-live[^>]*id="cameraStat"/.test(doc));
@@ -767,7 +767,7 @@ await group("a remembered position does not outlive its view", () => {
 });
 
 await group("the module is loaded on both pages, in the right order", () => {
-  for (const [name, doc] of [["classic", html], ["wide", wide]]) {
+  for (const [name, doc] of [["classic", html], ["focus", focusPage]]) {
     const at = (re) => doc.search(re);
     const stations = at(/<script src="app\/stations\.js"><\/script>/);
     const appjs = at(/<script src="app\/app\.js"><\/script>/);
@@ -782,7 +782,7 @@ await group("the module is loaded on both pages, in the right order", () => {
 });
 
 await group("the screen has somewhere to put all of this", () => {
-  for (const [name, doc] of [["classic", html], ["wide", wide]]) {
+  for (const [name, doc] of [["classic", html], ["focus", focusPage]]) {
     ok(`${name} has a result list`, /id="stationList"/.test(doc));
     ok(`${name} has a detail panel`, /id="stationDetail"/.test(doc));
     ok(`${name} has the show-more control`, /id="stationMore"/.test(doc));

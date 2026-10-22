@@ -1,0 +1,454 @@
+/* Windows 3.1 theme.
+ *
+ * A deliberately period-correct skin: teal desktop, gray windows with hard
+ * two-tone bevels, navy title bars, black text and the square, high-contrast
+ * controls of Program Manager rather than the gradients of the later themes.
+ *
+ * It is a UI theme, so it loads app/ui/base.css first and must not depend on
+ * app/app.css. The shared markup is enough: .panel becomes a window, its h2 is
+ * the title bar, the aside is a program group, and .top is the menu strip.
+ * Keeping the DOM shared means every id app.js looks up survives without a
+ * second body file.
+ */
+
+:root {
+  /* Desktop and window chrome. */
+  --win-teal: #008080;
+  --win-gray: #c0c0c0;
+  --win-gray-light: #dfdfdf;
+  --win-gray-dark: #808080;
+  --win-navy: #000080;
+  --win-black: #000000;
+
+  --bg: var(--win-teal);
+  --bg-2: var(--win-teal);
+  --surface: var(--win-gray);
+  --surface-2: #d4d0c8;
+  --surface-3: #e8e8e8;
+  --line: var(--win-gray-dark);
+  --text: var(--win-black);
+  --text-muted: #404040;
+  --primary: var(--win-navy);
+  --primary-ink: #ffffff;
+  --accent: #800080;
+  --danger: #800000;
+  --warn: #808000;
+  --ok: #008000;
+
+  --radius: 0;
+  --radius-sm: 0;
+  --shadow: none;
+  --font: "MS Sans Serif", Tahoma, Geneva, Verdana, sans-serif;
+  --font-head: var(--font);
+  --font-mono: "Courier New", Courier, monospace;
+
+  --field-h: 24px;
+  --side-w: 238px;
+  --maxw: 1040px;
+
+  /* The two bevels are the whole visual language. Out for raised controls,
+     in for pressed controls and sunken fields. */
+  --bevel-out:
+    inset -2px -2px 0 #000, inset 2px 2px 0 #fff,
+    inset -4px -4px 0 #808080, inset 4px 4px 0 #dfdfdf;
+  --bevel-in:
+    inset 2px 2px 0 #000, inset -2px -2px 0 #fff,
+    inset 4px 4px 0 #808080, inset -4px -4px 0 #dfdfdf;
+}
+
+body {
+  background: var(--win-teal);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13px;
+  line-height: 1.35;
+  -webkit-font-smoothing: none;
+}
+
+/* ---------- windows ---------- */
+
+.panel,
+.sheet-box,
+.confirm-box,
+.auth-box {
+  position: relative;
+  background: var(--win-gray);
+  border: 0;
+  border-radius: 0;
+  box-shadow: var(--bevel-out);
+  padding: 10px;
+}
+
+.panel > h2,
+.sheet-box > h3,
+.confirm-box > h3,
+.auth-box > h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: -8px -8px 10px;
+  padding: 3px 6px;
+  background: var(--win-navy);
+  color: #fff;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* The title-bar button: decorative, like the close box, not a fake control. */
+.panel > h2::after,
+.sheet-box > h3::after,
+.confirm-box > h3::after,
+.auth-box > h3::after {
+  content: "";
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  margin-left: auto;
+  background: var(--win-gray);
+  box-shadow: var(--bevel-out);
+}
+
+/* ---------- shell ---------- */
+
+.side {
+  width: var(--side-w);
+  background: var(--win-gray);
+  border: 0;
+  border-right: 0;
+  box-shadow: var(--bevel-out);
+  padding: 8px;
+}
+
+.side-brand {
+  display: block;
+  margin: -8px -8px 8px;
+  padding: 3px 6px;
+  background: var(--win-navy);
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.side-nav {
+  display: block;
+  padding: 0;
+  margin: 0;
+}
+
+.side-nav li {
+  margin: 0 0 2px;
+}
+
+.side-nav button {
+  width: 100%;
+  min-height: 24px;
+  justify-content: flex-start;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  box-shadow: none;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  text-align: left;
+}
+
+.side-nav button:hover {
+  background: var(--win-gray-light);
+}
+
+.side-nav button[aria-current="page"] {
+  background: var(--win-navy);
+  color: #fff;
+}
+
+.side-nav button:focus-visible,
+.btn:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+a:focus-visible {
+  outline: 1px dotted var(--win-black);
+  outline-offset: -3px;
+}
+
+.top {
+  background: var(--win-gray);
+  border-bottom: 2px solid var(--win-gray-dark);
+  box-shadow: inset 0 1px 0 var(--win-gray-light);
+  padding: 4px 8px;
+}
+
+.top h1 {
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.wrap {
+  background: transparent;
+  padding: 10px;
+}
+
+.view > h2,
+.panel > h2 {
+  /* Kept together with the rule above; the panel heading is the title bar. */
+}
+
+/* ---------- controls ---------- */
+
+.btn,
+.tgl,
+.qa button {
+  min-height: 24px;
+  padding: 3px 10px;
+  border: 0;
+  border-radius: 0;
+  background: var(--win-gray);
+  color: var(--win-black);
+  box-shadow: var(--bevel-out);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.btn:hover,
+.tgl:hover,
+.qa button:hover {
+  background: var(--win-gray-light);
+  filter: none;
+  transform: none;
+}
+
+.btn:active,
+.tgl:active,
+.qa button:active {
+  box-shadow: var(--bevel-in);
+  transform: translate(1px, 1px);
+}
+
+.btn.ghost,
+.btn.sec {
+  background: var(--win-gray);
+  color: var(--win-black);
+  border: 0;
+  box-shadow: var(--bevel-out);
+}
+
+.btn.warn {
+  background: var(--warn);
+  color: #000;
+}
+
+.btn.dgr {
+  background: var(--danger);
+  color: #fff;
+}
+
+.btn.recommended {
+  background: var(--win-gray);
+  color: var(--win-black);
+  border: 0;
+  box-shadow: var(--bevel-out);
+  outline: 1px solid var(--win-black);
+  outline-offset: -4px;
+}
+
+input,
+select,
+textarea {
+  min-height: 24px;
+  padding: 2px 4px;
+  border: 0;
+  border-radius: 0;
+  background: #fff;
+  color: #000;
+  box-shadow: var(--bevel-in);
+  font-family: var(--font);
+  font-size: 13px;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--win-navy);
+}
+
+label,
+.lbl,
+.hint,
+.mini,
+.lead {
+  color: var(--text);
+  font-family: var(--font);
+}
+
+.hint,
+.mini {
+  color: var(--text-muted);
+}
+
+fieldset {
+  border: 0;
+  padding: 0;
+}
+
+/* ---------- content surfaces ---------- */
+
+.item,
+.vcard,
+.station-row,
+.loc-near-row,
+.camera-card,
+.howto,
+.res,
+.sync-banner,
+.toast,
+.codebox,
+.howto pre.sample {
+  background: var(--win-gray);
+  border: 0;
+  border-radius: 0;
+  box-shadow: var(--bevel-in);
+}
+
+.item,
+.vcard,
+.station-row,
+.loc-near-row,
+.camera-card {
+  padding: 6px;
+}
+
+.vcard[aria-pressed="true"] {
+  background: var(--win-navy);
+  color: #fff;
+}
+
+.vcard[aria-pressed="true"] .s {
+  color: #fff;
+}
+
+.tag,
+.chip,
+.shared-tag {
+  border: 0;
+  border-radius: 0;
+  background: var(--win-gray-light);
+  color: var(--win-black);
+  box-shadow: var(--bevel-out);
+  padding: 1px 5px;
+}
+
+.stats,
+.qa,
+.chips {
+  gap: 6px;
+}
+
+.stat {
+  background: var(--win-gray);
+  border: 0;
+  border-radius: 0;
+  box-shadow: var(--bevel-in);
+  padding: 6px;
+}
+
+.stat .n {
+  color: var(--win-navy);
+  text-shadow: none;
+  font-family: var(--font);
+  font-weight: 700;
+}
+
+.stat .l {
+  color: var(--text-muted);
+  letter-spacing: 0;
+}
+
+table {
+  background: #fff;
+  border: 0;
+  box-shadow: var(--bevel-in);
+}
+
+th {
+  background: var(--win-gray);
+  color: var(--win-black);
+  border: 0;
+  border-bottom: 1px solid var(--win-gray-dark);
+  font-weight: 700;
+}
+
+td {
+  border-color: var(--win-gray-light);
+}
+
+tbody tr:hover {
+  background: var(--win-gray-light);
+}
+
+/* ---------- overlays ---------- */
+
+.sheet {
+  background: rgb(0 0 0 / 0.35);
+  backdrop-filter: none;
+}
+
+.toast {
+  background: var(--win-gray);
+  color: var(--win-black);
+  border: 0;
+}
+
+/* ---------- dark variant ----------
+   Windows 3.1 did not have a dark mode, but this app's shared header offers a
+   theme switch on every page. A muted charcoal window set keeps the switch
+   honest instead of leaving it visibly inert. */
+
+body.dark[data-layout="win31"] {
+  --win-teal: #000000;
+  --win-gray: #404040;
+  --win-gray-light: #606060;
+  --win-gray-dark: #808080;
+  --surface: #404040;
+  --surface-2: #505050;
+  --surface-3: #606060;
+  --line: #808080;
+  --text: #ffffff;
+  --text-muted: #d0d0d0;
+  --win-black: #ffffff;
+  --bg: #000000;
+  --bg-2: #000000;
+}
+
+body.dark[data-layout="win31"] .panel > h2,
+body.dark[data-layout="win31"] .sheet-box > h3,
+body.dark[data-layout="win31"] .confirm-box > h3,
+body.dark[data-layout="win31"] .auth-box > h3,
+body.dark[data-layout="win31"] .side-brand {
+  background: #000080;
+  color: #ffffff;
+}
+
+body.dark[data-layout="win31"] input,
+body.dark[data-layout="win31"] select,
+body.dark[data-layout="win31"] textarea,
+body.dark[data-layout="win31"] table {
+  background: #202020;
+  color: #ffffff;
+}

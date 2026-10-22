@@ -4,32 +4,33 @@
 > questions, and the [To do](#to-do) section at the end of this file for the
 > backlog.
 
-Personal projects. Two pages, no build step: `index.html` is the home page and
-`ev-tracker.html` is an EV charging tracker that runs straight from the file.
+Personal projects. No build step: `index.html` is the home page and the
+`ev-tracker-*.html` pages are the tracker in its different layouts.
 
 ## Layout
 
 | Path                      | What it is                                                                      |
 | ------------------------- | ------------------------------------------------------------------------------- |
 | `index.html`              | Home page. Served at the domain root, so it has to stay here.                   |
-| `ev-tracker.html`         | The tracker in the classic layout. See "The two layouts".                       |
-| `ev-tracker-wide.html`    | The same tracker in the wide layout.                                            |
-| `app/`                    | Shared by both layouts: logic, design system, i18n, storage.                    |
+| `ev-tracker.html`         | The tracker in the classic layout. See "The layout pages".                      |
+| `ev-tracker-*.html`       | The same app in the other active layouts. Generated, never hand-edited.         |
+| `app/`                    | Shared by every layout: logic, design system, i18n, storage.                    |
+| `archive/`                | Frozen copies of retired layouts (Wide, Glass). Not built or served.            |
 | `sw.js`                   | Service worker. Caches the app shell; Supabase and map tiles stay network-only. |
 | `manifest.json`, `icons/` | PWA install metadata.                                                           |
 | `i18n/`                   | Northern Sámi translation template. The app's other languages are inline.       |
 | `supabase/`               | Database migrations. Not run automatically — see below.                         |
 | `tools/`                  | Test harnesses, the page generator and the syntax checks.                       |
 
-The five web files at the root reference each other by relative path and
+The tracker pages at the root reference each other by relative path and
 `index.html` has to be at the branch root for GitHub Pages, so they stay flat.
 
 ## Development
 
 ```sh
-npm install       # prettier, html-validate, jsdom — devDependencies only
-npm run check     # tests, formatting, HTML validity, inline JS syntax
-npm test          # 204 assertions
+npm install       # eslint, html-validate, jsdom, prettier — devDependencies only
+npm run check     # tests, formatting, HTML validity, JS/SQL lint
+npm test          # the test suites
 npm run fmt       # format *.json and *.md
 npm run fmt:html  # reformat the HTML: rewrites ~480 lines, so opt-in
 ```
@@ -194,17 +195,18 @@ files that a static host can serve as they are.
 
 | File                     | Lines  | Contents                             |
 | ------------------------ | ------ | ------------------------------------ |
-| `ev-tracker.html`        | 1,904  | markup, classic layout               |
-| `ev-tracker-wide.html`   | 1,904  | markup, wide layout                  |
-| `app/app.js`             | 14,076 | application logic                    |
-| `app/app.css`            | 2,921  | the shared design system             |
+| `ev-tracker.html`        | 1,932  | markup, classic layout               |
+| `app/app.js`             | 14,179 | application logic                    |
+| `app/app.css`            | 2,912  | the shared design system             |
 | `app/layout-classic.css` | 17     | the classic navigation shell         |
-| `app/layout-wide.css`    | 182    | the wide navigation shell            |
-| `app/i18n.js`            | 2,732  | translations for all four languages  |
+| `app/layout-focus.css`   | 149    | the focus navigation shell           |
+| `app/layout-modern.css`  | 148    | the modern navigation shell          |
+| `app/i18n.js`            | 2,759  | translations for all four languages  |
 | `app/storage.js`         | 202    | per-account local storage keys       |
-| `app/shell.mjs`          | 109    | how the eight pages are assembled    |
-| `app/ui/base.css`        | 1,425  | shared base for the experimental UIs |
-| `app/ui/hud.css`         | 540    | the HUD cockpit theme                |
+| `app/shell.mjs`          | 112    | how the layout pages are assembled   |
+| `app/ui/base.css`        | 1,412  | shared base for the experimental UIs |
+| `app/ui/hud.css`         | 555    | the HUD cockpit theme                |
+| `app/ui/win31.css`       | 454    | the Windows 3.1 theme                |
 
 Classic `<script src>` rather than ES modules on purpose: it keeps the page
 working from `file://` with no build step, and each file gets its own scope, so
@@ -226,16 +228,16 @@ load-time error instead of a separate scope — is a separate change and needs
 
 ### The layout pages
 
-There are eight: `classic` (`ev-tracker.html`), `wide`, `focus`, `modern`, and
-the four experimental UIs `hud`, `brutal`, `editorial` and `glass`.
-`ev-tracker.html` is the original: a fixed 250 px rail on the left, which becomes
-a sticky strip of icons below 820 px and a single bar below 560 px.
-`ev-tracker-wide.html` is the same application arranged differently — a permanent
-top bar with the navigation labels always visible, and a content column capped so
-a line of text never runs the width of a large display. It suits a tablet, a desk
-or a head unit read from further away than a phone.
+There are seven active layouts: `classic` (`ev-tracker.html`), `focus`, `modern`,
+and the experimental UIs `hud`, `brutal`, `editorial` and `win31` (Windows 3.1).
+`wide` and `glass` are archived under `archive/` and are not built or offered in
+the switcher.
 
-**The four shared layouts are the same application, not four builds.** Identical
+`ev-tracker.html` is the original: a fixed 250 px rail on the left, which becomes
+a sticky strip of icons below 820 px and a single bar below 560 px. `focus` is a
+dark dashboard rail; `modern` is a warm, slim-header phone layout.
+
+**The three shared layouts are the same application, not three builds.** Identical
 markup, the same `app/app.js`, the same storage keys and the same account; only
 the arrangement differs, and only in CSS. That matters because `app/app.js` looks
 up roughly 200 element ids while wiring its handlers with no per-page guard, so a
@@ -263,19 +265,23 @@ change made through the picker updates the preference. The redirect is
 `location.replace`, so Back does not shuttle between the start page and the
 layout the user actually wanted.
 
-Theme, HUD red mode and the HUD's retro scanlines are device preferences too.
-All four are restored at boot through `classList.toggle`, one class each, so no
-preference can wipe another. The scanline wash is opt-in and off by default.
+A stored preference for an archived layout is rewritten at boot: **Wide → Classic**
+and **Glass → HUD**. Bookmarks to the old URLs get a small redirect stub for one
+release; see `archive/README.md`.
 
-`npm run build:pages` regenerates both pages from `app/shell.mjs` and the checked-in
-markup. Run it after editing the `<head>` or the shared markup; it is idempotent,
-and it refuses to leave a page half-written if its output is not stable.
-`tools/test-layouts.mjs` asserts the two markups stay byte-identical apart from
-the `<body>` attribute and the layout `href`, that neither page re-inlines CSS or
-JS, and that the generator is a no-op on a second run. `tools/test-layout-wide.mjs`
-checks the wide shell is doing the arranging it claims to, and that it never
-restyles a shared component or hides content — a layout that silently drops
-information is a bug, not a preference.
+Theme, HUD red mode and the HUD's retro scanlines are device preferences too.
+They are restored at boot through `classList.toggle`, one class each, so no
+preference can wipe another. The scanline wash is opt-in, off by default, and has
+four relative intensities (10–40%) remembered on the device.
+
+`npm run build:pages` regenerates every active page from `app/shell.mjs` and the
+checked-in markup. Run it after editing the `<head>` or the shared markup; it is
+idempotent, and it refuses to leave a page half-written if its output is not
+stable. `tools/test-layouts.mjs` asserts the shared markups stay byte-identical
+apart from the `<body>` attribute and the layout `href`, that no page re-inlines
+CSS or JS, that every experimental page keeps the id contract, and that the
+generator is a no-op on a second run. `tools/test-hud-theme.mjs` and
+`tools/test-win31-theme.mjs` pin the two themes' visual contracts.
 
 ## Charging stations
 
@@ -412,21 +418,22 @@ repository, and no server-side code.
 
 Migrations must be pasted into the Supabase SQL editor **in numeric order**:
 
-| Order | File                               | What it does                                                       |
-| ----- | ---------------------------------- | ------------------------------------------------------------------ |
-| 1     | `supabase/01-schema.sql`           | `vehicle_shares`, sharing helpers, RLS policies                    |
-| 3     | `supabase/03-share-codes.sql`      | 6-character share codes                                            |
-| 4     | `supabase/04-roles.sql`            | Roles (viewer/driver/admin), owner approval, tightened RLS         |
-| 5     | `supabase/05-trash.sql`            | `deleted_at` for the recoverable bin                               |
-| 6     | `supabase/06-owner-stamp.sql`      | `BEFORE INSERT` trigger stamping `user_id` from `auth.uid()`       |
-| —     | `supabase/07-diagnose.sql`         | Read-only. Tells apart the causes of a `42501` refusal.            |
-| —     | `supabase/08-owners.sql`           | Read-only. Which account owns which vehicle, without `auth.uid()`. |
-| —     | `supabase/09-whoami.sql`           | Read-only. Identity probe for authenticated requests.              |
-| 10    | `supabase/10-leave-share.sql`      | Lets a driver leave a car that was shared with them                |
-| 12    | `supabase/12-vehicle-capacity.sql` | Usable battery capacity per vehicle                                |
-| 13    | `supabase/13-session-payers.sql`   | `session_payers`: who paid what on a shared charge                 |
-| 14    | `supabase/14-session-winter.sql`   | `sessions.winter`, stored rather than inferred from the month      |
-| 15    | `supabase/15-vehicle-baseline.sql` | Baseline consumption and the distance it covers                    |
+| Order | File                                        | What it does                                                       |
+| ----- | ------------------------------------------- | ------------------------------------------------------------------ |
+| 1     | `supabase/01-schema.sql`                    | `vehicle_shares`, sharing helpers, RLS policies                    |
+| 3     | `supabase/03-share-codes.sql`               | 6-character share codes                                            |
+| 4     | `supabase/04-roles.sql`                     | Roles (viewer/driver/admin), owner approval, tightened RLS         |
+| 5     | `supabase/05-trash.sql`                     | `deleted_at` for the recoverable bin                               |
+| 6     | `supabase/06-owner-stamp.sql`               | `BEFORE INSERT` trigger stamping `user_id` from `auth.uid()`       |
+| —     | `supabase/07-diagnose.sql`                  | Read-only. Tells apart the causes of a `42501` refusal.            |
+| —     | `supabase/08-owners.sql`                    | Read-only. Which account owns which vehicle, without `auth.uid()`. |
+| —     | `supabase/09-whoami.sql`                    | Read-only. Identity probe for authenticated requests.              |
+| 10    | `supabase/10-leave-share.sql`               | Lets a driver leave a car that was shared with them                |
+| 12    | `supabase/12-vehicle-capacity.sql`          | Usable battery capacity per vehicle                                |
+| 13    | `supabase/13-session-payers.sql`            | `session_payers`: who paid what on a shared charge                 |
+| 14    | `supabase/14-session-winter.sql`            | `sessions.winter`, stored rather than inferred from the month      |
+| 15    | `supabase/15-vehicle-baseline.sql`          | Baseline consumption and the distance it covers                    |
+| 16    | `supabase/16-vehicle-seasonal-baseline.sql` | Summer- and winter-tyre baseline consumption                       |
 
 Every one is idempotent, so re-running is safe. Each ends with a query that
 confirms it worked. `07-diagnose.sql`, `08-owners.sql` and `09-whoami.sql` are
@@ -553,6 +560,26 @@ changing the app.
       restored together by one `restoreAppearance()` using `classList.toggle`, so no
       preference can overwrite another.
 
+### 2026-10-22 layout and settings round
+
+- [x] **Archive Wide and Glass.** Both pages and their stylesheets moved to
+      `archive/`; removed from the switcher, generator, service worker and manifest.
+      Stored preferences map Wide → Classic and Glass → HUD. The false footer claim
+      ("data stays in this browser") was removed.
+- [x] **Warning-button contrast.** "Restore backup" and "Clear sessions" were
+      white-on-amber in the shared layouts and dark-on-dark in the HUD. `.btn.warn`
+      now has explicit dark ink in `app.css` and warning-coloured ink in `hud.css`.
+- [x] **Seasonal baselines.** The vehicle editor takes summer- and winter-tyre
+      figures alongside the all-year baseline; the seasonal tiles anchor to their own
+      figure and fall back to the all-year one. Migration
+      `16-vehicle-seasonal-baseline.sql` must run before the client is deployed.
+- [x] **Scanline intensity.** The HUD checkbox became an Off / 10 / 20 / 30 / 40%
+      select. Levels are relative, not literal alpha, and the old `"on"` value maps
+      to 20%.
+- [x] **Windows 3.1 theme.** A shared-markup UI theme: teal desktop, gray windows,
+      hard bevels, navy title bars, black text, no gradients or rounded corners.
+      Covered by `tools/test-win31-theme.mjs`.
+
 ### Done since the last review
 
 - **Mobile-readable charge log.** One DOM styled two ways: `data-label` cells and
@@ -560,11 +587,11 @@ changing the app.
 - **Shared-charge payer split.** `13-session-payers.sql`, per-session splits, the
   payer picker and the breakdown chart. Older charges with no payer are counted
   separately rather than guessed at.
-- **The `focus` layout.** Shipped, along with `wide`, `modern`, `hud`, `brutal`,
-  `editorial` and `glass`. `classic`, `wide`, `focus` and `modern` share
-  `app/app.css`; the four experimental UIs load `app/ui/base.css` plus their own
-  theme. Which experimental UI is the keeper is still an open question — see
-  `HANDOVER.md`.
+- **The `focus` layout.** Shipped, along with `modern`, `hud`, `brutal`,
+  `editorial` and `win31`. `classic`, `focus` and `modern` share `app/app.css`;
+  the four experimental UIs load `app/ui/base.css` plus their own theme. Wide and
+  Glass are archived rather than deleted, so the keeper question now concerns
+  HUD/Brutal/Editorial/Win31 only — see `HANDOVER.md`.
 
 ### Known bugs
 
@@ -600,5 +627,6 @@ changing the app.
 - No browser visual review is available in the development environment, so
   layout and contrast work is finished only when a human has looked at it. That
   applies to the new HUD destructive-button colour and the scanlines default.
-- Run `supabase/15-vehicle-baseline.sql` before deploying this build. Until it is
-  applied, every vehicle write fails with `42703`.
+- Run `supabase/15-vehicle-baseline.sql` and `16-vehicle-seasonal-baseline.sql`
+  before deploying this build. Until they are applied, every vehicle write fails
+  with `42703`.

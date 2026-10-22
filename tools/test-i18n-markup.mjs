@@ -17,7 +17,7 @@ import { readFileSync } from "node:fs";
    suite quietly stopped checking every toast, hint and panel title. */
 const src = [
   readFileSync("ev-tracker.html", "utf8"),
-  readFileSync("ev-tracker-wide.html", "utf8"),
+  readFileSync("ev-tracker-focus.html", "utf8"),
   readFileSync("app/app.js", "utf8"),
 ].join("\n");
 /* The English block moved to app/i18n.js when the page was split. Indentation

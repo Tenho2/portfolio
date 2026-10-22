@@ -66,7 +66,7 @@ group("the glow and the scanlines are dim and token-driven", () => {
   ok("the glow alpha is faint (<= 0.2)", !!glow && Number(glow) <= 0.2);
   /* But the scanlines are opt-in, so when they ARE on they have to be visible.
      At 0.012 the checkbox made no perceptible difference and looked broken. */
-  const scan = (root.match(/--scan:\s*rgb\([^)]*\/\s*([\d.]+)\)/) || [])[1];
+  const scan = (root.match(/--scan-alpha:\s*([\d.]+)/) || [])[1];
   ok("the scanline alpha is perceptible (>= 0.02)", !!scan && Number(scan) >= 0.02);
   ok("and still subtle (<= 0.08)", !!scan && Number(scan) <= 0.08);
   ok("the lines are close-set, like the original cockpit", /transparent 1px,\s*transparent 3px/.test(css));
@@ -121,14 +121,17 @@ group("the switch announces itself and survives a language change", () => {
   }
 });
 
-group("scanlines are an opt-in, remembered texture", () => {
+group("scanlines are an opt-in, adjustable texture", () => {
   ok("the wash is gated on the body class", /body\.show-scanlines::before/.test(css));
   ok("there is no unconditional body::before rule", !/(^|\n)body::before\s*\{/.test(css));
-  ok("the HUD settings have the checkbox", /id="scanlinesChk"/.test(hud));
+  ok("the HUD settings have the intensity select", /id="scanlinesSel"/.test(hud));
   ok(
-    "the checkbox is labelled with a translated string",
-    /for="scanlinesChk"[^>]*data-i18n="set\.scanlines"/.test(hud),
+    "the select is labelled with a translated string",
+    /for="scanlinesSel"[^>]*data-i18n="set\.scanlines"/.test(hud),
   );
+  for (const level of ["0", "10", "20", "30", "40"]) {
+    ok(`the ${level} option is offered`, new RegExp(`value="${level}"`).test(hud));
+  }
   ok(
     "the key is global, like the theme",
     /var K_SCANLINES = "scanlines"/.test(storage) &&
@@ -144,13 +147,31 @@ group("scanlines are an opt-in, remembered texture", () => {
       /classList\.toggle\("red-mode"/.test(restore) &&
       /classList\.toggle\("show-scanlines"/.test(restore),
   );
-  ok("absent means off", /scan: !!hud && s\.scanlines === "on"/.test(app));
+  ok("absent means off", /scan: !!hud \? normaliseScanlineLevel\(s\.scanlines\) : 0/.test(app));
   ok(
-    "the checkbox reflects the class after a render",
-    /function scanlinesOn\(\)/.test(app) && /sc\.checked = scanlinesOn\(\)/.test(app),
+    "the pre-slider value still works",
+    /value === "on"[\s\S]{0,40}return 20/.test(fnSource("normaliseScanlineLevel")),
   );
+  ok(
+    "the select reflects the active level after a render",
+    /function scanlineLevel\(\)/.test(app) && /sc\.value = String\(scanlineLevel\(\)\)/.test(app),
+  );
+  /* Each level has its own alpha, so the control actually changes something. */
+  for (const [level, alpha] of [
+    ["10", "0.02"],
+    ["20", "0.03"],
+    ["30", "0.05"],
+    ["40", "0.08"],
+  ]) {
+    ok(
+      `level ${level} has its own strength`,
+      new RegExp(
+        `body\\.show-scanlines\\[data-scanlines="${level}"\\][^{]*\\{[^}]*--scan-alpha:\\s*${alpha}`,
+      ).test(css),
+    );
+  }
   /* HUD-only markup, so every other layout must wire it defensively. */
-  ok("the shared pages wire nothing", /if \(\$\("scanlinesChk"\)\)/.test(app));
+  ok("the shared pages wire nothing", /if \(\$\("scanlinesSel"\)\)/.test(app));
 });
 
 group("destructive buttons are readable on the dark cockpit", () => {
@@ -165,6 +186,16 @@ group("destructive buttons are readable on the dark cockpit", () => {
   ok("the ink is the danger colour", /color:\s*var\(--danger\)/.test(rule));
   ok("the fill is the tint, not the old red", /background:\s*var\(--tint\)/.test(rule));
   ok("the border still marks it destructive", /border-color:\s*var\(--danger\)/.test(rule));
+  /* The warning buttons ("Restore backup", "Clear sessions") hit the same
+     collision one step earlier: the tint replaces the amber fill, leaving
+     base.css's dark ink unreadable on the dark cockpit. */
+  const warn = css.indexOf(".btn.warn {");
+  ok("hud.css declares .btn.warn", warn > 0);
+  ok("and does so after the tint rule", warn > tint);
+  const warnRule = block(".btn.warn {");
+  ok("the warning ink is the warning colour", /color:\s*var\(--warn\)/.test(warnRule));
+  ok("the warning fill is the tint", /background:\s*var\(--tint\)/.test(warnRule));
+  ok("the warning border marks it", /border-color:\s*var\(--warn\)/.test(warnRule));
 });
 
 group("the phone bar reads Log before Add", () => {

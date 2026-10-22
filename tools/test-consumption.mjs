@@ -31,6 +31,10 @@ import { appSource, fnSource } from "./app-source.mjs";
 const html = readFileSync("ev-tracker.html", "utf8");
 const hudHtml = readFileSync("tools/hud-body.html", "utf8");
 const migration = readFileSync("supabase/15-vehicle-baseline.sql", "utf8");
+const migration16 = readFileSync(
+  "supabase/16-vehicle-seasonal-baseline.sql",
+  "utf8",
+);
 const app = appSource();
 
 let pass = 0;
@@ -81,7 +85,7 @@ const avgPerSession = new Function(
   `${fnSource("num")}${fnSource("avgPerSession")}; return avgPerSession;`,
 )();
 const seasonSplit = new Function(
-  `${fnSource("sorted")}${fnSource("num")}${fnSource("isNum")}${fnSource("soc")}${fnSource("seasonSplit")}; return seasonSplit;`,
+  `${fnSource("sorted")}${fnSource("num")}${fnSource("isNum")}${fnSource("posOrNull")}${fnSource("soc")}${fnSource("anchoredConsumption")}${fnSource("seasonSplit")}; return seasonSplit;`,
 )();
 const batteryHealth = new Function(
   `${fnSource("num")}${fnSource("isNum")}${fnSource("soc")}${fnSource("batteryHealth")}; return batteryHealth;`,
@@ -272,22 +276,25 @@ group("the baseline is stored as a pair and carried through sync", () => {
   ok("the shared editor has both boxes", /id="vfBaseKwh"/.test(html) && /id="vfBaseKm"/.test(html));
   ok("the HUD editor has both boxes", /id="vfBaseKwh"/.test(hudHtml) && /id="vfBaseKm"/.test(hudHtml));
   ok("the editor explains both", /id="vfBaseHint"/.test(html) && /set\.baselineLead/.test(html));
-  ok("saving clamps an impossible consumption", /baseKwh !== null && baseKwh <= 100/.test(app));
+  ok(
+    "saving clamps an impossible consumption",
+    /kwh100OrNull\(\$\("vfBaseKwh"\)\.value\)/.test(app),
+  );
   ok("saving keeps the distance as a positive number", /v\.baselineKm = posOrNull\(\$\("vfBaseKm"\)\.value\)/.test(app));
   ok(
     "vehicleRow sends both columns",
-    /baseline_consumption_kwh_100km: posOrNull\(v\.baselineKwh100\)/.test(app) &&
+    /baseline_consumption_kwh_100km: kwh100OrNull\(v\.baselineKwh100\)/.test(app) &&
       /baseline_distance_km: posOrNull\(v\.baselineKm\)/.test(app),
   );
   ok(
     "rowVehicle reads both columns back",
-    /baselineKwh100: posOrNull\(r\.baseline_consumption_kwh_100km\)/.test(app) &&
+    /baselineKwh100: kwh100OrNull\(r\.baseline_consumption_kwh_100km\)/.test(app) &&
       /baselineKm: posOrNull\(r\.baseline_distance_km\)/.test(app),
   );
-  ok("old vehicles normalise to null", /baselineKwh100 = posOrNull/.test(app));
+  ok("old vehicles normalise to null", /baselineKwh100 = kwh100OrNull/.test(app));
   ok(
     "a backup restore carries the pair",
-    /baselineKwh100: posOrNull\(pa\.baselineKwh100\)/.test(app) &&
+    /baselineKwh100: kwh100OrNull\(pa\.baselineKwh100\)/.test(app) &&
       /baselineKm: posOrNull\(pa\.baselineKm\)/.test(app),
   );
   ok(
@@ -407,6 +414,78 @@ group("consumption splits by the season of the charge that powered the leg", () 
       0,
     ).winter.kwh100,
     null,
+  );
+});
+
+group("seasonal baselines anchor their own tile", () => {
+  const list = [
+    { date: "2026-01-10", mileage: 1000, energy: 50, winter: true },
+    { date: "2026-07-10", mileage: 1300, energy: 30, winter: false },
+    { date: "2026-07-20", mileage: 1600, energy: 40, winter: false },
+  ];
+  const anchored = seasonSplit(list, 0, 0, {
+    winter: 22,
+    summer: 15,
+    fallback: 18,
+    km: 5000,
+  });
+  /* (50 + 0.22 * 5000) / (300 + 5000) * 100 and the summer equivalent. */
+  near("winter uses the winter figure", anchored.winter.kwh100, 21.7, 0.05);
+  near("summer uses the summer figure", anchored.summer.kwh100, 14.72, 0.05);
+  is("the winter tile says it was anchored", anchored.winter.anchored, true);
+  is("and names the figure it used", anchored.winter.baseline, 22);
+  is("the summer tile says it was anchored", anchored.summer.anchored, true);
+  is("and names its own figure", anchored.summer.baseline, 15);
+
+  /* A missing seasonal value falls back to the all-year figure, so an existing
+     vehicle keeps its anchor without a second edit. */
+  const fallback = seasonSplit(list, 0, 0, { fallback: 18, km: 5000 });
+  near("winter falls back to all-year", fallback.winter.kwh100, 17.92, 0.05);
+  near("summer falls back to all-year", fallback.summer.kwh100, 17.55, 0.05);
+  is("and says so", fallback.summer.anchored, true);
+
+  /* No distance means the baseline cannot be weighted, so the measurement
+     stands rather than being replaced by a bare seasonal figure. */
+  const noKm = seasonSplit(list, 0, 0, { winter: 22, summer: 15 });
+  near("no distance leaves winter measured", noKm.winter.kwh100, (50 / 300) * 100, 0.01);
+  near("no distance leaves summer measured", noKm.summer.kwh100, (30 / 300) * 100, 0.01);
+  is("and neither is marked anchored", noKm.winter.anchored, false);
+});
+
+group("the seasonal baseline editor stores two more figures", () => {
+  ok(
+    "the shared editor has both seasonal boxes",
+    /id="vfBaseSummer"/.test(html) && /id="vfBaseWinter"/.test(html),
+  );
+  ok(
+    "the HUD editor has both seasonal boxes",
+    /id="vfBaseSummer"/.test(hudHtml) && /id="vfBaseWinter"/.test(hudHtml),
+  );
+  ok("the editor explains the seasonal fallback", /set\.baselineLead/.test(html));
+  ok(
+    "saving bounds all three consumption figures",
+    /kwh100OrNull\(\$\("vfBaseSummer"\)\.value\)/.test(app) &&
+      /kwh100OrNull\(\$\("vfBaseWinter"\)\.value\)/.test(app),
+  );
+  ok(
+    "vehicleRow sends both seasonal columns",
+    /baseline_summer_kwh_100km: kwh100OrNull\(v\.baselineSummerKwh100\)/.test(app) &&
+      /baseline_winter_kwh_100km: kwh100OrNull\(v\.baselineWinterKwh100\)/.test(app),
+  );
+  ok(
+    "rowVehicle reads them back",
+    /baselineSummerKwh100: kwh100OrNull\(r\.baseline_summer_kwh_100km\)/.test(app) &&
+      /baselineWinterKwh100: kwh100OrNull\(r\.baseline_winter_kwh_100km\)/.test(app),
+  );
+  ok(
+    "a backup restore carries them",
+    /baselineSummerKwh100: kwh100OrNull\(pa\.baselineSummerKwh100\)/.test(app) &&
+      /baselineWinterKwh100: kwh100OrNull\(pa\.baselineWinterKwh100\)/.test(app),
+  );
+  ok(
+    "migration 16 adds both columns idempotently",
+    /add column if not exists baseline_summer_kwh_100km numeric/.test(migration16) &&
+      /add column if not exists baseline_winter_kwh_100km numeric/.test(migration16),
   );
 });
 

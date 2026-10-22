@@ -140,7 +140,7 @@
            toLocaleDateString: it is read by whoever ends up doing support, and
            a build stamp that changes shape with the interface language is
            awkward to quote over a phone. */
-        var APP_BUILD = "2026-10-21";
+        var APP_BUILD = "2026-10-22";
         function buildStamp() {
           var p = APP_BUILD.split("-");
           if (p.length !== 3) return APP_BUILD;
@@ -200,7 +200,6 @@
            contents, so the fragment resolves identically. */
         var LAYOUT_PAGES = [
           { name: "classic", file: "ev-tracker.html", label: "set.layoutClassic" },
-          { name: "wide", file: "ev-tracker-wide.html", label: "set.layoutWide" },
           { name: "focus", file: "ev-tracker-focus.html", label: "set.layoutFocus" },
           { name: "modern", file: "ev-tracker-modern.html", label: "set.layoutModern" },
           { name: "hud", file: "ev-tracker-hud.html", label: "set.layoutHud" },
@@ -210,8 +209,13 @@
             file: "ev-tracker-editorial.html",
             label: "set.layoutEditorial",
           },
-          { name: "glass", file: "ev-tracker-glass.html", label: "set.layoutGlass" },
+          { name: "win31", file: "ev-tracker-win31.html", label: "set.layoutWin31" },
         ];
+        /* Layouts that were archived in 2026-10-22. A stored preference pointing
+           at one of these is rewritten on the next start, so a user who chose
+           Wide lands on Classic and a Glass user lands on the surviving
+           experimental UI instead of being dropped on a 404. */
+        var RETIRED_LAYOUTS = { wide: "classic", glass: "hud" };
         function currentLayout() {
           var el = document.body && document.body.getAttribute("data-layout");
           for (var i = 0; i < LAYOUT_PAGES.length; i++)
@@ -234,6 +238,10 @@
             if (LAYOUT_PAGES[i].name === name) return LAYOUT_PAGES[i].file;
           return null;
         }
+        /** Map an archived layout name onto its replacement. */
+        function normaliseStoredLayout(name) {
+          return RETIRED_LAYOUTS[name] || name;
+        }
         /**
          * Where the canonical start page should send this boot, or null to stay.
          *
@@ -248,6 +256,7 @@
          * @returns {?string} a page file, or null
          */
         function layoutRedirectTarget(current, stored) {
+          stored = normaliseStoredLayout(stored);
           if (current !== "classic") return null;
           if (!stored || stored === "classic") return null;
           return layoutFileFor(stored);
@@ -271,7 +280,9 @@
           } catch (e) {
             return false;
           }
-          var target = layoutRedirectTarget(currentLayout(), stored);
+          var normalised = normaliseStoredLayout(stored);
+          if (normalised !== stored && stored) rememberLayout(normalised);
+          var target = layoutRedirectTarget(currentLayout(), normalised);
           if (!target) return false;
           /* replace rather than assign, so Back does not bounce between the
              start page and the layout the user actually wants. */
@@ -552,7 +563,15 @@
                  weighted), so a missing or impossible half is nulled here and
                  the editor is the only way to set it again. */
               if (vehicles[vi])
-                vehicles[vi].baselineKwh100 = posOrNull(vehicles[vi].baselineKwh100);
+                vehicles[vi].baselineKwh100 = kwh100OrNull(vehicles[vi].baselineKwh100);
+              if (vehicles[vi])
+                vehicles[vi].baselineSummerKwh100 = kwh100OrNull(
+                  vehicles[vi].baselineSummerKwh100,
+                );
+              if (vehicles[vi])
+                vehicles[vi].baselineWinterKwh100 = kwh100OrNull(
+                  vehicles[vi].baselineWinterKwh100,
+                );
               if (vehicles[vi])
                 vehicles[vi].baselineKm = posOrNull(vehicles[vi].baselineKm);
             }
@@ -865,7 +884,9 @@ for (var a = 0; a < vi.length; a++) {
             /* The driver's own starting point, in the pair the maths needs.
                Both or neither: a figure without the distance it covered cannot
                be weighted, so an incomplete pair is stored as null. */
-            baseline_consumption_kwh_100km: posOrNull(v.baselineKwh100),
+            baseline_consumption_kwh_100km: kwh100OrNull(v.baselineKwh100),
+            baseline_summer_kwh_100km: kwh100OrNull(v.baselineSummerKwh100),
+            baseline_winter_kwh_100km: kwh100OrNull(v.baselineWinterKwh100),
             baseline_distance_km: posOrNull(v.baselineKm),
             /* null means live. A timestamp means the row is in the bin and the
                client is expected to keep it out of the live arrays. */
@@ -935,7 +956,9 @@ function rowVehicle(r) {
               /* Absent on every row written before migration 15. posOrNull
                  reads that as "no baseline" and leaves the measured figures
                  exactly as they were. */
-              baselineKwh100: posOrNull(r.baseline_consumption_kwh_100km),
+              baselineKwh100: kwh100OrNull(r.baseline_consumption_kwh_100km),
+              baselineSummerKwh100: kwh100OrNull(r.baseline_summer_kwh_100km),
+              baselineWinterKwh100: kwh100OrNull(r.baseline_winter_kwh_100km),
               baselineKm: posOrNull(r.baseline_distance_km),
               userId: r.user_id || null,
               deletedAt: r.deleted_at || null,
@@ -3799,6 +3822,19 @@ function hoursToHM(h, alwaysSeconds) {
         function posOrNull(v) {
           return isNum(v) && num(v) > 0 ? num(v) : null;
         }
+        /**
+         * A plausible consumption figure, or null.
+         *
+         * An EV that needs more than 100 kWh/100 km is not a car with a bad
+         * average; it is a typo or a unit mix-up. The editor rejects it rather
+         * than anchoring every later figure to nonsense.
+         * @param {*} v
+         * @returns {?number}
+         */
+        function kwh100OrNull(v) {
+          var n = posOrNull(v);
+          return n !== null && n <= 100 ? n : null;
+        }
 
         /* ---------- locale ----------
    Everything below uses the browser's own locale, so formats follow the
@@ -4190,13 +4226,34 @@ function hoursToHM(h, alwaysSeconds) {
          * @param {Array} list      sessions for one vehicle
          * @param {number} initialOdo the vehicle's starting odometer, or 0
          * @param {number} capacity the vehicle's USABLE capacity, 0 if unset
+         * @param {{summer:?number, winter:?number, fallback:?number,
+         *          km:?number}} [baselines] optional seasonal anchors
          * @returns {{winter: Object, summer: Object}} each with km, kwh, legs, kwh100
          */
-        function seasonSplit(list, initialOdo, capacity) {
+        function seasonSplit(list, initialOdo, capacity, baselines) {
+          var base = baselines || {};
           var cap = num(capacity);
           var out = {
-            winter: { km: 0, kwh: 0, socKwh: 0, legs: 0, socLegs: 0, kwh100: null },
-            summer: { km: 0, kwh: 0, socKwh: 0, legs: 0, socLegs: 0, kwh100: null },
+            winter: {
+              km: 0,
+              kwh: 0,
+              socKwh: 0,
+              legs: 0,
+              socLegs: 0,
+              kwh100: null,
+              anchored: false,
+              baseline: null,
+            },
+            summer: {
+              km: 0,
+              kwh: 0,
+              socKwh: 0,
+              legs: 0,
+              socLegs: 0,
+              kwh100: null,
+              anchored: false,
+              baseline: null,
+            },
           };
           var start = num(initialOdo);
           /* Oldest first; see legStats for why that is not the default. */
@@ -4242,7 +4299,20 @@ function hoursToHM(h, alwaysSeconds) {
             var b = out[k];
             if (b.km <= 0) return;
             var useSoc = b.socLegs > 0 && b.socLegs === b.legs;
-            b.kwh100 = ((useSoc ? b.socKwh : b.kwh) / b.km) * 100;
+            var kwh = useSoc ? b.socKwh : b.kwh;
+            b.kwh100 = (kwh / b.km) * 100;
+            /* A seasonal figure belongs to its own tile. The all-year figure is
+               the fallback, so an existing baseline keeps working without a
+               second edit. Without a distance the anchor cannot be weighted and
+               the raw measurement stands. */
+            var seasonal = k === "winter" ? base.winter : base.summer;
+            var chosen = posOrNull(seasonal) !== null ? seasonal : base.fallback;
+            var kmBase = posOrNull(base.km);
+            if (posOrNull(chosen) !== null && kmBase !== null) {
+              b.kwh100 = anchoredConsumption(kwh, b.km, chosen, kmBase);
+              b.anchored = true;
+              b.baseline = num(chosen);
+            }
           });
           return out;
         }
@@ -7366,8 +7436,8 @@ function retryNow() {
               '<option value="dark">' + TXT("set.themeDark") + "</option>";
             th.value = document.body.classList.contains("dark") ? "dark" : "light";
           }
-          var sc = $("scanlinesChk");
-          if (sc) sc.checked = scanlinesOn();
+          var sc = $("scanlinesSel");
+          if (sc) sc.value = String(scanlineLevel());
           var na = $("navAlignSel");
           if (na) {
             na.innerHTML =
@@ -8408,7 +8478,9 @@ for (var c = 0; c < head.length; c++) {
                   capacity: isNum(pa.capacity) ? num(pa.capacity) : null,
                   /* The baseline is a pair too; a backup taken after it was set
                      must restore both halves or it would quietly stop anchoring. */
-                  baselineKwh100: posOrNull(pa.baselineKwh100),
+                  baselineKwh100: kwh100OrNull(pa.baselineKwh100),
+                  baselineSummerKwh100: kwh100OrNull(pa.baselineSummerKwh100),
+                  baselineWinterKwh100: kwh100OrNull(pa.baselineWinterKwh100),
                   baselineKm: posOrNull(pa.baselineKm),
                 });
               }
@@ -12258,7 +12330,12 @@ function detachVehicle(id) {
               : TXT("tile.na");
           }
 
-          var split = seasonSplit(sel, v.initialOdometer, v.capacity);
+          var split = seasonSplit(sel, v.initialOdometer, v.capacity, {
+            summer: v.baselineSummerKwh100,
+            winter: v.baselineWinterKwh100,
+            fallback: v.baselineKwh100,
+            km: v.baselineKm,
+          });
           function fillSeason(idNum, idNote, b) {
             if ($(idNum))
               $(idNum).textContent =
@@ -12267,7 +12344,12 @@ function detachVehicle(id) {
               $(idNote).textContent =
                 b.kwh100 === null
                   ? TXT("tile.na")
-                  : TXT("tile.seasonNote", { n: b.legs });
+                  : b.anchored
+                    ? TXT("tile.seasonAnchored", {
+                        v: b.baseline.toFixed(1),
+                        n: b.legs,
+                      })
+                    : TXT("tile.seasonNote", { n: b.legs });
           }
           fillSeason("sWinter", "sWinterNote", split.winter);
           fillSeason("sSummer", "sSummerNote", split.summer);
@@ -12306,6 +12388,12 @@ function detachVehicle(id) {
           $("vfBaseKwh").value = isNum(v.baselineKwh100)
             ? String(v.baselineKwh100)
             : "";
+          $("vfBaseSummer").value = isNum(v.baselineSummerKwh100)
+            ? String(v.baselineSummerKwh100)
+            : "";
+          $("vfBaseWinter").value = isNum(v.baselineWinterKwh100)
+            ? String(v.baselineWinterKwh100)
+            : "";
           $("vfBaseKm").value = isNum(v.baselineKm) ? String(v.baselineKm) : "";
           var gm = $("vfCapGrossMode");
           if (gm) gm.checked = true;
@@ -12342,8 +12430,9 @@ function detachVehicle(id) {
              each box on its own so a person can fill them in either order. An
              impossible figure (zero, negative, or a consumption above 100
              kWh/100km) is nulled rather than saved and silently distrusted. */
-          var baseKwh = posOrNull($("vfBaseKwh").value);
-          v.baselineKwh100 = baseKwh !== null && baseKwh <= 100 ? baseKwh : null;
+          v.baselineKwh100 = kwh100OrNull($("vfBaseKwh").value);
+          v.baselineSummerKwh100 = kwh100OrNull($("vfBaseSummer").value);
+          v.baselineWinterKwh100 = kwh100OrNull($("vfBaseWinter").value);
           v.baselineKm = posOrNull($("vfBaseKm").value);
           /* Renaming the placeholder makes it real. Without this, syncPull still
              treats the row as a guess and discards it on the next pull, which is
@@ -12903,9 +12992,9 @@ function detachVehicle(id) {
         });
         /* HUD-only markup; guarded so the shared layouts, which have no such
            control, wire nothing rather than throwing on a null. */
-        if ($("scanlinesChk"))
-          $("scanlinesChk").addEventListener("change", function () {
-            applyScanlines(this.checked);
+        if ($("scanlinesSel"))
+          $("scanlinesSel").addEventListener("change", function () {
+            applyScanlines(this.value);
           });
         $("navAlignSel").addEventListener("change", function () {
           applyNavAlign(this.value);
@@ -13704,16 +13793,29 @@ $("syncBadge").addEventListener("click", function () {
           renderChart();
         }
         /* ---------- retro scanlines (HUD only) ----------
-           A decorative wash, so it is opt-in and off until asked for. The class
-           is the whole state: the sheet draws body::before only when it is
-           present, and the checkbox reads it back, so nothing can disagree. */
-        function scanlinesOn() {
-          return document.body.classList.contains("show-scanlines");
+           Four relative intensities, off by default. The attribute is the
+           whole state: CSS reads it, the select reads it back, so the control
+           and the texture cannot disagree. "on" is the pre-slider value and
+           maps to 20%, which was the old fixed strength. */
+        function normaliseScanlineLevel(value) {
+          if (value === "on" || value === true) return 20;
+          var n = num(value);
+          return n === 10 || n === 20 || n === 30 || n === 40 ? n : 0;
         }
-        function applyScanlines(on) {
-          document.body.classList.toggle("show-scanlines", !!on);
+        function scanlineLevel() {
+          if (!document.body.classList.contains("show-scanlines")) return 0;
+          return (
+            normaliseScanlineLevel(
+              document.body.getAttribute("data-scanlines"),
+            ) || 20
+          );
+        }
+        function applyScanlines(level) {
+          var n = normaliseScanlineLevel(level);
+          document.body.classList.toggle("show-scanlines", n > 0);
+          document.body.setAttribute("data-scanlines", String(n));
           try {
-            localStorage.setItem(K.scan, on ? "on" : "off");
+            localStorage.setItem(K.scan, n ? String(n) : "off");
           } catch (e) {
             /* the texture applies now; only the remembered choice is lost */
           }
@@ -13729,15 +13831,15 @@ $("syncBadge").addEventListener("click", function () {
          *
          * @param {{theme: ?string, redMode: ?string, scanlines: ?string}} stored
          * @param {boolean} hud whether this page is the HUD layout
-         * @returns {{dark: boolean, red: boolean, scan: boolean}}
+         * @returns {{dark: boolean, red: boolean, scan: number}}
          */
         function bootClasses(stored, hud) {
           var s = stored || {};
           return {
             dark: s.theme === "dark",
             red: !!hud && s.redMode === "on",
-            /* Opt-in: absent (never set) is off, not on. */
-            scan: !!hud && s.scanlines === "on",
+            /* Opt-in: absent (never set) is 0, not a default texture. */
+            scan: !!hud ? normaliseScanlineLevel(s.scanlines) : 0,
           };
         }
         function readPreference(key) {
@@ -13766,7 +13868,8 @@ $("syncBadge").addEventListener("click", function () {
           );
           document.body.classList.toggle("dark", c.dark);
           document.body.classList.toggle("red-mode", c.red);
-          document.body.classList.toggle("show-scanlines", c.scan);
+          document.body.classList.toggle("show-scanlines", c.scan > 0);
+          document.body.setAttribute("data-scanlines", String(c.scan));
           syncThemeButton();
         }
         /**

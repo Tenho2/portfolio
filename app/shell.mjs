@@ -1,20 +1,24 @@
 /*
- * The one description of both pages.
+ * The one description of the layout pages.
  *
  * Everything here is shared by tools/emit-pages.mjs. Editing this file and
- * re-running that generator is how the two layouts are changed; editing either
- * HTML file directly is undone by the next run.
+ * re-running that generator is how the pages are changed; editing an HTML file
+ * directly is undone by the next run.
  *
- * The two layouts
+ * The layouts
  *   classic  The original: a fixed 250px rail on the left, which becomes a
  *            sticky icon strip under 820px and a single bar under 560px. This is
  *            what shipped before the split and stays byte-identical in
  *            behaviour.
  *
- *   wide     A permanent top bar and a centred, width-capped content column.
- *            It never collapses the navigation into icons, so the labels stay
- *            legible and the targets stay large at every width, which suits a
- *            tablet, a desk or a head unit held further away than a phone.
+ *   focus / modern
+ *            Shared-markup arrangements: focus is a dark dashboard rail, modern
+ *            a warm, slim-header phone layout. Both load app/app.css plus their
+ *            own layout sheet.
+ *
+ *   hud / brutal / editorial
+ *            Experimental UIs. Each loads app/ui/base.css and its own theme.
+ *            Wide and Glass are archived in archive/ and are not built.
  *
  * Why the markup is shared and only the CSS differs
  *   app/app.js looks up roughly 170 element ids unconditionally while wiring its
@@ -27,11 +31,10 @@
 /** Layouts, in the order the settings switcher lists them. */
 export const LAYOUTS = [
   { name: "classic", file: "ev-tracker.html", label: "set.layoutClassic" },
-  { name: "wide", file: "ev-tracker-wide.html", label: "set.layoutWide" },
   { name: "focus", file: "ev-tracker-focus.html", label: "set.layoutFocus" },
   { name: "modern", file: "ev-tracker-modern.html", label: "set.layoutModern" },
   /* Experimental UIs. Each loads app/ui/base.css and its own theme instead of
-     the shared app/app.css, so it shares no styling with the four above. */
+     the shared app/app.css, so it shares no styling with the three above. */
   { name: "hud", file: "ev-tracker-hud.html", label: "set.layoutHud" },
   { name: "brutal", file: "ev-tracker-brutal.html", label: "set.layoutBrutal" },
   {
@@ -39,11 +42,11 @@ export const LAYOUTS = [
     file: "ev-tracker-editorial.html",
     label: "set.layoutEditorial",
   },
-  { name: "glass", file: "ev-tracker-glass.html", label: "set.layoutGlass" },
+  { name: "win31", file: "ev-tracker-win31.html", label: "set.layoutWin31" },
 ];
 
 /** Layouts that use the experimental app/ui/ stylesheets, not app/app.css. */
-export const UI_THEMES = ["hud", "brutal", "editorial", "glass"];
+export const UI_THEMES = ["hud", "brutal", "editorial", "win31"];
 
 /** The filename for a layout name, used by the switcher to build its href. */
 export const fileFor = (name) => {
@@ -54,7 +57,7 @@ export const fileFor = (name) => {
 /**
  * Stylesheet links for one layout, injected before </head>.
  *
- * The four original layouts load the shared design system app/app.css plus a
+ * The three original layouts load the shared design system app/app.css plus a
  * layout sheet that may only rearrange it. The four experimental layouts load
  * app/ui/base.css plus their own theme: they intentionally share no styling
  * with app/app.css.
@@ -73,7 +76,7 @@ export function linkLinesFor(layout) {
       ]
     : [
         "    <!-- app/app.css is the shared design system: tokens, a11y utilities and",
-        "         every component. Both layouts load it, so a component cannot diverge. -->",
+        "         every component. Every shared layout loads it, so a component cannot diverge. -->",
       ];
   const shellNote = ui
     ? "    <!-- The theme: variables and identity rules only. -->"

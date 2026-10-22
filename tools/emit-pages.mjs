@@ -1,23 +1,24 @@
 /*
- * Emits both layout pages from one shared source of truth.
+ * Emits every layout page from one shared source of truth.
  *
- * Why a generator instead of two hand-maintained HTML files
- *   The pages are ~1,480 lines each and must agree on everything. Kept by hand
- *   they drift within a week: a field added to the session form on one page and
- *   not the other is invisible until a user on that page finds it missing, and
- *   by then it has shipped.
+ * Why a generator instead of hand-maintained HTML files
+ *   The pages are large and must agree on everything. Kept by hand they drift
+ *   within a week: a field added to the session form on one page and not the
+ *   other is invisible until a user on that page finds it missing, and by then it
+ *   has shipped.
  *
- * The important decision: the two pages share their MARKUP too
- *   app/app.js dereferences element ids unconditionally at startup - roughly 170
+ * The important decision: the shared-markup pages share their MARKUP too
+ *   app/app.js dereferences element ids unconditionally at startup - roughly 200
  *   of them, with no per-page guard - so a layout that omitted or renamed any of
- *   them would throw before the first line of application logic ran. Giving the
- *   wide layout its own markup would mean maintaining a second copy of every id
- *   for no benefit.
+ *   them would throw before the first line of application logic ran. Giving each
+ *   layout its own markup would mean maintaining a second copy of every id for no
+ *   benefit.
  *
  *   So the DOM is identical and only the arrangement differs, which is what
  *   `data-layout` and the per-page stylesheet are for. A layout change is a CSS
- *   change. That also means the two pages cannot disagree about behaviour: they
- *   run the same bytes of app/app.js against the same ids.
+ *   change. That also means the pages cannot disagree about behaviour: they run
+ *   the same bytes of app/app.js against the same ids. Only HUD overrides the
+ *   body, from tools/hud-body.html.
  *
  * Usage:  node tools/emit-pages.mjs
  */

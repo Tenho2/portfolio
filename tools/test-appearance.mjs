@@ -42,24 +42,27 @@ function group(name, fn) {
 
 const PAGES = [
   { name: "classic", file: "ev-tracker.html" },
-  { name: "wide", file: "ev-tracker-wide.html" },
   { name: "focus", file: "ev-tracker-focus.html" },
   { name: "modern", file: "ev-tracker-modern.html" },
   { name: "hud", file: "ev-tracker-hud.html" },
   { name: "brutal", file: "ev-tracker-brutal.html" },
   { name: "editorial", file: "ev-tracker-editorial.html" },
-  { name: "glass", file: "ev-tracker-glass.html" },
+  { name: "win31", file: "ev-tracker-win31.html" },
 ];
 
 /* The pure helpers, with the real page list injected so the mapping under test
    is the one that ships. */
 const layoutRedirectTarget = new Function(
   `var LAYOUT_PAGES = ${JSON.stringify(PAGES)};` +
+    `var RETIRED_LAYOUTS = { wide: "classic", glass: "hud" };` +
+    fnSource("normaliseStoredLayout") +
     fnSource("layoutFileFor") +
     fnSource("layoutRedirectTarget") +
     "; return layoutRedirectTarget;",
 )();
-const bootClasses = new Function(`${fnSource("bootClasses")}; return bootClasses;`)();
+const bootClasses = new Function(
+  `${fnSource("num")}${fnSource("isNum")}${fnSource("normaliseScanlineLevel")}${fnSource("bootClasses")}; return bootClasses;`,
+)();
 const isTypingTarget = new Function(
   `${fnSource("isTypingTarget")}; return isTypingTarget;`,
 )();
@@ -90,13 +93,18 @@ function fakeStorage() {
 group("the start page redirects to the remembered layout, and only there", () => {
   /* The manifest's start_url is ev-tracker.html, whose layout is classic. */
   is("classic remembers the HUD", layoutRedirectTarget("classic", "hud"), "ev-tracker-hud.html");
-  is("classic remembers wide", layoutRedirectTarget("classic", "wide"), "ev-tracker-wide.html");
+  is("classic remembers focus", layoutRedirectTarget("classic", "focus"), "ev-tracker-focus.html");
+  /* Archived layouts are mapped, not left to fall through. Wide is a shared
+     layout, so classic is the honest replacement; Glass was experimental, so its
+     users land on the surviving experimental UI. */
+  is("wide falls back to classic, with no redirect", layoutRedirectTarget("classic", "wide"), null);
+  is("glass falls back to the HUD", layoutRedirectTarget("classic", "glass"), "ev-tracker-hud.html");
   is("classic with no memory stays put", layoutRedirectTarget("classic", null), null);
   is("classic with classic stored stays put", layoutRedirectTarget("classic", "classic"), null);
   /* A direct link to a layout page is a deliberate act. It must not bounce to
      whatever was chosen last, or that page becomes unreachable by URL. */
-  is("the HUD page is not redirected", layoutRedirectTarget("hud", "wide"), null);
-  is("wide is not redirected to the HUD", layoutRedirectTarget("wide", "hud"), null);
+  is("the HUD page is not redirected", layoutRedirectTarget("hud", "focus"), null);
+  is("focus is not redirected to the HUD", layoutRedirectTarget("focus", "hud"), null);
   /* A stale or hand-edited value must not navigate anywhere. */
   is("an unknown stored layout is ignored", layoutRedirectTarget("classic", "nonsense"), null);
   is("an empty stored layout is ignored", layoutRedirectTarget("classic", ""), null);
@@ -133,7 +141,7 @@ group("appearance preferences are independent body classes", () => {
   is("no stored red mode is off", none.red, false);
   /* Opt-in: never set has to mean off, or the retro texture returns for
      somebody who never asked for it. */
-  is("no stored scanlines is off", none.scan, false);
+  is("no stored scanlines is off", none.scan, 0);
 
   const all = bootClasses(
     { theme: "dark", redMode: "on", scanlines: "on" },
@@ -141,7 +149,8 @@ group("appearance preferences are independent body classes", () => {
   );
   is("dark theme applies", all.dark, true);
   is("red mode applies on the HUD", all.red, true);
-  is("scanlines apply on the HUD", all.scan, true);
+  /* "on" is the pre-slider value; it maps to the old 20% strength. */
+  is("the legacy on value becomes 20%", all.scan, 20);
 
   /* Neither of the HUD-only classes may leak onto a shared layout. */
   const shared = bootClasses(
@@ -150,9 +159,12 @@ group("appearance preferences are independent body classes", () => {
   );
   is("shared layouts keep the theme", shared.dark, true);
   is("shared layouts do not get red mode", shared.red, false);
-  is("shared layouts do not get scanlines", shared.scan, false);
+  is("shared layouts do not get scanlines", shared.scan, 0);
 
   is("only the literal on enables a switch", bootClasses({ redMode: "yes" }, true).red, false);
+  is("10% is accepted", bootClasses({ scanlines: "10" }, true).scan, 10);
+  is("40% is accepted", bootClasses({ scanlines: "40" }, true).scan, 40);
+  is("an unknown level is off", bootClasses({ scanlines: "65" }, true).scan, 0);
   is("the scanline key is published", loadStorage(fakeStorage()).scanlines, "scanlines");
 });
 
@@ -160,7 +172,7 @@ group("one preference cannot wipe another at boot", () => {
   const restore = fnSource("restoreAppearance");
   ok("it toggles the theme", /classList\.toggle\("dark", c\.dark\)/.test(restore));
   ok("it toggles red mode", /classList\.toggle\("red-mode", c\.red\)/.test(restore));
-  ok("it toggles scanlines", /classList\.toggle\("show-scanlines", c\.scan\)/.test(restore));
+  ok("it toggles scanlines", /classList\.toggle\("show-scanlines", c\.scan > 0\)/.test(restore));
   /* Assigning className would drop the other two, which is the exact failure a
      previous attempt produced. */
   ok("it never assigns className", !/className\s*=/.test(restore));

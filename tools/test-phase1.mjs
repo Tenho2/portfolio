@@ -35,7 +35,7 @@ async function group(name, fn) {
 
 const app = appSource();
 const html = readFileSync("ev-tracker.html", "utf8");
-const wide = readFileSync("ev-tracker-wide.html", "utf8");
+const focusPage = readFileSync("ev-tracker-focus.html", "utf8");
 const i18 = readFileSync("app/i18n.js", "utf8");
 
 const HOURS = (min) => min / 60;
@@ -235,7 +235,7 @@ await group("A: a language switch cannot wipe the dynamic half of the hint", () 
   /* #durHintNow must not carry data-i18n. It carries text that exists only at
      runtime, so a translator would have nothing to translate, and applyI18n
      would overwrite the value with a raw key or leave it stale. */
-  ok("the hint exists on both pages", /id="durHintNow"/.test(html) && /id="durHintNow"/.test(wide));
+  ok("the hint exists on both pages", /id="durHintNow"/.test(html) && /id="durHintNow"/.test(focusPage));
   const i = html.indexOf('id="durHintNow"');
   const tag = html.slice(html.lastIndexOf("<", i), html.indexOf(">", i) + 1);
   ok("and it has no data-i18n", !/data-i18n/.test(tag));

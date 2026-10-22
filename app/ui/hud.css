@@ -29,10 +29,11 @@
   /* The dim glow and the scanline tint are tokens so the red-mode block can
      retint both without re-declaring a single component rule. The wash is
      deliberately faint, but it has to be perceptible when the user asks for it:
-     at 0.012 it was indistinguishable from "off", which made the Retro
-     scanlines checkbox look broken. */
+     the slider scales --scan-alpha from a barely-there 1.5% to a visible 8%. */
   --glow: rgb(82 183 136 / 0.16);
-  --scan: rgb(82 183 136 / 0.03);
+  --scan-rgb: 82 183 136;
+  --scan-alpha: 0.03;
+  --scan: rgb(var(--scan-rgb) / var(--scan-alpha));
   /* A faint fill for clickable things, so they read as controls rather than
      floating text. Retinted with the rest of the palette in red mode. */
   --tint: rgb(82 183 136 / 0.05);
@@ -62,7 +63,7 @@ body.red-mode {
   --warn: #e0a03a;
   --ok: #d9776a;
   --glow: rgb(217 56 58 / 0.18);
-  --scan: rgb(217 56 58 / 0.03);
+  --scan-rgb: 217 56 58;
   --tint: rgb(217 56 58 / 0.06);
 }
 
@@ -82,6 +83,21 @@ body.show-scanlines::before {
     transparent 1px,
     transparent 3px
   );
+}
+/* Relative intensity, not literal alpha: 40% is a visible CRT texture, 10% is a
+   hint of one. The values are deliberately below the label so the strongest
+   setting is still usable on a bright screen. */
+body.show-scanlines[data-scanlines="10"] {
+  --scan-alpha: 0.02;
+}
+body.show-scanlines[data-scanlines="20"] {
+  --scan-alpha: 0.03;
+}
+body.show-scanlines[data-scanlines="30"] {
+  --scan-alpha: 0.05;
+}
+body.show-scanlines[data-scanlines="40"] {
+  --scan-alpha: 0.08;
 }
 
 /* ---------- cockpit deck ---------- */
@@ -137,14 +153,6 @@ body.show-scanlines::before {
   margin-left: 0;
   padding: 1rem 1.25rem 2.5rem;
 }
-.hud-foot {
-  margin-left: 0;
-  padding: 1rem 1.25rem 2rem;
-  color: var(--text-muted);
-  font-size: 0.8rem;
-  border-top: 1px solid var(--line);
-}
-
 /* ---------- view chrome (replaces .panel) ---------- */
 .hud-screen {
   display: none;
@@ -367,6 +375,14 @@ body.red-mode .hud-red-btn {
   border-color: var(--danger);
   color: var(--danger);
 }
+/* Same failure as .dgr, one step earlier: the tint rule replaces the amber
+   fill, but base.css's dark ink remains, so a warning button was dark-on-dark.
+   Keep the warning colour as ink on the faint fill. */
+.btn.warn {
+  background: var(--tint);
+  border-color: var(--warn);
+  color: var(--warn);
+}
 .qa button:hover,
 .vcard[aria-pressed="true"],
 .loc-near-row:hover {
@@ -519,8 +535,7 @@ body.red-mode .hud-red-btn {
   .hud-red-btn .hud-red-label {
     display: none;
   }
-  .hud-stage,
-  .hud-foot {
+  .hud-stage {
     padding-left: 0.75rem;
     padding-right: 0.75rem;
     /* Clear the fixed bottom bar so nothing is hidden behind it. */
