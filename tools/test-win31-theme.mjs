@@ -97,6 +97,61 @@ group("the dark variant is deliberate", () => {
   ok("inputs stay readable", /body\.dark\[data-layout="win31"\] input/.test(css));
 });
 
+group("the phone navigation is a full-width bottom bar", () => {
+  const m = css.slice(css.indexOf("@media (max-width: 820px)"));
+  ok("the mobile block exists", m.length > 0);
+  const side = /body\[data-layout="win31"\] \.side\s*\{([^}]*)\}/.exec(m);
+  ok("the rail rule exists", !!side);
+  if (side) {
+    ok("it is fixed", /position:\s*fixed/.test(side[1]));
+    ok("it spans the viewport", /left:\s*0/.test(side[1]) && /right:\s*0/.test(side[1]) && /width:\s*100%/.test(side[1]));
+    ok("it sits on the bottom edge", /bottom:\s*0/.test(side[1]));
+    ok("it is above the content", /z-index:\s*100/.test(side[1]));
+    ok("the floating window bevel is gone", /padding:\s*0/.test(side[1]));
+  }
+  ok("the classic gray bar survives", /background:\s*#c0c0c0/.test(m));
+  ok("the top bevel is a single inset line", /border-top:\s*2px solid #ffffff/.test(m) && /inset 0 1px 0 #dfdfdf/.test(m));
+  ok("the title bar is hidden", /body\[data-layout="win31"\] \.side-brand[^{]*\{[^}]*display:\s*none/.test(m));
+  ok(
+    "the nav is a horizontal row",
+    /body\[data-layout="win31"\] \.side-nav\s*\{[^}]*display:\s*flex[^}]*flex-direction:\s*row[^}]*justify-content:\s*space-around[^}]*width:\s*100%[^}]*padding:\s*4px[^}]*gap:\s*4px/.test(
+      m,
+    ),
+  );
+  ok(
+    "each tab flexes equally",
+    /body\[data-layout="win31"\] \.side-nav li\s*\{[^}]*flex:\s*1 1 0[^}]*min-width:\s*0/.test(m),
+  );
+  const button = /body\[data-layout="win31"\] \.side-nav button\s*\{([^}]*)\}/.exec(m);
+  ok("the tab button exists", !!button);
+  if (button) {
+    ok("it is gray with black ink", /background:\s*#c0c0c0/.test(button[1]) && /color:\s*#000000/.test(button[1]));
+    ok("it has square corners", /border-radius:\s*0/.test(button[1]));
+    ok(
+      "it carries the classic outset bevel",
+      /inset -1px -1px #000/.test(button[1]) &&
+        /inset 1px 1px #fff/.test(button[1]) &&
+        /inset -2px -2px #808080/.test(button[1]) &&
+        /inset 2px 2px #dfdfdf/.test(button[1]),
+    );
+  }
+  const active = /body\[data-layout="win31"\] \.side-nav button\.active,[\s\S]{0,120}\[aria-current="page"\]\s*\{([^}]*)\}/.exec(
+    m,
+  );
+  ok("the active rule targets the button, not the rail", !!active);
+  if (active) {
+    ok(
+      "the active bevel is inverted",
+      /inset 1px 1px #000/.test(active[1]) &&
+        /inset -1px -1px #fff/.test(active[1]) &&
+        /inset 2px 2px #808080/.test(active[1]) &&
+        /inset -2px -2px #dfdfdf/.test(active[1]),
+    );
+    ok("and it is pressed in", /transform:\s*translate\(1px, 1px\)/.test(active[1]));
+  }
+  ok("the content clears the bar", /body\[data-layout="win31"\] \.wrap\s*\{[^}]*padding-bottom:\s*4\.5rem/.test(m));
+});
+
 group("the label is translated everywhere", () => {
   for (const key of ["set.layoutWin31"]) {
     ok(

@@ -7,11 +7,11 @@ belongs in [README.md](README.md); this file is the part that goes stale.
 
 |                |                                                                              |
 | -------------- | ---------------------------------------------------------------------------- |
-| HEAD           | `3a75e62` — commit and push are the user's job (see ground rules below)      |
+| HEAD           | `e8671e4` — commit and push are the user's job (see ground rules below)      |
 | Working tree   | **dirty on purpose**: the 2026-10-22 layout/settings batch is uncommitted    |
-| Service worker | `v74`                                                                        |
+| Service worker | `v76`                                                                        |
 | Build stamp    | `2026-10-22`                                                                 |
-| Tests          | 2062 assertions, 0 failures, across 30 suites (`npm run check`)              |
+| Tests          | 2133 assertions, 0 failures, across 31 suites (`npm run check`)              |
 | Database       | migrations `15-vehicle-baseline` and `16-vehicle-seasonal-baseline` required |
 
 The assertion total is the sum of the per-suite counts; `tools/test-i18n-markup.mjs`
@@ -45,6 +45,16 @@ reports by group rather than printing a number, so it is not in that figure.
   square controls, dotted focus, plus a charcoal dark variant. No body override;
   `test-win31-theme.mjs` pins the palette/bevels and `test-layouts` pins the id
   contract.
+- **Mobile navigation and theme modes.** The shared UI-theme phone bar now has
+  five shrinkable tabs (Favourites/Bin hidden) and Settings carries direct
+  shortcuts to both views, so Settings cannot be clipped off-screen. Focus has
+  a warm light palette plus the original dark one; Editorial and Brutal gained
+  dark token blocks; light surfaces are warm paper instead of raw white.
+  Editorial's `.sheet-box/.confirm-box/.auth-box` are opaque again, which fixes
+  the invisible `#syncPanel`. `test-theme-modes.mjs` pins the contracts.
+  Win31's phone rail is now a dedicated full-width gray bottom bar with five
+  equal push-button tabs, no title bar and no active-state bleed; its desktop
+  window styling is untouched.
 - **Test fixtures** that used `ev-tracker-wide.html` as the second shared page now
   use `ev-tracker-focus.html`. `test-sw-bump.mjs` now lists every active shell
   file instead of only classic/wide, closing a stale-cache blind spot.
@@ -242,6 +252,16 @@ wholesale.
 - **Wide fixtures are gone.** Tests that used `ev-tracker-wide.html` as the second
   shared page now use `ev-tracker-focus.html`; the archived page is a redirect stub.
   `test-sw-bump.mjs` lists every active shell file, not just classic/wide.
+- **Theme sheets load after `base.css`.** A theme's `.side` or `.side-nav button`
+  rule wins on source order, even inside a mobile layout the base sheet just
+  arranged. Win31 needed its own ≤820px reset for the fixed rail width and 13px
+  labels; new themes need the same. The base contract is five shrinkable tabs.
+- **Every non-HUD UI theme needs both token sets.** Focus now has a light default
+  and `body.dark[data-layout="focus"]`; Editorial and Brutal have dark blocks;
+  Win31 already did. `test-theme-modes.mjs` fails when one is missing.
+- **Editorial dialogs are not editorial panels.** Keep `.sheet-box`,
+  `.confirm-box` and `.auth-box` opaque; making them transparent for the print
+  look is what made `#syncPanel` appear as floating text.
 - **HUD is a separate DOM and stylesheet family.** `app/ui/*` never reads a token
   from `app/app.css`; a change meant for the HUD goes in `hud-body.html` +
   `app/ui/hud.css`.

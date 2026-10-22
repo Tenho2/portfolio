@@ -697,6 +697,24 @@
           <section class="view hud-screen" id="settings">
             <p class="res bad" id="panelError" role="alert" hidden></p>
             <div class="hud-settings-grid">
+              <!-- Favourites and the bin are not in the five-tab phone bar;
+                   Settings is the way back to them. -->
+              <section class="hud-section">
+                <h2 class="hud-title">
+                  <span aria-hidden="true">↗</span>
+                  <span data-i18n="set.shortcuts"></span>
+                </h2>
+                <div class="hud-row">
+                  <button type="button" class="btn ghost" data-go="favourites">
+                    <span class="ic" aria-hidden="true">★</span
+                    ><span data-i18n="nav.fav"></span>
+                  </button>
+                  <button type="button" class="btn ghost" data-go="bin">
+                    <span class="ic" aria-hidden="true">🗑️</span
+                    ><span data-i18n="nav.bin"></span>
+                  </button>
+                </div>
+              </section>
               <section class="hud-section">
                 <h2 class="hud-title">
                   <span aria-hidden="true">👤</span>

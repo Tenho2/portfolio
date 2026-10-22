@@ -1334,19 +1334,35 @@ body:not(.need-auth) #authView {
     display: flex;
     flex: 1 1 auto;
     justify-content: center;
-    gap: 0.75rem;
+    gap: 0.25rem;
   }
   .side-nav li {
-    flex: 0 0 auto;
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  /* The phone bar is five primary tabs. Favourites and the bin are reachable
+     from the Settings shortcuts; seven labelled tabs overflowed a 360px phone
+     and pushed Settings itself off the right edge. HUD and Modern already hide
+     the same two, so this is the shared contract, not a special case. */
+  .side-nav li:nth-child(4),
+  .side-nav li:nth-child(5) {
+    display: none;
   }
   .side-nav button {
     flex-direction: column;
     gap: 0.1rem;
-    width: auto;
-    padding: 0.45rem 0.4rem;
+    width: 100%;
+    min-width: 0;
+    padding: 0.4rem 0.25rem;
     border-left: 0;
-    font-size: 0.62rem;
+    font-size: 0.6rem;
     text-align: center;
+  }
+  .side-nav button span:not(.ic):not(.bin-count) {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .wrap {
     margin-left: 0;

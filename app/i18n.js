@@ -474,6 +474,7 @@
       "set.accountOut":
         "Not signed in. Your data stays on this device until you sign in.",
       "set.accountMeta": "{n} vehicle(s) · {s} session(s) on this device",
+      "set.shortcuts": "Shortcuts",
       "set.theme": "Appearance",
       "set.themeLight": "Light",
       "set.redMode": "RED MODE",
@@ -1314,6 +1315,7 @@
       "set.accountOut":
         "Et ole kirjautuneena. Tietosi pysyvät tällä laitteella, kunnes kirjaudut sisään.",
       "set.accountMeta": "{n} ajoneuvo(a) · {s} latausta tällä laitteella",
+      "set.shortcuts": "Pikavalinnat",
       "set.theme": "Ulkoasu",
       "set.themeLight": "Vaalea",
       "set.redMode": "YÖTILA",
@@ -2150,6 +2152,7 @@
       "set.accountOut":
         "Inte inloggad. Dina data stannar på den här enheten tills du loggar in.",
       "set.accountMeta": "{n} fordon · {s} session(er) på den här enheten",
+      "set.shortcuts": "Genvägar",
       "set.theme": "Utseende",
       "set.themeLight": "Ljust",
       "set.redMode": "NATTLÄGE",

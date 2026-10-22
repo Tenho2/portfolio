@@ -55,13 +55,21 @@ h2 {
 .stat,
 .vcard,
 .item,
-.camera-card,
-.sheet-box,
-.confirm-box,
-.auth-box {
+.camera-card {
   border: 0;
   border-radius: 0;
   background: transparent;
+  box-shadow: none;
+}
+/* Dialogs are not editorial panels: they sit above the page and need a
+   surface of their own. Transparent boxes made #syncPanel look empty, with
+   "Retry now" and the status text floating over the dimmed page. */
+.sheet-box,
+.confirm-box,
+.auth-box {
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--surface);
   box-shadow: none;
 }
 .panel {
@@ -172,4 +180,23 @@ textarea {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-size: 0.62rem;
+}
+
+/* Night edition. Warm charcoal paper rather than a blue-black dashboard: the
+   theme keeps its ink-and-paper identity when the shared toggle asks for dark. */
+body.dark[data-layout="editorial"] {
+  --bg: #171512;
+  --bg-2: #171512;
+  --surface: #211e19;
+  --surface-2: #2a261f;
+  --surface-3: #343028;
+  --line: #4a443a;
+  --text: #efe9dc;
+  --text-muted: #b8af9f;
+  --primary: #d98a8a;
+  --primary-ink: #171512;
+  --accent: #8fbfa5;
+  --danger: #ff8f8f;
+  --warn: #e0b45a;
+  --ok: #7fc39a;
 }

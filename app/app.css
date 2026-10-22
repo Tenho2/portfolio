@@ -34,9 +34,9 @@
         --danger: #ef4444;
         --text: #0f172a;
         --text-muted: #475569;
-        --surface: #fff;
-        --surface-2: #f0f9ff;
-        --surface-3: #e0f2fe;
+        --surface: #fffdf8;
+        --surface-2: #f7f4ec;
+        --surface-3: #efe9dd;
         --line: #e2e8f0;
         --hero-a: #2563eb;
         --hero-b: #06b6d4;
@@ -2291,12 +2291,37 @@
          The focus arrangement's palette. Deep indigo-slate, a mint accent and
          hairline borders, with no gradients and no glass. The colours live here
          rather than in app/layout-focus.css so the layout sheet stays
-         arrangement-only and keeps passing tools/test-layouts.mjs. Placed last
-         so it wins over the body.dark block; focus is a fixed dark theme and
-         ignores the light/dark toggle. */
+         arrangement-only and keeps passing tools/test-layouts.mjs. The light
+         palette is the default, like the rest of the app; the dark palette is
+         the original cockpit set and is selected by the shared theme toggle. */
       body[data-layout="focus"] {
+        --primary: #0f9f6e;
+        --primary-d: #0b7f58;
+        --primary-ink: #fffdf8;
+        --accent: #0d9488;
+        --success: #0f9f6e;
+        --warn: #b45309;
+        --danger: #b91c1c;
+        --text: #24211c;
+        --text-muted: #6b6459;
+        --surface: #fffdf8;
+        --surface-2: #f5f1e8;
+        --surface-3: #ebe5d9;
+        --line: #ddd6c8;
+        --hero-a: #f7f3ea;
+        --hero-b: #f7f3ea;
+        --page-a: #f7f3ea;
+        --page-b: #f7f3ea;
+        --sh: none;
+        --sh-lg: none;
+        --r: 3px;
+        background: #f7f3ea;
+        color: #24211c;
+      }
+      body.dark[data-layout="focus"] {
         --primary: #10b981;
         --primary-d: #0ea271;
+        --primary-ink: #0e1322;
         --accent: #34d399;
         --success: #10b981;
         --warn: #f59e0b;
@@ -2311,10 +2336,8 @@
         --hero-b: #1c2438;
         --page-a: #0e1322;
         --page-b: #0e1322;
-        --sh: none;
-        --sh-lg: none;
-        --r: 3px;
         background: #0e1322;
+        color: #e2e8f0;
       }
       /* No gradients or glass. The pressed vehicle card carries a gradient in
          dark mode, and the sheet scrim blurs what is behind it; both are undone
@@ -2371,8 +2394,8 @@
       body[data-layout="focus"] .stats .stat {
         background: var(--surface);
         border: 0;
-        border-right: 1px solid #2b3550;
-        border-bottom: 1px solid #2b3550;
+        border-right: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
         border-radius: 0;
         padding: 0.7rem 0.85rem;
         text-align: left;
@@ -2391,11 +2414,11 @@
       body[data-layout="focus"] .stats .stat .n {
         font-weight: 700;
         font-variant-numeric: tabular-nums;
-        color: #f8fafc;
+        color: var(--text);
       }
       body[data-layout="focus"] .stats .stat .l {
         font-size: 11px;
-        color: #64748b;
+        color: var(--text-muted);
       }
 
       /* ---------- focus: mid-screen thumb action zone ----------
@@ -2423,8 +2446,8 @@
         flex: 1 1 auto;
         height: 44px;
         padding: 0 1rem;
-        background: #10b981;
-        color: #0e1322;
+        background: var(--primary);
+        color: var(--primary-ink);
         font-weight: 600;
         border: none;
         border-radius: 3px;
@@ -2434,9 +2457,9 @@
         min-width: 0;
         height: 44px;
         padding: 0 0.6rem;
-        background: #151b2e;
-        border: 1px solid #2b3550;
-        color: #f8fafc;
+        background: var(--surface-2);
+        border: 1px solid var(--line);
+        color: var(--text);
         border-radius: 3px;
         font: inherit;
         font-size: 0.85rem;

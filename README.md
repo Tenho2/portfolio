@@ -195,18 +195,18 @@ files that a static host can serve as they are.
 
 | File                     | Lines  | Contents                             |
 | ------------------------ | ------ | ------------------------------------ |
-| `ev-tracker.html`        | 1,932  | markup, classic layout               |
+| `ev-tracker.html`        | 1,951  | markup, classic layout               |
 | `app/app.js`             | 14,179 | application logic                    |
-| `app/app.css`            | 2,912  | the shared design system             |
+| `app/app.css`            | 2,935  | the shared design system             |
 | `app/layout-classic.css` | 17     | the classic navigation shell         |
 | `app/layout-focus.css`   | 149    | the focus navigation shell           |
 | `app/layout-modern.css`  | 148    | the modern navigation shell          |
-| `app/i18n.js`            | 2,759  | translations for all four languages  |
+| `app/i18n.js`            | 2,762  | translations for all four languages  |
 | `app/storage.js`         | 202    | per-account local storage keys       |
 | `app/shell.mjs`          | 112    | how the layout pages are assembled   |
-| `app/ui/base.css`        | 1,412  | shared base for the experimental UIs |
+| `app/ui/base.css`        | 1,428  | shared base for the experimental UIs |
 | `app/ui/hud.css`         | 555    | the HUD cockpit theme                |
-| `app/ui/win31.css`       | 454    | the Windows 3.1 theme                |
+| `app/ui/win31.css`       | 471    | the Windows 3.1 theme                |
 
 Classic `<script src>` rather than ES modules on purpose: it keeps the page
 working from `file://` with no build step, and each file gets its own scope, so
@@ -235,7 +235,8 @@ the switcher.
 
 `ev-tracker.html` is the original: a fixed 250 px rail on the left, which becomes
 a sticky strip of icons below 820 px and a single bar below 560 px. `focus` is a
-dark dashboard rail; `modern` is a warm, slim-header phone layout.
+warm dashboard rail with a dark cockpit variant; `modern` is a warm, slim-header
+phone layout.
 
 **The three shared layouts are the same application, not three builds.** Identical
 markup, the same `app/app.js`, the same storage keys and the same account; only
@@ -579,6 +580,15 @@ changing the app.
 - [x] **Windows 3.1 theme.** A shared-markup UI theme: teal desktop, gray windows,
       hard bevels, navy title bars, black text, no gradients or rounded corners.
       Covered by `tools/test-win31-theme.mjs`.
+- [x] **Mobile navigation and theme modes.** The shared UI-theme phone bar now
+      keeps five shrinkable tabs; Settings gained Favourites/Bin shortcuts.
+      Focus has a warm light mode plus its original dark palette; Editorial and
+      Brutal gained dark modes; light surfaces are warm paper, not raw white.
+      Editorial dialogs (`#syncPanel` included) are opaque again.
+      `tools/test-theme-modes.mjs` pins all of it.
+- [x] **Win31 phone bar.** The Windows 3.1 sidebar becomes a full-width gray
+      bottom bar at ≤820px: title bar hidden, five equal push-button tabs,
+      button-only pressed state, no window bevel over the dashboard.
 
 ### Done since the last review
 

@@ -32,9 +32,10 @@
  *
  * Last bumped: 2026-10-22, for archiving Wide and Glass, removing the false
  * footer claim, fixing the warning-button ink, adding seasonal baselines and
- * the scanline intensity control, and the new Windows 3.1 theme.
+ * the scanline intensity control, the Windows 3.1 theme, the mobile
+ * navigation / theme-mode / Editorial-dialog fixes, and the Win31 bottom bar.
  */
-const VERSION = "v74";
+const VERSION = "v76";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [

@@ -762,6 +762,25 @@
         <!-- Shown only if a panel throws. Better a visible complaint about one
              panel than a silently half-rendered view. -->
         <p class="res bad" id="panelError" role="alert" hidden></p>
+        <!-- Favourites and the bin are not phone-bar tabs, so Settings carries
+             a direct way back to them. Without this, hiding the two secondary
+             tabs made both views unreachable on a phone. -->
+        <div class="panel">
+          <h2>
+            <span aria-hidden="true">↗</span>
+            <span data-i18n="set.shortcuts"></span>
+          </h2>
+          <div class="addrow">
+            <button type="button" class="btn ghost" data-go="favourites">
+              <span class="ic" aria-hidden="true">★</span
+              ><span data-i18n="nav.fav"></span>
+            </button>
+            <button type="button" class="btn ghost" data-go="bin">
+              <span class="ic" aria-hidden="true">🗑️</span
+              ><span data-i18n="nav.bin"></span>
+            </button>
+          </div>
+        </div>
         <!-- Appearance and account. On a phone the header holds only the
              vehicle name and the theme toggle, so language, the signed-in
              account and signing out live here where there is room to show

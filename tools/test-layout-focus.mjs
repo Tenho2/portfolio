@@ -47,8 +47,15 @@ const nav = html.slice(html.indexOf('<ul class="side-nav">'), html.indexOf("</ul
 const qa = html.slice(html.indexOf('<div class="qa">'), html.indexOf("</div>", html.indexOf('<div class="qa">')));
 
 group("the palette lives in the shared sheet, not the layout sheet", () => {
-  ok("focus redefines the primary to mint", /body\[data-layout="focus"\]\s*\{[^}]*--primary:\s*#10b981;/.test(appCss));
-  ok("focus redefines the page background to indigo-slate", /body\[data-layout="focus"\]\s*\{[^}]*--page-a:\s*#[0-9a-fA-F]+;/.test(appCss));
+  ok(
+    "focus has a warm light primary",
+    /body\[data-layout="focus"\]\s*\{[^}]*--primary:\s*#0f9f6e;/.test(appCss),
+  );
+  ok(
+    "focus keeps the mint primary in dark mode",
+    /body\.dark\[data-layout="focus"\]\s*\{[^}]*--primary:\s*#10b981;/.test(appCss),
+  );
+  ok("focus redefines the page background", /body\[data-layout="focus"\]\s*\{[^}]*--page-a:\s*#[0-9a-fA-F]+;/.test(appCss));
   /* The sheet may reference var(--line) and var(--primary) for the rail border
      and the current-page marker; it must not define the tokens themselves. */
   ok("the layout sheet carries no palette", !/--primary\s*:|--surface\s*:|--line\s*:|#10b981/.test(focusCss));

@@ -8,7 +8,7 @@
 :root {
   --bg: #fdfcf7;
   --bg-2: #fdfcf7;
-  --surface: #ffffff;
+  --surface: #fffdf8;
   --surface-2: #f2efe4;
   --surface-3: #e7e2d2;
   --line: #111111;
@@ -22,7 +22,7 @@
   --ok: #0a8f3c;
   --radius: 0;
   --radius-sm: 0;
-  --shadow: 5px 5px 0 #111111;
+  --shadow: 5px 5px 0 var(--line);
   --font: "Arial Black", "Helvetica Neue", Arial, sans-serif;
   --font-head: var(--font);
 }
@@ -138,4 +138,25 @@ textarea {
   border: 2px solid var(--line);
   border-radius: 0;
   color: var(--text);
+}
+
+/* Dark paper: the hard borders and offset shadows stay, but invert the ink so the contrast language survives. */
+body.dark[data-layout="brutal"] {
+  --bg: #171512;
+  --bg-2: #171512;
+  --surface: #221f1a;
+  --surface-2: #2b2720;
+  --surface-3: #353028;
+  --line: #f2ede2;
+  --text: #f2ede2;
+  --text-muted: #bdb5a6;
+  --primary: #ff7a33;
+  --primary-ink: #111111;
+  --accent: #7aa7ff;
+  --danger: #ff6b6b;
+  --warn: #ffd166;
+  --ok: #6ee7a8;
+}
+body.dark[data-layout="brutal"] {
+  background-image: radial-gradient(rgb(255 255 255 / 0.07) 1px, transparent 1px);
 }
