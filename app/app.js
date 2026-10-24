@@ -4498,15 +4498,20 @@ function hoursToHM(h, alwaysSeconds) {
             .trim()
             .toLowerCase();
           if (!u) return "";
-          if (u.indexOf("@") > 0) return u; /* already qualified */
-          return u + AUTH_FAKE_DOMAIN;
+          /* A username may contain the character the user typed as @. Supabase
+             still needs an email-shaped identifier, so @ becomes _at_ inside
+             the local part and the reserved domain is appended unconditionally.
+             This is what guarantees a real email address is never stored. */
+          return u.replace(/@/g, "_at_") + AUTH_FAKE_DOMAIN;
         }
-        /* strip the dummy domain so the UI shows what the user actually typed */
+        /* Strip the dummy domain and restore @ so the UI shows what was typed. */
         function fromFakeEmail(e) {
           e = String(e || "");
-          return e.slice(-AUTH_FAKE_DOMAIN.length) === AUTH_FAKE_DOMAIN
-            ? e.slice(0, -AUTH_FAKE_DOMAIN.length)
-            : e;
+          var local =
+            e.slice(-AUTH_FAKE_DOMAIN.length) === AUTH_FAKE_DOMAIN
+              ? e.slice(0, -AUTH_FAKE_DOMAIN.length)
+              : e;
+          return local.replace(/_at_/g, "@");
         }
         /* Maps a Supabase auth error to a message key.
                    Supabase reports the reason in error_code, which is stable
@@ -4813,6 +4818,8 @@ syncNote("");
               authMode === "up" ? "auth.haveAccount" : "auth.needAccount",
             );
           }
+          var passHint = $("authPassHint");
+          if (passHint) passHint.hidden = authMode !== "up";
         }
         /**
          * Disable the auth buttons and show a working label while a request
@@ -4828,14 +4835,18 @@ syncNote("");
             authMsg(TXT("auth.notConfigured"), "err");
             return;
           }
-          var u = $("authUser").value.trim(),
+          var u = $("authUser").value.trim().toLowerCase(),
             p = $("authPass").value;
+          var registering = authMode === "up";
           if (!u || !p) {
             authMsg(TXT("auth.missing"), "err");
             return;
           }
-          if (authMode === "up" && p.length < 8) {
-            authMsg(TXT("auth.shortPw"), "err");
+          /* The rule applies when choosing a password, never when presenting an
+             existing one: an old account with a shorter password must still be
+             able to sign in. */
+          if (registering && p.length < 8) {
+            authMsg(TXT("auth.errPassShort"), "err");
             return;
           }
 setAuthBusy(true);
@@ -4849,7 +4860,6 @@ setAuthBusy(true);
             try {
               var email = toFakeEmail(u),
                 res;
-              var registering = authMode === "up";
               if (registering)
               res = await authClient.auth.signUp({
                 email: email,
@@ -5480,9 +5490,10 @@ function say(msg) {
           ).trim();
           /* The email is the fallback because every account here was created
              as <name>@evtracker.test, and the local part is the part the user
-             recognises. The domain is stripped so the log does not read
-             "anna@evtracker.test" on every row. */
-          if (!n && authUser.email) n = String(authUser.email).split("@")[0];
+             recognises. fromFakeEmail strips the domain and restores any @ the
+             user typed, so the log does not read "anna@evtracker.test" or
+             "pekk_at_" on every row. */
+          if (!n && authUser.email) n = fromFakeEmail(authUser.email);
           return n || null;
         }
 

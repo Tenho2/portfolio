@@ -1771,15 +1771,21 @@
       "se": ""
     },
     "auth.usernameHint": {
-      "en": "No email address needed.",
-      "fi": "Sähköpostiosoitetta ei tarvita.",
-      "sv": "Ingen e-postadress behövs.",
+      "en": "Lowercase username; no real email needed.",
+      "fi": "Käyttäjätunnus pienillä kirjaimilla; oikeaa sähköpostia ei tarvita.",
+      "sv": "Användarnamn med små bokstäver; ingen riktig e-post behövs.",
       "se": ""
     },
     "auth.password": {
       "en": "Password",
       "fi": "Salasana",
       "sv": "Lösenord",
+      "se": ""
+    },
+    "auth.passwordHint": {
+      "en": "At least 8 characters for new accounts.",
+      "fi": "Vähintään 8 merkkiä uusille tileille.",
+      "sv": "Minst 8 tecken för nya konton.",
       "se": ""
     },
     "auth.signIn": {
@@ -1927,6 +1933,12 @@
       "se": ""
     },
     "auth.shortPw": {
+      "en": "Choose a password of at least 8 characters.",
+      "fi": "Valitse salasana, jossa on vähintään 8 merkkiä.",
+      "sv": "Välj ett lösenord med minst 8 tecken.",
+      "se": ""
+    },
+    "auth.errPassShort": {
       "en": "Choose a password of at least 8 characters.",
       "fi": "Valitse salasana, jossa on vähintään 8 merkkiä.",
       "sv": "Välj ett lösenord med minst 8 tecken.",

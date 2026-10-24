@@ -35,7 +35,7 @@
  * the scanline intensity control, the Windows 3.1 theme, the mobile
  * navigation / theme-mode / Editorial-dialog fixes, and the Win31 bottom bar.
  */
-const VERSION = "v76";
+const VERSION = "v77";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [

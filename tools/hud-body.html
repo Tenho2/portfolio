@@ -22,8 +22,13 @@
               maxlength="40"
               required
               aria-required="true"
+              aria-describedby="authUserHint"
             />
-            <div class="hint" data-i18n="auth.usernameHint"></div>
+            <div
+              class="hint"
+              id="authUserHint"
+              data-i18n="auth.usernameHint"
+            ></div>
           </div>
           <div class="f">
             <label for="authPass" data-i18n="auth.password"></label>
@@ -34,7 +39,14 @@
               maxlength="72"
               required
               aria-required="true"
+              aria-describedby="authPassHint"
             />
+            <div
+              class="hint"
+              id="authPassHint"
+              data-i18n="auth.passwordHint"
+              hidden
+            ></div>
           </div>
           <div
             id="authMsg"

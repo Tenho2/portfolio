@@ -428,7 +428,10 @@ set search_path = public
 as $$
 declare
   target uuid;
-  want   text := lower(trim(p_username));
+  /* Usernames may contain @, but Supabase stores them as email local parts
+     with @ replaced by _at_. Normalize the invite the same way before the
+     lookup, or an owner cannot invite a user named pekk@. */
+  want   text := replace(lower(trim(p_username)), '@', '_at_');
 begin
   if want = '' then
     return 'no-such-user';

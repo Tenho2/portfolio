@@ -640,3 +640,12 @@ changing the app.
 - Run `supabase/15-vehicle-baseline.sql` and `16-vehicle-seasonal-baseline.sql`
   before deploying this build. Until they are applied, every vehicle write fails
   with `42703`.
+
+### 2026-10-24 planned
+
+- **Passkeys / WebAuthn:** Implement passwordless login using Supabase WebAuthn
+  support.
+- **Accessibility & UX Audit:** Verify ARIA labels, screen-reader flows and
+  general heuristics after the recent UI changes.
+- **Northern Sámi Translations:** Fix `i18n/se-translation-template.json`. Do
+  not machine-translate it; this needs a proper Sámi library or translator.

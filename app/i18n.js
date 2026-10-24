@@ -410,8 +410,9 @@
       "as.vehicle": "Vehicle name",
       "auth.lead": "Sign in to sync your vehicles and sessions.",
       "auth.username": "Username",
-      "auth.usernameHint": "No email address needed.",
+      "auth.usernameHint": "Lowercase username; no real email needed.",
       "auth.password": "Password",
+      "auth.passwordHint": "At least 8 characters for new accounts.",
       "auth.signIn": "Sign in",
       "auth.createAccount": "Create account",
       "auth.logout": "Log out",
@@ -445,6 +446,7 @@
         "Could not load the Supabase library. Check your connection and reload.",
       "auth.missing": "Enter a username and a password.",
       "auth.shortPw": "Choose a password of at least 8 characters.",
+      "auth.errPassShort": "Choose a password of at least 8 characters.",
       "auth.badLogin": "Wrong username or password.",
       "auth.notConfirmed":
         'This account still needs an email confirmation, which can never arrive because usernames use a fake domain. Turn off "Confirm email" in Supabase, then register again.',
@@ -1250,8 +1252,10 @@
       "auth.lead":
         "Kirjaudu sisään synkronoidaksesi ajoneuvot ja lataukset.",
       "auth.username": "Käyttäjätunnus",
-      "auth.usernameHint": "Sähköpostiosoitetta ei tarvita.",
+      "auth.usernameHint":
+        "Käyttäjätunnus pienillä kirjaimilla; oikeaa sähköpostia ei tarvita.",
       "auth.password": "Salasana",
+      "auth.passwordHint": "Vähintään 8 merkkiä uusille tileille.",
       "auth.signIn": "Kirjaudu",
       "auth.createAccount": "Luo tili",
       "auth.logout": "Kirjaudu ulos",
@@ -1288,6 +1292,7 @@
         "Supabase-kirjastoa ei voitu ladata. Tarkista yhteys ja lataa sivu uudelleen.",
       "auth.missing": "Anna käyttäjätunnus ja salasana.",
       "auth.shortPw": "Valitse salasana, jossa on vähintään 8 merkkiä.",
+      "auth.errPassShort": "Valitse salasana, jossa on vähintään 8 merkkiä.",
       "auth.badLogin": "Väärä käyttäjätunnus tai salasana.",
       "auth.notConfirmed":
         'Tiliä pitää vielä vahvistaa sähköpostilla, mikä ei koskaan tavoita, koska käyttäjätunnus käyttää keksiettä verkkotunnusta. Poista "Confirm email" -asetus Supabasesta ja rekisteröidy uudelleen.',
@@ -2087,8 +2092,10 @@
       "as.vehicle": "Bilnamn",
       "auth.lead": "Logga in för att synka dina fordon och sessioner.",
       "auth.username": "Användarnamn",
-      "auth.usernameHint": "Ingen e-postadress behövs.",
+      "auth.usernameHint":
+        "Användarnamn med små bokstäver; ingen riktig e-post behövs.",
       "auth.password": "Lösenord",
+      "auth.passwordHint": "Minst 8 tecken för nya konton.",
       "auth.signIn": "Logga in",
       "auth.createAccount": "Skapa konto",
       "auth.logout": "Logga ut",
@@ -2125,6 +2132,7 @@
         "Kunde inte läsa in Supabase-biblioteket. Kontrollera anslutningen och ladda om.",
       "auth.missing": "Ange användarnamn och lösenord.",
       "auth.shortPw": "Välj ett lösenord med minst 8 tecken.",
+      "auth.errPassShort": "Välj ett lösenord med minst 8 tecken.",
       "auth.badLogin": "Fel användarnamn eller lösenord.",
       "auth.notConfirmed":
         'Kontot behöver fortfarande bekräftas via e-post, vilket aldrig kan komma fram eftersom användarnamnet använder en falsk domän. Stäng av "Confirm email" i Supabase och registrera om.',
@@ -2390,6 +2398,11 @@
       "confirm.yes": "Ja, fortsätt",
     },
     se: {
+      /* Temporary English fallbacks until the Sámi translation template is
+         completed by a proper translator. These are deliberately not guesses. */
+      "auth.usernameHint": "Lowercase username; no real email needed.",
+      "auth.passwordHint": "At least 8 characters for new accounts.",
+      "auth.errPassShort": "Choose a password of at least 8 characters.",
       "fav.name": "Namma",
       "fav.map": "Mátta",
       "fav.save": "Girjjit",
