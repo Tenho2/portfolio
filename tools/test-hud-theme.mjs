@@ -161,7 +161,7 @@ group("scanlines are an opt-in, adjustable texture", () => {
     ["10", "0.02"],
     ["20", "0.03"],
     ["30", "0.05"],
-    ["40", "0.08"],
+    ["40", "0.16"],
   ]) {
     ok(
       `level ${level} has its own strength`,

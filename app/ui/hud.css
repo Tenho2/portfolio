@@ -28,8 +28,8 @@
   --ok: #52b788;
   /* The dim glow and the scanline tint are tokens so the red-mode block can
      retint both without re-declaring a single component rule. The wash is
-     deliberately faint, but it has to be perceptible when the user asks for it:
-     the slider scales --scan-alpha from a barely-there 1.5% to a visible 8%. */
+     deliberately faint at the low end, but the top setting has to read as a
+     texture on a bright screen: --scan-alpha runs from 2% to 16%. */
   --glow: rgb(82 183 136 / 0.16);
   --scan-rgb: 82 183 136;
   --scan-alpha: 0.03;
@@ -97,7 +97,7 @@ body.show-scanlines[data-scanlines="30"] {
   --scan-alpha: 0.05;
 }
 body.show-scanlines[data-scanlines="40"] {
-  --scan-alpha: 0.08;
+  --scan-alpha: 0.16;
 }
 
 /* ---------- cockpit deck ---------- */

@@ -649,3 +649,6 @@ changing the app.
   general heuristics after the recent UI changes.
 - **Northern Sámi Translations:** Fix `i18n/se-translation-template.json`. Do
   not machine-translate it; this needs a proper Sámi library or translator.
+- **Win31 theme mode:** Decide whether Win31 should always start light on its
+  first visit and remember a separate dark choice, rather than inheriting the
+  global dark preference from another layout.
