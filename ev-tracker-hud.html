@@ -445,7 +445,7 @@
                       />
                     </div>
                     <div class="f">
-                      <label for="time" data-i18n="as.time"></label
+                      <label for="time" data-i18n="as.startTime"></label
                       ><input
                         type="time"
                         id="time"
@@ -453,6 +453,19 @@
                         step="1"
                         required
                         aria-required="true"
+                      />
+                    </div>
+                    <div class="f">
+                      <label for="endDate" data-i18n="as.endDate"></label
+                      ><input type="date" id="endDate" name="endDate" />
+                    </div>
+                    <div class="f">
+                      <label for="endTime" data-i18n="as.endTime"></label
+                      ><input
+                        type="time"
+                        id="endTime"
+                        name="endTime"
+                        step="1"
                       />
                     </div>
                   </fieldset>
@@ -1427,7 +1440,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               ><input type="date" id="eDate" required aria-required="true" />
             </div>
             <div class="f">
-              <label for="eTime" data-i18n="as.time"></label
+              <label for="eTime" data-i18n="as.startTime"></label
               ><input
                 type="time"
                 id="eTime"

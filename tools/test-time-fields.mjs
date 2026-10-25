@@ -52,14 +52,28 @@ import { readFileSync } from "node:fs";
 
 /* Run the real parse and format functions. */
 const build = new Function(
-  ["pad", "hmToHours", "hoursToHM", "fmtTime", "validTime"],
+  [
+    "pad",
+    "validDate",
+    "hmToHours",
+    "hoursToHM",
+    "fmtTime",
+    "validTime",
+    "clockMs",
+    "hoursBetweenClock",
+    "endFromDuration",
+  ],
   [
     fnSource("pad"),
+    fnSource("validDate"),
     fnSource("hmToHours"),
     fnSource("hoursToHM"),
     fnSource("fmtTime"),
     fnSource("validTime"),
-    "return { hmToHours, hoursToHM, fmtTime, validTime };",
+    fnSource("clockMs"),
+    fnSource("hoursBetweenClock"),
+    fnSource("endFromDuration"),
+    "return { hmToHours, hoursToHM, fmtTime, validTime, hoursBetweenClock, endFromDuration };",
   ].join("\n"),
 );
 const F = build();
@@ -67,7 +81,7 @@ const F = build();
 group("every time field offers its third wheel", () => {
   /* step="1" is what makes the native picker draw HH:MM:SS. step="60" draws two
      wheels, which is what the checkbox used to switch between. */
-  for (const id of ["duration", "time", "eDuration", "eTime"]) {
+  for (const id of ["duration", "time", "endTime", "eDuration", "eTime"]) {
     ok(`#${id} exists`, html.includes(`id="${id}"`));
     /* Prettier puts one attribute per line, so `step` can sit a long way from
        `id` in either direction. The tag itself is the only thing to look at. */
@@ -78,12 +92,14 @@ group("every time field offers its third wheel", () => {
     ok(`#${id} has step="1"`, /step="1"/.test(tag));
     ok(`#${id} has no step="60"`, !/step="60"/.test(tag));
   }
-  /* The date field is a date; wheels would be meaningless. Listed so a future
-     "make them all the same" cannot silently hit it. */
-  const dateAt = html.indexOf('id="date"');
-  const dateTag = html.slice(html.lastIndexOf("<input", dateAt), html.indexOf(">", dateAt));
-  ok("#date is a date input", /type="date"/.test(dateTag));
-  ok("#date carries no step", !/step=/.test(dateTag));
+  /* Date fields are dates; wheels would be meaningless. Listed so a future
+     "make them all the same" cannot silently hit them. */
+  for (const id of ["date", "endDate"]) {
+    const at = html.indexOf(`id="${id}"`);
+    const tag = html.slice(html.lastIndexOf("<input", at), html.indexOf(">", at));
+    ok(`#${id} is a date input`, /type="date"/.test(tag));
+    ok(`#${id} carries no step`, !/step=/.test(tag));
+  }
 });
 
 group("the seconds switch and its leaked global are gone", () => {
@@ -181,10 +197,58 @@ group("hmToHours still parses a duration, not a clock", () => {
   );
 });
 
+group("end date/time and duration calculate in both directions", () => {
+  is(
+    "same day",
+    F.hoursBetweenClock("2026-10-25", "10:00", "2026-10-25", "10:45"),
+    0.75,
+  );
+  is(
+    "an earlier end time means the next day",
+    F.hoursBetweenClock("2026-10-25", "23:30", "2026-10-25", "00:15"),
+    0.75,
+  );
+  is(
+    "an explicit next day is the actual gap",
+    F.hoursBetweenClock("2026-10-25", "23:30", "2026-10-26", "00:15"),
+    0.75,
+  );
+  is(
+    "an earlier end date is refused, not rolled forward",
+    F.hoursBetweenClock("2026-10-25", "10:00", "2026-10-24", "11:00"),
+    null,
+  );
+  is(
+    "equal times are not a zero-duration session",
+    F.hoursBetweenClock("2026-10-25", "10:00", "2026-10-25", "10:00"),
+    null,
+  );
+
+  const overnight = F.endFromDuration("2026-10-25", "23:30", 0.75);
+  is("duration -> end date rolls over", overnight.date, "2026-10-26");
+  is("duration -> end time", overnight.time, "00:15");
+  const sameDay = F.endFromDuration("2026-10-25", "10:00", 2.25);
+  is("duration -> same-day end", sameDay.time, "12:15");
+});
+
+group("the two-way sync cannot loop", () => {
+  const fromEnd = fnSource("syncDurationFromEnd");
+  const fromDuration = fnSource("syncEndFromDuration");
+  ok("end updates duration under a lock", /timeSyncLock\s*=\s*true/.test(fromEnd));
+  ok("duration updates end under a lock", /timeSyncLock\s*=\s*true/.test(fromDuration));
+  ok("programmatic writes never dispatch events", !/dispatchEvent/.test(fromEnd + fromDuration));
+  ok(
+    "endTime may fill a missing endDate",
+    /fillEndDate && !endDateEl\.value/.test(fromEnd) &&
+      /endDateEl\.value = startDate/.test(fromEnd),
+  );
+});
+
 group("both pages carry the same change", () => {
   for (const f of [html, focusPage]) {
     ok(`step="1" present (${f === html ? "classic" : "focus"})`, /id="duration"[\s\S]{0,400}?step="1"/.test(f));
     ok(`no #durSec (${f === html ? "classic" : "focus"})`, !f.includes('id="durSec"'));
+    ok(`end fields present (${f === html ? "classic" : "focus"})`, /id="endDate"/.test(f) && /id="endTime"/.test(f));
   }
 });
 

@@ -652,3 +652,13 @@ changing the app.
 - **Win31 theme mode:** Decide whether Win31 should always start light on its
   first visit and remember a separate dark choice, rather than inheriting the
   global dark preference from another layout.
+
+### 2026-10-25 planned
+
+- **Change Password UI:** Allow logged-in users to change their password.
+- **Tesla Browser Warning:** Add a hint during registration noting that the
+  Tesla browser does not save passwords, so users must choose one they can
+  remember.
+- **SBOM:** Generate a Software Bill of Materials document for the project.
+- **README Cleanup:** Refactor and clean up the README to remove outdated
+  musings and streamline the documentation.

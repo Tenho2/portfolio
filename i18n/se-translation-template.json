@@ -216,6 +216,24 @@
       "sv": "Tid",
       "se": ""
     },
+    "as.startTime": {
+      "en": "Start time",
+      "fi": "Aloitusaika",
+      "sv": "Starttid",
+      "se": ""
+    },
+    "as.endDate": {
+      "en": "End date",
+      "fi": "Päättymispäivä",
+      "sv": "Slutdatum",
+      "se": ""
+    },
+    "as.endTime": {
+      "en": "End time",
+      "fi": "Päättymisaika",
+      "sv": "Sluttid",
+      "se": ""
+    },
     "as.dur": {
       "en": "Session duration",
       "fi": "Latausaika",
@@ -226,6 +244,12 @@
       "en": "1-minute steps. Defaults to your average session length.",
       "fi": "1 minuutin tarkkuudella. Oletuksena keskimääräinen latausaika.",
       "sv": "1 minuters steg. Förvalet är din genomsnittliga sessionstid.",
+      "se": ""
+    },
+    "durHintEnd": {
+      "en": "Calculated from the end time.",
+      "fi": "Laskettu päättymisajasta.",
+      "sv": "Beräknat från sluttiden.",
       "se": ""
     },
     "as.durHintSec": {

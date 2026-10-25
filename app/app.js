@@ -12868,6 +12868,128 @@ function detachVehicle(id) {
           );
         }
 
+        /* ---------- end date/time <-> duration ----------
+           The end fields are a calculator, not stored data: `duration` remains
+           the only session value. Both directions write `.value` directly and
+           are wrapped in the same lock, so a browser that ever did fire an event
+           for a programmatic write cannot start a feedback loop. */
+        var timeSyncLock = false;
+        function clockMs(dateValue, timeValue) {
+          var d = validDate(dateValue),
+            t = validTime(timeValue);
+          if (!d || !t) return null;
+          var dp = d.split("-"),
+            tp = t.split(":");
+          return Date.UTC(
+            +dp[0],
+            +dp[1] - 1,
+            +dp[2],
+            +tp[0],
+            +tp[1],
+            tp[2] ? +tp[2] : 0,
+          );
+        }
+        /** Hours from start to end, or null when the pair is not usable. */
+        function hoursBetweenClock(startDate, startTime, endDate, endTime) {
+          var a = clockMs(startDate, startTime),
+            b = clockMs(endDate, endTime);
+          if (a === null || b === null) return null;
+          var diff = b - a;
+          if (diff < 0) {
+            /* Same clock date and an earlier end time means the session ran
+               past midnight. An explicitly earlier end date is a mistake. */
+            if (validDate(startDate) !== validDate(endDate)) return null;
+            diff += 24 * 3600000;
+          }
+          if (!(diff > 0) || diff > 48 * 3600000) return null;
+          return diff / 3600000;
+        }
+        /** End date/time for a duration, or null when it cannot be calculated. */
+        function endFromDuration(startDate, startTime, hours) {
+          var a = clockMs(startDate, startTime);
+          if (a === null || !(hours > 0) || hours > 48) return null;
+          var d = new Date(a + Math.round(hours * 3600000));
+          var date =
+            d.getUTCFullYear() +
+            "-" +
+            pad(d.getUTCMonth() + 1) +
+            "-" +
+            pad(d.getUTCDate());
+          var time =
+            pad(d.getUTCHours()) +
+            ":" +
+            pad(d.getUTCMinutes()) +
+            (d.getUTCSeconds() ? ":" + pad(d.getUTCSeconds()) : "");
+          return { date: date, time: time };
+        }
+        function setDurationComputedHint() {
+          var box = $("durHintNow");
+          if (!box) return;
+          box.textContent = TXT("durHintEnd");
+          box.setAttribute("data-state", "computed");
+        }
+        /**
+         * End fields -> duration.
+         * @param {boolean} fillEndDate  true only for a user edit of endTime:
+         *        an empty end date then means "the same day it started".
+         */
+        function syncDurationFromEnd(fillEndDate) {
+          if (timeSyncLock) return;
+          var dateEl = $("date"),
+            timeEl = $("time"),
+            endDateEl = $("endDate"),
+            endTimeEl = $("endTime"),
+            durationEl = $("duration");
+          if (!dateEl || !timeEl || !endDateEl || !endTimeEl || !durationEl)
+            return;
+          if (!endTimeEl.value) return;
+          var startDate = validDate(dateEl.value),
+            startTime = validTime(timeEl.value);
+          if (!startDate || !startTime) return;
+          if (fillEndDate && !endDateEl.value) endDateEl.value = startDate;
+          var endDate = validDate(endDateEl.value);
+          if (!endDate) return;
+          var hours = hoursBetweenClock(
+            startDate,
+            startTime,
+            endDate,
+            endTimeEl.value,
+          );
+          if (hours === null) return;
+          timeSyncLock = true;
+          try {
+            durationEl.value = hoursToHM(hours);
+            setDurationComputedHint();
+          } finally {
+            timeSyncLock = false;
+          }
+        }
+        /** Duration -> end fields, for a user edit of the duration only. */
+        function syncEndFromDuration() {
+          if (timeSyncLock) return;
+          var durationEl = $("duration"),
+            dateEl = $("date"),
+            timeEl = $("time"),
+            endDateEl = $("endDate"),
+            endTimeEl = $("endTime");
+          if (!durationEl || !dateEl || !timeEl || !endDateEl || !endTimeEl)
+            return;
+          var hours = hmToHours(durationEl.value);
+          if (!(hours > 0) || hours > 48) return;
+          var startDate = validDate(dateEl.value),
+            startTime = validTime(timeEl.value);
+          if (!startDate || !startTime) return;
+          var end = endFromDuration(startDate, startTime, hours);
+          if (!end) return;
+          timeSyncLock = true;
+          try {
+            endDateEl.value = end.date;
+            endTimeEl.value = end.time;
+          } finally {
+            timeSyncLock = false;
+          }
+        }
+
         /* ---------- two-way price / total ---------- */
         var calcLock = false,
           costAuto = false,
@@ -13617,6 +13739,28 @@ $("syncBadge").addEventListener("click", function () {
              last moment before that picker can open. */
           $("duration").addEventListener("focus", fillDurationIfEmpty);
           $("duration").addEventListener("click", fillDurationIfEmpty);
+          $("duration").addEventListener("input", syncEndFromDuration);
+          /* End time is the only field that may imply a missing end date. */
+          ["date", "time", "endDate"].forEach(function (id) {
+            var el = $(id);
+            if (!el) return;
+            el.addEventListener("input", function () {
+              syncDurationFromEnd(false);
+            });
+            el.addEventListener("change", function () {
+              syncDurationFromEnd(false);
+            });
+          });
+          ["endTime"].forEach(function (id) {
+            var el = $(id);
+            if (!el) return;
+            el.addEventListener("input", function () {
+              syncDurationFromEnd(true);
+            });
+            el.addEventListener("change", function () {
+              syncDurationFromEnd(true);
+            });
+          });
           /* Delegated, because the rows are re-rendered wholesale on every
              keystroke and a per-row listener would have to be re-attached each
              time. */
