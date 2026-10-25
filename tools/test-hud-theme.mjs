@@ -198,6 +198,19 @@ group("destructive buttons are readable on the dark cockpit", () => {
   ok("the warning border marks it", /border-color:\s*var\(--warn\)/.test(warnRule));
 });
 
+group("default buttons are readable on the dark cockpit", () => {
+  /* The tint rule replaces the primary fill, but the default button inherited
+     the dark primary-ink. The Save button in the edit modal was black-on-black. */
+  const rule = block(".btn {");
+  ok("the default button exists", rule.length > 0);
+  ok("its ink is the accent colour", /color:\s*var\(--primary\)/.test(rule));
+  ok(
+    "the destructive and warning overrides still win",
+    /\.btn\.dgr\s*\{[^}]*color:\s*var\(--danger\)/.test(css) &&
+      /\.btn\.warn\s*\{[^}]*color:\s*var\(--warn\)/.test(css),
+  );
+});
+
 group("the phone bar reads Log before Add", () => {
   /* Reading what was logged is the more common visit; Add moves one slot
      further from the thumb. */

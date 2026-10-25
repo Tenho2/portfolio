@@ -312,6 +312,10 @@ body.show-scanlines[data-scanlines="40"] {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-size: 0.78rem;
+  /* The tint rule below replaces the filled primary surface, so the default
+     primary-ink (dark) would become dark-on-dark. Use the accent as ink;
+     dgr/warn/ghost keep their more specific colours. */
+  color: var(--primary);
 }
 .btn.ghost {
   border-color: var(--line);

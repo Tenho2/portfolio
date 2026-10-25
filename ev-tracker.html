@@ -1595,6 +1595,27 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
               />
             </div>
           </div>
+          <div class="f">
+            <label for="ePriceCents" data-i18n="as.price"></label>
+            <div class="addrow" style="margin: 0; max-width: 320px">
+              <input
+                type="number"
+                id="ePriceCents"
+                min="0"
+                max="99"
+                step="1"
+                inputmode="numeric"
+                aria-describedby="ePriceHint"
+                data-i18n-aria="aria.cents"
+              />
+              <span
+                class="unit"
+                aria-hidden="true"
+                data-i18n="as.centsUnit"
+              ></span>
+            </div>
+            <div class="hint" id="ePriceHint" data-i18n="as.priceHint1"></div>
+          </div>
           <!-- Who paid, editable like the add form. A legacy charge with no
                recorded split defaults to the signed-in user at the whole amount,
                matching what the add form starts from. -->

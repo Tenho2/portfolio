@@ -354,6 +354,31 @@ await group("G: the same fix applies on the edit sheet", () => {
   ok("and commitEdit reads cost from the field", app.includes('$("eCost")'));
 });
 
+await group("G: the edit sheet has a working price field", () => {
+  const edit = ["openEdit", "saveEdit", "commitEdit"].map(fnSource).join("\n");
+  for (const doc of [html, focusPage]) {
+    ok("the edit price field exists", /id="ePriceCents"/.test(doc));
+    ok("the edit price label exists", /for="ePriceCents"/.test(doc));
+  }
+  ok("openEdit derives the price from cost and energy", /ePriceCents[\s\S]{0,500}?num\(s\.cost\)[\s\S]{0,200}?num\(s\.energy\)/.test(fnSource("openEdit")));
+  ok("the price recalculates the cost", /function editPriceCents[\s\S]{0,500}?eCost/.test(app));
+  ok("the cost can feed the price", /function editCostToPrice[\s\S]{0,500}?ePriceCents/.test(app));
+  ok("commitEdit still saves the cost", /s\.cost\s*=/.test(fnSource("commitEdit")));
+
+  /* Every edit field the functions read must exist in both layouts. This is
+     the regression that made the modal look complete but fail at save time. */
+  const ids = [
+    ...new Set(
+      [...edit.matchAll(/\$\("(e[A-Za-z0-9]+)"\)/g)].map((m) => m[1]),
+    ),
+  ];
+  ok("the edit functions read fields", ids.length > 5);
+  for (const id of ids) {
+    ok(`#${id} exists in classic`, html.includes(`id="${id}"`));
+    ok(`#${id} exists in focus`, focusPage.includes(`id="${id}"`));
+  }
+});
+
 /* ---------- H: the tag says what the number is ---------- */
 
 await group("H: the tag describes what was actually done", () => {

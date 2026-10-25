@@ -150,6 +150,21 @@ group("the phone navigation is a full-width bottom bar", () => {
     ok("and it is pressed in", /transform:\s*translate\(1px, 1px\)/.test(active[1]));
   }
   ok("the content clears the bar", /body\[data-layout="win31"\] \.wrap\s*\{[^}]*padding-bottom:\s*4\.5rem/.test(m));
+  ok(
+    "the three quick actions keep three columns",
+    /body\[data-layout="win31"\] #dashboard \.qa\s*\{[^}]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/.test(
+      m,
+    ),
+  );
+  ok(
+    "the sheet clears the fixed taskbar",
+    /body\[data-layout="win31"\] \.sheet\s*\{[^}]*padding-bottom:\s*4\.5rem/.test(
+      m,
+    ) &&
+      /body\[data-layout="win31"\] \.sheet \.sheet-box\s*\{[^}]*max-height:\s*calc\(90vh - 4\.5rem\)/.test(
+        m,
+      ),
+  );
 });
 
 group("the label is translated everywhere", () => {

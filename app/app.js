@@ -8964,6 +8964,20 @@ for (var c = 0; c < head.length; c++) {
           $("eMileage").value = s.mileage;
           $("eEnergy").value = s.energy;
           $("eCost").value = isNum(s.cost) ? s.cost : "";
+          /* The price is a calculator, not stored data. Recover the implied
+             cents/kWh when the row has both a cost and energy; otherwise leave
+             it blank rather than inventing the current global price. */
+          if ($("ePriceCents")) {
+            $("ePriceCents").value =
+              isNum(s.cost) && num(s.energy) > 0
+                ? String(
+                    Math.max(
+                      0,
+                      Math.min(99, Math.round((num(s.cost) / num(s.energy)) * 100)),
+                    ),
+                  )
+                : "";
+          }
           if ($("eSocStart"))
             $("eSocStart").value = soc(s.socStart) === null ? "" : s.socStart;
           if ($("eSocEnd"))
@@ -12843,6 +12857,38 @@ function detachVehicle(id) {
         });
         $("cost").addEventListener("input", recalcFromCost);
         $("energy").addEventListener("input", recalcFromEnergy);
+        /* The edit sheet's price is local to that row: it recalculates the cost
+           but never changes the saved default price. */
+        function editPriceCents() {
+          var raw = $("ePriceCents") ? $("ePriceCents").value : "",
+            energy = $("eEnergy") ? num($("eEnergy").value) : 0;
+          if (raw === "" || !isNum(raw) || !(energy > 0)) return;
+          var cents = Math.min(99, Math.max(0, num(raw)));
+          if ($("eCost"))
+            $("eCost").value = ((energy * cents) / 100).toFixed(2);
+        }
+        function editCostToPrice() {
+          var raw = $("eCost") ? $("eCost").value : "",
+            energy = $("eEnergy") ? num($("eEnergy").value) : 0;
+          if (raw === "" || !isNum(raw) || !(energy > 0)) return;
+          if ($("ePriceCents"))
+            $("ePriceCents").value = String(
+              Math.max(0, Math.min(99, Math.round((num(raw) / energy) * 100))),
+            );
+        }
+        if ($("ePriceCents")) {
+          $("ePriceCents").addEventListener("input", editPriceCents);
+          $("ePriceCents").addEventListener("change", function () {
+            if ($("ePriceCents").value === "") return;
+            var c = Math.round(
+              Math.min(99, Math.max(0, num($("ePriceCents").value))),
+            );
+            $("ePriceCents").value = String(c);
+            editPriceCents();
+          });
+        }
+        if ($("eEnergy")) $("eEnergy").addEventListener("input", editPriceCents);
+        if ($("eCost")) $("eCost").addEventListener("input", editCostToPrice);
         function syncCents() {
           var c = Math.round(price * 100);
           if ($("ppkCents")) $("ppkCents").value = c;

@@ -548,6 +548,27 @@ body.dark[data-layout="win31"] table {
     line-height: 1.1;
   }
 
+  /* Three dashboard actions, three equal columns. The shared auto-fit grid
+     leaves the third button alone on a new row at phone widths. */
+  body[data-layout="win31"] #dashboard .qa {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+  }
+  body[data-layout="win31"] #dashboard .qa button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* The fixed taskbar is above the sheet. Lift the sheet and shorten its
+     scroll area so the Save/Delete row can be reached instead of sitting
+     underneath the bar. */
+  body[data-layout="win31"] .sheet {
+    padding-bottom: 4.5rem;
+  }
+  body[data-layout="win31"] .sheet .sheet-box {
+    max-height: calc(90vh - 4.5rem);
+  }
+
   /* Clear the fixed bar so the last dashboard/settings card stays visible. */
   body[data-layout="win31"] .wrap {
     padding-bottom: 4.5rem;
