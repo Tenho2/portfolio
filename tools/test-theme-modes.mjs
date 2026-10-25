@@ -63,7 +63,7 @@ group("the phone bar has at most five shrinkable tabs", () => {
   ok("the tabs share the width", /\.side-nav li\s*\{[^}]*flex:\s*1 1 0/.test(m));
   ok("a tab can shrink", /\.side-nav li\s*\{[^}]*min-width:\s*0/.test(m));
   ok("a button fills its tab", /\.side-nav button\s*\{[^}]*width:\s*100%/.test(m));
-  ok("a long label ellipsises", /text-overflow:\s*ellipsis/.test(m));
+  ok("the stations label wraps instead of ellipsising", /\.nav-stations button span[^{]*\{[^}]*white-space:\s*normal/.test(m));
 });
 
 group("the hidden views are reachable from Settings", () => {

@@ -494,11 +494,10 @@ await group("the camera screen exists and says what these cameras are", () => {
     ok(`${name} has a camera button`, /id="cameraFindBtn"/.test(doc));
     ok(`${name} has a camera list`, /id="cameraList"/.test(doc));
     ok(`${name} has a live status region for it`, /id="cameraStat"[^>]*aria-live|aria-live[^>]*id="cameraStat"/.test(doc));
-    /* The note matters more than it looks. The obvious reading of a camera on a
-       Finnish road is a speed camera, and this feed contains none. */
-    ok(`${name} states they are road-condition cameras`, /data-i18n="cam\.note"/.test(doc));
+    /* The credit is attribution now, not a disclaimer above the map. */
+    ok(`${name} credits Digitraffic`, /data-i18n="cam\.credit"/.test(doc));
   }
-  ok("the note says so in the copy too", /not speed cameras/.test(i18));
+  ok("the credit names the source", /Digitraffic/.test(i18));
   /* Thumbnails, not full pictures: 264 KB each, and 813 of them is 215 MB. */
   ok("thumbnails are used in the grid", /c\.thumb/.test(app));
   ok("the full picture is opened, not inlined", /data-camera-full/.test(app) && /window\.open/.test(app));

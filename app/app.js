@@ -3936,6 +3936,13 @@ function hoursToHM(h, alwaysSeconds) {
             return n.toFixed(digits || 0);
           }
         }
+        /** A distance a person reads: 900 m, 1,1 km, 6,5 km, 10,1 km. */
+        function fmtDistance(m) {
+          var n = Math.max(0, isNum(m) ? +m : 0);
+          var rounded = Math.round(n);
+          if (rounded < 1000) return fmtNum(rounded, 0) + " m";
+          return fmtNum(rounded / 1000, 1) + " km";
+        }
         function fmtKw(v) {
           if (!isNum(v)) return "—";
           return fmtNum(v, 1) + " kW";
@@ -9947,54 +9954,15 @@ slot.map.on("click", function (e) {
               Math.sin(dLon / 2);
           return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
         }
-        function knownPlaces() {
-          var out = [],
-            seen = {};
-          for (var i = 0; i < favs.length; i++) {
-            var f = favs[i];
-            if (isNum(f.lat) && isNum(f.lng)) {
-              out.push({
-                name: f.name,
-                address: f.address,
-                lat: +f.lat,
-                lng: +f.lng,
-                kind: "favourite",
-                /* Carried so a selection made by proximity can apply the place's
-                   own price, not just its position. */
-                price: favPrice(f),
-              });
-            }
-          }
-          for (var j = 0; j < sessions.length; j++) {
-            var s = sessions[j];
-            if (isNum(s.lat) && isNum(s.lng) && !seen[s.location]) {
-              seen[s.location] = 1;
-              out.push({
-                name: s.location,
-                address: s.location,
-                lat: +s.lat,
-                lng: +s.lng,
-                kind: "charging location",
-              });
-            }
-          }
-          return out;
-        }
         /**
- * Nearby chargers, grouped and de-duplicated, for the list under the location
- * field.
+ * Nearby chargers, grouped for de-duplication and then flattened for display.
  *
- * Priority is the order the groups appear in:
- *   1. places you have charged at before   - you know them, and they may carry
- *      your own price
- *   2. your saved favourites                - deliberate, named by you
- *   3. the Digitraffic registry            - anyone can be anywhere
+ * The groups no longer decide the visible order: flattenNearby() sorts the
+ * combined list by distance with a 1500 m benefit for places you have used or
+ * saved. The groups only decide which source owns a shared position, so a
+ * charger you have used and its registry row stay one row instead of two.
  *
- * De-duplication is by POSITION first and name second, and the first group to
- * claim a position keeps it. That is the whole point of the ordering: a charger
- * you have already used and a registry row for the same charger are one place,
- * and showing both - one labelled "where you charged before", one labelled
- * "nearby station" - makes the list look like it found more than it did.
+ * De-duplication is by POSITION first and name second.
  *
  * 25 m is the distance threshold. The app already treats two places within 25 m
  * of each other as indistinguishable on a single position reading (the
@@ -10097,45 +10065,39 @@ slot.map.on("click", function (e) {
             });
           }
 
-          /* A known place never outranks a closer public charger. When the
-             registry offered anything, drop the favourites and past places that
-             a station beats on distance - a 6 km favourite disappears once a
-             200 m charger is in the list. */
-          if (groups.stations.length) {
-            var nearest = Infinity;
-            for (var s = 0; s < groups.stations.length; s++)
-              if (groups.stations[s].dist < nearest) nearest = groups.stations[s].dist;
-            groups.sessions = groups.sessions.filter(function (p) {
-              return p.dist <= nearest;
-            });
-            groups.favs = groups.favs.filter(function (p) {
-              return p.dist <= nearest;
-            });
-          }
           return groups;
         }
 
-        /** Nearest two of each, which is what the list shows. */
-        function capGroups(groups, perGroup) {
-          var n = perGroup || 2;
-          return {
-            sessions: groups.sessions.slice(0, n),
-            favs: groups.favs.slice(0, n),
-            stations: groups.stations.slice(0, n),
-          };
+        /* A saved or previously used place gets this much benefit in the sort.
+           It is a presentation and auto-fill rule, never a different distance:
+           the row still shows the true metres. */
+        var NEAR_SOURCE_BONUS_M = 1500;
+        var NEAR_VISIBLE = 6;
+        var NEAR_STATION_RADIUS_M = 10000;
+        function nearbyRank(p) {
+          /* Round to the metre before comparing: a projected 1500 m point can
+             arrive as 1499.999…, which would otherwise break the intended tie
+             with a station at zero metres. */
+          return (
+            Math.round(p.dist) -
+            (p.kind === "station" ? 0 : NEAR_SOURCE_BONUS_M)
+          );
         }
-
-        function nearestPlace(lat, lng) {
-          var list = knownPlaces(),
-            best = null;
-          for (var i = 0; i < list.length; i++) {
-            var d = haversine(
-              { lat: lat, lng: lng },
-              { lat: list[i].lat, lng: list[i].lng },
-            );
-            if (!best || d < best.dist) best = { p: list[i], dist: d };
-          }
-          return best;
+        /** One flat list, gravity-adjusted, closest first. */
+        function flattenNearby(groups) {
+          return groups.sessions
+            .concat(groups.favs, groups.stations)
+            /* A known place 1000 km away is not a "near me" answer. The same
+               radius that bounds the registry also bounds the local fallback. */
+            .filter(function (p) {
+              return p.dist <= NEAR_STATION_RADIUS_M;
+            })
+            .sort(function (a, b) {
+              var ar = nearbyRank(a),
+                br = nearbyRank(b);
+              if (ar !== br) return ar - br;
+              return a.dist - b.dist;
+            });
         }
         /**
          * The user's home favourite within `maxM`, or null.
@@ -10143,8 +10105,9 @@ slot.map.on("click", function (e) {
          * Home is the place chosen in Settings as the default location. It is
          * the one favourite "Near me" may treat as the same place even when a
          * public charger reads a metre or two nearer, because standing at home
-         * and being told a charger down the road is the location is wrong. Every
-         * other favourite competes by true distance.
+         * and being told a charger down the road is the location is wrong. Other
+         * favourites still receive the 1500 m gravity benefit; the rest of the
+         * ranking uses true distance.
          */
         function homeFavourite(lat, lng, maxM) {
           if (!locDefaults.loc) return null;
@@ -10156,65 +10119,58 @@ slot.map.on("click", function (e) {
 /**
  * The nearby-chargers list under the location field.
  *
- * Rendered from whatever has arrived, and re-rendered as each group does. The
- * first two groups are local and appear immediately; the registry takes a few
- * seconds on a cold cache, and a blank space with a spinner reads as "nothing
- * found" rather than "still looking".
+ * Rendered from whatever has arrived. Local places appear immediately; the
+ * registry takes a few seconds on a cold cache, and a blank space with a
+ * spinner reads as "nothing found" rather than "still looking". The same
+ * gravity-sorted array supplies rank #1 to the auto-fill.
  */
         var nearToken = 0;
-        /* What "Near me" last put in the field, so the registry can correct it
-           to a nearer charger without ever overwriting typing. */
+        /* What "Near me" last put in the field, so a better gravity-ranked
+           answer can replace it without ever overwriting typing. */
         var nearFill = null;
-        function renderNearby(groups) {
+        function renderNearby(list) {
           var box = $("locNear");
           if (!box) return;
-          var order = [
-            ["sessions", "locNearUsed"],
-            ["favs", "locNearSaved"],
-            ["stations", "locNearStation"],
-          ];
           var out = [];
-          var any = false;
-          for (var g = 0; g < order.length; g++) {
-            var key = order[g][0];
-            var list = groups[key] || [];
-            if (!list.length) continue;
-            any = true;
-            out.push('<div class="loc-near-group"><h4>' + TXT(order[g][1]) + "</h4><ul>");
-            for (var i = 0; i < list.length; i++) {
-              var p = list[i];
-              out.push(
-                '<li><button type="button" class="loc-near-row" data-near-lat="' +
-                  p.lat +
-                  '" data-near-lng="' +
-                  p.lng +
-                  '" data-near-name="' +
-                  esc(p.name || p.address || "") +
-                  '"' +
-                  (isNum(p.price) && p.price >= 0
-                    ? ' data-near-price="' + esc(String(p.price)) + '"'
-                    : "") +
-                  ">" +
-                  '<span class="loc-near-name">' +
-                  esc(p.name || TXT("st.unnamed")) +
-                  "</span>" +
-                  (p.power
-                    ? '<span class="loc-near-meta">' +
-                      esc(p.power) +
-                      (p.plugs && p.plugs.length
-                        ? " · " + esc(p.plugs.slice(0, 2).join(", "))
-                        : "") +
-                      "</span>"
-                    : '<span class="loc-near-meta">' +
-                      Math.round(p.dist) +
-                      " m</span>") +
-                  "</button></li>",
-              );
-            }
-            out.push("</ul></div>");
+          for (var i = 0; i < list.length && i < NEAR_VISIBLE; i++) {
+            var p = list[i];
+            var tagKey =
+              p.kind === "station"
+                ? "locNearStation"
+                : p.kind === "favourite"
+                  ? "locNearSaved"
+                  : "locNearUsed";
+            var meta = [];
+            if (p.power) meta.push(esc(p.power));
+            if (p.plugs && p.plugs.length)
+              meta.push(esc(p.plugs.slice(0, 2).join(", ")));
+            meta.push(fmtDistance(p.dist));
+            out.push(
+              '<li><button type="button" class="loc-near-row" data-near-lat="' +
+                p.lat +
+                '" data-near-lng="' +
+                p.lng +
+                '" data-near-name="' +
+                esc(p.name || p.address || "") +
+                '"' +
+                (isNum(p.price) && p.price >= 0
+                  ? ' data-near-price="' + esc(String(p.price)) + '"'
+                  : "") +
+                ">" +
+                '<span class="loc-near-name">' +
+                esc(p.name || TXT("st.unnamed")) +
+                "</span>" +
+                '<span class="loc-near-meta"><span class="loc-near-tag">' +
+                esc(TXT(tagKey)) +
+                "</span>" +
+                meta.join(" · ") +
+                "</span></button></li>",
+            );
           }
-          box.hidden = !any;
-          box.innerHTML = out.join("");
+          box.hidden = !out.length;
+          box.innerHTML = out.length
+            ? '<ul class="loc-near-list">' + out.join("") + "</ul>"
+            : "";
         }
 
         /** Ask the registry for stations near a point, and fold them in. */
@@ -10224,25 +10180,26 @@ slot.map.on("click", function (e) {
             box.hidden = false;
             box.innerHTML = '<p class="loc-near-wait">' + TXT("st.searching") + "</p>";
           }
-          StationData.findStations({ lat: lat, lng: lng }, LOC_RADIUS_M)
+          StationData.findStations(
+            { lat: lat, lng: lng },
+            NEAR_STATION_RADIUS_M,
+          )
             .then(function (res) {
               if (mine !== nearToken) return;
-              var groups = capGroups(nearbyChargers(lat, lng, res.rows), 2);
-              renderNearby(groups);
-              /* The list is on screen; now let a nearer charger take the field,
-                 if there is one. */
-              correctToNearestStation(res.rows);
+              var list = flattenNearby(nearbyChargers(lat, lng, res.rows));
+              renderNearby(list);
+              /* The list is on screen; its gravity rank #1 is also the
+                 auto-fill target. */
+              correctToBestNearby(list[0] || null);
             })
             .catch(function () {
-              /* Silent on the registry alone. The first two groups are local and
-                 still on screen, and a charger search failing is no reason to
-                 throw away a favourite the user can already see. */
+              /* Silent on the registry alone. The local places are still a
+                 useful answer, so keep them and let their rank #1 fill the
+                 field if nothing was filled yet or nothing better arrived. */
               if (mine !== nearToken) return;
-              var box2 = $("locNear");
-              if (box2 && /loc-near-wait/.test(box2.innerHTML)) {
-                box2.hidden = true;
-                box2.innerHTML = "";
-              }
+              var list = flattenNearby(nearbyChargers(lat, lng, []));
+              renderNearby(list);
+              correctToBestNearby(list[0] || null);
             });
         }
 
@@ -10258,7 +10215,7 @@ slot.map.on("click", function (e) {
           setLocStatus(
             TXT("toast.geoNear", {
               v: s.name || TXT("st.unnamed"),
-              d: Math.round(s.dist),
+              d: fmtDistance(s.dist),
             }),
           );
         }
@@ -10275,38 +10232,48 @@ slot.map.on("click", function (e) {
           if ($("fav").checked) $("favName").value = p.name;
           /* A favourite selected by proximity applies its own price too. */
           applyFavPrice(p.price, true);
-          setLocStatus(TXT("toast.geoNear", { v: p.name, d: Math.round(near.dist) }));
+          setLocStatus(
+            TXT("toast.geoNear", { v: p.name, d: fmtDistance(near.dist) }),
+          );
+        }
+
+        /** Apply the gravity winner to the form. */
+        function fillFromNearbyTop(input, p) {
+          if (p.kind === "station") fillFromStation(input, p);
+          else fillFromPlace(input, { p: p, dist: p.dist });
+          nearFill.value = input.value.trim();
+          nearFill.rank = nearbyRank(p);
+          nearFill.filled = true;
         }
 
         /**
-         * Decide the field from the registry answer, once it arrives.
+         * Decide the field from the flat gravity-sorted list.
          *
-         * When a place was filled immediately (home, or a known place within
-         * 250 m) only a strictly nearer charger may take it, and only while the
-         * field still holds what we wrote. When nothing was filled - because
-         * everything local was farther than 250 m - the true nearest of the
-         * deferred known place and the registry answer is used. A far favourite
-         * therefore never wins over a closer charger.
+         * Rank #1 is authoritative: the 1500 m benefit for saved and previously
+         * used places is what protects "home" from a GPS drift, so it must apply
+         * to the auto-fill target as well as to the visible order. A user's own
+         * typing is never overwritten.
          */
-        function correctToNearestStation(rows) {
+        function correctToBestNearby(top) {
           if (!nearFill || nearFill.done) return;
           var input = $("location");
           if (!input) return;
-          var best = null;
-          for (var i = 0; i < rows.length; i++) {
-            if (!best || rows[i].dist < best.dist) best = rows[i];
+          var typed = input.value.trim();
+          if (nearFill.filled && typed !== nearFill.value) return;
+          if (!nearFill.filled && typed) {
+            nearFill.done = true;
+            return;
           }
-          var stationDist = best ? best.dist : Infinity;
-          if (nearFill.filled) {
-            if (input.value.trim() !== nearFill.value) return;
-            if (stationDist >= nearFill.dist) return;
-            fillFromStation(input, best);
-          } else {
-            var near = nearFill.near;
-            var nearDist = near ? near.dist : Infinity;
-            if (best && stationDist <= nearDist) fillFromStation(input, best);
-            else if (near) fillFromPlace(input, near);
+          if (!top) {
+            nearFill.done = true;
+            return;
           }
+          var rank = nearbyRank(top);
+          if (nearFill.filled && !(rank < nearFill.rank)) {
+            nearFill.done = true;
+            return;
+          }
+          fillFromNearbyTop(input, top);
           nearFill.done = true;
         }
 
@@ -10333,10 +10300,9 @@ slot.map.on("click", function (e) {
         /**
  * Ask the browser where we are and use it as this session's location.
  *
- * Unchanged behaviour, deliberately: it still fills the field from the nearest
- * place you have already used, which is the common case and needs no further
- * choice. What is new is the list underneath, because until now a favourite
- * near you meant the charger registry was never consulted at all.
+ * It fills from the gravity-sorted rank #1, which favours a saved or previously
+ * used place within 1.5 km without letting a distant favourite beat a charger
+ * next door. The registry is always consulted; the local list is shown first.
  */
         function useMyLocation() {
           if (!navigator.geolocation) {
@@ -10351,15 +10317,17 @@ slot.map.on("click", function (e) {
               var lat = pos.coords.latitude,
                 lng = pos.coords.longitude;
               /* Home within 100 m is the same place to within GPS jitter, so it
-                 wins outright. Every other place - favourite or public charger -
-                 competes by true distance, so a favourite kilometres away can
-                 never beat the charger the driver is standing at. A known place
-                 more than 250 m away is not filled immediately either; the
-                 registry answer decides, and only a place that turns out to be
-                 nearest is used. */
+                 wins outright. Every other place competes by the gravity rank:
+                 saved and previously used places get a 1500 m benefit, which
+                 protects "home" from a drifted fix without letting a 6 km
+                 favourite beat a charger next door. Only a top local place
+                 within 250 m is filled immediately; the registry answer decides
+                 the rest. */
+              var local = flattenNearby(nearbyChargers(lat, lng, []));
               var home = homeFavourite(lat, lng, 100);
-              var near = nearestPlace(lat, lng);
-              var immediate = !home && near && near.dist <= 250 ? near : null;
+              var localTop = local[0] || null;
+              var immediate =
+                !home && localTop && localTop.dist <= 250 ? localTop : null;
               var filled = false;
               if (home) {
                 filled = home.address || home.name;
@@ -10369,7 +10337,9 @@ slot.map.on("click", function (e) {
                 setLocStatus(
                   TXT("toast.geoNear", {
                     v: home.name,
-                    d: Math.round(metresBetween(lat, lng, +home.lat, +home.lng)),
+                    d: fmtDistance(
+                      metresBetween(lat, lng, +home.lat, +home.lng),
+                    ),
                   }),
                 );
                 if ($("fav").checked) $("favName").value = home.name;
@@ -10377,33 +10347,34 @@ slot.map.on("click", function (e) {
                 /* Home is a favourite, so its own rate applies when it fills. */
                 applyFavPrice(favPrice(home), true);
               } else if (immediate) {
-                filled = near.p.address || near.p.name;
-                $("location").value = near.p.address || near.p.name;
+                filled = immediate.address || immediate.name;
+                $("location").value = immediate.address || immediate.name;
                 locGeo = {
-                  lat: near.p.lat,
-                  lng: near.p.lng,
-                  label: near.p.address || near.p.name,
+                  lat: immediate.lat,
+                  lng: immediate.lng,
+                  label: immediate.address || immediate.name,
                 };
                 $("sessMapBox").hidden = false;
                 setLocStatus(
                   TXT("toast.geoNear", {
-                    v: near.p.name,
-                    d: Math.round(near.dist),
+                    v: immediate.name,
+                    d: fmtDistance(immediate.dist),
                   }),
                 );
-                if ($("fav").checked) $("favName").value = near.p.name;
+                if ($("fav").checked) $("favName").value = immediate.name;
                 showPin(
                   "sessMap",
-                  near.p.lat,
-                  near.p.lng,
-                  near.p.name,
+                  immediate.lat,
+                  immediate.lng,
+                  immediate.name,
                   sessPinDragged,
                 );
-                applyFavPrice(near.p.price, true);
+                applyFavPrice(immediate.price, true);
               } else {
                 /* Nothing within 250 m. Leave the field for the registry answer;
-                   if that finds nothing either, the deferred known place gets
-                   its chance in correctToNearestStation. */
+                   if that finds nothing either, only rank #1 from the local
+                   places inside the 10 km radius may fill it. A place 1000 km
+                   away is not a fallback. */
                 locGeo = { lat: lat, lng: lng, label: "" };
                 $("sessMapBox").hidden = false;
                 showPin("sessMap", lat, lng, "", sessPinDragged);
@@ -10412,12 +10383,18 @@ slot.map.on("click", function (e) {
               nearFill = {
                 mine: mine,
                 value: filled ? $("location").value.trim() : "",
-                dist: home ? 0 : immediate ? immediate.dist : Infinity,
-                near: near || null,
+                rank: home
+                  ? nearbyRank({
+                      kind: "favourite",
+                      dist: metresBetween(lat, lng, +home.lat, +home.lng),
+                    })
+                  : immediate
+                    ? nearbyRank(immediate)
+                    : Infinity,
                 filled: filled,
                 done: !!home,
               };
-              renderNearby(capGroups(nearbyChargers(lat, lng, []), 2));
+              renderNearby(local);
               loadNearStations(lat, lng, mine);
             },
             function (err) {
@@ -10538,8 +10515,8 @@ out.push(
                 (bits.length ? '<div class="station-meta">' + bits.join(" · ") + "</div>" : "") +
                 (s.address ? '<div class="station-meta">' + esc(s.address) + "</div>" : "") +
                 '</div><div class="station-end"><span class="station-meta">' +
-                Math.round(s.dist / 10) / 100 +
-                " km</span>" +
+                fmtDistance(s.dist) +
+                "</span>" +
                 '<button type="button" class="btn sm" data-station-use="' +
                 esc(s.id) +
                 '">' +
@@ -10656,7 +10633,7 @@ slot.stationPins = [];
                 "</b><br>" +
                 esc(s.power || "") +
                 (s.dist != null
-                  ? "<br>" + TXT("st.away", { d: Math.round(s.dist) }) + " m"
+                  ? "<br>" + TXT("st.away", { d: fmtDistance(s.dist) })
                   : "") +
                 "<br>" +
                 TXT("st.openDetails"),
@@ -11037,8 +11014,8 @@ function camerasNearStation(id) {
                     esc(c.name) +
                     "</span>" +
                     '<span class="station-meta">' +
-                    Math.round(c.dist / 10) / 100 +
-                    " km · " +
+                    fmtDistance(c.dist) +
+                    " · " +
                     esc(cameraAge(c.updated)) +
                     "</span></figcaption></figure>",
                 );
@@ -11216,8 +11193,8 @@ function hasKey(key) {
                 esc(c.name) +
                 "</span>" +
                 '<span class="station-meta">' +
-                Math.round(c.dist / 10) / 100 +
-                " km · " +
+                fmtDistance(c.dist) +
+                " · " +
                 esc(cameraAge(c.updated)) +
                 "</span></figcaption></figure>",
             );

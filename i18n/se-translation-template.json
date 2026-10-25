@@ -1327,9 +1327,15 @@
       "se": ""
     },
     "toast.geoNear": {
-      "en": "Near {v} — {d} m away, used as the location.",
-      "fi": "Lähellä paikkaa {v} — {d} m päässä, käytetty paikkana.",
-      "sv": "Near {v} — {d} m bort, användes som plats.",
+      "en": "Near {v} — {d}, used as the location.",
+      "fi": "Lähellä paikkaa {v} — {d}, käytetty paikkana.",
+      "sv": "Nära {v} — {d}, användes som plats.",
+      "se": ""
+    },
+    "cam.credit": {
+      "en": "Traffic cameras provided by Digitraffic.",
+      "fi": "Liikennekamerat tarjoaa Digitraffic.",
+      "sv": "Trafikkameror tillhandahålls av Digitraffic.",
       "se": ""
     },
     "toast.geoNearF": {

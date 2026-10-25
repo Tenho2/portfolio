@@ -543,9 +543,9 @@ body.dark[data-layout="win31"] table {
 
   body[data-layout="win31"] .side-nav button span:not(.ic):not(.bin-count) {
     max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow: visible;
+    white-space: normal;
+    line-height: 1.1;
   }
 
   /* Clear the fixed bar so the last dashboard/settings card stays visible. */

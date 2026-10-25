@@ -314,7 +314,7 @@
       "toast.geoUnavail": "Your location is not available right now.",
       "toast.geoError": "Could not read your location.",
       "toast.geoPerm": "You can still search for the address.",
-      "toast.geoNear": "Near {v} — {d} m away, used as the location.",
+      "toast.geoNear": "Near {v} — {d}, used as the location.",
       "toast.geoNearF":
         "Nearest saved place is {v}, {d} m away. Pin set to your position — adjust if needed.",
       "toast.geoNoNear":
@@ -814,7 +814,7 @@
       "st.foundCached": "{n} station(s) within {r} km, from the saved list.",
       "st.offline": "You are offline. Station search needs a connection.",
       "st.geoUnavailable": "This browser cannot share your position.",
-      "st.away": "{d} m away",
+      "st.away": "{d} away",
       "st.youAreHere": "You are here",
       "st.openDetails": "Tap the pin for details",
       "st.poles": "{n} poles",
@@ -841,7 +841,7 @@
       "cam.ageDays": "{n} days ago",
       "cam.ageUnknown": "time unknown",
       "cam.nearStation": "Cameras near this charger",
-      "cam.note": "These are road-condition cameras, not speed cameras. Images are loaded from Digitraffic and nothing is stored.",
+      "cam.credit": "Traffic cameras provided by Digitraffic.",
       "cam.foundRough": "{n} road camera(s) within {r} km, showing the nearest {n2}. Your location was accurate to about {a} m.",
       "st.statusOther": "{n} {s}",
       "st.foundRough": "{n} station(s) within {r} km. Your location was accurate to about {a} m.",
@@ -1155,8 +1155,7 @@
       "toast.geoUnavail": "Sijaintiasi ei ole juuri nyt käytettävissä.",
       "toast.geoError": "Sijaintia ei voitu lukea.",
       "toast.geoPerm": "Voit silti hakea osoitteen haulla.",
-      "toast.geoNear":
-        "Lähellä paikkaa {v} — {d} m päässä, käytetty paikkana.",
+      "toast.geoNear": "Lähellä paikkaa {v} — {d}, käytetty paikkana.",
       "toast.geoNearF":
         "Lähin tallennettu paikka on {v}, {d} m päässä. Nappi asetettu sijaintiisi — muokkaa tarvittaessa.",
       "toast.geoNoNear":
@@ -1661,7 +1660,7 @@
       "st.foundCached": "{n} laturia {r} km säteellä, tallennetusta listasta.",
       "st.offline": "Et ole verkossa. Laturihaku vaatii yhteyden.",
       "st.geoUnavailable": "Tämä selain ei voi jaka sijaintiasi.",
-      "st.away": "{d} m päässä",
+      "st.away": "{d} päässä",
       "st.youAreHere": "Olet tässä",
       "st.openDetails": "Avaa tiedot napauttamalla merkkiä",
       "st.poles": "{n} laturia",
@@ -1688,7 +1687,7 @@
       "cam.ageDays": "{n} päivää sitten",
       "cam.ageUnknown": "aika tuntematon",
       "cam.nearStation": "Kamerat tämän laturin lähellä",
-      "cam.note": "Nämä ovat tiekamerat, eivät nopeuskamerat. Kuvat haetaan Digitrafficista eikä mitään tallenneta.",
+      "cam.credit": "Liikennekamerat tarjoaa Digitraffic.",
       "cam.foundRough": "{n} tiekameraa {r} km säteellä, näytetään {n2} lähintä. Sijaintisi oli tarkkuudelta noin {a} m.",
       "st.statusOther": "{n} {s}",
       "st.foundRough": "{n} laturia {r} km säteellä. Sijaintisi oli tarkkuudelta noin {a} m.",
@@ -2004,7 +2003,7 @@
       "toast.geoUnavail": "Din plats är inte tillgänglig just nu.",
       "toast.geoError": "Kunde inte läsa din plats.",
       "toast.geoPerm": "Du kan fortfarande söka adressen.",
-      "toast.geoNear": "Near {v} — {d} m bort, användes som plats.",
+      "toast.geoNear": "Nära {v} — {d}, användes som plats.",
       "toast.geoNearF":
         "Närmaste sparade plats är {v}, {d} m bort. Nålen satt på din position — justera vid behov.",
       "toast.geoNoNear":
@@ -2415,6 +2414,7 @@
       "auth.usernameHint": "Lowercase username; no real email needed.",
       "auth.passwordHint": "At least 8 characters for new accounts.",
       "auth.errPassShort": "Choose a password of at least 8 characters.",
+      "cam.credit": "Traffic cameras provided by Digitraffic.",
       "fav.name": "Namma",
       "fav.map": "Mátta",
       "fav.save": "Girjjit",
@@ -2532,7 +2532,7 @@
       "st.foundCached": "{n} station(er) inom {r} km, från den sparade listan.",
       "st.offline": "Du är offline. Sökningen behöver en anslutning.",
       "st.geoUnavailable": "Den här webbläsaren kan inte dela din plats.",
-      "st.away": "{d} m bort",
+      "st.away": "{d} bort",
       "st.youAreHere": "Du är här",
       "st.openDetails": "Tryck på punkten för detaljer",
       "st.poles": "{n} laddare",
@@ -2559,7 +2559,6 @@
       "cam.ageDays": "{n} dagar sedan",
       "cam.ageUnknown": "tiden okänd",
       "cam.nearStation": "Kameror nära den här laddaren",
-      "cam.note": "Det här är vägförhållandekameror, inte hastighetskameror. Bilderna hämtas från Digitraffic och ingenting sparas.",
       "cam.foundRough": "{n} vägkamera/-or inom {r} km, visar de {n2} närmaste. Din plats var noggrann till ungefär {a} m.",
       "st.statusOther": "{n} {s}",
       "st.foundRough": "{n} station(er) inom {r} km. Din plats var noggrann till ungefär {a} m.",
