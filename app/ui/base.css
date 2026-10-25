@@ -1467,3 +1467,11 @@ body:not(.need-auth) #authView {
     line-height: 1.1;
   }
 }
+.password-box {
+  margin-top: 1rem;
+  border-top: 1px solid var(--line);
+  padding-top: 1rem;
+}
+.password-box h3 {
+  margin: 0 0 0.25rem;
+}

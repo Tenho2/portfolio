@@ -655,10 +655,10 @@ changing the app.
 
 ### 2026-10-25 planned
 
-- **Change Password UI:** Allow logged-in users to change their password.
-- **Tesla Browser Warning:** Add a hint during registration noting that the
-  Tesla browser does not save passwords, so users must choose one they can
-  remember.
-- **SBOM:** Generate a Software Bill of Materials document for the project.
+- [x] **Change Password UI:** Allow logged-in users to change their password.
+- [x] **Tesla Browser Warning:** Add a hint during registration noting that the
+      Tesla browser does not save passwords, so users must choose one they can
+      remember.
+- [x] **SBOM:** Generate a Software Bill of Materials document for the project.
 - **README Cleanup:** Refactor and clean up the README to remove outdated
   musings and streamline the documentation.

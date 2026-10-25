@@ -4606,6 +4606,87 @@ function hoursToHM(h, alwaysSeconds) {
           m.textContent = text;
           m.className = "auth-msg" + (kind ? " " + kind : "");
         }
+        /** Status line under the Settings password form. */
+        function setPassMsg(text, kind) {
+          var box = $("passMsg");
+          if (!box) return;
+          if (!text) {
+            box.hidden = true;
+            box.textContent = "";
+            return;
+          }
+          box.hidden = false;
+          box.textContent = text;
+          box.className = "auth-msg" + (kind ? " " + kind : "");
+        }
+        function clearPasswordFields() {
+          ["curPass", "newPass", "confirmPass"].forEach(function (id) {
+            var el = $(id);
+            if (el) el.value = "";
+          });
+        }
+        /**
+         * Change the signed-in account's password.
+         *
+         * The current password is required again, so a borrowed session cannot
+         * silently take over the account. Supabase keeps the signed-in session
+         * after updateUser; only the password changes.
+         */
+        async function changePassword(e) {
+          if (e) e.preventDefault();
+          if (!authClient || !authUser) {
+            setPassMsg(TXT("set.passFailed"), "err");
+            return;
+          }
+          var cur = $("curPass") ? $("curPass").value : "",
+            next = $("newPass") ? $("newPass").value : "",
+            confirm = $("confirmPass") ? $("confirmPass").value : "";
+          if (!cur || !next || !confirm) {
+            setPassMsg(TXT("set.passMissing"), "err");
+            return;
+          }
+          if (next.length < 8) {
+            setPassMsg(TXT("set.passShort"), "err");
+            return;
+          }
+          if (next !== confirm) {
+            setPassMsg(TXT("set.passMismatch"), "err");
+            return;
+          }
+          if (next === cur) {
+            setPassMsg(TXT("set.passSame"), "err");
+            return;
+          }
+          var btn = $("changePassBtn");
+          if (btn) btn.disabled = true;
+          setPassMsg(TXT("set.passWorking"), "");
+          try {
+            var reauth = await authClient.auth.signInWithPassword({
+              email: authUser.email,
+              password: cur,
+            });
+            if (reauth && reauth.error) {
+              setPassMsg(
+                authErrKey(reauth.error) === "auth.badLogin"
+                  ? TXT("set.passWrong")
+                  : authErrText(reauth.error),
+                "err",
+              );
+              return;
+            }
+            var changed = await authClient.auth.updateUser({ password: next });
+            if (changed && changed.error) {
+              setPassMsg(authErrText(changed.error), "err");
+              return;
+            }
+            clearPasswordFields();
+            setPassMsg(TXT("set.passChanged"), "ok");
+          } catch (err) {
+            setPassMsg(TXT("set.passFailed"), "err");
+          } finally {
+            if (btn) btn.disabled = false;
+          }
+        }
         /**
          * Switch between the sign-in screen and the app.
          * Also decides when to pull: on the first session and whenever the
@@ -4827,6 +4908,8 @@ syncNote("");
           }
           var passHint = $("authPassHint");
           if (passHint) passHint.hidden = authMode !== "up";
+          var teslaHint = $("authTeslaHint");
+          if (teslaHint) teslaHint.hidden = authMode !== "up";
         }
         /**
          * Disable the auth buttons and show a working label while a request
@@ -7440,6 +7523,12 @@ function retryNow() {
           if (row) row.hidden = !signed;
           var out = $("accountSignedOut");
           if (out) out.hidden = signed;
+          var passRow = $("passwordRow");
+          if (passRow) passRow.hidden = !signed;
+          if (!signed) {
+            clearPasswordFields();
+            setPassMsg("");
+          }
           if (signed) {
             $("accountName").textContent = fromFakeEmail(authUser.email || "");
             $("accountMeta").textContent = TXT("set.accountMeta", {
@@ -14078,6 +14167,7 @@ $("eDelete").addEventListener("click", function () {
         });
 
         $("authForm").addEventListener("submit", submitAuth);
+        if ($("passForm")) $("passForm").addEventListener("submit", changePassword);
         $("authToggle").addEventListener("click", function () {
           authMode = authMode === "in" ? "up" : "in";
           syncAuthButtons(false);

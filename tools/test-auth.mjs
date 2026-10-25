@@ -81,6 +81,7 @@ group("the auth form exposes both hints accessibly", () => {
     ok(`${name}: username hint is linked`, /id="authUserHint"[\s\S]{0,100}data-i18n="auth\.usernameHint"/.test(doc));
     ok(`${name}: password hint is linked`, /aria-describedby="authPassHint"/.test(doc));
     ok(`${name}: password hint starts hidden`, /id="authPassHint"[\s\S]{0,100}hidden/.test(doc));
+    ok(`${name}: Tesla hint starts hidden`, /id="authTeslaHint"[\s\S]{0,100}hidden/.test(doc));
     ok(`${name}: novalidate is still present`, /id="authForm" novalidate/.test(doc));
   }
 });
@@ -90,6 +91,37 @@ group("validation runs in script, because the form is novalidate", () => {
   ok("registration is the only mode that checks length", /if \(registering && p\.length < 8\)/.test(code));
   ok("the new error key is used", /auth\.errPassShort/.test(code));
   ok("the hint is hidden outside registration", /passHint\.hidden = authMode !== "up"/.test(code));
+  ok(
+    "the Tesla hint is hidden outside registration",
+    /teslaHint\.hidden = authMode !== "up"/.test(code),
+  );
+});
+
+group("the Settings password form is signed-in only and validates locally", () => {
+  for (const [name, doc] of [
+    ["classic", html],
+    ["hud", hud],
+  ]) {
+    ok(`${name}: password row starts hidden`, /id="passwordRow" hidden/.test(doc));
+    ok(`${name}: password form exists`, /id="passForm" novalidate/.test(doc));
+    for (const id of ["curPass", "newPass", "confirmPass"])
+      ok(`${name}: #${id} has a label`, new RegExp(`for="${id}"`).test(doc));
+  }
+  const fn = fnSource("changePassword");
+  ok("it reauthenticates with the current password", /signInWithPassword\(\{[\s\S]{0,120}password: cur/.test(fn));
+  ok("it changes the password only after reauthentication", /updateUser\(\{ password: next \}\)/.test(fn));
+  ok("it enforces the minimum length", /next\.length < 8/.test(fn));
+  ok("it rejects a mismatch", /next !== confirm/.test(fn));
+  ok("it rejects reusing the current password", /next === cur/.test(fn));
+  ok("it clears the fields after success", /clearPasswordFields\(\)/.test(fn));
+  ok("it never logs a password", !/authLogErr|console\.(log|info|warn|error)/.test(fn));
+});
+
+group("the account panel shows and hides the password form with the session", () => {
+  const fn = fnSource("renderAccountPanel");
+  ok("it toggles the password row", /passRow\.hidden = !signed/.test(fn));
+  ok("it clears fields when signed out", /clearPasswordFields\(\)/.test(fn));
+  ok("the form is wired", /\$\("passForm"\)\.addEventListener\("submit", changePassword\)/.test(code));
 });
 
 group("sharing normalises an @ username the same way", () => {

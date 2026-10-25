@@ -102,6 +102,12 @@
               data-i18n="auth.passwordHint"
               hidden
             ></div>
+            <div
+              class="hint"
+              id="authTeslaHint"
+              data-i18n="auth.teslaHint"
+              hidden
+            ></div>
           </div>
           <div
             id="authMsg"
@@ -799,6 +805,74 @@
                   </button>
                 </div>
                 <p class="mini" id="accountSignedOut" data-i18n="set.accountOut"></p>
+                <div class="password-box" id="passwordRow" hidden>
+                  <h3 data-i18n="set.changePassword"></h3>
+                  <p class="lead" data-i18n="set.changePasswordLead"></p>
+                  <form id="passForm" novalidate>
+                    <div class="hud-row">
+                      <div class="f">
+                        <label
+                          for="curPass"
+                          data-i18n="set.currentPassword"
+                        ></label>
+                        <input
+                          type="password"
+                          id="curPass"
+                          autocomplete="current-password"
+                          maxlength="72"
+                          required
+                          aria-required="true"
+                        />
+                      </div>
+                      <div class="f">
+                        <label
+                          for="newPass"
+                          data-i18n="set.newPassword"
+                        ></label>
+                        <input
+                          type="password"
+                          id="newPass"
+                          autocomplete="new-password"
+                          maxlength="72"
+                          required
+                          aria-required="true"
+                          aria-describedby="passMsg"
+                        />
+                      </div>
+                      <div class="f">
+                        <label
+                          for="confirmPass"
+                          data-i18n="set.confirmPassword"
+                        ></label>
+                        <input
+                          type="password"
+                          id="confirmPass"
+                          autocomplete="new-password"
+                          maxlength="72"
+                          required
+                          aria-required="true"
+                        />
+                      </div>
+                    </div>
+                    <div class="addrow">
+                      <button
+                        type="submit"
+                        class="btn"
+                        id="changePassBtn"
+                        data-i18n="set.changePasswordSave"
+                      >
+                        Change password
+                      </button>
+                    </div>
+                    <div
+                      class="auth-msg"
+                      id="passMsg"
+                      role="status"
+                      aria-live="polite"
+                      hidden
+                    ></div>
+                  </form>
+                </div>
                 <div class="hud-row">
                   <div class="f">
                     <label for="langSel2" data-i18n="lang"></label>

@@ -1818,6 +1818,12 @@
       "sv": "Minst 8 tecken för nya konton.",
       "se": ""
     },
+    "auth.teslaHint": {
+      "en": "Tesla's browser does not save passwords. Choose one you can remember.",
+      "fi": "Teslan selain ei tallenna salasanoja. Valitse salasana, jonka muistat.",
+      "sv": "Teslas webbläsare sparar inte lösenord. Välj ett lösenord du kommer ihåg.",
+      "se": ""
+    },
     "auth.signIn": {
       "en": "Sign in",
       "fi": "Kirjaudu",
@@ -2002,6 +2008,90 @@
       "en": "Something went wrong. Please try again.",
       "fi": "Jokin meni pieleen. Yritä uudelleen.",
       "sv": "Något gick fel. Försök igen.",
+      "se": ""
+    },
+    "set.changePassword": {
+      "en": "Change password",
+      "fi": "Vaihda salasana",
+      "sv": "Byt lösenord",
+      "se": ""
+    },
+    "set.changePasswordLead": {
+      "en": "Confirm with your current password. The new password must be at least 8 characters.",
+      "fi": "Vahvista nykyisellä salasanalla. Uudessa salasanassa on oltava vähintään 8 merkkiä.",
+      "sv": "Bekräfta med ditt nuvarande lösenord. Det nya lösenordet måste vara minst 8 tecken.",
+      "se": ""
+    },
+    "set.currentPassword": {
+      "en": "Current password",
+      "fi": "Nykyinen salasana",
+      "sv": "Nuvarande lösenord",
+      "se": ""
+    },
+    "set.newPassword": {
+      "en": "New password",
+      "fi": "Uusi salasana",
+      "sv": "Nytt lösenord",
+      "se": ""
+    },
+    "set.confirmPassword": {
+      "en": "Confirm new password",
+      "fi": "Vahvista uusi salasana",
+      "sv": "Bekräfta nytt lösenord",
+      "se": ""
+    },
+    "set.changePasswordSave": {
+      "en": "Update password",
+      "fi": "Päivitä salasana",
+      "sv": "Uppdatera lösenord",
+      "se": ""
+    },
+    "set.passMissing": {
+      "en": "Fill in all three password fields.",
+      "fi": "Täytä kaikki kolme salasanakenttää.",
+      "sv": "Fyll i alla tre lösenordsfälten.",
+      "se": ""
+    },
+    "set.passShort": {
+      "en": "New password must be at least 8 characters.",
+      "fi": "Uudessa salasanassa on oltava vähintään 8 merkkiä.",
+      "sv": "Det nya lösenordet måste vara minst 8 tecken.",
+      "se": ""
+    },
+    "set.passMismatch": {
+      "en": "The new passwords do not match.",
+      "fi": "Uudet salasanat eivät täsmää.",
+      "sv": "De nya lösenorden matchar inte.",
+      "se": ""
+    },
+    "set.passSame": {
+      "en": "New password must be different from the current one.",
+      "fi": "Uuden salasanan on erottava nykyisestä.",
+      "sv": "Det nya lösenordet måste skilja sig från det nuvarande.",
+      "se": ""
+    },
+    "set.passWrong": {
+      "en": "Current password is wrong.",
+      "fi": "Nykyinen salasana on väärä.",
+      "sv": "Det nuvarande lösenordet är fel.",
+      "se": ""
+    },
+    "set.passChanged": {
+      "en": "Password changed.",
+      "fi": "Salasana vaihdettu.",
+      "sv": "Lösenordet har ändrats.",
+      "se": ""
+    },
+    "set.passFailed": {
+      "en": "Could not change the password. Try again.",
+      "fi": "Salasanaa ei voitu vaihtaa. Yritä uudelleen.",
+      "sv": "Det gick inte att ändra lösenordet. Försök igen.",
+      "se": ""
+    },
+    "set.passWorking": {
+      "en": "Changing password…",
+      "fi": "Vaihdetaan salasanaa…",
+      "sv": "Ändrar lösenord…",
       "se": ""
     },
     "veh.default": {
