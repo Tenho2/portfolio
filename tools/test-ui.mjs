@@ -552,8 +552,8 @@ group("destructive bulk actions respect roles", () => {
   const gates = [
     ["doClearSessions", "canEditSession(sessions[ci])"],
     ["doWipe", "mayWriteVehicle(vehicles[wj].id)"],
-    ["emptyBin", "mayWriteVehicle(binned.vehicles[ei].id)"],
-    ["binPurge", "!mayWriteVehicle(id)"],
+    ["emptyBin", "canPurgeVehicle(binned.vehicles[ei].id)"],
+    ["binPurge", "!canPurgeVehicle(id)"],
     ["restoreSession", "!canEditSession(s)"],
     ["restoreVehicle", "!mayWriteVehicle(id)"],
   ];

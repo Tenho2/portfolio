@@ -591,6 +591,7 @@
           } catch (e) {
             binned.sessions = [];
           }
+          loadPendingDeletes();
           /* A row can reach storage already flagged, for instance if it was
              saved before this split existed or arrived from the server, so the
              split runs on load as well as on pull. */
@@ -673,6 +674,26 @@
         var winterColumnMissing = false;
         /* ids deleted locally that the server has not confirmed removing yet */
         var syncDeleted = { vehicles: {}, sessions: {} };
+        function loadPendingDeletes() {
+          var clean = { vehicles: {}, sessions: {} };
+          try {
+            var raw = JSON.parse(localStorage.getItem(K.pd) || "null");
+            if (raw && typeof raw === "object") {
+              clean.vehicles = raw.vehicles && typeof raw.vehicles === "object" ? raw.vehicles : {};
+              clean.sessions = raw.sessions && typeof raw.sessions === "object" ? raw.sessions : {};
+            }
+          } catch (e) {
+            /* a corrupt queue is empty, not fatal */
+          }
+          syncDeleted = clean;
+        }
+        function savePendingDeletes() {
+          try {
+            localStorage.setItem(K.pd, JSON.stringify(syncDeleted));
+          } catch (e) {
+            /* the delete still applies; only its durability is lost */
+          }
+        }
         /** Remember a row whose write failed so it can be retried. */
         function markDirty(kind, id) {
           syncDirty[kind][id] = 1;
@@ -1944,9 +1965,11 @@ syncQueue.pending++;
         function markDeleted(table, id) {
           if (!syncDeleted[table]) syncDeleted[table] = {};
           syncDeleted[table][id] = 1;
+          savePendingDeletes();
         }
         function clearDeleted(table, id) {
           if (syncDeleted[table]) delete syncDeleted[table][id];
+          savePendingDeletes();
         }
         /**
          * Delete one row server-side.
@@ -2153,7 +2176,10 @@ function loadShares() {
          * @returns {boolean}
          */
         function ownsVehicle(vehicleId) {
-          var v = vehById(vehicleId);
+          /* Anywhere, not only the live array. A binned vehicle is still owned
+             by the same account, and its sessions must remain editable so the
+             owner can restore or permanently purge them. */
+          var v = vehicleAnywhere(vehicleId);
           return !!(v && ownerId() && v.userId === ownerId());
         }
         /* ---------- roles ----------
@@ -2226,6 +2252,13 @@ function loadShares() {
          */
 function canEditSession(s) {
             if (!s) return false;
+            /* A vehicle made while signed out has no owner to resolve. Its
+               sessions are local data by definition, so the ownerless branch
+               must allow them to be edited, restored and purged. A confirmed
+               ownerless row came back from the server and is not local data. */
+            var ownerless = vehicleAnywhere(s.vehicleId);
+            if (ownerless && !ownerless.userId && !ownerless.confirmed)
+              return !s.userId || !ownerId() || s.userId === ownerId();
             var r = myRank(s.vehicleId);
             if (r >= 3) return true;
             /* A row created on this device has no author until it has been
@@ -2259,12 +2292,28 @@ function canEditSession(s) {
                then the bin. */
             var v = vehicleAnywhere(vehicleId);
             if (!v) return false;
-            /* Checked against the row itself rather than through ownsVehicle(),
-               which also looks only at the live array and would say no for the
-               same reason. A binned row still has exactly one owner. */
+            /* Checked against the row itself rather than through ownsVehicle():
+               an admin may write a vehicle it does not own, and this must
+               accept that. A binned row still has exactly one owner. */
             if (!v.userId) return true;
             if (ownerId() && v.userId === ownerId()) return true;
             return canEditVehicle(vehicleId);
+          }
+          /**
+           * May this vehicle be permanently deleted from the server?
+           *
+           * Binning and restoring are owner-or-admin actions, but the database
+           * delete policy on vehicles is owner-only. The client must not offer
+           * an admin a permanent vehicle delete the server will refuse.
+           */
+          function canPurgeVehicle(vehicleId) {
+            var v = vehicleAnywhere(vehicleId);
+            if (!v) return false;
+            /* A local-only vehicle has no server row to protect. A confirmed
+               row with no owner came back from the server, where the delete
+               policy is owner-only; it is not ours to purge. */
+            if (!v.userId) return !v.confirmed;
+            return !!(ownerId() && v.userId === ownerId());
           }
         /* ---------- owner decisions ---------- */
         /**
@@ -3125,6 +3174,7 @@ accepted[i].role || "viewer",
               var e2 = r2 && r2.error;
               if (e2) throw e2;
               syncDeleted = { vehicles: {}, sessions: {} };
+              savePendingDeletes();
               return runBatched(
                 vehicles.slice(),
                 BATCH,
@@ -3287,12 +3337,18 @@ var vres = null;
               var known = {};
               for (var i = 0; i < vrows.length; i++) {
                 var pv = rowVehicle(vrows[i]);
+                /* A pending permanent delete must not be undone by a pull
+                   before syncDelete() has reached the server. */
+                if (syncDeleted.vehicles && syncDeleted.vehicles[pv.id])
+                  continue;
                 pulledVehicles.push(pv);
                 known[pv.id] = 1;
               }
               var pulledSessions = [];
               var knownS = {};
               for (var j = 0; j < srows.length; j++) {
+                if (syncDeleted.sessions && syncDeleted.sessions[srows[j].id])
+                  continue;
                 /* drop sessions whose vehicle was deleted server-side */
                 if (!vehById(srows[j].vehicle_id, pulledVehicles)) continue;
                 var ps = rowSession(srows[j]);
@@ -4864,6 +4920,9 @@ syncNote("");
             syncQueue = { pending: 0, fail: 0 };
             syncDirty = { vehicles: {}, sessions: {} };
             syncDeleted = { vehicles: {}, sessions: {} };
+            /* Pending deletes belong to the account bucket, not to the previous
+               account's in-memory queue. Reload them after the reset. */
+            loadPendingDeletes();
             /* These two are not per-queue, they are refusals keyed by row id.
                Carrying them across made the sync panel list rows the new account
                had never heard of, each with a Discard button that did nothing
@@ -7777,7 +7836,7 @@ if (!row) return;
                have access, so the server would refuse with 42501 - and the row
                could never be removed from the bin at all. Those are this
                device's copy and nothing else, so they are simply dropped. */
-            if (kind === "vehicles" && !row.detached && !mayWriteVehicle(id)) {
+            if (kind === "vehicles" && !row.detached && !canPurgeVehicle(id)) {
               toast(TXT("toast.noPermission"));
               return;
             }
@@ -7828,22 +7887,33 @@ if (!yes) return false;
                    longer existed anywhere, its Discard button did nothing
                    because the row lookup returned null, and the red banner
                    counted a row the user had already deleted for good. */
+                var sessionWork = [];
                 for (var i = 0; i < gone.length; i++) {
                   /* Skipped for a row you detached: there is nothing on the
                      server for you to delete, and asking would only produce a
                      refusal. */
                   if (gone[i].detached) continue;
                   forgetGoneRow("sessions", gone[i].id);
-                  syncDelete("sessions", gone[i].id);
+                  sessionWork.push(syncDelete("sessions", gone[i].id));
                 }
-                forgetGoneRow("vehicles", id);
-                if (!row.detached) syncDelete("vehicles", id);
+                save();
+                saveFavs();
+                render();
+                toast(TXT("toast.purged"));
+                return Promise.all(sessionWork).then(function () {
+                  forgetGoneRow("vehicles", id);
+                  return row.detached ? true : syncDelete("vehicles", id);
+                });
               } else if (kind === "sessions") {
                 binned.sessions = binned.sessions.filter(function (x) {
                   return x.id !== id;
                 });
                 forgetGoneRow("sessions", id);
-                if (!row.detached) syncDelete("sessions", id);
+                save();
+                saveFavs();
+                render();
+                toast(TXT("toast.purged"));
+                return row.detached ? true : syncDelete("sessions", id);
               } else {
                 binned.favs = binned.favs.filter(function (x) {
                   return x.id !== id;
@@ -11830,8 +11900,10 @@ function emptyBin() {
             var notMine = 0;
             for (var ei = 0; ei < binned.vehicles.length; ei++)
               /* A detached row is not the server's to delete and cannot fail, so
-                 counting it would block emptying the bin for no reason. */
-              if (!binned.vehicles[ei].detached && !mayWriteVehicle(binned.vehicles[ei].id)) notMine++;
+                 counting it would block emptying the bin for no reason. A
+                 permanent vehicle DELETE is owner-only in the database; admins
+                 may bin/restore but must not be offered this. */
+              if (!binned.vehicles[ei].detached && !canPurgeVehicle(binned.vehicles[ei].id)) notMine++;
             for (var ej = 0; ej < binned.sessions.length; ej++)
               if (!binned.sessions[ej].detached && !canEditSession(binned.sessions[ej])) notMine++;
             if (notMine) {
@@ -11856,15 +11928,26 @@ function emptyBin() {
                  for good kept a stalled entry, so the sync panel kept reporting
                  a refusal for a row that existed nowhere and offered a Discard
                  button that did nothing. */
+              var sessionWork = [];
               for (var i = 0; i < goneSes.length; i++) {
                 forgetGoneRow("sessions", goneSes[i].id);
-                if (!goneSes[i].detached) syncDelete("sessions", goneSes[i].id);
+                if (!goneSes[i].detached)
+                  sessionWork.push(syncDelete("sessions", goneSes[i].id));
               }
-              for (var j = 0; j < goneVeh.length; j++) {
-                forgetGoneRow("vehicles", goneVeh[j].id);
-                if (!goneVeh[j].detached) syncDelete("vehicles", goneVeh[j].id);
-              }
-              return true;
+              /* Children first, then parents. The new cascade makes the parent
+                 delete sufficient, but this order keeps an un-migrated database
+                 from rejecting the vehicle while its sessions still exist. */
+              return Promise.all(sessionWork).then(function () {
+                var vehicleWork = [];
+                for (var j = 0; j < goneVeh.length; j++) {
+                  forgetGoneRow("vehicles", goneVeh[j].id);
+                  if (!goneVeh[j].detached)
+                    vehicleWork.push(syncDelete("vehicles", goneVeh[j].id));
+                }
+                return Promise.all(vehicleWork);
+              }).then(function () {
+                return true;
+              });
           });
         }
         function addVehicle() {

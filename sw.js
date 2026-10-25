@@ -35,7 +35,9 @@
  * the scanline intensity control, the Windows 3.1 theme, the mobile
  * navigation / theme-mode / Editorial-dialog fixes, and the Win31 bottom bar.
  */
-const VERSION = "v82";
+
+const VERSION = "v83";
+b93450a (Fix: Resolve session leak and empty-bin ownership cascades)
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [

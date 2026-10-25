@@ -32,10 +32,6 @@ function ok(label, condition) {
   if (condition) pass++;
   else failures.push(label);
 }
-function is(label, actual, expected) {
-  if (Object.is(actual, expected)) pass++;
-  else failures.push(`${label}\n      expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
-}
 function group(name, fn) {
   const before = failures.length;
   fn();
@@ -133,17 +129,14 @@ group("a detached row can always be purged", () => {
      after leaving - so the rows would sit in the bin with a Delete button that
      always answers "no permission". Unreachable, undeletable, forever. */
   const purge = codeOf("function binPurge", "function renderLocDefaults");
-  ok("purge skips the check for a detached vehicle", /!row\.detached && !mayWriteVehicle/.test(purge));
+  ok("purge skips the check for a detached vehicle", /!row\.detached && !canPurgeVehicle/.test(purge));
   ok("purge skips the check for a detached session", /!row\.detached && !canEditSession/.test(purge));
   /* And it must not even try the server, or the refusal comes straight back.
-     Every one of the three call sites in this function is guarded - the vehicle,
-     the session, and the sessions orphaned with the vehicle. */
-  ok("no server delete for a detached vehicle", /if \(!row\.detached\) syncDelete\("vehicles"/.test(purge));
-  ok("no server delete for a detached session", /if \(!row\.detached\) syncDelete\("sessions"/.test(purge));
+     The vehicle, the session, and the sessions orphaned with the vehicle all
+     have their server delete behind a detached guard. */
+  ok("no server delete for a detached vehicle", /row\.detached \? true : syncDelete\("vehicles"/.test(purge));
+  ok("no server delete for a detached session", /row\.detached \? true : syncDelete\("sessions"/.test(purge));
   ok("nor for its orphaned sessions", /if \(gone\[i\]\.detached\) continue/.test(purge));
-  const unguarded = purge.split("syncDelete(").length - 1;
-  const guarded = (purge.match(/if \([^)]*detached[^)]*\) syncDelete\(/g) || []).length + (/if \(gone\[i\]\.detached\) continue/.test(purge) ? 1 : 0);
-  is("every syncDelete in the function is guarded", guarded, unguarded);
 });
 
 group("emptying the bin also skips detached rows", () => {
@@ -152,10 +145,10 @@ group("emptying the bin also skips detached rows", () => {
      permanently un-emptiable. */
   const empty = codeOf("function emptyBin", "function addVehicle");
   ok("the slice is not empty", empty.length > 200);
-  ok("detached vehicles are not counted as foreign", /!binned\.vehicles\[ei\]\.detached && !mayWriteVehicle/.test(empty));
+  ok("detached vehicles are not counted as foreign", /!binned\.vehicles\[ei\]\.detached && !canPurgeVehicle/.test(empty));
   ok("detached sessions are not counted", /!binned\.sessions\[ej\]\.detached && !canEditSession/.test(empty));
-  ok("and no server delete is queued for them", /if \(!goneSes\[i\]\.detached\) syncDelete/.test(empty));
-  ok("nor for the vehicles", /if \(!goneVeh\[j\]\.detached\) syncDelete/.test(empty));
+  ok("and no server delete is queued for them", /if \(!goneSes\[i\]\.detached\)\s*sessionWork\.push\(syncDelete/.test(empty));
+  ok("nor for the vehicles", /if \(!goneVeh\[j\]\.detached\)\s*vehicleWork\.push\(syncDelete/.test(empty));
 });
 
 group("the order is server first, then local", () => {

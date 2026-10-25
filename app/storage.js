@@ -40,9 +40,9 @@
   /**
    * The full key set for one account's bucket.
    * @param {?string} userId null means the signed-out bucket.
-   * @returns {{v: string, s: string, bv: string, bs: string, p: string,
-   *            df: string, f: string, bf: string, fr: string, n: string,
-   *            t: string, na: string, rm: string, layout: string,
+   * @returns {{v: string, s: string, bv: string, bs: string, pd: string,
+   *            p: string, df: string, f: string, bf: string, fr: string,
+   *            n: string, t: string, na: string, rm: string, layout: string,
    *            scan: string}}
    */
   function keysFor(userId) {
@@ -54,6 +54,9 @@
          so nothing that already reads vehicles/sessions has to learn about it. */
       bv: pre + "binVehicles",
       bs: pre + "binSessions",
+      /* Deletes that have not been confirmed by the server. Persisted so a
+         failed purge cannot resurrect a row after a reload. */
+      pd: pre + "pendingDeletes",
       p: pre + "price",
       /* Location defaults: which favourite to prefill, after what hour, and
          whether to use device position. */
