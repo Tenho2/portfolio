@@ -57,6 +57,8 @@ group("the retro page owns the taskbar and Start menu", () => {
   ok("the Start menu has Add session", /data-go="add-session"/.test(page));
   ok("the Start menu has Settings", /data-go="settings"/.test(page));
   ok("the Start menu has Sync", /data-retro-sync/.test(page));
+  ok("the Start menu has a theme toggle", /data-retro-theme/.test(page));
+  ok("the theme toggle starts unpressed", /data-retro-theme[^>]*aria-pressed="false"/.test(page));
   ok("the Start menu starts hidden", /id="retro-start-menu"[^>]*hidden/.test(page));
 });
 
@@ -123,6 +125,8 @@ group("lifecycle hooks preserve and refresh the right state", () => {
 group("the window manager reuses routing and modal behavior", () => {
   ok("Start menu view items use the shared delegated data-go route", /data-go="dashboard"/.test(page) && /data-go="add-session"/.test(page) && /data-go="settings"/.test(page));
   ok("Sync uses the existing panel opener", /openSyncPanel\(startBtn\)/.test(fnBody(app, "initRetroChrome")));
+  ok("the theme command toggles Hot Dog", /data-retro-theme[\s\S]{0,240}?toggleHotdog\(\)/.test(fnBody(app, "initRetroChrome")));
+  ok("the theme command reports its pressed state", /function syncRetroThemeMenu\(\)/.test(app) && /aria-pressed", hotdogOn\(\) \? "true" : "false"/.test(app));
   ok("outside clicks close the Start menu", /!menu\.contains\(target\)/.test(fnBody(app, "initRetroChrome")));
   ok("Escape closes the Start menu", /e\.key !== "Escape"/.test(fnBody(app, "initRetroChrome")));
   ok("taskbar buttons toggle through one delegated handler", /data-retro-task-toggle/.test(fnBody(app, "initRetroChrome")));
@@ -135,10 +139,28 @@ group("the CSS hides modern chrome only on retro", () => {
   ok("the wrap clears the rail", /body\[data-layout="retro-desktop"\] \.wrap\s*\{[^}]*margin-left:\s*0/.test(css));
   ok("the taskbar is fixed to the bottom", /\.retro-taskbar\s*\{[^}]*position:\s*fixed[^}]*bottom:\s*0/.test(css));
   ok("the taskbar is below modal overlays", /\.retro-taskbar\s*\{[^}]*z-index:\s*50/.test(css));
-  ok("the Start menu opens above the taskbar, bottom right", /\.retro-start-menu\s*\{[^}]*position:\s*fixed[^}]*right:\s*6px[^}]*bottom:\s*calc\([\s\S]{0,80}?z-index:\s*55/.test(css));
+  ok("the Start menu opens above the taskbar, bottom right", /\.retro-start-menu\s*\{[^}]*position:\s*fixed[^}]*right:\s*6px[\s\S]{0,160}?left:\s*auto[\s\S]{0,120}?z-index:\s*55/.test(css));
+  ok("left-handed mode anchors the menu bottom-left", /body\[data-layout="retro-desktop"\]\[data-nav-align="left"\] \.retro-start-menu\s*\{[^}]*right:\s*auto[^}]*left:\s*6px/.test(css));
   ok("title bars use the navy chrome", /\.retro-window-titlebar\s*\{[^}]*background:\s*var\(--win-navy\)/.test(css));
   ok("window controls use the hard bevel", /\.retro-window-controls button\s*\{[^}]*box-shadow:\s*var\(--bevel-out\)/.test(css));
   ok("the taskbar is hidden while signed out", /body\.need-auth\[data-layout="retro-desktop"\] #retro-taskbar/.test(css));
+});
+
+group("the outer view is the only window; panels are flat content", () => {
+  ok("panels have no raised bevel", /body\[data-layout="retro-desktop"\] \.view \.panel\s*\{[^}]*box-shadow:\s*none/.test(css));
+  ok("panels have no window background", /body\[data-layout="retro-desktop"\] \.view \.panel\s*\{[^}]*background:\s*transparent/.test(css));
+  ok("panel headings are plain group labels", /body\[data-layout="retro-desktop"\] \.view \.panel > h2\s*\{[^}]*background:\s*transparent[^}]*border-bottom:\s*1px solid/.test(css));
+  ok("panel headings have no fake close box", /\.view \.panel > h2::after\s*\{[^}]*display:\s*none/.test(css));
+  ok("dialogs are still windows", /\.sheet-box,[\s\S]{0,90}?\.confirm-box,[\s\S]{0,90}?\.auth-box\s*\{[^}]*box-shadow:\s*var\(--bevel-out\)/.test(css));
+});
+
+group("taskbar order follows the existing handedness setting", () => {
+  ok("right-handed clock is first", /\.retro-clock\s*\{[^}]*order:\s*1/.test(css));
+  ok("right-handed start is last", /\.retro-start-btn\s*\{[^}]*order:\s*3/.test(css));
+  ok("left-handed start is first", /body\[data-layout="retro-desktop"\]\[data-nav-align="left"\] \.retro-start-btn\s*\{[^}]*order:\s*1/.test(css));
+  ok("left-handed clock is last", /body\[data-layout="retro-desktop"\]\[data-nav-align="left"\] \.retro-clock\s*\{[^}]*order:\s*3/.test(css));
+  ok("window buttons stay in the middle", /\.retro-task-windows\s*\{[^}]*order:\s*2/.test(css));
+  ok("the clock is bold", /\.retro-clock\s*\{[^}]*font-weight:\s*bold/.test(css));
 });
 
 group("the new chrome strings exist in all three languages", () => {
@@ -156,13 +178,14 @@ group("the new chrome strings exist in all three languages", () => {
     "retro.discardDraft",
     "retro.discardDraftTitle",
     "retro.discardDraftOk",
+    "retro.toggleTheme",
   ];
   for (const key of keys)
     ok(`${key} is translated in all three packs`, (i18n.match(new RegExp(`"${key.replace(/\./g, "\\.")}"`, "g")) || []).length === 3);
 });
 
 group("the service worker is bumped for the window manager", () => {
-  ok("sw.js is v88", /const VERSION = "v88"/.test(sw));
+  ok("sw.js is v89", /const VERSION = "v89"/.test(sw));
 });
 
 console.log(`\n${pass} passed, ${failures.length} failed`);

@@ -11936,7 +11936,16 @@ function hasKey(key) {
             }
           }
           syncRetroTaskbar();
+          syncRetroThemeMenu();
           updateRetroClock();
+        }
+
+        /** Reflect the shared Hot Dog state on the Start-menu command. */
+        function syncRetroThemeMenu() {
+          if (!retroChromeReady) return;
+          var item = retroChrome.menu.querySelector("[data-retro-theme]");
+          if (!item) return;
+          item.setAttribute("aria-pressed", hotdogOn() ? "true" : "false");
         }
 
         /** Rebuild the taskbar buttons that represent open windows. */
@@ -12325,6 +12334,12 @@ function hasKey(key) {
             if (target.closest("[data-retro-sync]")) {
               closeRetroStartMenu(false);
               openSyncPanel(startBtn);
+              return;
+            }
+            if (target.closest("[data-retro-theme]")) {
+              closeRetroStartMenu(false);
+              toggleHotdog();
+              startBtn.focus();
               return;
             }
             /* The shared data-go delegate performs the navigation after this
@@ -15016,6 +15031,7 @@ $("syncBadge").addEventListener("click", function () {
             /* the scheme applies now; only the remembered choice is lost */
           }
           syncThemeButton();
+          syncRetroThemeMenu();
           renderChart();
         }
         /** The effective dark/hot-dog state for the theme controls. */

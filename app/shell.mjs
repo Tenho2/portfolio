@@ -102,6 +102,9 @@ export function bodyExtrasFor(layout) {
     '      <button type="button" class="retro-menu-item" data-retro-sync>',
     '        <span data-i18n="sync.title">Sync</span>',
     "      </button>",
+    '      <button type="button" class="retro-menu-item" data-retro-theme aria-pressed="false">',
+    '        <span data-i18n="retro.toggleTheme">Toggle theme</span>',
+    "      </button>",
     "    </nav>",
     "    <!-- retro desktop chrome:end -->",
   ];

@@ -169,8 +169,15 @@ group("retro desktop keeps the same light and Hot Dog schemes", () => {
   ok("yellow Hot Dog windows", /--win-gray:\s*#ffff00/.test(dark) && /--surface:\s*#ffff00/.test(dark));
   ok("black Hot Dog ink", /--text:\s*#000000/.test(dark));
   ok(
-    "red title bars",
-    /body\.hotdog\[data-layout="retro-desktop"\] \.panel > h2,[\s\S]{0,420}?background:\s*var\(--win-navy\);/.test(
+    "the window title bar uses the Hot Dog navy",
+    /--win-navy:\s*#ff0000/.test(dark) &&
+      /\.retro-window-titlebar\s*\{[^}]*background:\s*var\(--win-navy\)/.test(
+        retroCss,
+      ),
+  );
+  ok(
+    "dialog headings keep their Hot Dog title bar",
+    /body\.hotdog\[data-layout="retro-desktop"\] \.sheet-box > h3,[\s\S]{0,320}?background:\s*var\(--win-navy\);/.test(
       retroCss,
     ),
   );

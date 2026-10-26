@@ -67,7 +67,8 @@ body {
 
 /* ---------- windows ---------- */
 
-.panel,
+/* Dialogs and the signed-out box are still real windows. The outer .view is
+   the program window; its .panel children are content groups, defined below. */
 .sheet-box,
 .confirm-box,
 .auth-box {
@@ -79,7 +80,6 @@ body {
   padding: 10px;
 }
 
-.panel > h2,
 .sheet-box > h3,
 .confirm-box > h3,
 .auth-box > h3 {
@@ -98,7 +98,6 @@ body {
 }
 
 /* The title-bar button: decorative, like the close box, not a fake control. */
-.panel > h2::after,
 .sheet-box > h3::after,
 .confirm-box > h3::after,
 .auth-box > h3::after {
@@ -109,6 +108,43 @@ body {
   margin-left: auto;
   background: var(--win-gray);
   box-shadow: var(--bevel-out);
+}
+
+/* A view already has the only title bar. Panels are flat content groups so
+   they do not read as windows nested inside the program window. */
+body[data-layout="retro-desktop"] .view .panel {
+  position: static;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 4px 6px 8px;
+}
+
+body[data-layout="retro-desktop"] .view .panel + .panel {
+  border-top: 1px solid var(--win-gray-dark);
+}
+
+body[data-layout="retro-desktop"] .view .panel > h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 0 8px;
+  padding: 0 0 3px;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  border-bottom: 1px solid var(--win-gray-dark);
+}
+
+/* No fake close box on an inner panel heading. */
+body[data-layout="retro-desktop"] .view .panel > h2::after {
+  content: none;
+  display: none;
 }
 
 /* ---------- shell ---------- */
@@ -201,11 +237,6 @@ a:focus-visible {
 .wrap {
   background: transparent;
   padding: 10px;
-}
-
-.view > h2,
-.panel > h2 {
-  /* Kept together with the rule above; the panel heading is the title bar. */
 }
 
 /* ---------- controls ---------- */
@@ -449,7 +480,6 @@ body.hotdog[data-layout="retro-desktop"] {
     inset 4px 4px 0 #ff0000, inset -4px -4px 0 #ffff80;
 }
 
-body.hotdog[data-layout="retro-desktop"] .panel > h2,
 body.hotdog[data-layout="retro-desktop"] .sheet-box > h3,
 body.hotdog[data-layout="retro-desktop"] .confirm-box > h3,
 body.hotdog[data-layout="retro-desktop"] .auth-box > h3,
@@ -732,6 +762,7 @@ body[data-layout="retro-desktop"] .retro-task-windows {
   align-items: stretch;
   gap: 3px;
   flex: 1 1 auto;
+  order: 2;
   min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
@@ -778,7 +809,7 @@ body[data-layout="retro-desktop"] .retro-task-window[aria-pressed="true"] {
 
 body[data-layout="retro-desktop"] .retro-start-btn {
   flex: none;
-  margin-left: auto;
+  order: 3;
   font-weight: 700;
 }
 
@@ -787,13 +818,32 @@ body[data-layout="retro-desktop"] .retro-clock {
   align-items: center;
   justify-content: center;
   flex: none;
+  order: 1;
   min-width: 3.6rem;
   padding: 0 4px;
-  border-left: 1px solid var(--win-gray-dark);
+  border-right: 1px solid var(--win-gray-dark);
   color: var(--text);
   font-family: var(--font-mono);
   font-size: 12px;
+  font-weight: bold;
   font-variant-numeric: tabular-nums;
+}
+
+/* Handedness comes from the existing Appearance setting. Right-handed is the
+   default: clock, window buttons, Start. Left-handed mirrors it: Start,
+   window buttons, clock. */
+body[data-layout="retro-desktop"][data-nav-align="left"] .retro-start-btn {
+  order: 1;
+}
+
+body[data-layout="retro-desktop"][data-nav-align="left"] .retro-task-windows {
+  order: 2;
+}
+
+body[data-layout="retro-desktop"][data-nav-align="left"] .retro-clock {
+  order: 3;
+  border-right: 0;
+  border-left: 1px solid var(--win-gray-dark);
 }
 
 /* ---------- Start menu ---------- */
@@ -803,6 +853,7 @@ body[data-layout="retro-desktop"] .retro-start-menu {
   bottom: calc(
     var(--retro-taskbar-h) + env(safe-area-inset-bottom, 0px) + 6px
   );
+  left: auto;
   z-index: 55;
   width: min(18rem, calc(100vw - 12px));
   max-height: calc(100vh - var(--retro-taskbar-h) - 18px);
@@ -810,6 +861,11 @@ body[data-layout="retro-desktop"] .retro-start-menu {
   padding: 3px;
   background: var(--win-gray);
   box-shadow: var(--bevel-out);
+}
+
+body[data-layout="retro-desktop"][data-nav-align="left"] .retro-start-menu {
+  right: auto;
+  left: 6px;
 }
 
 body[data-layout="retro-desktop"] .retro-start-title {
@@ -880,5 +936,10 @@ body.need-auth[data-layout="retro-desktop"] #retro-start-menu {
 
   body[data-layout="retro-desktop"] .retro-start-menu {
     right: 4px;
+  }
+
+  body[data-layout="retro-desktop"][data-nav-align="left"] .retro-start-menu {
+    right: auto;
+    left: 4px;
   }
 }

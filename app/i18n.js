@@ -52,6 +52,7 @@
       "retro.discardDraft": "Discard unsaved changes in this window?",
       "retro.discardDraftTitle": "Unsaved changes",
       "retro.discardDraftOk": "Discard changes",
+      "retro.toggleTheme": "Toggle theme",
       db: "Local storage · {n} session(s) · {v} vehicle(s)",
       "dash.lead":
         "Totals for the selected vehicle. All counters start at zero.",
@@ -925,6 +926,7 @@
         "Hylätäänkö tämän ikkunan tallentamattomat muutokset?",
       "retro.discardDraftTitle": "Tallentamattomia muutoksia",
       "retro.discardDraftOk": "Hylkää muutokset",
+      "retro.toggleTheme": "Vaihda teema",
       db: "Selaintila · {n} latausta · {v} ajoneuvoa",
       "dash.lead":
         "Valitun ajoneuvon summat. Kaikki laskurit alkavat nollasta.",
@@ -1807,6 +1809,7 @@
         "Kasta de osparade ändringarna i det här fönstret?",
       "retro.discardDraftTitle": "Osparade ändringar",
       "retro.discardDraftOk": "Kasta ändringarna",
+      "retro.toggleTheme": "Växla tema",
       db: "Lokalt lagring · {n} session(er) · {v} fordon",
       "dash.lead": "Summor för valt fordon. Alla räknare börjar på noll.",
       "dash.pick": "Välj fordon",

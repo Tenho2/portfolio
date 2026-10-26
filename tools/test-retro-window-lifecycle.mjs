@@ -78,6 +78,20 @@ await group("the window chrome boots on the retro page", () => {
   ok("the dashboard button is pressed", taskFor("dashboard").getAttribute("aria-pressed") === "true");
 });
 
+await group("the Start-menu theme command toggles Hot Dog", async () => {
+  const theme = doc.querySelector("#retro-start-menu [data-retro-theme]");
+  ok("the theme command exists", !!theme);
+  ok("Hot Dog starts off", !doc.body.classList.contains("hotdog"));
+  theme.click();
+  await wait();
+  ok("the command turns Hot Dog on", doc.body.classList.contains("hotdog"));
+  ok("the command reports pressed", theme.getAttribute("aria-pressed") === "true");
+  theme.click();
+  await wait();
+  ok("the command turns Hot Dog off", !doc.body.classList.contains("hotdog"));
+  ok("the command reports unpressed", theme.getAttribute("aria-pressed") === "false");
+});
+
 await group("opening another window minimizes the foreground, not the old form", async () => {
   doc.querySelector('#retro-start-menu [data-go="add-session"]').click();
   await wait();
