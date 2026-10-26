@@ -592,6 +592,7 @@
             binned.sessions = [];
           }
           loadPendingDeletes();
+          loadPendingWrites();
           /* A row can reach storage already flagged, for instance if it was
              saved before this split existed or arrived from the server, so the
              split runs on load as well as on pull. */
@@ -668,6 +669,9 @@
         /* records that only exist locally because the cloud write failed; they are
    retried on the next successful pull so offline work is never lost */
         var syncDirty = { vehicles: {}, sessions: {} };
+        var syncPullInFlight = null;
+        var PULL_MIN_INTERVAL_MS = 10000;
+        var PULL_PERIOD_MS = 60000;
         /* Set once the server has told us sessions.winter does not exist yet
            (migration 14 not run). The field is then omitted from every push so
            an un-migrated database cannot block a charge. */
@@ -694,16 +698,41 @@
             /* the delete still applies; only its durability is lost */
           }
         }
+        /** Restore ordinary writes that had not reached the server yet. */
+        function loadPendingWrites() {
+          var clean = { vehicles: {}, sessions: {} };
+          try {
+            var raw = JSON.parse(localStorage.getItem(K.pw) || "null");
+            if (raw && typeof raw === "object") {
+              clean.vehicles = raw.vehicles && typeof raw.vehicles === "object" ? raw.vehicles : {};
+              clean.sessions = raw.sessions && typeof raw.sessions === "object" ? raw.sessions : {};
+            }
+          } catch (e) {
+            /* a corrupt queue is empty, not fatal */
+          }
+          syncDirty = clean;
+        }
+        function savePendingWrites() {
+          try {
+            localStorage.setItem(K.pw, JSON.stringify(syncDirty));
+          } catch (e) {
+            /* the write still applies; only its durability is lost */
+          }
+        }
         /** Remember a row whose write failed so it can be retried. */
         function markDirty(kind, id) {
           syncDirty[kind][id] = 1;
+          savePendingWrites();
           /* armRetry, NOT scheduleRetry: resetting the backoff on every failure
              would keep it at the first step and hammer the server every two
              seconds indefinitely. */
           if (typeof armRetry === "function") armRetry();
+          refreshSyncBadge();
         }
         function clearDirty(kind, id) {
           delete syncDirty[kind][id];
+          savePendingWrites();
+          refreshSyncBadge();
         }
         /** Find a row by id whether it is live or in the bin, so a push that was
     queued before the row moved cannot be stranded by the move. */
@@ -720,6 +749,42 @@
           for (var j = 0; j < binned.sessions.length; j++)
             if (binned.sessions[j].id === id) return binned.sessions[j];
           return null;
+        }
+        /**
+         * Local binned rows that still have a LIVE server copy.
+         *
+         * The normal delete path marks a row dirty and pushes `deleted_at`
+         * immediately. If the app was offline and reloaded, that dirty flag can
+         * be gone while the local bin and the server's live row both remain.
+         * These rows must be re-pushed, or the delete is visible only on this
+         * device and every other device keeps showing the charge.
+         *
+         * @param {Array} localRows rows already in the local bin
+         * @param {Object} liveById ids the server currently has live
+         * @param {Object} pendingById ids queued for a permanent delete
+         * @param {Object} dirtyById ids already queued for retry
+         * @param {Object} stalledById ids the server already refused
+         * @returns {Array}
+         */
+        function binnedRowsNeedingPush(
+          localRows,
+          liveById,
+          pendingById,
+          dirtyById,
+          stalledById,
+        ) {
+          var out = [];
+          if (!Array.isArray(localRows)) return out;
+          for (var i = 0; i < localRows.length; i++) {
+            var row = localRows[i];
+            if (!row || !row.id || row.detached || !row.deletedAt) continue;
+            if (!liveById || !liveById[row.id]) continue;
+            if (pendingById && pendingById[row.id]) continue;
+            if (dirtyById && dirtyById[row.id]) continue;
+            if (stalledById && stalledById[row.id]) continue;
+            out.push(row);
+          }
+          return out;
         }
         /** Re-push every row previously marked dirty. Called after a successful pull. */
         function retryDirty() {
@@ -814,6 +879,33 @@ for (var a = 0; a < vi.length; a++) {
              every status change, every pull and every retry tick, for a dialog
              that was closed. */
             if ($("syncPanel").classList.contains("on")) renderSyncPanel();
+        }
+        /**
+         * Keep the badge honest about what is actually waiting and how fresh
+         * the last pull is. "In sync" is not the same as "no error happened".
+         */
+        function refreshSyncBadge() {
+          if (!syncOn()) {
+            syncNote("");
+            return;
+          }
+          if (!syncOnline()) {
+            syncNote(TXT("sync.offline"), "warn");
+            return;
+          }
+          var n = pendingCount() + pendingDeleteCount();
+          if (n) {
+            syncNote(TXT("sync.pending", { n: n }), "warn");
+            return;
+          }
+          if (lastPullAt) {
+            var age = Date.now() - Date.parse(lastPullAt);
+            if (isFinite(age) && age > PULL_STALE_MS) {
+              syncNote(TXT("sync.stale"), "warn");
+              return;
+            }
+          }
+          syncNote("");
         }
 /* Which badge opened the panel. On a phone it is syncBadgeM, and returning
                focus to syncBadge moved focus to a control that is not on screen
@@ -1515,6 +1607,9 @@ var DIAG_MAX = 60;
              self-explanatory. */
           var lastPullAt = null;
           var lastPushAt = null;
+          /* Long enough not to nag while a normal 60s poll is running, short
+             enough that a tab that has stopped pulling is visibly stale. */
+          var PULL_STALE_MS = 5 * 60 * 1000;
           function stampSuccess(kind) {
             var at = new Date().toISOString();
             if (kind === "pull") lastPullAt = at;
@@ -1635,10 +1730,11 @@ var DIAG_MAX = 60;
         }
         function unsyncedSummaryForDiag() {
           try {
-            var out = { vehicles: 0, sessions: 0 };
+            var out = { vehicles: 0, sessions: 0, deletes: 0 };
             for (var kind in syncDirty)
               if (Object.prototype.hasOwnProperty.call(syncDirty, kind))
                 out[kind] = Object.keys(syncDirty[kind] || {}).length;
+            out.deletes = pendingDeleteCount();
             return out;
           } catch (e) {
             return "unavailable";
@@ -1876,7 +1972,11 @@ function copyDiagnostics() {
          */
         function sessionVehicleReady(s) {
           if (!s || !s.vehicleId) return "orphan";
-          var v = vehById(s.vehicleId);
+          /* The bin, not only the live array: a soft-deleted vehicle is still
+             an existing server row, and its binned sessions must be able to
+             send deleted_at as well. Using vehById() here marked every session
+             of a binned vehicle as an orphan and stranded the delete locally. */
+          var v = vehicleAnywhere(s.vehicleId);
           if (!v) return "orphan";
           if (v.provisional) return "wait";
           if (syncDirty.vehicles[v.id] || syncStalled.vehicles[v.id])
@@ -1966,10 +2066,12 @@ syncQueue.pending++;
           if (!syncDeleted[table]) syncDeleted[table] = {};
           syncDeleted[table][id] = 1;
           savePendingDeletes();
+          refreshSyncBadge();
         }
         function clearDeleted(table, id) {
           if (syncDeleted[table]) delete syncDeleted[table][id];
           savePendingDeletes();
+          refreshSyncBadge();
         }
         /**
          * Delete one row server-side.
@@ -2015,6 +2117,7 @@ syncQueue.pending++;
                   return false;
                 }
                 clearDeleted(table, id);
+                stampSuccess("push");
                 return true;
               })
               .catch(function (ce) {
@@ -3175,6 +3278,8 @@ accepted[i].role || "viewer",
               if (e2) throw e2;
               syncDeleted = { vehicles: {}, sessions: {} };
               savePendingDeletes();
+              syncDirty = { vehicles: {}, sessions: {} };
+              savePendingWrites();
               return runBatched(
                 vehicles.slice(),
                 BATCH,
@@ -3219,7 +3324,9 @@ accepted[i].role || "viewer",
               syncQueue.pending--;
               syncQueue.fail = 0;
               syncDirty = { vehicles: {}, sessions: {} };
-              syncNote("");
+              savePendingWrites();
+              stampSuccess("push");
+              refreshSyncBadge();
               return true;
             })
             .catch(function (err) {
@@ -3274,6 +3381,7 @@ if (e) {
                 syncFail("session bulk upsert");
                 return false;
               }
+              stampSuccess("push");
               return true;
             })
             .catch(function () {
@@ -3286,6 +3394,10 @@ if (e) {
    because sessions reference them. */
 function syncPull() {
             if (!syncOn()) return Promise.resolve(false);
+            /* One pull at a time for the loaded account. A pull belonging to a
+               previous account must not block the new account's first pull. */
+            if (syncPullInFlight && syncPullInFlight.gen === acctGen)
+              return syncPullInFlight.promise;
             /* Which account this pull is FOR. Without it the response is written
                into whatever account is loaded when it arrives: signing out and
                back in during the 15s window appended the old account's vehicles
@@ -3304,7 +3416,7 @@ var vres = null;
                shows "Syncing…", and an unsettled promise left that text up for
                good: syncNote was never cleared, syncQueue.pending was never
                decremented, and every "Retry now" started another hung pull. */
-            return timed(
+            var run = timed(
               authClient
                 .from("vehicles")
                 .select("*")
@@ -3335,6 +3447,7 @@ var vres = null;
                  and the data was lost on the next refresh. */
               var pulledVehicles = [];
               var known = {};
+              var liveVehicles = {};
               for (var i = 0; i < vrows.length; i++) {
                 var pv = rowVehicle(vrows[i]);
                 /* A pending permanent delete must not be undone by a pull
@@ -3343,9 +3456,11 @@ var vres = null;
                   continue;
                 pulledVehicles.push(pv);
                 known[pv.id] = 1;
+                if (!pv.deletedAt) liveVehicles[pv.id] = 1;
               }
               var pulledSessions = [];
               var knownS = {};
+              var liveSessions = {};
               for (var j = 0; j < srows.length; j++) {
                 if (syncDeleted.sessions && syncDeleted.sessions[srows[j].id])
                   continue;
@@ -3354,6 +3469,7 @@ var vres = null;
                 var ps = rowSession(srows[j]);
                 pulledSessions.push(ps);
                 knownS[ps.id] = 1;
+                if (!ps.deletedAt) liveSessions[ps.id] = 1;
               }
 /* Keep local rows the server does not have, and re-push them
                    below so the two sides converge. */
@@ -3410,6 +3526,24 @@ var vres = null;
                 for (var bs2 = 0; bs2 < keptBinnedSessions.length; bs2++)
                   if (!knownS[keptBinnedSessions[bs2].id])
                     localOnlyBinnedSessions.push(keptBinnedSessions[bs2]);
+                /* A binned row in the local bin can still be live on the
+                   server - the normal delete push was lost across a reload.
+                   Capture the ones that need their deleted_at re-sent before
+                   the arrays are rebuilt. */
+                var binnedVehiclesToSync = binnedRowsNeedingPush(
+                  binned.vehicles,
+                  liveVehicles,
+                  syncDeleted.vehicles,
+                  syncDirty.vehicles,
+                  syncStalled.vehicles,
+                );
+                var binnedSessionsToSync = binnedRowsNeedingPush(
+                  binned.sessions,
+                  liveSessions,
+                  syncDeleted.sessions,
+                  syncDirty.sessions,
+                  syncStalled.sessions,
+                );
                 binned.vehicles = [];
                 binned.sessions = [];
                 vehicles = splitBinned(
@@ -3472,12 +3606,23 @@ if (cur >= vehicles.length) cur = 0;
                   save();
                   render();
                   stampSuccess("pull");
-                  syncNote("");
               /* Push anything that failed while offline. Records deleted in the meantime
      are re-applied after the rows land, so a local delete always wins. */
               loadShares();
               retryDirty();
+              /* A binned row whose delete was lost across a reload has no dirty
+                 flag, so retryDirty() cannot see it. It is still live on the
+                 server; re-send its deleted_at now. */
+              for (var bvp = 0; bvp < binnedVehiclesToSync.length; bvp++) {
+                var bvRow = vehicleAnywhere(binnedVehiclesToSync[bvp].id);
+                if (bvRow) syncVehicle(bvRow);
+              }
+              for (var bsp = 0; bsp < binnedSessionsToSync.length; bsp++) {
+                var bsRow = sessionAnywhere(binnedSessionsToSync[bsp].id);
+                if (bsRow) syncSession(bsRow);
+              }
               retryDeleted();
+              refreshSyncBadge();
 /* Anything the server had never seen goes up now, so a row created
                    on this device is not lost on the next refresh.
 
@@ -3544,6 +3689,32 @@ if (localOnlySessions.length)
                 if (pendingCount() + pendingDeleteCount()) armRetry();
                 return false;
               });
+            var entry = { gen: gen, promise: run };
+            syncPullInFlight = entry;
+            run.then(
+              function () {
+                if (syncPullInFlight === entry) syncPullInFlight = null;
+              },
+              function () {
+                if (syncPullInFlight === entry) syncPullInFlight = null;
+              },
+            );
+            return run;
+        }
+        /**
+         * Pull only when the current snapshot is old enough to matter.
+         * Focus/visibility uses a much smaller interval than the background
+         * ticker, so returning to the tab checks immediately.
+         */
+        function pullIfStale(minAgeMs) {
+          if (!syncOn() || !syncOnline()) return false;
+          if (syncPullInFlight && syncPullInFlight.gen === acctGen) return false;
+          if (document.visibilityState === "hidden") return false;
+          var age = lastPullAt ? Date.now() - Date.parse(lastPullAt) : Infinity;
+          if (!isFinite(age)) age = Infinity;
+          if (age < (minAgeMs || PULL_MIN_INTERVAL_MS)) return false;
+          syncPull();
+          return true;
         }
         /** Persist favourites to localStorage, reporting a failure to the user. */
 function saveFavs() {
@@ -4920,9 +5091,14 @@ syncNote("");
             syncQueue = { pending: 0, fail: 0 };
             syncDirty = { vehicles: {}, sessions: {} };
             syncDeleted = { vehicles: {}, sessions: {} };
-            /* Pending deletes belong to the account bucket, not to the previous
-               account's in-memory queue. Reload them after the reset. */
+            /* Pending work belongs to the account bucket, not to the previous
+               account's in-memory queue. Reload it after the reset. */
             loadPendingDeletes();
+            loadPendingWrites();
+            /* Timestamps describe the previous account's connection, not this
+               one; a new account must not inherit its freshness claim. */
+            lastPullAt = null;
+            lastPushAt = null;
             /* These two are not per-queue, they are refusals keyed by row id.
                Carrying them across made the sync panel list rows the new account
                had never heard of, each with a Discard button that did nothing
@@ -7310,6 +7486,26 @@ function discardUnsynced(kind, id) {
             return true;
           });
         }
+        /** The last successful pull, and a warning when it is too old. */
+        function syncStatusFooter() {
+          if (!lastPullAt) return "";
+          var when = new Date(lastPullAt);
+          if (!isFinite(when.getTime())) return "";
+          var text = TXT("sync.lastSync", {
+            t: when.toLocaleTimeString(LOCALE, {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+          });
+          var stale =
+            syncOnline() && Date.now() - when.getTime() > PULL_STALE_MS;
+          return (
+            '<p class="mini">' +
+            esc(text) +
+            (stale ? " — " + esc(TXT("sync.stale")) : "") +
+            "</p>"
+          );
+        }
         /** Render the sync panel body, which the header badge opens. */
         function renderSyncPanel() {
           var box = $("syncBody");
@@ -7317,7 +7513,11 @@ function discardUnsynced(kind, id) {
           renderRetryCountdown();
           var rows = unsyncedRows();
           if (!rows.length) {
-            box.innerHTML = '<p class="mini">' + TXT("sync.allGood") + "</p>";
+            box.innerHTML =
+              '<p class="mini">' +
+              TXT("sync.allGood") +
+              "</p>" +
+              syncStatusFooter();
             return;
           }
           var h = '<div class="list">';
@@ -7368,6 +7568,7 @@ function discardUnsynced(kind, id) {
               '<div class="hint" style="margin-top:0.6rem">' +
               TXT("sync.stalledHint") +
               "</div>";
+          h += syncStatusFooter();
           box.innerHTML = h;
         }
         /* Retry cadence for queued rows. Short enough that a phone that slept
@@ -14475,15 +14676,30 @@ $("eDelete").addEventListener("click", function () {
              start, because the reason it was waiting is gone. */
           scheduleRetry();
           leafletState = 0;
-          /* Clear the badge first. When there is no session there is nothing to
-             pull, and the offline notice would otherwise stay on screen even
-             though the connection is back. */
-          syncNote("");
+          /* Clear the offline notice; refreshSyncBadge() will show any rows
+             that still need sending. */
+          refreshSyncBadge();
           if (syncOn()) syncPull();
         });
         window.addEventListener("offline", function () {
           syncNote(TXT("sync.offline"), "warn");
         });
+        /* A second device can change the account while this one is idle. The
+           page has no reason to ask the server again until it is focused or the
+           periodic ticker runs; without this a tab could show a stale history
+           for hours even though every local write had succeeded. */
+        document.addEventListener("visibilitychange", function () {
+          if (document.visibilityState === "visible") pullIfStale(5000);
+        });
+        window.addEventListener("focus", function () {
+          pullIfStale(5000);
+        });
+        window.addEventListener("pageshow", function () {
+          pullIfStale(5000);
+        });
+        setInterval(function () {
+          pullIfStale(PULL_PERIOD_MS);
+        }, PULL_PERIOD_MS);
         setInterval(function () {
           var ae = document.activeElement;
           if (ae !== $("date") && ae !== $("time") && !$("sForm").contains(ae))

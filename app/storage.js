@@ -41,9 +41,9 @@
    * The full key set for one account's bucket.
    * @param {?string} userId null means the signed-out bucket.
    * @returns {{v: string, s: string, bv: string, bs: string, pd: string,
-   *            p: string, df: string, f: string, bf: string, fr: string,
-   *            n: string, t: string, na: string, rm: string, layout: string,
-   *            scan: string}}
+   *            pw: string, p: string, df: string, f: string, bf: string,
+   *            fr: string, n: string, t: string, na: string, rm: string,
+   *            layout: string, scan: string}}
    */
   function keysFor(userId) {
     var pre = userId ? "ev.v1." + userId + "." : "ev.v1.local.";
@@ -54,9 +54,11 @@
          so nothing that already reads vehicles/sessions has to learn about it. */
       bv: pre + "binVehicles",
       bs: pre + "binSessions",
-      /* Deletes that have not been confirmed by the server. Persisted so a
-         failed purge cannot resurrect a row after a reload. */
+      /* Deletes and ordinary writes that have not been confirmed by the
+         server. Persisted so an offline save or bin move cannot disappear on
+         reload before it has been replayed. */
       pd: pre + "pendingDeletes",
+      pw: pre + "pendingWrites",
       p: pre + "price",
       /* Location defaults: which favourite to prefill, after what hour, and
          whether to use device position. */

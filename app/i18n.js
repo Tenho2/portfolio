@@ -547,6 +547,8 @@
       "sync.open": "Show sync details",
       "sync.title": "Sync status",
       "sync.allGoodShort": "In sync",
+      "sync.lastSync": "Last synced: {t}",
+      "sync.stale": "Not synced recently",
       "sync.lead":
         "Everything here is saved on this device and has not reached the server yet.",
       "sync.allGood":
@@ -1412,6 +1414,8 @@
       "sync.open": "Näytä synkronoinnin tiedot",
       "sync.title": "Synkronointi",
       "sync.allGoodShort": "Synkassa",
+      "sync.lastSync": "Viimeksi synkronoitu: {t}",
+      "sync.stale": "Ei synkronoitu äskettäin",
       "sync.lead":
         "Kaikki tässä on tallennettu tälle laitteelle eikä ole vielä päässyt palvelimelle.",
       "sync.allGood": "Kaikki on palvelimella. Ei mitään odottamassa.",
@@ -2275,6 +2279,8 @@
       "sync.open": "Visa synkdetaljer",
       "sync.title": "Synkstatus",
       "sync.allGoodShort": "I synk",
+      "sync.lastSync": "Senast synkad: {t}",
+      "sync.stale": "Inte synkad nyligen",
       "sync.lead":
         "Allt här är sparat på den här enheten och har ännu inte nått servern.",
       "sync.allGood": "Allt finns på servern. Inget väntar på synkning.",
