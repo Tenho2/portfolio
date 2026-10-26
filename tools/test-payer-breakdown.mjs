@@ -204,6 +204,7 @@ const payerBreakdown = new Function(
     fnSource("payerColour") +
     fnSource("normPayer") +
     fnSource("payerListOf") +
+    `function payerDisplayName(n){ return String(n == null ? "" : n).trim(); }` +
     fnSource("payBreakdown") +
     "; return payBreakdown;",
 )();

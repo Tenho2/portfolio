@@ -346,12 +346,17 @@ await group("G: entering kWh produces a cost when a price is known", () => {
   ok("and a zero price produces nothing", /e > 0 && price > 0/.test(fn));
 });
 
-await group("G: the same fix applies on the edit sheet", () => {
-  /* The edit sheet has its own inputs and shares the recalculation, so the
-     same behaviour applies. Worth pinning: a fix that only covered the add
-     form would leave editing inconsistent with it. */
-  ok("edit uses the same energy input", app.includes('$("energy").addEventListener("input", recalcFromEnergy)'));
+await group("G: the edit sheet calculator is wired", () => {
+  /* The edit sheet has its own inputs. Checking the add form's #energy
+     listener here is what let a dead edit calculator pass the suite. */
+  ok("energy recalculates the total", app.includes('$("eEnergy").addEventListener("input", editPriceCents)'));
+  ok("price recalculates the total", app.includes('$("ePriceCents").addEventListener("input", editPriceCents)'));
+  ok("cost derives the price", app.includes('$("eCost").addEventListener("input", editCostToPrice)'));
   ok("and commitEdit reads cost from the field", app.includes('$("eCost")'));
+  /* A legacy row with energy but no cost has no row price. It must use the
+     saved default rather than doing nothing. */
+  ok("the edit calculator has a saved-price fallback", /function editUnitCents[\s\S]{0,300}?price > 0/.test(app));
+  ok("openEdit seeds that fallback when there is no row price", /ePriceCents[\s\S]{0,900}?price \* 100/.test(fnSource("openEdit")));
 });
 
 await group("G: the edit sheet has a working price field", () => {

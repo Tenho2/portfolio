@@ -124,6 +124,32 @@ const P = (f, v) => (f.els.ppkCents.value = v);
 const ev = (f) => parseFloat(f.els.energy.value);
 const cv = (f) => parseFloat(f.els.cost.value);
 
+/** The edit sheet's two local calculators, on the same kind of stub form. */
+function makeEditForm(startPrice) {
+  const els = {
+    eEnergy: { value: "" },
+    ePriceCents: { value: "" },
+    eCost: { value: "" },
+  };
+  const src = `
+    var price = __price;
+    var fields = __fields;
+    function $(id){ return fields[id]; }
+    ${fnSource("num")}
+    ${fnSource("isNum")}
+    ${fnSource("editUnitCents")}
+    ${fnSource("editPriceCents")}
+    ${fnSource("editCostToPrice")}
+    return { editPriceCents, editCostToPrice };
+  `;
+  const api = new Function("__price", "__fields", src)(startPrice || 0, els);
+  return { els, api };
+}
+const EE = (f, v) => (f.els.eEnergy.value = v);
+const EC = (f, v) => (f.els.eCost.value = v);
+const EP = (f, v) => (f.els.ePriceCents.value = v);
+const ecv = (f) => parseFloat(f.els.eCost.value);
+
 /* ---------- the common case: kWh + price -> cost ---------- */
 
 group("energy and price give the cost", () => {
@@ -260,6 +286,39 @@ group("the hint says where the kWh came from", () => {
   /* And the old message told the user to enter the energy to see a total,
      which is now only one of two ways. */
   ok("the empty-energy hint no longer says energy is the only way", !/Enter the charged energy to see the total/.test(i18n));
+});
+
+/* ---------- the edit sheet's local calculator ---------- */
+
+group("the edit sheet recalculates the total from kWh and price", () => {
+  const f = makeEditForm(0.32);
+  EE(f, "50");
+  EP(f, "40");
+  f.api.editPriceCents();
+  near("50 kWh at 0.40", ecv(f), 20.0, 0.01);
+
+  EC(f, "16.00");
+  f.api.editCostToPrice();
+  is("16.00 over 50 kWh is 32 cents", f.els.ePriceCents.value, "32");
+});
+
+group("a row with no explicit price uses the saved default", () => {
+  /* The reported gap: open a legacy row with energy but no cost, change kWh,
+     and nothing happened because ePriceCents was blank. The add form already
+     falls back to the saved global price; the edit sheet must too. */
+  const f = makeEditForm(0.32);
+  EE(f, "50");
+  EP(f, "");
+  f.api.editPriceCents();
+  near("50 x the saved 0.32", ecv(f), 16.0, 0.01);
+});
+
+group("the edit sheet invents nothing without energy", () => {
+  const f = makeEditForm(0.32);
+  EP(f, "40");
+  f.api.editPriceCents();
+  is("the total stays empty", f.els.eCost.value, "");
+  ok("and no NaN or Infinity appears", !/NaN|Infinity/.test(f.els.eCost.value));
 });
 
 /* ---------- the duration default ---------- */

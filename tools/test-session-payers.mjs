@@ -33,6 +33,7 @@ const sql = readFileSync("supabase/13-session-payers.sql", "utf8");
 const css = readFileSync("app/app.css", "utf8");
 const html = readFileSync("ev-tracker.html", "utf8");
 const storage = readFileSync("app/storage.js", "utf8");
+const i18n = readFileSync("app/i18n.js", "utf8");
 
 let pass = 0;
 const failures = [];
@@ -71,6 +72,7 @@ const checkSplit = new Function(
 )();
 const payerTotals = new Function(
   `var price = 0.2;` +
+    `function payerDisplayName(n){ return String(n == null ? "" : n).trim(); }` +
     `${fnSource("num")}${fnSource("isNum")}${fnSource("hasCost")}${fnSource("costOf")}` +
     `${fnSource("normPayer")}${fnSource("payerListOf")}${fnSource("payerTotals")}; return payerTotals;`,
 )();
@@ -368,6 +370,80 @@ group("the picker defaults to the signed-in user at the whole charge", () => {
   ok("which is null when signed out", /if \(!authUser\) return null/.test(fnSource("myPayerName")));
 });
 
+group("the default payer never becomes the word undefined", () => {
+  /* String(authUser.user_metadata && authUser.user_metadata.username) turned a
+     missing metadata field into the literal string "undefined", which is
+     truthy and became the default payer's name. */
+  const src = `
+    var authUser = __u;
+    var AUTH_FAKE_DOMAIN = "@evtracker.test";
+    ${fnSource("fromFakeEmail")}
+    ${fnSource("myPayerName")}
+    return myPayerName;
+  `;
+  const buildName = new Function("__u", src);
+  const nameFor = (u) => buildName(u)();
+  is(
+    "missing metadata falls back to the email local part",
+    nameFor({ user_metadata: {}, email: "anna@evtracker.test" }),
+    "anna",
+  );
+  is(
+    "absent metadata does the same",
+    nameFor({ email: "anna@evtracker.test" }),
+    "anna",
+  );
+  is(
+    "a real username is used and trimmed",
+    nameFor({ user_metadata: { username: "  Anna  " }, email: "x" }),
+    "Anna",
+  );
+  is("signed out stays null", nameFor(null), null);
+  is("no username and no email stays null", nameFor({ user_metadata: {} }), null);
+  ok("the literal undefined never leaks", nameFor({ user_metadata: {} }) !== "undefined");
+});
+
+group("a legacy undefined payer renders with a fallback", () => {
+  const src = `
+    function myPayerName(){ return __me; }
+    function TXT(k){ return k; }
+    ${fnSource("payerDisplayName")}
+    return payerDisplayName;
+  `;
+  const display = new Function("__me", src);
+  const mine = display("Anna");
+  is("undefined becomes the current payer", mine("undefined"), "Anna");
+  is("the null string does the same", mine("null"), "Anna");
+  is("a real name is preserved and trimmed", mine("  Bo  "), "Bo");
+  is("a blank new row stays blank", mine(""), "");
+  is(
+    "signed out falls back to the translated label",
+    display(null)("undefined"),
+    "as.payerDefault",
+  );
+});
+
+group("legacy payer names are normalised wherever they surface", () => {
+  for (const fn of [
+    "renderPayers",
+    "renderEditPayers",
+    "payerDraftOut",
+    "editPayerDraftOut",
+    "setPayerDraft",
+    "editLoadPayers",
+    "payerTotals",
+    "payBreakdown",
+  ]) {
+    ok(`${fn} uses the display name`, /payerDisplayName/.test(fnSource(fn)));
+  }
+  is(
+    "the fallback is translated in all three languages",
+    (i18n.match(/"as\.payerDefault":/g) || []).length,
+    3,
+  );
+  ok("Finnish uses Oletus", /"as\.payerDefault": "Oletus"/.test(i18n));
+});
+
 group("a typed name that matches nobody is kept, not refused", () => {
   /* The person who plugs your car in is often not someone you have shared it
      with. Refusing unknown names would make the common case impossible. */
@@ -574,6 +650,7 @@ group("adding a payer, end to end", () => {
       var friends = [];
       function TXT(k, v){ return k; }
       function syncPayerHint(){}
+      function payerDisplayName(n){ return String(n == null ? "" : n).trim(); }
       ${fnSource("num")}
       ${fnSource("payerTotal")}
       ${fnSource("redistributeEvenly")}
@@ -669,6 +746,7 @@ group("the edit sheet preloads an existing split with amounts", () => {
       var price = 0.2;
       function myPayerName(){ return __me; }
       function renderEditPayers(){}
+      function payerDisplayName(n){ return String(n == null ? "" : n).trim(); }
       ${fnSource("num")}
       ${fnSource("isNum")}
       ${fnSource("hasCost")}

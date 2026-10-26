@@ -270,6 +270,19 @@ await group("editing a session does not make it argue with itself", () => {
   is("an earlier row is still a floor while editing", p.mileageFloor(VEH, "2026-10-20", "editing").value, 92000);
 });
 
+group("the edit form passes its fields to the mileage check", () => {
+  /* confirmMileage(e, d, ...) reads d.mileage. Passing the field bag as the
+     first argument and null second crashed every edit with
+     "Cannot read properties of null (reading 'mileage')". */
+  const edit = fnSource("saveEdit");
+  ok(
+    "the edited mileage and date are the second argument",
+    /confirmMileage\(\s*e,\s*\{\s*mileage:\s*\$\(\"eMileage\"\),\s*date:\s*\$\(\"eDate\"\)\s*\},/.test(
+      edit,
+    ),
+  );
+});
+
 await group("a warning is raised, and it names both readings", async () => {
   const m = build({
     state: makeState(HISTORY, [{ id: VEH, initialOdometer: 0 }]),

@@ -5634,9 +5634,12 @@ function say(msg) {
          */
         function myPayerName() {
           if (!authUser) return null;
-          var n = String(
-            authUser.user_metadata && authUser.user_metadata.username,
-          ).trim();
+          /* `String(undefined)` is the literal string "undefined", which is
+             truthy and used to become the default payer's name. Metadata is
+             optional, so extract it only when it is really there. */
+          var raw =
+            authUser.user_metadata && authUser.user_metadata.username;
+          var n = raw == null ? "" : String(raw).trim();
           /* The email is the fallback because every account here was created
              as <name>@evtracker.test, and the local part is the part the user
              recognises. fromFakeEmail strips the domain and restores any @ the
@@ -5644,6 +5647,21 @@ function say(msg) {
              "pekk_at_" on every row. */
           if (!n && authUser.email) n = fromFakeEmail(authUser.email);
           return n || null;
+        }
+        /**
+         * A payer name that is safe to show and save.
+         *
+         * Legacy rows can contain the literal strings "undefined" or "null"
+         * because myPayerName() used to stringify missing metadata. Render
+         * those as the current default payer, or the translated fallback.
+         * A genuinely blank new row stays blank so the user can type into it.
+         */
+        function payerDisplayName(name) {
+          var clean = String(name == null ? "" : name).trim();
+          if (!clean) return "";
+          if (/^(undefined|null)$/i.test(clean))
+            return myPayerName() || TXT("as.payerDefault");
+          return clean;
         }
 
         /* ---------- friends ----------
@@ -5781,6 +5799,7 @@ function say(msg) {
           var html = "";
           for (var i = 0; i < payerDraft.length; i++) {
             var p = payerDraft[i];
+            var pname = payerDisplayName(p.name);
             var total = payerTotal();
             var pct =
               total > 0 ? Math.round((num(p.amount) / total) * 100) : null;
@@ -5789,7 +5808,7 @@ function say(msg) {
               '<input type="text" class="payer-name" data-pn="' +
               i +
               '" value="' +
-              esc(p.name) +
+              esc(pname) +
               '" maxlength="60" aria-label="' +
               TXT("as.payerName") +
               '" list="payerNames" />' +
@@ -5812,7 +5831,7 @@ function say(msg) {
               '<button type="button" class="btn sm ghost" data-pr="' +
               i +
               '" aria-label="' +
-              TXT("as.payerRemove", { v: esc(p.name) }) +
+              TXT("as.payerRemove", { v: esc(pname) }) +
               '"><span aria-hidden="true">×</span></button>' +
               "</div>";
           }
@@ -5885,7 +5904,10 @@ function say(msg) {
           var out = [];
           var list = payerListOf({
             payers: payerDraft.map(function (p) {
-              return { name: p.name, share: amountToShare(p.amount) };
+              return {
+                name: payerDisplayName(p.name),
+                share: amountToShare(p.amount),
+              };
             }),
           });
           for (var i = 0; i < list.length; i++) out.push(list[i]);
@@ -5904,7 +5926,12 @@ function say(msg) {
             var p = normPayer(src[i]);
             /* A restored split is a settled arrangement, so its amounts count
                as typed: re-adding somebody must not quietly halve them. */
-            if (p) payerDraft.push({ name: p.name, amount: "", auto: false });
+            if (p)
+              payerDraft.push({
+                name: payerDisplayName(p.name),
+                amount: "",
+                auto: false,
+              });
           }
           renderPayers();
         }
@@ -6015,7 +6042,10 @@ function say(msg) {
           var out = [];
           var list = payerListOf({
             payers: editPayerDraft.map(function (p) {
-              return { name: p.name, share: editAmountToShare(p.amount) };
+              return {
+                name: payerDisplayName(p.name),
+                share: editAmountToShare(p.amount),
+              };
             }),
           });
           for (var i = 0; i < list.length; i++) out.push(list[i]);
@@ -6078,6 +6108,7 @@ function say(msg) {
           var html = "";
           for (var i = 0; i < editPayerDraft.length; i++) {
             var p = editPayerDraft[i];
+            var pname = payerDisplayName(p.name);
             var total = editPayerTotal();
             var pct =
               total > 0 ? Math.round((num(p.amount) / total) * 100) : null;
@@ -6086,7 +6117,7 @@ function say(msg) {
               '<input type="text" class="payer-name" data-epn="' +
               i +
               '" value="' +
-              esc(p.name) +
+              esc(pname) +
               '" maxlength="60" aria-label="' +
               TXT("as.payerName") +
               '" list="payerNames" />' +
@@ -6105,7 +6136,7 @@ function say(msg) {
               '<button type="button" class="btn sm ghost" data-epr="' +
               i +
               '" aria-label="' +
-              TXT("as.payerRemove", { v: esc(p.name) }) +
+              TXT("as.payerRemove", { v: esc(pname) }) +
               '"><span aria-hidden="true">×</span></button>' +
               "</div>";
           }
@@ -6148,9 +6179,10 @@ function say(msg) {
           var hasMe = false;
           for (var i = 0; i < payers.length; i++) {
             var p = payers[i];
-            if (me && p.name === me) hasMe = true;
+            var pname = payerDisplayName(p.name);
+            if (me && pname === me) hasMe = true;
             editPayerDraft.push({
-              name: p.name,
+              name: pname,
               amount:
                 cost > 0 ? String(Math.round(p.share * cost * 100) / 100) : "",
               auto: false,
@@ -6296,13 +6328,14 @@ function say(msg) {
             }
             for (var j = 0; j < payers.length; j++) {
               var p = payers[j];
-              if (!byName[p.name]) {
-                byName[p.name] = { name: p.name, cost: 0, kwh: 0, sessions: 0 };
-                order.push(p.name);
+              var pname = payerDisplayName(p.name);
+              if (!byName[pname]) {
+                byName[pname] = { name: pname, cost: 0, kwh: 0, sessions: 0 };
+                order.push(pname);
               }
-              byName[p.name].cost += cost * p.share;
-              byName[p.name].kwh += num(s.energy) * p.share;
-              byName[p.name].sessions++;
+              byName[pname].cost += cost * p.share;
+              byName[pname].kwh += num(s.energy) * p.share;
+              byName[pname].sessions++;
             }
           }
           var rows = order.map(function (n) {
@@ -6472,19 +6505,20 @@ function say(msg) {
             }
             for (var j = 0; j < payers.length; j++) {
               var p = payers[j];
-              if (!byName[p.name]) {
-                byName[p.name] = {
-                  name: p.name,
+              var pname = payerDisplayName(p.name);
+              if (!byName[pname]) {
+                byName[pname] = {
+                  name: pname,
                   cost: 0,
                   kwh: 0,
                   sessions: 0,
                   colour: payerColour(rows.length),
                 };
-                rows.push(byName[p.name]);
+                rows.push(byName[pname]);
               }
-              byName[p.name].cost += cost * p.share;
-              byName[p.name].kwh += num(s.energy) * p.share;
-              byName[p.name].sessions++;
+              byName[pname].cost += cost * p.share;
+              byName[pname].kwh += num(s.energy) * p.share;
+              byName[pname].sessions++;
             }
           }
           rows.sort(function (a, b) {
@@ -9035,18 +9069,25 @@ for (var c = 0; c < head.length; c++) {
           $("eEnergy").value = s.energy;
           $("eCost").value = isNum(s.cost) ? s.cost : "";
           /* The price is a calculator, not stored data. Recover the implied
-             cents/kWh when the row has both a cost and energy; otherwise leave
-             it blank rather than inventing the current global price. */
+             cents/kWh when the row has both a cost and energy. A row with
+             energy but no explicit cost shows the saved default price, so
+             changing kWh has something to multiply. */
           if ($("ePriceCents")) {
-            $("ePriceCents").value =
-              isNum(s.cost) && num(s.energy) > 0
-                ? String(
-                    Math.max(
-                      0,
-                      Math.min(99, Math.round((num(s.cost) / num(s.energy)) * 100)),
-                    ),
-                  )
-                : "";
+            var impliedCents = "";
+            if (isNum(s.cost) && num(s.energy) > 0) {
+              impliedCents = String(
+                Math.max(
+                  0,
+                  Math.min(99, Math.round((num(s.cost) / num(s.energy)) * 100)),
+                ),
+              );
+            } else if (num(s.energy) > 0 && price > 0) {
+              /* The row has no explicit total, so its money value comes from
+                 the saved default price. Show that price here, exactly as the
+                 add form does, or changing kWh would have nothing to multiply. */
+              impliedCents = String(Math.round(price * 100));
+            }
+            $("ePriceCents").value = impliedCents;
           }
           if ($("eSocStart"))
             $("eSocStart").value = soc(s.socStart) === null ? "" : s.socStart;
@@ -9088,8 +9129,8 @@ if (!$("editForm").reportValidity()) return;
              "is 92,000 less than the 92,000 this row already holds?" is not a
              useful question - it is how a mistyped odometer gets corrected. */
           confirmMileage(
-            { target: $("editForm"), mileage: $("eMileage"), date: $("eDate") },
-            null,
+            e,
+            { mileage: $("eMileage"), date: $("eDate") },
             function () {
               commitEdit(s, v);
             },
@@ -12941,12 +12982,21 @@ function detachVehicle(id) {
         $("cost").addEventListener("input", recalcFromCost);
         $("energy").addEventListener("input", recalcFromEnergy);
         /* The edit sheet's price is local to that row: it recalculates the cost
-           but never changes the saved default price. */
+           but never changes the saved default price. A row with no explicit
+           cost has no row price either, so energy alone must fall back to the
+           saved default price - the same fallback the add form uses. */
+        function editUnitCents() {
+          var raw = $("ePriceCents") ? $("ePriceCents").value : "";
+          if (raw !== "")
+            return isNum(raw)
+              ? Math.min(99, Math.max(0, num(raw)))
+              : null;
+          return price > 0 ? Math.round(price * 100) : null;
+        }
         function editPriceCents() {
-          var raw = $("ePriceCents") ? $("ePriceCents").value : "",
-            energy = $("eEnergy") ? num($("eEnergy").value) : 0;
-          if (raw === "" || !isNum(raw) || !(energy > 0)) return;
-          var cents = Math.min(99, Math.max(0, num(raw)));
+          var cents = editUnitCents();
+          var energy = $("eEnergy") ? num($("eEnergy").value) : 0;
+          if (cents === null || !(energy > 0)) return;
           if ($("eCost"))
             $("eCost").value = ((energy * cents) / 100).toFixed(2);
         }

@@ -30,10 +30,11 @@
  * list is served stale and nothing complains - so tools/test-sw-bump.mjs
  * asserts that every shell file was touched, and that the version moved with it.
  *
- * Last bumped: 2026-10-26, for the Win31 Hot Dog Stand dark-mode Easter egg.
+ * Last bumped: 2026-10-26, for the edit-session mileage crash, live edit
+ * totals, and the payer-name fallback.
  */
 
-const VERSION = "v84";
+const VERSION = "v85";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [
