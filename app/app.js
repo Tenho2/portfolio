@@ -10170,6 +10170,33 @@ slot.map.on("click", function (e) {
           if (o) o.marker = null;
           if (maps[id]) delete maps[id].pending;
         }
+        /** Remove the numbered suggestion markers from one map. */
+        function clearNearbyPins(id) {
+          var o = maps[id];
+          if (!o || !o.nearPins) return;
+          if (o.map) {
+            for (var i = 0; i < o.nearPins.length; i++) {
+              try {
+                o.map.removeLayer(o.nearPins[i]);
+              } catch (e) {}
+            }
+          }
+          o.nearPins = [];
+        }
+        /** Remove the device-location dot from one map. */
+        function clearUserLocation(id) {
+          var o = maps[id];
+          if (o && o.userPin && o.map) {
+            try {
+              o.map.removeLayer(o.userPin);
+            } catch (e) {}
+          }
+          if (o) o.userPin = null;
+        }
+        function clearSessionNearby() {
+          clearNearbyPins("sessMap");
+          clearUserLocation("sessMap");
+        }
         function suggest(q, cb) {
           if (!navigator.onLine) return;
           var wait = lastGeo + 1000 - new Date().getTime();
@@ -10671,8 +10698,10 @@ slot.map.on("click", function (e) {
               var list = flattenNearby(nearbyChargers(lat, lng, res.rows));
               renderNearby(list);
               /* The list is on screen; its gravity rank #1 is also the
-                 auto-fill target. */
+                 auto-fill target. Draw after auto-fill so the map frames the
+                 final selection rather than being immediately re-centred. */
               correctToBestNearby(list[0] || null);
+              drawSessionNearby(list, lat, lng);
             })
             .catch(function () {
               /* Silent on the registry alone. The local places are still a
@@ -10682,6 +10711,7 @@ slot.map.on("click", function (e) {
               var list = flattenNearby(nearbyChargers(lat, lng, []));
               renderNearby(list);
               correctToBestNearby(list[0] || null);
+              drawSessionNearby(list, lat, lng);
             });
         }
 
@@ -10792,6 +10822,7 @@ slot.map.on("click", function (e) {
             return;
           }
           setLocStatus(TXT("toast.geoWait"));
+          clearSessionNearby();
           $("locGeo").disabled = true;
           navigator.geolocation.getCurrentPosition(
             function (pos) {
@@ -10877,6 +10908,7 @@ slot.map.on("click", function (e) {
                 done: !!home,
               };
               renderNearby(local);
+              drawSessionNearby(local, lat, lng);
               loadNearStations(lat, lng, mine);
             },
             function (err) {
@@ -11080,37 +11112,75 @@ var rest = stationAll.length - shown.length;
           }
         }
 
+        /**
+         * One numbered map pin. This is the only place that creates the shared
+         * marker shape and icon; the station map and the session map differ
+         * only in the popup text and click action.
+         */
+        function numberedPin(index, lat, lng, popupHtml, onClick) {
+          var m = L.marker([lat, lng], {
+            icon: L.divIcon({
+              className: "station-pin",
+              html: '<span class="station-num">' + (index + 1) + "</span>",
+              iconSize: [26, 26],
+              iconAnchor: [13, 13],
+            }),
+            /* A marker's clicks bubble to the map by default. The map handler
+               for every map places a session pin and zooms to 16, so selecting
+               a numbered result from the map also dropped a draggable pin on
+               it. Stopping the bubbling declaratively is version-safe; calling
+               stopPropagation on the Leaflet event object by hand is not,
+               because that is not always a DOM event. */
+            bubblingMouseEvents: false,
+          });
+          if (popupHtml && m.bindPopup) m.bindPopup(popupHtml);
+          if (onClick) m.on("click", onClick);
+          return m;
+        }
+
+        /**
+         * Replace one map's numbered markers. The station map keeps its pins in
+         * `stationPins`, the session map in `nearPins`; both use `numberedPin`.
+         */
+        function drawNumberedPins(slot, key, list, popupFor, clickFor) {
+          if (!slot || !slot.map) return [];
+          if (slot[key]) {
+            for (var i = 0; i < slot[key].length; i++)
+              slot.map.removeLayer(slot[key][i]);
+          }
+          slot[key] = [];
+          for (var k = 0; k < list.length; k++) {
+            var p = list[k];
+            if (!p || !isNum(p.lat) || !isNum(p.lng)) continue;
+            var m = numberedPin(
+              k,
+              p.lat,
+              p.lng,
+              popupFor ? popupFor(p, k) : "",
+              clickFor
+                ? (function (item, index) {
+                    return function () {
+                      clickFor(item, index);
+                    };
+                  })(p, k)
+                : null,
+            );
+            m.addTo(slot.map);
+            slot[key].push(m);
+          }
+          return slot[key];
+        }
+
         function drawStationPins(list) {
           var slot = maps["stationMap"];
           if (!slot || !slot.map) return;
-          if (slot.stationPins) {
-            for (var i = 0; i < slot.stationPins.length; i++)
-              slot.map.removeLayer(slot.stationPins[i]);
-          }
-slot.stationPins = [];
-          for (var k = 0; k < list.length; k++) {
-            var s = list[k];
-            /* A numbered badge, matching the row's 1-based position in the
-               result list below. A divIcon rather than a circleMarker: the
-               number is the whole point, and it is what lets a driver tie a pin
-               on the map to a line in the list. */
-            var m = L.marker([s.lat, s.lng], {
-              icon: L.divIcon({
-                className: "station-pin",
-                html: '<span class="station-num">' + (k + 1) + "</span>",
-                iconSize: [26, 26],
-                iconAnchor: [13, 13],
-              }),
-              /* A marker's clicks bubble to the map by default. The map handler
-                 for every map places a session pin and zooms to 16, so selecting
-                 a station from the map also dropped a draggable pin on it.
-                 Stopping the bubbling declaratively is version-safe; calling
-                 stopPropagation on the Leaflet event object by hand is not,
-                 because that is not always a DOM event. */
-              bubblingMouseEvents: false,
-            });
-            m.bindPopup(
-              "<b>" +
+          drawNumberedPins(
+            slot,
+            "stationPins",
+            list,
+            function (s) {
+              return (
+                "<b>" +
                 esc(s.name || TXT("st.unnamed")) +
                 "</b><br>" +
                 esc(s.power || "") +
@@ -11118,27 +11188,80 @@ slot.stationPins = [];
                   ? "<br>" + TXT("st.away", { d: fmtDistance(s.dist) })
                   : "") +
                 "<br>" +
-                TXT("st.openDetails"),
-            );
-            /* Tapping a pin opens the same panel the list opens. It used to
-               only raise a popup: the station id was never attached to the
-               marker, so there was nothing for a handler to look up, and the
-               panel below the map kept showing whatever the list last opened. */
-            m._stationId = s.id;
-            m.on("click", function () {
-              var sid = this && this._stationId;
-              if (!sid) return;
+                TXT("st.openDetails")
+              );
+            },
+            function (s) {
               /* The popup still names the station where the finger is, which
                  matters on a small screen, but the panel is the real answer -
                  so it is brought into view rather than left below the fold. */
-              openStationDetail(sid);
+              openStationDetail(s.id);
               var box = $("stationDetail");
               if (box && !box.hidden && box.scrollIntoView)
                 box.scrollIntoView({ block: "nearest", behavior: "smooth" });
-            });
-            m.addTo(slot.map);
-            slot.stationPins.push(m);
-          }
+            },
+          );
+        }
+
+        /**
+         * Draw the same nearby suggestions the list is showing onto the session
+         * map. The list and map are deliberately built from one array: a pin
+         * must always have a row, and a row must always have a pin.
+         */
+        function drawSessionNearby(list, lat, lng) {
+          var shown = (list || []).slice(0, NEAR_VISIBLE);
+          loadLeaflet(function () {
+            var slot = getMap("sessMap", sessPinDragged);
+            if (!slot || !slot.map) return;
+            try {
+              slot.map.invalidateSize();
+              drawUserLocation(slot, lat, lng);
+              drawNumberedPins(
+                slot,
+                "nearPins",
+                shown,
+                function (p) {
+                  var tagKey =
+                    p.kind === "station"
+                      ? "locNearStation"
+                      : p.kind === "favourite"
+                        ? "locNearSaved"
+                        : "locNearUsed";
+                  return (
+                    "<b>" +
+                    esc(p.name || p.address || TXT("st.unnamed")) +
+                    "</b><br>" +
+                    esc(TXT(tagKey)) +
+                    (p.dist != null
+                      ? "<br>" + TXT("st.away", { d: fmtDistance(p.dist) })
+                      : "")
+                  );
+                },
+                function (p) {
+                  useNearbyPlace(p.lat, p.lng, p.name, p.price);
+                },
+              );
+
+              var points = [[lat, lng]];
+              if (slot.marker && slot.marker.getLatLng) {
+                var selected = slot.marker.getLatLng();
+                points.push([selected.lat, selected.lng]);
+              }
+              for (var i = 0; i < slot.nearPins.length; i++) {
+                var ll = slot.nearPins[i].getLatLng();
+                points.push([ll.lat, ll.lng]);
+              }
+              if (points.length > 1)
+                slot.map.fitBounds(L.latLngBounds(points), {
+                  padding: [30, 30],
+                  maxZoom: 15,
+                });
+              else slot.map.setView([lat, lng], 13);
+            } catch (e) {
+              /* a map is useful, never required; a drawing failure must not
+                 block the nearby list or the location field */
+            }
+          });
         }
 
         function stationFromId(id) {
@@ -14698,6 +14821,7 @@ $("syncBadge").addEventListener("click", function () {
           locGeo = { lat: null, lng: null, label: "" };
           closeSuggest();
           clearPin("sessMap");
+          clearSessionNearby();
           if ($("sessMapBox")) $("sessMapBox").hidden = true;
           setLocStatus("");
         }

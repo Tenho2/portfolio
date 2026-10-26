@@ -30,11 +30,11 @@
  * list is served stale and nothing complains - so tools/test-sw-bump.mjs
  * asserts that every shell file was touched, and that the version moved with it.
  *
- * Last bumped: 2026-10-26, for the retro desktop panel hierarchy, handedness
- * taskbar, and Start-menu theme toggle.
+ * Last bumped: 2026-10-26, for nearby charger pins on the Add-session map and
+ * the shared numbered-pin factory.
  */
 
-const VERSION = "v89";
+const VERSION = "v90";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [

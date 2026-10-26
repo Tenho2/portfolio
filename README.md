@@ -662,3 +662,59 @@ changing the app.
 - [x] **SBOM:** Generate a Software Bill of Materials document for the project.
 - **README Cleanup:** Refactor and clean up the README to remove outdated
   musings and streamline the documentation.
+
+### 2026-10-26 backlog and notes
+
+Status is per item. These were investigated during a planning pass; findings
+are recorded here so the next build does not repeat the discovery.
+
+- [x] **Higher priority: draw nearby chargers on the Add-session map.**
+      Implemented 2026-10-26. The station and session maps now share
+      `numberedPin()` / `drawNumberedPins()`; the session map stores nearby
+      markers in `nearPins`, draws the user dot, fits bounds around the visible
+      results, and routes marker clicks through `useNearbyPlace()`. Overlays are
+      cleared on a new search and on form reset. Covered by `test-phase4.mjs`.
+      Findings before the fix: `useMyLocation()` and `loadNearStations()`
+      rendered the nearby list but had no map step; the old
+      `drawStationPins()` was hardcoded to `maps["stationMap"]`. Planned
+      actions recorded here were a shared numbered-pin factory, a session-map
+      overlay, marker clicks reusing `useNearbyPlace()`, bounds including the
+      user/selected pin/results, and cleanup on reset and new searches.
+
+- [ ] **Priority 2: station filtering, sorting and operator selection.**
+      Add power, connector and operator filters plus sorting to the Stations
+      view. Findings and intended design: keep `stationAll` raw and add
+      `stationFiltered`; `stationMore`, status counts, detail lookup and map
+      pins must all use the filtered result. Power is a display string today
+      (`"50 kW"`) and OpenStreetMap socket labels can carry their own rating
+      (`type2 22 kW`), so derive a numeric helper and exclude unknown power
+      when a threshold is active. Normalise `Type 2 combo`/`CCS`, `CHAdeMO`
+      and `Type 2` without changing the station cache format. Proposed
+      controls: a single power threshold selector (Any / 22 kW+ / 50 kW+),
+      connector checkboxes (CCS, CHAdeMO, Type 2), sort by Distance / Power /
+      Operator, and a collapsible operator section with a search box and
+      checkboxes. Recommended semantics: OR within connector/operator
+      selections, AND between categories. Build the operator list dynamically
+      from the current result set, sorted case-insensitively; do not hardcode
+      ABS/Virta. The search box filters operator choices, not station rows.
+      Filter state is session-only; preserve still-valid operator selections on
+      a new search. No-match state must clear old pins/list and close a detail
+      panel whose station disappeared. Scope assumed: Stations view only, not
+      the compact Add-session nearby list. Open question: "ABS" may mean "ABC";
+      use live operator names. Tests: power parsing, connector classification,
+      OR/AND semantics, sort order, operator-list search/preservation, filtered
+      map/list/status, no-match state and i18n keys. Bump `sw.js` above
+      `v90` when implemented.
+
+- [ ] **Win 3.1-style desktop default handedness.**
+      Default the Win 3.1-style desktop to left-handed when no explicit
+      handedness preference has been saved. Findings: the preference is global,
+      stored through `applyNavAlign()` and exposed as
+      `body[data-nav-align="left|right"]`; the current fallback is `right`.
+      The standalone `win31` layout has no taskbar/Start menu, so this only has
+      visible meaning on `retro-desktop` today. Confirm whether the intent is
+      `retro-desktop` or both layouts before coding. Planned action if
+      confirmed: choose `left` as the fallback only for the retro desktop,
+      preserve an explicit saved left/right choice, and leave other layouts'
+      defaults unchanged. Add tests for no preference, explicit right, and
+      other layouts. No new setting or storage key.

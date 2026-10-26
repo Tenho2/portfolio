@@ -232,6 +232,100 @@ group("Near me builds the local list before the registry answers", () => {
   ok("it no longer uses nearestPlace", !/nearestPlace\(/.test(fn));
 });
 
+group("nearby results are drawn on the session map through the shared pin factory", () => {
+  const factory = fnOf("numberedPin");
+  const draw = fnOf("drawNumberedPins");
+  const station = fnOf("drawStationPins");
+  const session = fnOf("drawSessionNearby");
+  const nearMe = fnOf("useMyLocation");
+  const load = fnOf("loadNearStations");
+
+  ok("one shared numbered marker factory", /L\.marker/.test(factory) && /L\.divIcon/.test(factory));
+  ok("it uses the numbered station pin styling", /station-pin/.test(factory) && /station-num/.test(factory));
+  ok("marker clicks do not bubble to the map", /bubblingMouseEvents:\s*false/.test(factory));
+  ok("the factory is the only marker creator", !/L\.marker/.test(station) && !/L\.marker/.test(session));
+  ok("both maps use the shared collection drawer", /drawNumberedPins\(/.test(station) && /drawNumberedPins\(/.test(session));
+  ok("the shared drawer installs a per-marker click handler", /m\.on\(\s*"click",\s*onClick\)/.test(factory));
+  ok("the shared drawer captures the row and its index", /function \(item, index\)/.test(draw) && /clickFor\(item, index\)/.test(draw));
+  ok("the shared drawer replaces old markers", /removeLayer\(slot\[key\]\[i\]\)/.test(draw) && /slot\[key\] = \[\]/.test(draw));
+  ok("the session map stores nearPins", /"nearPins"/.test(session));
+  ok("nearby marker clicks reuse the list selection", /useNearbyPlace\(p\.lat,\s*p\.lng,\s*p\.name,\s*p\.price\)/.test(session));
+  ok("the user dot is drawn", /drawUserLocation\(slot, lat, lng\)/.test(session));
+  ok("bounds include the visible results", /fitBounds\(L\.latLngBounds\(points\)/.test(session));
+  ok("local results draw immediately", /drawSessionNearby\(local, lat, lng\)/.test(nearMe));
+  ok("both registry outcomes draw the merged/local list", (load.match(/drawSessionNearby\(list, lat, lng\)/g) || []).length === 2);
+  ok("starting Near me clears old overlays", /clearSessionNearby\(\)/.test(nearMe));
+  ok("resetting the session clears old overlays", /clearSessionNearby\(\)/.test(fnOf("resetSessionFormState")));
+});
+
+group("the shared drawer binds each marker to its own row", () => {
+  const factory = new Function(
+    "L",
+    "isNum",
+    [
+      fnSource("numberedPin"),
+      fnSource("drawNumberedPins"),
+      "return { drawNumberedPins: drawNumberedPins };",
+    ].join("\n"),
+  );
+  const created = [];
+  const removed = [];
+  const L = {
+    marker(coord, opts) {
+      const m = {
+        coord,
+        opts,
+        bindPopup(html) {
+          m.popup = html;
+          return m;
+        },
+        on(event, fn) {
+          if (event === "click") m.click = fn;
+          return m;
+        },
+        addTo(map) {
+          m.map = map;
+          created.push(m);
+          return m;
+        },
+        getLatLng() {
+          return { lat: coord[0], lng: coord[1] };
+        },
+      };
+      return m;
+    },
+    divIcon(opts) {
+      return opts;
+    },
+  };
+  const api = factory(L, (v) => v !== "" && isFinite(+v));
+  const map = {
+    removeLayer(layer) {
+      removed.push(layer);
+    },
+  };
+  const slot = { map };
+  const clicks = [];
+  const list = [
+    { name: "First", lat: 1, lng: 2 },
+    { name: "Second", lat: 3, lng: 4 },
+  ];
+  const pins = api.drawNumberedPins(
+    slot,
+    "nearPins",
+    list,
+    (p) => p.name,
+    (p, i) => clicks.push(p.name + ":" + i),
+  );
+  is("both rows become pins", pins.length, 2);
+  is("the shared styling is used", created[0].opts.icon.className, "station-pin");
+  is("the number is one-based", created[1].opts.icon.html, '<span class="station-num">2</span>');
+  pins[1].click();
+  is("each marker captures its own row", clicks[0], "Second:1");
+  api.drawNumberedPins(slot, "nearPins", [list[0]], () => "", null);
+  is("the old markers are removed", removed.length, 2);
+});
+
 group("rank #1 is the only auto-fill target", () => {
   const fill = fnOf("fillFromNearbyTop");
   const correct = fnOf("correctToBestNearby");

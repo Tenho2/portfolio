@@ -151,20 +151,18 @@ group("light mode was not broken by this", () => {
 
 group("a pin opens the same panel the list opens", () => {
   const pins = fnSource("drawStationPins");
-  ok("the marker carries the station id", /_stationId\s*=\s*s\.id/.test(pins));
-  ok("there is a click handler", /\.on\(\s*"click"/.test(pins));
-  ok("it opens the station detail", /openStationDetail\(\s*sid\s*\)/.test(pins));
-  /* Reading the id off the marker rather than closing over the loop variable,
-     which would capture the last station for every pin. */
-  ok("the id is read from the marker, not the loop variable", /this\s*&&\s*this\._stationId/.test(pins));
-  ok("and it bails out without one", /if \(!sid\) return;/.test(pins));
+  const drawer = fnSource("drawNumberedPins");
+  ok("station pins use the shared numbered factory", /drawNumberedPins\(/.test(pins) && /"stationPins"/.test(pins));
+  ok("the shared drawer installs a per-marker click handler", /m\.on\(\s*"click",\s*onClick\)/.test(fnSource("numberedPin")));
+  ok("the shared drawer captures the row and its index", /function \(item, index\)/.test(drawer) && /clickFor\(item, index\)/.test(drawer));
+  ok("the station click opens that station's detail", /openStationDetail\(s\.id\)/.test(pins));
 });
 
 group("tapping a pin does not also place a session pin", () => {
   /* A circle marker is a Path; its clicks bubble to the map by default, and the
      map handler for every map drops a draggable pin and zooms to 16. */
-  const pins = fnSource("drawStationPins");
-  ok("the marker opts out of bubbling", /bubblingMouseEvents:\s*false/.test(pins));
+  const factory = fnSource("numberedPin");
+  ok("the shared marker opts out of bubbling", /bubblingMouseEvents:\s*false/.test(factory));
 });
 
 group("the selected station is highlighted whichever way it was chosen", () => {
