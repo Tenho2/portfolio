@@ -30,14 +30,10 @@
  * list is served stale and nothing complains - so tools/test-sw-bump.mjs
  * asserts that every shell file was touched, and that the version moved with it.
  *
- * Last bumped: 2026-10-22, for archiving Wide and Glass, removing the false
- * footer claim, fixing the warning-button ink, adding seasonal baselines and
- * the scanline intensity control, the Windows 3.1 theme, the mobile
- * navigation / theme-mode / Editorial-dialog fixes, and the Win31 bottom bar.
+ * Last bumped: 2026-10-26, for the Win31 Hot Dog Stand dark-mode Easter egg.
  */
 
-const VERSION = "v83";
-b93450a (Fix: Resolve session leak and empty-bin ownership cascades)
+const VERSION = "v84";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [

@@ -415,25 +415,38 @@ tbody tr:hover {
   border: 0;
 }
 
-/* ---------- dark variant ----------
-   Windows 3.1 did not have a dark mode, but this app's shared header offers a
-   theme switch on every page. A muted charcoal window set keeps the switch
-   honest instead of leaving it visibly inert. */
+/* ---------- dark variant: Hot Dog Stand ----------
+   Windows 3.1's infamous colour scheme, hidden behind the shared header's dark
+   toggle. It is deliberately scoped to this layout so the normal Win31 desktop
+   and every other theme keep their own palettes. Red desktop, yellow windows,
+   red title bars, yellow title text and black ink. */
 
 body.dark[data-layout="win31"] {
-  --win-teal: #000000;
-  --win-gray: #404040;
-  --win-gray-light: #606060;
-  --win-gray-dark: #808080;
-  --surface: #404040;
-  --surface-2: #505050;
-  --surface-3: #606060;
-  --line: #808080;
-  --text: #ffffff;
-  --text-muted: #d0d0d0;
-  --win-black: #ffffff;
-  --bg: #000000;
-  --bg-2: #000000;
+  --win-teal: #ff0000;
+  --win-gray: #ffff00;
+  --win-gray-light: #ffff80;
+  --win-gray-dark: #800000;
+  --win-navy: #ff0000;
+  --win-black: #000000;
+
+  --bg: #ff0000;
+  --bg-2: #ff0000;
+  --surface: #ffff00;
+  --surface-2: #ffff33;
+  --surface-3: #ffff80;
+  --line: #800000;
+  --text: #000000;
+  --text-muted: #400000;
+  --primary: #ff0000;
+  --primary-ink: #ffff00;
+
+  /* The same hard two-tone bevels, retinted for the scheme. */
+  --bevel-out:
+    inset -2px -2px 0 #800000, inset 2px 2px 0 #fff,
+    inset -4px -4px 0 #ff0000, inset 4px 4px 0 #ffff80;
+  --bevel-in:
+    inset 2px 2px 0 #800000, inset -2px -2px 0 #fff,
+    inset 4px 4px 0 #ff0000, inset -4px -4px 0 #ffff80;
 }
 
 body.dark[data-layout="win31"] .panel > h2,
@@ -441,16 +454,23 @@ body.dark[data-layout="win31"] .sheet-box > h3,
 body.dark[data-layout="win31"] .confirm-box > h3,
 body.dark[data-layout="win31"] .auth-box > h3,
 body.dark[data-layout="win31"] .side-brand {
-  background: #000080;
-  color: #ffffff;
+  background: var(--win-navy);
+  color: var(--primary-ink);
+}
+
+/* Selected rows and the active nav tab use the same red/yellow pairing. */
+body.dark[data-layout="win31"] .vcard[aria-pressed="true"],
+body.dark[data-layout="win31"] .vcard[aria-pressed="true"] .s,
+body.dark[data-layout="win31"] .side-nav button[aria-current="page"] {
+  color: var(--primary-ink);
 }
 
 body.dark[data-layout="win31"] input,
 body.dark[data-layout="win31"] select,
 body.dark[data-layout="win31"] textarea,
 body.dark[data-layout="win31"] table {
-  background: #202020;
-  color: #ffffff;
+  background: #ffffe0;
+  color: #000000;
 }
 
 /* The desktop shell rules above use a fixed rail width, title-bar styling and
@@ -572,5 +592,34 @@ body.dark[data-layout="win31"] table {
   /* Clear the fixed bar so the last dashboard/settings card stays visible. */
   body[data-layout="win31"] .wrap {
     padding-bottom: 4.5rem;
+  }
+
+  /* The Easter egg follows the shell onto the phone: red rail, yellow tabs,
+     red active tab with yellow ink. */
+  body.dark[data-layout="win31"] .side {
+    background: var(--win-teal);
+    border-top-color: var(--win-gray-light);
+    box-shadow: inset 0 1px 0 var(--win-gray-dark);
+  }
+
+  body.dark[data-layout="win31"] .side-nav button {
+    background: var(--win-gray);
+    color: var(--text);
+    box-shadow:
+      inset -1px -1px #800000,
+      inset 1px 1px #fff,
+      inset -2px -2px #ff0000,
+      inset 2px 2px #ffff80;
+  }
+
+  body.dark[data-layout="win31"] .side-nav button.active,
+  body.dark[data-layout="win31"] .side-nav button[aria-current="page"] {
+    background: var(--win-navy);
+    color: var(--primary-ink);
+    box-shadow:
+      inset 1px 1px #800000,
+      inset -1px -1px #fff,
+      inset 2px 2px #ff0000,
+      inset -2px -2px #ffff80;
   }
 }

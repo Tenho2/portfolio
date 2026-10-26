@@ -90,11 +90,56 @@ group("controls are period-correct", () => {
   ok("the destructive variant keeps white ink", /\.btn\.dgr\s*\{[^}]*color:\s*#fff/.test(css));
 });
 
-group("the dark variant is deliberate", () => {
+group("the dark variant is Hot Dog Stand", () => {
   const dark = block('body.dark[data-layout="win31"] {');
-  ok("a dark palette exists", /--bg:\s*#000000/.test(dark));
-  ok("it keeps the navy title bar", /background:\s*#000080/.test(css));
-  ok("inputs stay readable", /body\.dark\[data-layout="win31"\] input/.test(css));
+  ok(
+    "the desktop is red",
+    /--win-teal:\s*#ff0000/.test(dark) &&
+      /--bg:\s*#ff0000/.test(dark) &&
+      /--bg-2:\s*#ff0000/.test(dark),
+  );
+  ok(
+    "the windows are yellow",
+    /--win-gray:\s*#ffff00/.test(dark) &&
+      /--surface:\s*#ffff00/.test(dark),
+  );
+  ok(
+    "the ink is black",
+    /--text:\s*#000000/.test(dark) &&
+      /--win-black:\s*#000000/.test(dark),
+  );
+  ok(
+    "the title bars are red with yellow ink",
+    /--win-navy:\s*#ff0000/.test(dark) &&
+      /--primary-ink:\s*#ffff00/.test(dark),
+  );
+  ok(
+    "the title bar uses the Hot Dog tokens",
+    /body\.dark\[data-layout="win31"\] \.panel > h2,[\s\S]{0,420}?background:\s*var\(--win-navy\);[\s\S]{0,80}?color:\s*var\(--primary-ink\);/.test(
+      css,
+    ),
+  );
+  ok(
+    "fields are pale yellow with black ink",
+    /body\.dark\[data-layout="win31"\] input,[\s\S]{0,240}?background:\s*#ffffe0;[\s\S]{0,80}?color:\s*#000000;/.test(
+      css,
+    ),
+  );
+  ok(
+    "the phone bar is red with yellow tabs",
+    /body\.dark\[data-layout="win31"\] \.side\s*\{[^}]*background:\s*var\(--win-teal\)/.test(
+      css,
+    ) &&
+      /body\.dark\[data-layout="win31"\] \.side-nav button\s*\{[^}]*background:\s*var\(--win-gray\)/.test(
+        css,
+      ),
+  );
+  ok(
+    "the active phone tab is red with yellow ink",
+    /body\.dark\[data-layout="win31"\] \.side-nav button\.active,[\s\S]{0,420}?background:\s*var\(--win-navy\);[\s\S]{0,80}?color:\s*var\(--primary-ink\);/.test(
+      css,
+    ),
+  );
 });
 
 group("the phone navigation is a full-width bottom bar", () => {
