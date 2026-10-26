@@ -30,11 +30,11 @@
  * list is served stale and nothing complains - so tools/test-sw-bump.mjs
  * asserts that every shell file was touched, and that the version moved with it.
  *
- * Last bumped: 2026-10-26, for durable pending writes, binned-row sync
- * reconciliation, automatic pulls, and honest sync status.
+ * Last bumped: 2026-10-26, for the retro-desktop layout and shared Hot Dog
+ * preference.
  */
 
-const VERSION = "v86";
+const VERSION = "v87";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [
@@ -46,6 +46,7 @@ const SHELL = [
   "./ev-tracker-brutal.html",
   "./ev-tracker-editorial.html",
   "./ev-tracker-win31.html",
+  "./ev-tracker-retro-desktop.html",
   "./app/app.css",
   "./app/app.js",
   "./app/layout-classic.css",
@@ -56,6 +57,7 @@ const SHELL = [
   "./app/ui/brutal.css",
   "./app/ui/editorial.css",
   "./app/ui/win31.css",
+  "./app/ui/retro-desktop.css",
   "./app/i18n.js",
   "./app/storage.js",
   "./app/stations.js",

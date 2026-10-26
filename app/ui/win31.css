@@ -416,12 +416,12 @@ tbody tr:hover {
 }
 
 /* ---------- dark variant: Hot Dog Stand ----------
-   Windows 3.1's infamous colour scheme, hidden behind the shared header's dark
+   Windows 3.1's infamous colour scheme, hidden behind the header's Hot Dog
    toggle. It is deliberately scoped to this layout so the normal Win31 desktop
    and every other theme keep their own palettes. Red desktop, yellow windows,
    red title bars, yellow title text and black ink. */
 
-body.dark[data-layout="win31"] {
+body.hotdog[data-layout="win31"] {
   --win-teal: #ff0000;
   --win-gray: #ffff00;
   --win-gray-light: #ffff80;
@@ -449,26 +449,26 @@ body.dark[data-layout="win31"] {
     inset 4px 4px 0 #ff0000, inset -4px -4px 0 #ffff80;
 }
 
-body.dark[data-layout="win31"] .panel > h2,
-body.dark[data-layout="win31"] .sheet-box > h3,
-body.dark[data-layout="win31"] .confirm-box > h3,
-body.dark[data-layout="win31"] .auth-box > h3,
-body.dark[data-layout="win31"] .side-brand {
+body.hotdog[data-layout="win31"] .panel > h2,
+body.hotdog[data-layout="win31"] .sheet-box > h3,
+body.hotdog[data-layout="win31"] .confirm-box > h3,
+body.hotdog[data-layout="win31"] .auth-box > h3,
+body.hotdog[data-layout="win31"] .side-brand {
   background: var(--win-navy);
   color: var(--primary-ink);
 }
 
 /* Selected rows and the active nav tab use the same red/yellow pairing. */
-body.dark[data-layout="win31"] .vcard[aria-pressed="true"],
-body.dark[data-layout="win31"] .vcard[aria-pressed="true"] .s,
-body.dark[data-layout="win31"] .side-nav button[aria-current="page"] {
+body.hotdog[data-layout="win31"] .vcard[aria-pressed="true"],
+body.hotdog[data-layout="win31"] .vcard[aria-pressed="true"] .s,
+body.hotdog[data-layout="win31"] .side-nav button[aria-current="page"] {
   color: var(--primary-ink);
 }
 
-body.dark[data-layout="win31"] input,
-body.dark[data-layout="win31"] select,
-body.dark[data-layout="win31"] textarea,
-body.dark[data-layout="win31"] table {
+body.hotdog[data-layout="win31"] input,
+body.hotdog[data-layout="win31"] select,
+body.hotdog[data-layout="win31"] textarea,
+body.hotdog[data-layout="win31"] table {
   background: #ffffe0;
   color: #000000;
 }
@@ -596,13 +596,13 @@ body.dark[data-layout="win31"] table {
 
   /* The Easter egg follows the shell onto the phone: red rail, yellow tabs,
      red active tab with yellow ink. */
-  body.dark[data-layout="win31"] .side {
+  body.hotdog[data-layout="win31"] .side {
     background: var(--win-teal);
     border-top-color: var(--win-gray-light);
     box-shadow: inset 0 1px 0 var(--win-gray-dark);
   }
 
-  body.dark[data-layout="win31"] .side-nav button {
+  body.hotdog[data-layout="win31"] .side-nav button {
     background: var(--win-gray);
     color: var(--text);
     box-shadow:
@@ -612,8 +612,8 @@ body.dark[data-layout="win31"] table {
       inset 2px 2px #ffff80;
   }
 
-  body.dark[data-layout="win31"] .side-nav button.active,
-  body.dark[data-layout="win31"] .side-nav button[aria-current="page"] {
+  body.hotdog[data-layout="win31"] .side-nav button.active,
+  body.hotdog[data-layout="win31"] .side-nav button[aria-current="page"] {
     background: var(--win-navy);
     color: var(--primary-ink);
     box-shadow:

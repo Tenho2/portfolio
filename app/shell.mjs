@@ -43,10 +43,15 @@ export const LAYOUTS = [
     label: "set.layoutEditorial",
   },
   { name: "win31", file: "ev-tracker-win31.html", label: "set.layoutWin31" },
+  {
+    name: "retro-desktop",
+    file: "ev-tracker-retro-desktop.html",
+    label: "set.layoutRetroDesktop",
+  },
 ];
 
 /** Layouts that use the experimental app/ui/ stylesheets, not app/app.css. */
-export const UI_THEMES = ["hud", "brutal", "editorial", "win31"];
+export const UI_THEMES = ["hud", "brutal", "editorial", "win31", "retro-desktop"];
 
 /** The filename for a layout name, used by the switcher to build its href. */
 export const fileFor = (name) => {

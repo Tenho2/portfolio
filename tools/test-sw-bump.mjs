@@ -40,6 +40,7 @@ const SHELL = [
   "ev-tracker-brutal.html",
   "ev-tracker-editorial.html",
   "ev-tracker-win31.html",
+  "ev-tracker-retro-desktop.html",
   "index.html",
   "sw.js",
   "manifest.json",
@@ -53,6 +54,7 @@ const SHELL = [
   "app/ui/brutal.css",
   "app/ui/editorial.css",
   "app/ui/win31.css",
+  "app/ui/retro-desktop.css",
   "app/i18n.js",
   "app/storage.js",
   "app/stations.js",
@@ -122,6 +124,7 @@ if (changedAll === null || untracked === null) {
     "ev-tracker-brutal.html",
     "ev-tracker-editorial.html",
     "ev-tracker-win31.html",
+    "ev-tracker-retro-desktop.html",
   ]
     .filter((f) => existsSync(f))
     .map((f) => readFileSync(f, "utf8"))

@@ -25,6 +25,7 @@ const base = readFileSync("app/ui/base.css", "utf8");
 const editorial = readFileSync("app/ui/editorial.css", "utf8");
 const brutal = readFileSync("app/ui/brutal.css", "utf8");
 const win31 = readFileSync("app/ui/win31.css", "utf8");
+const retro = readFileSync("app/ui/retro-desktop.css", "utf8");
 const shared = readFileSync("ev-tracker.html", "utf8");
 const hud = readFileSync("tools/hud-body.html", "utf8");
 
@@ -145,10 +146,13 @@ group("the other layouts already keep their mobile bars within bounds", () => {
   );
 });
 
-group("Win31 keeps its intended modes", () => {
-  ok("Win31 still has a dark variant", /body\.dark\[data-layout="win31"\]/.test(win31));
+group("Win31 and retro desktop keep their intended modes", () => {
+  ok("Win31 has a Hot Dog variant", /body\.hotdog\[data-layout="win31"\]/.test(win31));
   ok("Win31 keeps its teal desktop", /--win-teal:\s*#008080/.test(win31));
   ok("Win31 keeps its silver window", /--win-gray:\s*#c0c0c0/.test(win31));
+  ok("retro desktop has the same Hot Dog variant", /body\.hotdog\[data-layout="retro-desktop"\]/.test(retro));
+  ok("retro desktop keeps its teal desktop", /--win-teal:\s*#008080/.test(retro));
+  ok("retro desktop is not tied to global dark", !/body\.dark/.test(retro));
 });
 
 console.log(`\n${pass} passed, ${failures.length} failed`);

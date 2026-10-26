@@ -1,0 +1,625 @@
+/* Windows 3.1 theme.
+ *
+ * A deliberately period-correct skin: teal desktop, gray windows with hard
+ * two-tone bevels, navy title bars, black text and the square, high-contrast
+ * controls of Program Manager rather than the gradients of the later themes.
+ *
+ * It is a UI theme, so it loads app/ui/base.css first and must not depend on
+ * app/app.css. The shared markup is enough: .panel becomes a window, its h2 is
+ * the title bar, the aside is a program group, and .top is the menu strip.
+ * Keeping the DOM shared means every id app.js looks up survives without a
+ * second body file.
+ */
+
+:root {
+  /* Desktop and window chrome. */
+  --win-teal: #008080;
+  --win-gray: #c0c0c0;
+  --win-gray-light: #dfdfdf;
+  --win-gray-dark: #808080;
+  --win-navy: #000080;
+  --win-black: #000000;
+
+  --bg: var(--win-teal);
+  --bg-2: var(--win-teal);
+  --surface: var(--win-gray);
+  --surface-2: #d4d0c8;
+  --surface-3: #e8e8e8;
+  --line: var(--win-gray-dark);
+  --text: var(--win-black);
+  --text-muted: #404040;
+  --primary: var(--win-navy);
+  --primary-ink: #ffffff;
+  --accent: #800080;
+  --danger: #800000;
+  --warn: #808000;
+  --ok: #008000;
+
+  --radius: 0;
+  --radius-sm: 0;
+  --shadow: none;
+  --font: "MS Sans Serif", Tahoma, Geneva, Verdana, sans-serif;
+  --font-head: var(--font);
+  --font-mono: "Courier New", Courier, monospace;
+
+  --field-h: 24px;
+  --side-w: 238px;
+  --maxw: 1040px;
+
+  /* The two bevels are the whole visual language. Out for raised controls,
+     in for pressed controls and sunken fields. */
+  --bevel-out:
+    inset -2px -2px 0 #000, inset 2px 2px 0 #fff,
+    inset -4px -4px 0 #808080, inset 4px 4px 0 #dfdfdf;
+  --bevel-in:
+    inset 2px 2px 0 #000, inset -2px -2px 0 #fff,
+    inset 4px 4px 0 #808080, inset -4px -4px 0 #dfdfdf;
+}
+
+body {
+  background: var(--win-teal);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13px;
+  line-height: 1.35;
+  -webkit-font-smoothing: none;
+}
+
+/* ---------- windows ---------- */
+
+.panel,
+.sheet-box,
+.confirm-box,
+.auth-box {
+  position: relative;
+  background: var(--win-gray);
+  border: 0;
+  border-radius: 0;
+  box-shadow: var(--bevel-out);
+  padding: 10px;
+}
+
+.panel > h2,
+.sheet-box > h3,
+.confirm-box > h3,
+.auth-box > h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: -8px -8px 10px;
+  padding: 3px 6px;
+  background: var(--win-navy);
+  color: #fff;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* The title-bar button: decorative, like the close box, not a fake control. */
+.panel > h2::after,
+.sheet-box > h3::after,
+.confirm-box > h3::after,
+.auth-box > h3::after {
+  content: "";
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  margin-left: auto;
+  background: var(--win-gray);
+  box-shadow: var(--bevel-out);
+}
+
+/* ---------- shell ---------- */
+
+.side {
+  width: var(--side-w);
+  background: var(--win-gray);
+  border: 0;
+  border-right: 0;
+  box-shadow: var(--bevel-out);
+  padding: 8px;
+}
+
+.side-brand {
+  display: block;
+  margin: -8px -8px 8px;
+  padding: 3px 6px;
+  background: var(--win-navy);
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.side-nav {
+  display: block;
+  padding: 0;
+  margin: 0;
+}
+
+.side-nav li {
+  margin: 0 0 2px;
+}
+
+.side-nav button {
+  width: 100%;
+  min-height: 24px;
+  justify-content: flex-start;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  box-shadow: none;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  text-align: left;
+}
+
+.side-nav button:hover {
+  background: var(--win-gray-light);
+}
+
+.side-nav button[aria-current="page"] {
+  background: var(--win-navy);
+  color: #fff;
+}
+
+.side-nav button:focus-visible,
+.btn:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+a:focus-visible {
+  outline: 1px dotted var(--win-black);
+  outline-offset: -3px;
+}
+
+.top {
+  background: var(--win-gray);
+  border-bottom: 2px solid var(--win-gray-dark);
+  box-shadow: inset 0 1px 0 var(--win-gray-light);
+  padding: 4px 8px;
+}
+
+.top h1 {
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.wrap {
+  background: transparent;
+  padding: 10px;
+}
+
+.view > h2,
+.panel > h2 {
+  /* Kept together with the rule above; the panel heading is the title bar. */
+}
+
+/* ---------- controls ---------- */
+
+.btn,
+.tgl,
+.qa button {
+  min-height: 24px;
+  padding: 3px 10px;
+  border: 0;
+  border-radius: 0;
+  background: var(--win-gray);
+  color: var(--win-black);
+  box-shadow: var(--bevel-out);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.btn:hover,
+.tgl:hover,
+.qa button:hover {
+  background: var(--win-gray-light);
+  filter: none;
+  transform: none;
+}
+
+.btn:active,
+.tgl:active,
+.qa button:active {
+  box-shadow: var(--bevel-in);
+  transform: translate(1px, 1px);
+}
+
+.btn.ghost,
+.btn.sec {
+  background: var(--win-gray);
+  color: var(--win-black);
+  border: 0;
+  box-shadow: var(--bevel-out);
+}
+
+.btn.warn {
+  background: var(--warn);
+  color: #000;
+}
+
+.btn.dgr {
+  background: var(--danger);
+  color: #fff;
+}
+
+.btn.recommended {
+  background: var(--win-gray);
+  color: var(--win-black);
+  border: 0;
+  box-shadow: var(--bevel-out);
+  outline: 1px solid var(--win-black);
+  outline-offset: -4px;
+}
+
+input,
+select,
+textarea {
+  min-height: 24px;
+  padding: 2px 4px;
+  border: 0;
+  border-radius: 0;
+  background: #fff;
+  color: #000;
+  box-shadow: var(--bevel-in);
+  font-family: var(--font);
+  font-size: 13px;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--win-navy);
+}
+
+label,
+.lbl,
+.hint,
+.mini,
+.lead {
+  color: var(--text);
+  font-family: var(--font);
+}
+
+.hint,
+.mini {
+  color: var(--text-muted);
+}
+
+fieldset {
+  border: 0;
+  padding: 0;
+}
+
+/* ---------- content surfaces ---------- */
+
+.item,
+.vcard,
+.station-row,
+.loc-near-row,
+.camera-card,
+.howto,
+.res,
+.sync-banner,
+.toast,
+.codebox,
+.howto pre.sample {
+  background: var(--win-gray);
+  border: 0;
+  border-radius: 0;
+  box-shadow: var(--bevel-in);
+}
+
+.item,
+.vcard,
+.station-row,
+.loc-near-row,
+.camera-card {
+  padding: 6px;
+}
+
+.vcard[aria-pressed="true"] {
+  background: var(--win-navy);
+  color: #fff;
+}
+
+.vcard[aria-pressed="true"] .s {
+  color: #fff;
+}
+
+.tag,
+.chip,
+.shared-tag {
+  border: 0;
+  border-radius: 0;
+  background: var(--win-gray-light);
+  color: var(--win-black);
+  box-shadow: var(--bevel-out);
+  padding: 1px 5px;
+}
+
+.stats,
+.qa,
+.chips {
+  gap: 6px;
+}
+
+.stat {
+  background: var(--win-gray);
+  border: 0;
+  border-radius: 0;
+  box-shadow: var(--bevel-in);
+  padding: 6px;
+}
+
+.stat .n {
+  color: var(--win-navy);
+  text-shadow: none;
+  font-family: var(--font);
+  font-weight: 700;
+}
+
+.stat .l {
+  color: var(--text-muted);
+  letter-spacing: 0;
+}
+
+table {
+  background: #fff;
+  border: 0;
+  box-shadow: var(--bevel-in);
+}
+
+th {
+  background: var(--win-gray);
+  color: var(--win-black);
+  border: 0;
+  border-bottom: 1px solid var(--win-gray-dark);
+  font-weight: 700;
+}
+
+td {
+  border-color: var(--win-gray-light);
+}
+
+tbody tr:hover {
+  background: var(--win-gray-light);
+}
+
+/* ---------- overlays ---------- */
+
+.sheet {
+  background: rgb(0 0 0 / 0.35);
+  backdrop-filter: none;
+}
+
+.toast {
+  background: var(--win-gray);
+  color: var(--win-black);
+  border: 0;
+}
+
+/* ---------- dark variant: Hot Dog Stand ----------
+   Windows 3.1's infamous colour scheme, hidden behind the header's Hot Dog
+   toggle. It is deliberately scoped to this layout so the normal retro desktop
+   and every other theme keep their own palettes. Red desktop, yellow windows,
+   red title bars, yellow title text and black ink. */
+
+body.hotdog[data-layout="retro-desktop"] {
+  --win-teal: #ff0000;
+  --win-gray: #ffff00;
+  --win-gray-light: #ffff80;
+  --win-gray-dark: #800000;
+  --win-navy: #ff0000;
+  --win-black: #000000;
+
+  --bg: #ff0000;
+  --bg-2: #ff0000;
+  --surface: #ffff00;
+  --surface-2: #ffff33;
+  --surface-3: #ffff80;
+  --line: #800000;
+  --text: #000000;
+  --text-muted: #400000;
+  --primary: #ff0000;
+  --primary-ink: #ffff00;
+
+  /* The same hard two-tone bevels, retinted for the scheme. */
+  --bevel-out:
+    inset -2px -2px 0 #800000, inset 2px 2px 0 #fff,
+    inset -4px -4px 0 #ff0000, inset 4px 4px 0 #ffff80;
+  --bevel-in:
+    inset 2px 2px 0 #800000, inset -2px -2px 0 #fff,
+    inset 4px 4px 0 #ff0000, inset -4px -4px 0 #ffff80;
+}
+
+body.hotdog[data-layout="retro-desktop"] .panel > h2,
+body.hotdog[data-layout="retro-desktop"] .sheet-box > h3,
+body.hotdog[data-layout="retro-desktop"] .confirm-box > h3,
+body.hotdog[data-layout="retro-desktop"] .auth-box > h3,
+body.hotdog[data-layout="retro-desktop"] .side-brand {
+  background: var(--win-navy);
+  color: var(--primary-ink);
+}
+
+/* Selected rows and the active nav tab use the same red/yellow pairing. */
+body.hotdog[data-layout="retro-desktop"] .vcard[aria-pressed="true"],
+body.hotdog[data-layout="retro-desktop"] .vcard[aria-pressed="true"] .s,
+body.hotdog[data-layout="retro-desktop"] .side-nav button[aria-current="page"] {
+  color: var(--primary-ink);
+}
+
+body.hotdog[data-layout="retro-desktop"] input,
+body.hotdog[data-layout="retro-desktop"] select,
+body.hotdog[data-layout="retro-desktop"] textarea,
+body.hotdog[data-layout="retro-desktop"] table {
+  background: #ffffe0;
+  color: #000000;
+}
+
+/* The desktop shell rules above use a fixed rail width, title-bar styling and
+   13px nav labels. On a phone the navigator is a dedicated bottom bar, not a
+   floating window: no title bar, no window bevel around the rail, and five
+   equal push-button tabs that cannot bleed into the dashboard. */
+@media (max-width: 820px) {
+  body[data-layout="retro-desktop"] .side {
+    position: fixed;
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: auto;
+    z-index: 100;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    margin: 0;
+    padding: 0;
+    background: #c0c0c0;
+    border: 0;
+    border-top: 2px solid #ffffff;
+    box-shadow: inset 0 1px 0 #dfdfdf;
+  }
+
+  /* The brand is a window title bar on desktop; it has no place in a bar. */
+  body[data-layout="retro-desktop"] .side-brand,
+  body[data-layout="retro-desktop"] .side .badge,
+  body[data-layout="retro-desktop"] .side .who-mobile {
+    display: none;
+  }
+
+  body[data-layout="retro-desktop"] .side-nav {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+    width: 100%;
+    margin: 0;
+    padding: 4px;
+    gap: 4px;
+    flex-wrap: nowrap;
+    box-sizing: border-box;
+  }
+
+  body[data-layout="retro-desktop"] .side-nav li {
+    flex: 1 1 0;
+    min-width: 0;
+    margin: 0;
+  }
+
+  body[data-layout="retro-desktop"] .side-nav button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    gap: 2px;
+    padding: 3px 2px;
+    border: 0;
+    border-radius: 0;
+    background: #c0c0c0;
+    color: #000000;
+    font-size: 0.6rem;
+    line-height: 1.1;
+    text-align: center;
+    box-shadow:
+      inset -1px -1px #000,
+      inset 1px 1px #fff,
+      inset -2px -2px #808080,
+      inset 2px 2px #dfdfdf;
+  }
+
+  /* Pressed in place: the bevel inverts on the button itself, never on .side. */
+  body[data-layout="retro-desktop"] .side-nav button.active,
+  body[data-layout="retro-desktop"] .side-nav button[aria-current="page"] {
+    background: #c0c0c0;
+    color: #000000;
+    font-weight: 700;
+    box-shadow:
+      inset 1px 1px #000,
+      inset -1px -1px #fff,
+      inset 2px 2px #808080,
+      inset -2px -2px #dfdfdf;
+    transform: translate(1px, 1px);
+  }
+
+  body[data-layout="retro-desktop"] .side-nav button span:not(.ic):not(.bin-count) {
+    max-width: 100%;
+    overflow: visible;
+    white-space: normal;
+    line-height: 1.1;
+  }
+
+  /* Three dashboard actions, three equal columns. The shared auto-fit grid
+     leaves the third button alone on a new row at phone widths. */
+  body[data-layout="retro-desktop"] #dashboard .qa {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+  }
+  body[data-layout="retro-desktop"] #dashboard .qa button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* The fixed taskbar is above the sheet. Lift the sheet and shorten its
+     scroll area so the Save/Delete row can be reached instead of sitting
+     underneath the bar. */
+  body[data-layout="retro-desktop"] .sheet {
+    padding-bottom: 4.5rem;
+  }
+  body[data-layout="retro-desktop"] .sheet .sheet-box {
+    max-height: calc(90vh - 4.5rem);
+  }
+
+  /* Clear the fixed bar so the last dashboard/settings card stays visible. */
+  body[data-layout="retro-desktop"] .wrap {
+    padding-bottom: 4.5rem;
+  }
+
+  /* The Easter egg follows the shell onto the phone: red rail, yellow tabs,
+     red active tab with yellow ink. */
+  body.hotdog[data-layout="retro-desktop"] .side {
+    background: var(--win-teal);
+    border-top-color: var(--win-gray-light);
+    box-shadow: inset 0 1px 0 var(--win-gray-dark);
+  }
+
+  body.hotdog[data-layout="retro-desktop"] .side-nav button {
+    background: var(--win-gray);
+    color: var(--text);
+    box-shadow:
+      inset -1px -1px #800000,
+      inset 1px 1px #fff,
+      inset -2px -2px #ff0000,
+      inset 2px 2px #ffff80;
+  }
+
+  body.hotdog[data-layout="retro-desktop"] .side-nav button.active,
+  body.hotdog[data-layout="retro-desktop"] .side-nav button[aria-current="page"] {
+    background: var(--win-navy);
+    color: var(--primary-ink);
+    box-shadow:
+      inset 1px 1px #800000,
+      inset -1px -1px #fff,
+      inset 2px 2px #ff0000,
+      inset -2px -2px #ffff80;
+  }
+}

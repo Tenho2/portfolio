@@ -23,6 +23,10 @@
      or language choice. Navigation handedness is the same kind of device
      preference, so it is global too. */
   var K_THEME = "theme";
+  /* Shared Hot Dog state for the two windowed retro layouts. It is a device
+     preference, not an account one, and deliberately separate from theme:
+     ordinary dark mode must not turn either retro layout into Hot Dog. */
+  var K_HOTDOG = "retroHotDog";
   var K_NAVALIGN = "navAlign";
   /* Night-vision red for the HUD layout. Like the theme and the navigation
      handedness, it describes the device rather than the account, so it is a
@@ -42,8 +46,8 @@
    * @param {?string} userId null means the signed-out bucket.
    * @returns {{v: string, s: string, bv: string, bs: string, pd: string,
    *            pw: string, p: string, df: string, f: string, bf: string,
-   *            fr: string, n: string, t: string, na: string, rm: string,
-   *            layout: string, scan: string}}
+   *            fr: string, n: string, t: string, hotdog: string,
+   *            na: string, rm: string, layout: string, scan: string}}
    */
   function keysFor(userId) {
     var pre = userId ? "ev.v1." + userId + "." : "ev.v1.local.";
@@ -80,6 +84,7 @@
          instead of a bare uuid. */
       n: pre + "shareNames",
       t: K_THEME,
+      hotdog: K_HOTDOG,
       na: K_NAVALIGN,
       rm: K_REDMODE,
       layout: K_LAYOUT,

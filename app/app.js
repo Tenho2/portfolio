@@ -210,6 +210,11 @@
             label: "set.layoutEditorial",
           },
           { name: "win31", file: "ev-tracker-win31.html", label: "set.layoutWin31" },
+          {
+            name: "retro-desktop",
+            file: "ev-tracker-retro-desktop.html",
+            label: "set.layoutRetroDesktop",
+          },
         ];
         /* Layouts that were archived in 2026-10-22. A stored preference pointing
            at one of these is rewritten on the next start, so a user who chose
@@ -231,6 +236,11 @@
         /* The one layout whose header button is not a colour toggle. */
         function isHud() {
           return currentLayout() === "hud";
+        }
+        /* The two windowed retro layouts share one Hot Dog preference. */
+        function isRetroLayout() {
+          var l = currentLayout();
+          return l === "win31" || l === "retro-desktop";
         }
         /** The file for a remembered layout name, or null if it is not a page. */
         function layoutFileFor(name) {
@@ -7835,7 +7845,7 @@ function retryNow() {
             th.innerHTML =
               '<option value="light">' + TXT("set.themeLight") + "</option>" +
               '<option value="dark">' + TXT("set.themeDark") + "</option>";
-            th.value = document.body.classList.contains("dark") ? "dark" : "light";
+            th.value = darkThemeOn() ? "dark" : "light";
           }
           var sc = $("scanlinesSel");
           if (sc) sc.value = String(scanlineLevel());
@@ -7878,7 +7888,7 @@ function retryNow() {
         }
         /** Apply a theme chosen in Settings, reusing the existing toggle. */
         function applyThemeSel(want) {
-          var isDark = document.body.classList.contains("dark");
+          var isDark = darkThemeOn();
           if ((want === "dark") !== isDark) $("themeBtn").click();
         }
         /** Apply the navigation handedness, a global device preference like the
@@ -14383,6 +14393,26 @@ $("syncBadge").addEventListener("click", function () {
         function redModeOn() {
           return document.body.classList.contains("red-mode");
         }
+        function hotdogOn() {
+          return document.body.classList.contains("hotdog");
+        }
+        /** All retro window layouts share this one device preference. */
+        function toggleHotdog() {
+          var on = document.body.classList.toggle("hotdog");
+          try {
+            localStorage.setItem(K.hotdog, on ? "on" : "off");
+          } catch (e) {
+            /* the scheme applies now; only the remembered choice is lost */
+          }
+          syncThemeButton();
+          renderChart();
+        }
+        /** The effective dark/hot-dog state for the theme controls. */
+        function darkThemeOn() {
+          return isRetroLayout()
+            ? hotdogOn()
+            : document.body.classList.contains("dark");
+        }
         function toggleRedMode() {
           var on = document.body.classList.toggle("red-mode");
           try {
@@ -14434,10 +14464,13 @@ $("syncBadge").addEventListener("click", function () {
          * @param {boolean} hud whether this page is the HUD layout
          * @returns {{dark: boolean, red: boolean, scan: number}}
          */
-        function bootClasses(stored, hud) {
+        function bootClasses(stored, hud, retro) {
           var s = stored || {};
           return {
-            dark: s.theme === "dark",
+            /* Retro layouts own Hot Dog; ordinary dark mode must not trigger
+               it merely because another layout was dark last time. */
+            dark: !retro && s.theme === "dark",
+            hotdog: !!retro && s.retroHotDog === "on",
             red: !!hud && s.redMode === "on",
             /* Opt-in: absent (never set) is 0, not a default texture. */
             scan: !!hud ? normaliseScanlineLevel(s.scanlines) : 0,
@@ -14462,12 +14495,15 @@ $("syncBadge").addEventListener("click", function () {
           var c = bootClasses(
             {
               theme: readPreference(K.t),
+              retroHotDog: readPreference(K.hotdog),
               redMode: readPreference(K.rm),
               scanlines: readPreference(K.scan),
             },
             isHud(),
+            isRetroLayout(),
           );
           document.body.classList.toggle("dark", c.dark);
+          document.body.classList.toggle("hotdog", c.hotdog);
           document.body.classList.toggle("red-mode", c.red);
           document.body.classList.toggle("show-scanlines", c.scan > 0);
           document.body.setAttribute("data-scanlines", String(c.scan));
@@ -14496,12 +14532,18 @@ $("syncBadge").addEventListener("click", function () {
             return;
           }
           b.removeAttribute("aria-pressed");
-          setThemeIcon(document.body.classList.contains("dark") ? "🌙" : "☀️");
+          setThemeIcon(darkThemeOn() ? "🌙" : "☀️");
         }
         $("themeBtn").addEventListener("click", function () {
           /* On the HUD this button is the red-mode switch, not a colour toggle. */
           if (isHud()) {
             toggleRedMode();
+            return;
+          }
+          /* Win31 and retro-desktop share Hot Dog; other layouts use the
+             ordinary global dark mode. */
+          if (isRetroLayout()) {
+            toggleHotdog();
             return;
           }
           var d = document.body.classList.toggle("dark");

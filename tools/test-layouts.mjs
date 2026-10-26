@@ -50,6 +50,7 @@ const PAGES = [
   { name: "brutal", file: "ev-tracker-brutal.html", ui: true },
   { name: "editorial", file: "ev-tracker-editorial.html", ui: true },
   { name: "win31", file: "ev-tracker-win31.html", ui: true },
+  { name: "retro-desktop", file: "ev-tracker-retro-desktop.html", ui: true },
 ];
 
 /* Two families. The shared-markup pages must stay byte-identical; the

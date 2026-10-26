@@ -48,6 +48,7 @@ const PAGES = [
   { name: "brutal", file: "ev-tracker-brutal.html" },
   { name: "editorial", file: "ev-tracker-editorial.html" },
   { name: "win31", file: "ev-tracker-win31.html" },
+  { name: "retro-desktop", file: "ev-tracker-retro-desktop.html" },
 ];
 
 /* The pure helpers, with the real page list injected so the mapping under test
@@ -94,6 +95,7 @@ group("the start page redirects to the remembered layout, and only there", () =>
   /* The manifest's start_url is ev-tracker.html, whose layout is classic. */
   is("classic remembers the HUD", layoutRedirectTarget("classic", "hud"), "ev-tracker-hud.html");
   is("classic remembers focus", layoutRedirectTarget("classic", "focus"), "ev-tracker-focus.html");
+  is("classic remembers retro desktop", layoutRedirectTarget("classic", "retro-desktop"), "ev-tracker-retro-desktop.html");
   /* Archived layouts are mapped, not left to fall through. Wide is a shared
      layout, so classic is the honest replacement; Glass was experimental, so its
      users land on the surviving experimental UI. */
@@ -135,6 +137,17 @@ group("the picker remembers the choice through the storage module", () => {
   is("and is not account-scoped", S.keysFor("user-a").layout, "layout");
 });
 
+group("retro layouts share one Hot Dog preference", () => {
+  ok("one helper identifies both windowed layouts", /function isRetroLayout\(\)[\s\S]{0,180}?win31[\s\S]{0,80}?retro-desktop/.test(app));
+  ok("Hot Dog is stored in one shared key", /localStorage\.setItem\(K\.hotdog, on \? "on" : "off"\)/.test(app));
+  ok("the storage module declares the shared key", /var K_HOTDOG = "retroHotDog"/.test(storage));
+  const S = loadStorage(fakeStorage());
+  is("the key is global", S.keysFor("user-a").hotdog, S.keysFor(null).hotdog);
+  is("and named retroHotDog", S.keysFor(null).hotdog, "retroHotDog");
+  ok("the header button toggles it on both layouts", /if \(isRetroLayout\(\)\)[\s\S]{0,120}?toggleHotdog\(\)/.test(app));
+  ok("the Settings selector sees the effective state", /function applyThemeSel[\s\S]{0,160}?darkThemeOn\(\)/.test(app));
+});
+
 group("appearance preferences are independent body classes", () => {
   const none = bootClasses({}, true);
   is("no stored theme is light", none.dark, false);
@@ -166,11 +179,36 @@ group("appearance preferences are independent body classes", () => {
   is("40% is accepted", bootClasses({ scanlines: "40" }, true).scan, 40);
   is("an unknown level is off", bootClasses({ scanlines: "65" }, true).scan, 0);
   is("the scanline key is published", loadStorage(fakeStorage()).scanlines, "scanlines");
+
+  /* Retro layouts have their own Hot Dog switch. Global dark from another
+     layout must not turn them red/yellow. */
+  const retroHotdog = bootClasses(
+    { theme: "light", retroHotDog: "on" },
+    false,
+    true,
+  );
+  is("retro Hot Dog applies", retroHotdog.hotdog, true);
+  is("retro Hot Dog is not ordinary dark", retroHotdog.dark, false);
+  const retroLight = bootClasses(
+    { theme: "dark", retroHotDog: "off" },
+    false,
+    true,
+  );
+  is("global dark is ignored by a retro layout", retroLight.dark, false);
+  is("retro stays light without its own flag", retroLight.hotdog, false);
+  const normal = bootClasses(
+    { theme: "dark", retroHotDog: "on" },
+    false,
+    false,
+  );
+  is("ordinary layouts keep the global dark theme", normal.dark, true);
+  is("ordinary layouts never get the retro class", normal.hotdog, false);
 });
 
 group("one preference cannot wipe another at boot", () => {
   const restore = fnSource("restoreAppearance");
   ok("it toggles the theme", /classList\.toggle\("dark", c\.dark\)/.test(restore));
+  ok("it toggles Hot Dog", /classList\.toggle\("hotdog", c\.hotdog\)/.test(restore));
   ok("it toggles red mode", /classList\.toggle\("red-mode", c\.red\)/.test(restore));
   ok("it toggles scanlines", /classList\.toggle\("show-scanlines", c\.scan > 0\)/.test(restore));
   /* Assigning className would drop the other two, which is the exact failure a

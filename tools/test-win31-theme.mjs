@@ -16,6 +16,8 @@ import { readFileSync } from "node:fs";
 
 const css = readFileSync("app/ui/win31.css", "utf8");
 const page = readFileSync("ev-tracker-win31.html", "utf8");
+const retroCss = readFileSync("app/ui/retro-desktop.css", "utf8");
+const retroPage = readFileSync("ev-tracker-retro-desktop.html", "utf8");
 const i18n = readFileSync("app/i18n.js", "utf8");
 
 let pass = 0;
@@ -30,12 +32,15 @@ function group(name, fn) {
   console.log(`${failures.length - before ? "FAIL" : "ok  "}  ${name}`);
 }
 /** The block of a CSS rule, so a value is checked in the right scope. */
-function block(selector) {
-  const i = css.indexOf(selector);
+function blockIn(source, selector) {
+  const i = source.indexOf(selector);
   if (i < 0) return "";
-  const open = css.indexOf("{", i);
-  const close = css.indexOf("}", open);
-  return open < 0 || close < 0 ? "" : css.slice(open + 1, close);
+  const open = source.indexOf("{", i);
+  const close = source.indexOf("}", open);
+  return open < 0 || close < 0 ? "" : source.slice(open + 1, close);
+}
+function block(selector) {
+  return blockIn(css, selector);
 }
 
 group("the page is a UI-theme page, not a shared one", () => {
@@ -45,6 +50,19 @@ group("the page is a UI-theme page, not a shared one", () => {
   ok("it loads its own theme", /href="app\/ui\/win31\.css"/.test(page));
   ok("it does not load app.css", !/href="app\/app\.css"/.test(page));
   ok("it still loads the application", /src="app\/app\.js"/.test(page));
+});
+
+group("the retro desktop is a separate, faithful window theme", () => {
+  ok("the page exists", retroPage.length > 0);
+  ok("it declares retro-desktop", /<body[^>]*data-layout="retro-desktop"/.test(retroPage));
+  ok("it loads the UI base", /href="app\/ui\/base\.css"/.test(retroPage));
+  ok("it loads its own theme", /href="app\/ui\/retro-desktop\.css"/.test(retroPage));
+  ok("it does not load app.css", !/href="app\/app\.css"/.test(retroPage));
+  ok("it still loads the application", /src="app\/app\.js"/.test(retroPage));
+  ok("no Win31 selectors leaked into the copy", !/data-layout="win31"/.test(retroCss));
+  ok("the retro selectors are scoped", /data-layout="retro-desktop"/.test(retroCss));
+  ok("both window themes use the shared hotdog class", /body\.hotdog\[data-layout="win31"\]/.test(css) && /body\.hotdog\[data-layout="retro-desktop"\]/.test(retroCss));
+  ok("neither window theme is tied to ordinary dark", !/body\.dark/.test(css) && !/body\.dark/.test(retroCss));
 });
 
 group("the palette is Windows 3.1, not a recolour", () => {
@@ -91,7 +109,7 @@ group("controls are period-correct", () => {
 });
 
 group("the dark variant is Hot Dog Stand", () => {
-  const dark = block('body.dark[data-layout="win31"] {');
+  const dark = block('body.hotdog[data-layout="win31"] {');
   ok(
     "the desktop is red",
     /--win-teal:\s*#ff0000/.test(dark) &&
@@ -115,29 +133,45 @@ group("the dark variant is Hot Dog Stand", () => {
   );
   ok(
     "the title bar uses the Hot Dog tokens",
-    /body\.dark\[data-layout="win31"\] \.panel > h2,[\s\S]{0,420}?background:\s*var\(--win-navy\);[\s\S]{0,80}?color:\s*var\(--primary-ink\);/.test(
+    /body\.hotdog\[data-layout="win31"\] \.panel > h2,[\s\S]{0,420}?background:\s*var\(--win-navy\);[\s\S]{0,80}?color:\s*var\(--primary-ink\);/.test(
       css,
     ),
   );
   ok(
     "fields are pale yellow with black ink",
-    /body\.dark\[data-layout="win31"\] input,[\s\S]{0,240}?background:\s*#ffffe0;[\s\S]{0,80}?color:\s*#000000;/.test(
+    /body\.hotdog\[data-layout="win31"\] input,[\s\S]{0,240}?background:\s*#ffffe0;[\s\S]{0,80}?color:\s*#000000;/.test(
       css,
     ),
   );
   ok(
     "the phone bar is red with yellow tabs",
-    /body\.dark\[data-layout="win31"\] \.side\s*\{[^}]*background:\s*var\(--win-teal\)/.test(
+    /body\.hotdog\[data-layout="win31"\] \.side\s*\{[^}]*background:\s*var\(--win-teal\)/.test(
       css,
     ) &&
-      /body\.dark\[data-layout="win31"\] \.side-nav button\s*\{[^}]*background:\s*var\(--win-gray\)/.test(
+      /body\.hotdog\[data-layout="win31"\] \.side-nav button\s*\{[^}]*background:\s*var\(--win-gray\)/.test(
         css,
       ),
   );
   ok(
     "the active phone tab is red with yellow ink",
-    /body\.dark\[data-layout="win31"\] \.side-nav button\.active,[\s\S]{0,420}?background:\s*var\(--win-navy\);[\s\S]{0,80}?color:\s*var\(--primary-ink\);/.test(
+    /body\.hotdog\[data-layout="win31"\] \.side-nav button\.active,[\s\S]{0,420}?background:\s*var\(--win-navy\);[\s\S]{0,80}?color:\s*var\(--primary-ink\);/.test(
       css,
+    ),
+  );
+});
+
+group("retro desktop keeps the same light and Hot Dog schemes", () => {
+  const root = blockIn(retroCss, ":root {");
+  ok("light teal desktop", /--win-teal:\s*#008080/.test(root));
+  ok("light silver window", /--win-gray:\s*#c0c0c0/.test(root));
+  const dark = blockIn(retroCss, 'body.hotdog[data-layout="retro-desktop"] {');
+  ok("red Hot Dog desktop", /--win-teal:\s*#ff0000/.test(dark) && /--bg:\s*#ff0000/.test(dark));
+  ok("yellow Hot Dog windows", /--win-gray:\s*#ffff00/.test(dark) && /--surface:\s*#ffff00/.test(dark));
+  ok("black Hot Dog ink", /--text:\s*#000000/.test(dark));
+  ok(
+    "red title bars",
+    /body\.hotdog\[data-layout="retro-desktop"\] \.panel > h2,[\s\S]{0,420}?background:\s*var\(--win-navy\);/.test(
+      retroCss,
     ),
   );
 });
