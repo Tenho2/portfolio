@@ -122,10 +122,11 @@ group("line endings are consistent", () => {
 /* ------------------------------------------------------------------ */
 group("every id the script looks up exists in the markup", () => {
   /* $("x") is the short accessor used throughout, and getElementById("x") is
-     the long form. Both resolve to the same requirement. */
+     the long form. Both resolve to the same requirement. The lookups live in
+     app/app.js, not in the page, so they must be read from `code`. */
   const wanted = new Map();
-  for (const m of src.matchAll(/\$\("([^"]+)"\)/g)) wanted.set(m[1], "$()");
-  for (const m of src.matchAll(/getElementById\("([^"]+)"\)/g))
+  for (const m of code.matchAll(/\$\("([^"]+)"\)/g)) wanted.set(m[1], "$()");
+  for (const m of code.matchAll(/getElementById\("([^"]+)"\)/g))
     wanted.set(m[1], "getElementById");
 
   const ids = new Set([...src.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]));
@@ -135,10 +136,45 @@ group("every id the script looks up exists in the markup", () => {
      exists today: the script creates it and assigns dl.id = "favOptions". A
      statically declared id assignment counts as present, otherwise every such
      element would be reported forever. */
-  for (const m of src.matchAll(/\.id\s*=\s*"([^"]+)"/g)) ids.add(m[1]);
-  for (const m of src.matchAll(/setAttribute\(\s*"id"\s*,\s*"([^"]+)"/g)) ids.add(m[1]);
+  for (const m of code.matchAll(/\.id\s*=\s*"([^"]+)"/g)) ids.add(m[1]);
+  for (const m of code.matchAll(/setAttribute\(\s*"id"\s*,\s*"([^"]+)"/g)) ids.add(m[1]);
+  /* Rows built as HTML strings also declare ids statically. */
+  for (const m of code.matchAll(/\bid=\\?"([^"\\]+)\\?"/g)) ids.add(m[1]);
 
-  const missing = [...wanted.keys()].filter((id) => !ids.has(id));
+  /* The retro page deliberately has chrome the shared page does not. These ids
+     are checked on their owning page below instead of being allowed to weaken
+     the shared-markup contract. */
+  const RETRO_ONLY_IDS = [
+    "retro-taskbar",
+    "retro-task-windows",
+    "retro-clock",
+    "retro-start-btn",
+    "retro-start-menu",
+  ];
+  const retroPage = readFileSync("ev-tracker-retro-desktop.html", "utf8");
+  for (const id of RETRO_ONLY_IDS)
+    is(
+      `retro-only id ${id} exists on the retro page`,
+      retroPage.includes(`id="${id}"`),
+      true,
+    );
+
+  /* The HUD body carries the scanline control. stationOut is a deliberately
+     guarded lookup left behind by an older station result slot; it must not
+     make the shared-page contract fail. */
+  const HUD_ONLY_IDS = ["scanlinesSel"];
+  const hudPage = readFileSync("tools/hud-body.html", "utf8");
+  for (const id of HUD_ONLY_IDS)
+    is(`HUD-only id ${id} exists in the HUD body`, hudPage.includes(`id="${id}"`), true);
+  const GUARDED_IDS = ["stationOut"];
+
+  const missing = [...wanted.keys()].filter(
+    (id) =>
+      !ids.has(id) &&
+      !RETRO_ONLY_IDS.includes(id) &&
+      !HUD_ONLY_IDS.includes(id) &&
+      !GUARDED_IDS.includes(id),
+  );
   is(`all ${wanted.size} looked-up ids exist (${missing.length} missing)`, missing.length, 0);
   for (const id of missing.slice(0, 15))
     fail("script looks up an id that is not in the markup", `"${id}" via ${wanted.get(id)}`);

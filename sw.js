@@ -30,11 +30,11 @@
  * list is served stale and nothing complains - so tools/test-sw-bump.mjs
  * asserts that every shell file was touched, and that the version moved with it.
  *
- * Last bumped: 2026-10-26, for the retro-desktop layout and shared Hot Dog
- * preference.
+ * Last bumped: 2026-10-26, for the retro-desktop window manager, taskbar and
+ * Start menu.
  */
 
-const VERSION = "v87";
+const VERSION = "v88";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [

@@ -623,3 +623,262 @@ body.hotdog[data-layout="retro-desktop"] table {
       inset -2px -2px #ffff80;
   }
 }
+
+/* ---------- retro desktop window manager ----------
+   The shared rail and header are the modern shell. On this page they are
+   replaced by a taskbar, a Start menu and one foreground window at a time. */
+body[data-layout="retro-desktop"] {
+  --retro-taskbar-h: 44px;
+}
+
+body[data-layout="retro-desktop"] .top,
+body[data-layout="retro-desktop"] .side {
+  display: none;
+}
+
+body[data-layout="retro-desktop"] .wrap {
+  margin-left: 0;
+  padding: 8px;
+  padding-bottom: calc(
+    var(--retro-taskbar-h) + env(safe-area-inset-bottom, 0px) + 12px
+  );
+}
+
+/* The view itself is the program window. Panels remain groups inside it. */
+body[data-layout="retro-desktop"] .view {
+  position: relative;
+  background: var(--win-gray);
+  box-shadow: var(--bevel-out);
+  padding: 4px;
+  margin-bottom: 8px;
+}
+
+body[data-layout="retro-desktop"] .view:not(.on) {
+  display: none;
+}
+
+body[data-layout="retro-desktop"] .retro-window-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 22px;
+  margin: 0 0 4px;
+  padding: 2px 3px;
+  background: var(--win-navy);
+  color: var(--primary-ink);
+  font-weight: 700;
+}
+
+body[data-layout="retro-desktop"] .retro-window-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body[data-layout="retro-desktop"] .retro-window-controls {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+  flex: none;
+}
+
+body[data-layout="retro-desktop"] .retro-window-controls button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 16px;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--win-gray);
+  color: var(--win-black);
+  box-shadow: var(--bevel-out);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+body[data-layout="retro-desktop"] .retro-window-controls button:active {
+  box-shadow: var(--bevel-in);
+  transform: translate(1px, 1px);
+}
+
+/* ---------- taskbar ---------- */
+body[data-layout="retro-desktop"] .retro-taskbar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 50;
+  display: flex;
+  align-items: stretch;
+  gap: 3px;
+  min-height: var(--retro-taskbar-h);
+  padding: 3px 4px;
+  padding-bottom: calc(3px + env(safe-area-inset-bottom, 0px));
+  background: var(--win-gray);
+  border-top: 2px solid var(--win-gray-light);
+  box-shadow: inset 0 1px 0 var(--win-gray-dark);
+}
+
+body[data-layout="retro-desktop"] .retro-task-windows {
+  display: flex;
+  align-items: stretch;
+  gap: 3px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+body[data-layout="retro-desktop"] .retro-task-windows::-webkit-scrollbar {
+  display: none;
+}
+
+body[data-layout="retro-desktop"] .retro-task-window,
+body[data-layout="retro-desktop"] .retro-start-btn,
+body[data-layout="retro-desktop"] .retro-menu-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  min-width: 0;
+  min-height: 24px;
+  padding: 2px 7px;
+  border: 0;
+  border-radius: 0;
+  background: var(--win-gray);
+  color: var(--text);
+  box-shadow: var(--bevel-out);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+body[data-layout="retro-desktop"] .retro-task-window {
+  flex: 0 1 11rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body[data-layout="retro-desktop"] .retro-task-window[aria-pressed="true"] {
+  background: var(--win-gray-light);
+  box-shadow: var(--bevel-in);
+  transform: translate(1px, 1px);
+}
+
+body[data-layout="retro-desktop"] .retro-start-btn {
+  flex: none;
+  margin-left: auto;
+  font-weight: 700;
+}
+
+body[data-layout="retro-desktop"] .retro-clock {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  min-width: 3.6rem;
+  padding: 0 4px;
+  border-left: 1px solid var(--win-gray-dark);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Start menu ---------- */
+body[data-layout="retro-desktop"] .retro-start-menu {
+  position: fixed;
+  right: 6px;
+  bottom: calc(
+    var(--retro-taskbar-h) + env(safe-area-inset-bottom, 0px) + 6px
+  );
+  z-index: 55;
+  width: min(18rem, calc(100vw - 12px));
+  max-height: calc(100vh - var(--retro-taskbar-h) - 18px);
+  overflow-y: auto;
+  padding: 3px;
+  background: var(--win-gray);
+  box-shadow: var(--bevel-out);
+}
+
+body[data-layout="retro-desktop"] .retro-start-title {
+  margin-bottom: 3px;
+  padding: 2px 6px;
+  background: var(--win-navy);
+  color: var(--primary-ink);
+  font-weight: 700;
+}
+
+body[data-layout="retro-desktop"] .retro-menu-item {
+  display: flex;
+  width: 100%;
+  margin-bottom: 2px;
+  text-align: left;
+}
+
+body[data-layout="retro-desktop"] .retro-menu-item:last-child {
+  margin-bottom: 0;
+}
+
+body[data-layout="retro-desktop"] .retro-menu-item:hover,
+body[data-layout="retro-desktop"] .retro-menu-item:focus-visible,
+body[data-layout="retro-desktop"] .retro-task-window:hover,
+body[data-layout="retro-desktop"] .retro-start-btn:hover {
+  background: var(--win-gray-light);
+}
+
+body[data-layout="retro-desktop"] .retro-window-controls button:focus-visible,
+body[data-layout="retro-desktop"] .retro-task-window:focus-visible,
+body[data-layout="retro-desktop"] .retro-start-btn:focus-visible,
+body[data-layout="retro-desktop"] .retro-menu-item:focus-visible {
+  outline: 1px dotted var(--win-black);
+  outline-offset: -3px;
+}
+
+/* A modal belongs to the whole desktop, not just the window behind it. */
+body.need-auth[data-layout="retro-desktop"] #retro-taskbar,
+body.need-auth[data-layout="retro-desktop"] #retro-start-menu {
+  display: none !important;
+}
+
+@media (max-width: 560px) {
+  body[data-layout="retro-desktop"] {
+    --retro-taskbar-h: 48px;
+  }
+
+  body[data-layout="retro-desktop"] .retro-taskbar {
+    gap: 2px;
+    padding-left: 2px;
+    padding-right: 2px;
+  }
+
+  body[data-layout="retro-desktop"] .retro-task-window {
+    flex-basis: 8.5rem;
+    min-height: 38px;
+  }
+
+  body[data-layout="retro-desktop"] .retro-start-btn {
+    min-height: 38px;
+    padding: 2px 9px;
+  }
+
+  body[data-layout="retro-desktop"] .retro-window-controls button {
+    width: 30px;
+    height: 28px;
+  }
+
+  body[data-layout="retro-desktop"] .retro-start-menu {
+    right: 4px;
+  }
+}

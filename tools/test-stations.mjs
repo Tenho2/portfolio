@@ -761,7 +761,12 @@ await group("a remembered position does not outlive its view", () => {
   /* It existed only to avoid a second geolocation prompt in the same sitting.
      Held for the life of the page, the camera button could never ask again -
      and the 50 m accuracy gate was only ever applied to the first search. */
-  ok("it is cleared on navigation", /if \(id !== "stations"\)[\s\S]{0,300}?stationCentre = null/.test(app));
+  ok(
+    "it is cleared on navigation",
+    /if \(!opts\.preserveStations && id !== "stations"\)[\s\S]{0,300}?stationCentre = null/.test(
+      app,
+    ),
+  );
   ok("the camera results go with it", /stationCentre = null;[\s\S]{0,200}?cameraResults = \[\]/.test(app));
 });
 

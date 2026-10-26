@@ -23,7 +23,12 @@
  * Usage:  node tools/emit-pages.mjs
  */
 import { readFileSync, writeFileSync } from "node:fs";
-import { LAYOUTS, linkLinesFor, SCRIPT_LINES } from "../app/shell.mjs";
+import {
+  LAYOUTS,
+  bodyExtrasFor,
+  linkLinesFor,
+  SCRIPT_LINES,
+} from "../app/shell.mjs";
 
 const SOURCE = "ev-tracker.html";
 
@@ -132,6 +137,7 @@ for (const entry of LAYOUTS) {
     "  </head>",
     bodyOpen,
     ...markupFor(layout),
+    ...bodyExtrasFor(layout),
     ...SCRIPT_LINES,
     "  </body>",
     "</html>",

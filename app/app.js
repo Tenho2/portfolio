@@ -60,6 +60,7 @@
           try {
             /* After the text is swapped, so the labels read in the new language. */
             syncNavButtonNames();
+            syncRetroChromeLabels();
             render();
             syncCents();
             syncHints();
@@ -100,6 +101,30 @@
           dirty = false,          price = 0.2,
           editFav = null,
           editVehId = null;
+        /* Retro desktop window lifecycle. Only ev-tracker-retro-desktop.html
+           has the chrome; every helper below is inert on the other layouts. */
+        var retroWindows = {};
+        var retroForeground = null;
+        var retroChromeReady = false;
+        var retroChrome = null;
+        var RETRO_VIEW_ORDER = [
+          "dashboard",
+          "add-session",
+          "view-data",
+          "settings",
+          "bin",
+          "favourites",
+          "stations",
+        ];
+        var RETRO_VIEW_LABELS = {
+          dashboard: "nav.dashboard",
+          "add-session": "nav.add",
+          "view-data": "nav.log",
+          settings: "nav.set",
+          bin: "nav.bin",
+          favourites: "nav.fav",
+          stations: "st.findCharger",
+        };
 
         /* ---------- the bin ----------
            Binned rows are held in their own arrays instead of being flagged in
@@ -241,6 +266,10 @@
         function isRetroLayout() {
           var l = currentLayout();
           return l === "win31" || l === "retro-desktop";
+        }
+        /* Only this layout has a taskbar and a window lifecycle. */
+        function isRetroDesktop() {
+          return currentLayout() === "retro-desktop";
         }
         /** The file for a remembered layout name, or null if it is not a page. */
         function layoutFileFor(name) {
@@ -4935,6 +4964,7 @@ function hoursToHM(h, alwaysSeconds) {
           authUser = user || null;
           var signed = !!user;
           document.body.classList.toggle("need-auth", !signed);
+          closeRetroStartMenu(false);
           $("logoutBtn").hidden = !signed;
           var chip = $("userChip");
           if (chip) chip.hidden = !signed;
@@ -9225,8 +9255,11 @@ for (var c = 0; c < head.length; c++) {
             var apply = backgroundLocks > 0;
             var app = document.querySelector(".wrap"),
               side = document.querySelector(".side"),
-              foot = document.querySelector("footer");
-            [app, side, foot].forEach(function (n) {
+              foot = document.querySelector("footer"),
+              retroBar = $("retro-taskbar"),
+              retroMenu = $("retro-start-menu");
+            if (apply) closeRetroStartMenu(false);
+            [app, side, foot, retroBar, retroMenu].forEach(function (n) {
               if (!n) return;
               if (apply) {
               if (!n.hasAttribute("data-a11y-inert")) {
@@ -9639,6 +9672,7 @@ closeEdit();
              what left the button reading "Update favourite" for the next, new
              address, so the following save overwrote the entry just added. */
           clearFavForm();
+          markRetroWindowClean("favourites");
           toast(
             TXT(isNum(f.lat) ? "toast.favSavedMap" : "toast.favSavedNo", {
               v: f.name,
@@ -9672,10 +9706,33 @@ closeEdit();
         function editFavById(id) {
           var f = favById(id);
           if (!f) return;
+          /* A minimized Favourites window keeps its draft. Editing another
+             favourite would replace that draft, so ask first just as the close
+             button does. */
+          if (
+            isRetroDesktop() &&
+            retroWindow("favourites") &&
+            isRetroWindowDirty("favourites")
+          ) {
+            askConfirm(TXT("retro.discardDraft"), {
+              heading: "retro.discardDraftTitle",
+              ok: "retro.discardDraftOk",
+              cancel: "confirm.cancel",
+            }).then(function (yes) {
+              if (!yes) return;
+              resetRetroWindow("favourites");
+              go("favourites");
+              fillFavForm(f);
+              markRetroWindowClean("favourites");
+              $("fName").focus();
+            });
+            return;
+          }
           /* Navigate first: entering the view resets the form for a new entry,
              so the fill has to happen after it or it would be wiped. */
           go("favourites");
           fillFavForm(f);
+          markRetroWindowClean("favourites");
           $("fName").focus();
         }
         /**
@@ -11784,8 +11841,540 @@ function hasKey(key) {
           }
           setLocStatus(TXT("st.chosen", { v: s.name || TXT("st.unnamed") }));
         }
+        /* ---------- retro desktop window manager ---------- */
+
+        /** The translated title used by title bars and taskbar buttons. */
+        function retroTitleFor(id) {
+          var btn = document.querySelector(
+            '.side-nav button[data-go="' + id + '"]',
+          );
+          var span =
+            btn && btn.querySelector("span[data-i18n]:not(.ic):not(.bin-count)");
+          var text = span ? String(span.textContent || "").trim() : "";
+          if (text) return text;
+          return TXT(RETRO_VIEW_LABELS[id] || "nav.dashboard");
+        }
+
+        /** Is this view present in the current retro workspace? */
+        function retroWindow(id) {
+          return retroWindows[id] || null;
+        }
+
+        function setRetroWindowState(id, state) {
+          var w = retroWindows[id];
+          if (w) w.state = state;
+          var el = retroChrome && retroChrome.views[id];
+          if (el) el.setAttribute("data-window-state", state);
+        }
+
+        /** One title bar per shared view, created only on the retro page. */
+        function ensureRetroWindowChrome() {
+          var views = document.querySelectorAll(".view");
+          for (var i = 0; i < views.length; i++) {
+            var el = views[i];
+            if (!el.id || !el.classList.contains("view")) continue;
+            retroChrome.views[el.id] = el;
+            el.setAttribute("data-window-state", "closed");
+            if (el.querySelector("[data-retro-window-titlebar]")) continue;
+
+            var bar = document.createElement("div");
+            bar.className = "retro-window-titlebar";
+            bar.setAttribute("data-retro-window-titlebar", "");
+
+            var title = document.createElement("span");
+            title.className = "retro-window-title";
+
+            var controls = document.createElement("div");
+            controls.className = "retro-window-controls";
+
+            var min = document.createElement("button");
+            min.type = "button";
+            min.setAttribute("data-retro-window-minimize", "");
+            min.textContent = "\u2013";
+
+            var close = document.createElement("button");
+            close.type = "button";
+            close.setAttribute("data-retro-window-close", "");
+            close.textContent = "X";
+
+            controls.appendChild(min);
+            controls.appendChild(close);
+            bar.appendChild(title);
+            bar.appendChild(controls);
+            el.insertBefore(bar, el.firstChild);
+          }
+        }
+
+        /** Keep the translated title-bar labels in step with the nav. */
+        function syncRetroChromeLabels() {
+          if (!retroChromeReady) return;
+          for (var i = 0; i < RETRO_VIEW_ORDER.length; i++) {
+            var id = RETRO_VIEW_ORDER[i];
+            var el = retroChrome.views[id];
+            if (!el) continue;
+            var title = retroTitleFor(id);
+            var bar = el.querySelector("[data-retro-window-titlebar]");
+            if (bar) {
+              var text = bar.querySelector(".retro-window-title");
+              if (text) text.textContent = title;
+              var min = bar.querySelector("[data-retro-window-minimize]");
+              var close = bar.querySelector("[data-retro-window-close]");
+              if (min) {
+                min.setAttribute(
+                  "aria-label",
+                  TXT("retro.minimizeWindow", { v: title }),
+                );
+                min.title = TXT("retro.minimizeWindow", { v: title });
+              }
+              if (close) {
+                close.setAttribute(
+                  "aria-label",
+                  TXT("retro.closeWindow", { v: title }),
+                );
+                close.title = TXT("retro.closeWindow", { v: title });
+              }
+            }
+          }
+          syncRetroTaskbar();
+          updateRetroClock();
+        }
+
+        /** Rebuild the taskbar buttons that represent open windows. */
+        function syncRetroTaskbar() {
+          if (!retroChromeReady) return;
+          var host = retroChrome.windows;
+          var wanted = {};
+          for (var i = 0; i < RETRO_VIEW_ORDER.length; i++) {
+            var id = RETRO_VIEW_ORDER[i];
+            var w = retroWindows[id];
+            if (!w || w.state === "closed") continue;
+            wanted[id] = true;
+            var btn = host.querySelector(
+              '[data-retro-task-toggle="' + id + '"]',
+            );
+            if (!btn) {
+              btn = document.createElement("button");
+              btn.type = "button";
+              btn.className = "retro-task-window";
+              btn.setAttribute("data-retro-task-toggle", id);
+              host.appendChild(btn);
+            }
+            var title = retroTitleFor(id);
+            btn.textContent = title;
+            btn.setAttribute(
+              "aria-pressed",
+              w.state === "normal" ? "true" : "false",
+            );
+            var action =
+              w.state === "normal" ? "retro.minimizeWindow" : "retro.restoreWindow";
+            btn.setAttribute("aria-label", TXT(action, { v: title }));
+            btn.title = TXT(action, { v: title });
+          }
+          var existing = host.querySelectorAll("[data-retro-task-toggle]");
+          for (var j = 0; j < existing.length; j++) {
+            var key = existing[j].getAttribute("data-retro-task-toggle");
+            if (!wanted[key]) existing[j].parentNode.removeChild(existing[j]);
+          }
+        }
+
+        function clearRetroHash() {
+          if (location.hash) {
+            history.replaceState(
+              null,
+              "",
+              location.pathname + location.search,
+            );
+          }
+        }
+
+        function updateRetroClock() {
+          if (!retroChromeReady || !retroChrome.clock) return;
+          var now = new Date();
+          var locale =
+            (window.EV_I18N &&
+              typeof window.EV_I18N.currentLang === "function" &&
+              window.EV_I18N.currentLang()) ||
+            document.documentElement.lang ||
+            "en";
+          var time;
+          var full;
+          try {
+            time = new Intl.DateTimeFormat(locale, {
+              hour: "2-digit",
+              minute: "2-digit",
+            }).format(now);
+            full = new Intl.DateTimeFormat(locale, {
+              dateStyle: "full",
+              timeStyle: "short",
+            }).format(now);
+          } catch (e) {
+            time = now.toLocaleTimeString();
+            full = now.toLocaleString();
+          }
+          retroChrome.clock.textContent = time;
+          retroChrome.clock.dateTime = now.toISOString();
+          retroChrome.clock.title = full;
+          retroChrome.clock.setAttribute("aria-label", full);
+        }
+
+        /**
+         * Serialize only the transient state that closing a window would lose.
+         * Auto-saving controls are deliberately excluded: changing the theme or
+         * the unit price is already committed and must not ask to be discarded.
+         */
+        function retroDirtyValue(id) {
+          var parts = [];
+          if (id === "add-session") {
+            var form = $("sForm");
+            if (!form) return "";
+            var els = form.elements;
+            for (var i = 0; i < els.length; i++) {
+              var el = els[i];
+              if (!el || el.disabled) continue;
+              if (
+                el.type === "button" ||
+                el.type === "submit" ||
+                el.type === "reset" ||
+                el.type === "file"
+              )
+                continue;
+              var checked =
+                el.type === "checkbox" || el.type === "radio"
+                  ? !!el.checked
+                  : null;
+              parts.push(
+                el.name || el.id || String(i),
+                el.type || "",
+                checked === null ? String(el.value) : checked,
+              );
+            }
+            var geo = typeof locGeo === "object" && locGeo ? locGeo : {};
+            parts.push("geo", geo.lat, geo.lng, geo.label);
+            return JSON.stringify(parts);
+          }
+          if (id === "favourites") {
+            var favIds = [
+              "fName",
+              "fAddr",
+              "fLat",
+              "fLng",
+              "fPrice",
+              "fPriceCents",
+            ];
+            for (var fi = 0; fi < favIds.length; fi++) {
+              var fel = $(favIds[fi]);
+              parts.push(favIds[fi], fel ? String(fel.value) : "");
+            }
+            parts.push("editFav", editFav || "");
+            return JSON.stringify(parts);
+          }
+          if (id === "settings") {
+            var settingsIds = [
+              "curPass",
+              "newPass",
+              "confirmPass",
+              "vName",
+              "vOdo",
+              "redeemCode",
+              "shareUser",
+            ];
+            for (var si = 0; si < settingsIds.length; si++) {
+              var sel = $(settingsIds[si]);
+              parts.push(settingsIds[si], sel ? String(sel.value) : "");
+            }
+            return JSON.stringify(parts);
+          }
+          return "";
+        }
+
+        function markRetroWindowClean(id) {
+          var w = retroWindows[id];
+          if (!w) return;
+          w.baseline = retroDirtyValue(id);
+        }
+
+        function isRetroWindowDirty(id) {
+          var w = retroWindows[id];
+          if (!w) return false;
+          if (w.baseline === null) {
+            w.baseline = retroDirtyValue(id);
+            return false;
+          }
+          return retroDirtyValue(id) !== w.baseline;
+        }
+
+        function openRetroStartMenu() {
+          if (!retroChromeReady) return;
+          retroChrome.menu.hidden = false;
+          retroChrome.startBtn.setAttribute("aria-expanded", "true");
+          var first = retroChrome.menu.querySelector(".retro-menu-item");
+          if (first) first.focus();
+        }
+
+        function closeRetroStartMenu(restoreFocus) {
+          if (!retroChromeReady) return;
+          var wasOpen = !retroChrome.menu.hidden;
+          retroChrome.menu.hidden = true;
+          retroChrome.startBtn.setAttribute("aria-expanded", "false");
+          if (wasOpen && restoreFocus) retroChrome.startBtn.focus();
+        }
+
+        function focusRetroTaskbar() {
+          if (!retroChromeReady) return;
+          var next = retroChrome.windows.querySelector(
+            "[data-retro-task-toggle]",
+          );
+          if (next) next.focus();
+          else retroChrome.startBtn.focus();
+        }
+
+        /** Minimize a foreground window without losing its DOM or form state. */
+        function minimizeRetroWindow(id, restoreFocus) {
+          var w = retroWindow(id);
+          if (!w || w.state !== "normal") return;
+          setRetroWindowState(id, "minimized");
+          var el = retroChrome && retroChrome.views[id];
+          if (el) el.classList.remove("on");
+          if (view === id) view = "";
+          if (retroForeground === id) retroForeground = null;
+          clearRetroHash();
+          syncRetroTaskbar();
+          if (restoreFocus !== false) focusRetroTaskbar();
+        }
+
+        function toggleRetroTaskbarWindow(id) {
+          var w = retroWindow(id);
+          if (!w) return;
+          if (w.state === "minimized") activateRetroWindow(id);
+          else if (w.state === "normal") minimizeRetroWindow(id, true);
+        }
+
+        /** Show one view without running its one-time initialization. */
+        function showRetroView(id) {
+          view = id;
+          var btns;
+          for (var i = 0; i < RETRO_VIEW_ORDER.length; i++) {
+            var el = retroChrome.views[RETRO_VIEW_ORDER[i]];
+            if (el) el.classList.toggle("on", RETRO_VIEW_ORDER[i] === id);
+          }
+          btns = document.querySelectorAll(".side-nav button");
+          for (var j = 0; j < btns.length; j++) {
+            if (btns[j].getAttribute("data-go") === id)
+              btns[j].setAttribute("aria-current", "page");
+            else btns[j].removeAttribute("aria-current");
+          }
+          if (location.hash.slice(1) !== id)
+            history.replaceState(null, "", "#" + id);
+          render();
+        }
+
+        /** Leaflet measures a hidden box as zero; redraw after restoring. */
+        function restoreRetroViewExtras(id) {
+          if (
+            id !== "favourites" &&
+            id !== "stations" &&
+            id !== "add-session"
+          )
+            return;
+          if (typeof loadLeaflet !== "function") return;
+          loadLeaflet(function () {
+            var names =
+              id === "favourites"
+                ? ["map"]
+                : id === "stations"
+                  ? ["stationMap"]
+                  : ["sessMap"];
+            names.forEach(function (name) {
+              var slot = maps[name];
+              if (!slot || !slot.map) return;
+              setTimeout(function () {
+                try {
+                  slot.map.invalidateSize();
+                } catch (e) {}
+              }, 80);
+            });
+          });
+        }
+
+        /**
+         * Open a fresh window, or restore a minimized one. Only a fresh open
+         * runs the per-view initialization that resets forms and defaults.
+         */
+        function activateRetroWindow(id) {
+          if (!retroChromeReady || !retroChrome.views[id]) return;
+          closeRetroStartMenu(false);
+          var w = retroWindows[id];
+          var isFresh = !w;
+          if (retroForeground && retroForeground !== id) {
+            minimizeRetroWindow(retroForeground, false);
+          }
+          if (!w) {
+            w = retroWindows[id] = {
+              state: "normal",
+              baseline: null,
+            };
+          } else {
+            w.state = "normal";
+          }
+          setRetroWindowState(id, "normal");
+          retroForeground = id;
+          showRetroView(id);
+          if (isFresh) {
+            enterView(id, { preserveStations: true });
+            markRetroWindowClean(id);
+          } else {
+            restoreRetroViewExtras(id);
+          }
+          syncRetroTaskbar();
+          window.scrollTo(0, 0);
+        }
+
+        /** Reset the transient state that belongs to one view instance. */
+        function resetRetroWindow(id) {
+          if (id === "add-session") {
+            resetSessionFormState();
+          } else if (id === "favourites") {
+            clearFavForm();
+          } else if (id === "settings") {
+            clearPasswordFields();
+            setPassMsg("");
+            if ($("vName")) $("vName").value = "";
+            if ($("vOdo")) $("vOdo").value = "";
+            if ($("redeemCode")) $("redeemCode").value = "";
+            if ($("shareUser")) $("shareUser").value = "";
+          } else if (id === "stations") {
+            stationResults = [];
+            stationCentre = null;
+            stationOpen = null;
+            cameraResults = [];
+            var sl = $("stationList");
+            var cl = $("cameraList");
+            if (sl) sl.innerHTML = "";
+            if (cl) cl.innerHTML = "";
+            setCameraStatus("");
+            var smb = $("stationMapBox");
+            if (smb) smb.hidden = true;
+            clearPin("stationMap");
+          }
+        }
+
+        /** Close one window, asking first when it holds unsaved work. */
+        function closeRetroWindow(id) {
+          var w = retroWindow(id);
+          if (!w) return Promise.resolve(false);
+          var title = retroTitleFor(id);
+          function finish() {
+            var wasForeground = retroForeground === id || view === id;
+            resetRetroWindow(id);
+            delete retroWindows[id];
+            var el = retroChrome && retroChrome.views[id];
+            if (el) {
+              el.classList.remove("on");
+              el.setAttribute("data-window-state", "closed");
+            }
+            if (wasForeground) {
+              retroForeground = null;
+              view = "";
+              clearRetroHash();
+            }
+            syncRetroTaskbar();
+            if (wasForeground) focusRetroTaskbar();
+            return true;
+          }
+          if (!isRetroWindowDirty(id)) return Promise.resolve(finish());
+          return askConfirm(
+            TXT("retro.closeDirty", { v: title }),
+            {
+              heading: "retro.closeTitle",
+              ok: "retro.closeAnyway",
+              cancel: "confirm.cancel",
+            },
+          ).then(function (yes) {
+            return yes ? finish() : false;
+          });
+        }
+
+        function initRetroChrome() {
+          if (!isRetroDesktop()) return;
+          var taskbar = $("retro-taskbar");
+          var windows = $("retro-task-windows");
+          var clock = $("retro-clock");
+          var startBtn = $("retro-start-btn");
+          var menu = $("retro-start-menu");
+          if (!taskbar || !windows || !clock || !startBtn || !menu) return;
+          retroChrome = {
+            taskbar: taskbar,
+            windows: windows,
+            clock: clock,
+            startBtn: startBtn,
+            menu: menu,
+            views: {},
+          };
+          retroChromeReady = true;
+          ensureRetroWindowChrome();
+          syncRetroChromeLabels();
+
+          startBtn.addEventListener("click", function () {
+            if (menu.hidden) openRetroStartMenu();
+            else closeRetroStartMenu(true);
+          });
+
+          menu.addEventListener("click", function (e) {
+            var target = e.target;
+            if (!target || !target.closest) return;
+            if (target.closest("[data-retro-sync]")) {
+              closeRetroStartMenu(false);
+              openSyncPanel(startBtn);
+              return;
+            }
+            /* The shared data-go delegate performs the navigation after this
+               bubble. Returning focus to Start keeps it out of the now-hidden
+               menu while the window opens. */
+            if (target.closest("[data-go]")) closeRetroStartMenu(true);
+          });
+
+          document.addEventListener("click", function (e) {
+            var target = e.target;
+            if (
+              !menu.hidden &&
+              target &&
+              !menu.contains(target) &&
+              !startBtn.contains(target)
+            )
+              closeRetroStartMenu(false);
+
+            var t =
+              target && target.closest ? target.closest("[data-retro-window-minimize],[data-retro-window-close],[data-retro-task-toggle]") : null;
+            if (!t) return;
+            if (t.hasAttribute("data-retro-window-minimize")) {
+              var minView = t.closest(".view");
+              if (minView) minimizeRetroWindow(minView.id, true);
+              return;
+            }
+            if (t.hasAttribute("data-retro-window-close")) {
+              var closeView = t.closest(".view");
+              if (closeView) closeRetroWindow(closeView.id);
+              return;
+            }
+            if (t.hasAttribute("data-retro-task-toggle")) {
+              toggleRetroTaskbarWindow(
+                t.getAttribute("data-retro-task-toggle"),
+              );
+            }
+          });
+
+          document.addEventListener("keydown", function (e) {
+            if (e.key !== "Escape" || menu.hidden) return;
+            e.preventDefault();
+            closeRetroStartMenu(true);
+          });
+
+          updateRetroClock();
+          window.setInterval(updateRetroClock, 30000);
+        }
+
         /* ---------- routing ---------- */
-        function go(id) {
+        function showView(id) {
           view = id;
           var views = document.querySelectorAll(".view");
           for (var i = 0; i < views.length; i++)
@@ -11799,6 +12388,10 @@ function hasKey(key) {
           if (location.hash.slice(1) !== id)
             history.replaceState(null, "", "#" + id);
           render();
+        }
+
+        function enterView(id, opts) {
+          opts = opts || {};
           /* Only fills an empty field, so re-entering the view is safe and the
              default appears without ever overwriting a typed location. */
           if (id === "add-session") {
@@ -11815,8 +12408,10 @@ function hasKey(key) {
           /* Leaving the station view drops the remembered position. It was only
              ever there to avoid asking the user for a second fix in the same
              sitting, and holding it for the life of the page meant the camera
-             button could never ask again - even from somewhere else. */
-          if (id !== "stations") {
+             button could never ask again - even from somewhere else. Retro
+             windows preserve it while minimized, so only the classic layouts
+             run this cleanup on navigation. */
+          if (!opts.preserveStations && id !== "stations") {
             stationCentre = null;
             cameraResults = [];
             var cl = $("cameraList");
@@ -11856,9 +12451,17 @@ function hasKey(key) {
               }, 80);
             });
           }
-          window.scrollTo(0, 0);
         }
 
+        function go(id) {
+          if (isRetroDesktop() && retroChromeReady) {
+            activateRetroWindow(id);
+            return;
+          }
+          showView(id);
+          enterView(id);
+          window.scrollTo(0, 0);
+        }
         /* ---------- actions ---------- */
         /**
          * Delete a vehicle and every session that belongs to it.
@@ -12226,6 +12829,7 @@ function emptyBin() {
           vehicles.push(v);
           $("vName").value = "";
           $("vOdo").value = "";
+          markRetroWindowClean("settings");
           save();
           go("dashboard");
           toast(TXT("toast.vehAdd", { v: name }));
@@ -14059,6 +14663,30 @@ $("syncBadge").addEventListener("click", function () {
              one renders as "…is lower than the 50 000 km recorded on ." */
           return { value: base, label: TXT("odo.startReading") };
         }
+        /** Return the add-session form and its transient state to a new entry. */
+        function resetSessionFormState() {
+          var f = $("sForm");
+          if (f) f.reset();
+          if ($("favNameWrap")) $("favNameWrap").hidden = true;
+          /* reset() clears the season box, so re-derive it from the freshly
+             stamped date rather than leaving the next charge unclassified. */
+          winterTouched = false;
+          stampDefaults();
+          defaultWinter(true);
+          costAuto = false;
+          priceAuto = false;
+          energyAuto = false;
+          defaultDuration();
+          resetPayers();
+          syncCents();
+          syncHints();
+          locGeo = { lat: null, lng: null, label: "" };
+          closeSuggest();
+          clearPin("sessMap");
+          if ($("sessMapBox")) $("sessMapBox").hidden = true;
+          setLocStatus("");
+        }
+
         function commitSession(f, d) {
           var v = veh();
           var hadMileage = d.mileage.value.trim() !== "";
@@ -14128,25 +14756,8 @@ $("syncBadge").addEventListener("click", function () {
               matched ? matched.lng : null,
             );
           }
-          f.reset();
-          $("favNameWrap").hidden = true;
-          /* reset() clears the season box, so re-derive it from the freshly
-             stamped date rather than leaving the next charge unclassified. */
-          winterTouched = false;
-          stampDefaults();
-          defaultWinter(true);
-          costAuto = false;
-          priceAuto = false;
-          energyAuto = false;
-          defaultDuration();
-          resetPayers();
-          syncCents();
-          syncHints();
-          locGeo = { lat: null, lng: null, label: "" };
-          closeSuggest();
-          clearPin("sessMap");
-          $("sessMapBox").hidden = true;
-          setLocStatus("");
+          resetSessionFormState();
+          markRetroWindowClean("add-session");
           go("dashboard");
           /* A session saved with no reading is a legitimate outcome, so it is
              said plainly rather than left to look like a dropped field. Captured
@@ -14710,6 +15321,7 @@ $("eDelete").addEventListener("click", function () {
         $("location").setAttribute("list", "favOptions");
         renderFavs();
         stampDefaults();
+        initRetroChrome();
         var start = location.hash.slice(1);
         go(document.getElementById(start) ? start : "dashboard");
         watchChartLib();
@@ -14743,6 +15355,9 @@ $("eDelete").addEventListener("click", function () {
           pullIfStale(PULL_PERIOD_MS);
         }, PULL_PERIOD_MS);
         setInterval(function () {
+          /* A retro Add-session window owns its snapshot. Re-stamping its date
+             and time underneath the user would turn a clean draft dirty. */
+          if (isRetroDesktop() && retroWindow("add-session")) return;
           var ae = document.activeElement;
           if (ae !== $("date") && ae !== $("time") && !$("sForm").contains(ae))
             stampDefaults();
