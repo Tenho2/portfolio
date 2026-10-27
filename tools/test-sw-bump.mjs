@@ -55,6 +55,8 @@ const SHELL = [
   "app/ui/editorial.css",
   "app/ui/win31.css",
   "app/ui/retro-desktop.css",
+  "app/ui/wallpaper/retro-desk-wallpaper-comp.jpg",
+  "app/ui/wallpaper/retro-desk-wallpaper-2comp.jpg",
   "app/i18n.js",
   "app/storage.js",
   "app/stations.js",
@@ -130,11 +132,28 @@ if (changedAll === null || untracked === null) {
     .map((f) => readFileSync(f, "utf8"))
     .join("\n");
 
+  /* CSS-referenced assets do not appear in page HTML. */
+  const cssText = ["app/ui/retro-desktop.css"]
+    .filter((f) => existsSync(f))
+    .map((f) => readFileSync(f, "utf8"))
+    .join("\n");
+
+  /* The alternate wallpaper is deliberately cached for offline use but has no
+     UI selector yet, so it is the one explicit cache-only shell asset. */
+  const CACHE_ONLY_ASSETS = new Set([
+    "app/ui/wallpaper/retro-desk-wallpaper-2comp.jpg",
+  ]);
+
   const shellTouched = SHELL.filter((f) => {
     if (!touched.has(f)) return false;
     if (f === "sw.js") return false;
     /* An added file under app/ only matters once it is referenced. */
-    if (f.startsWith("app/") && !pageText.includes(f.split("/").pop())) {
+    if (
+      f.startsWith("app/") &&
+      !pageText.includes(f.split("/").pop()) &&
+      !cssText.includes(f.split("/").pop()) &&
+      !CACHE_ONLY_ASSETS.has(f)
+    ) {
       is(`${f} is present but not loaded by the page`, "loaded", "not loaded");
       return false;
     }

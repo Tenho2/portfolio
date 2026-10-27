@@ -65,6 +65,21 @@ body {
   -webkit-font-smoothing: none;
 }
 
+body[data-layout="retro-desktop"] {
+  background-color: var(--win-teal);
+  background-image: url("wallpaper/retro-desk-wallpaper-comp.jpg");
+  background-position: center bottom;
+  background-repeat: no-repeat;
+  background-size: cover;
+  image-rendering: pixelated;
+}
+
+/* Keep the wallpaper sharp without pixelating maps, photos or the chart. */
+body[data-layout="retro-desktop"] img,
+body[data-layout="retro-desktop"] canvas {
+  image-rendering: auto;
+}
+
 /* ---------- windows ---------- */
 
 /* Dialogs and the signed-out box are still real windows. The outer .view is
@@ -470,6 +485,10 @@ body.hotdog[data-layout="retro-desktop"] {
   --text-muted: #400000;
   --primary: #ff0000;
   --primary-ink: #ffff00;
+
+  /* Hot Dog is a flat red desktop, not a tinted wallpaper. */
+  background-image: none;
+  background-color: var(--win-teal);
 
   /* The same hard two-tone bevels, retinted for the scheme. */
   --bevel-out:

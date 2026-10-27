@@ -30,11 +30,10 @@
  * list is served stale and nothing complains - so tools/test-sw-bump.mjs
  * asserts that every shell file was touched, and that the version moved with it.
  *
- * Last bumped: 2026-10-27, for station filtering, sorting and operator
- * extraction.
+ * Last bumped: 2026-10-27, for the retro desktop wallpapers.
  */
 
-const VERSION = "v91";
+const VERSION = "v92";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [
@@ -58,6 +57,8 @@ const SHELL = [
   "./app/ui/editorial.css",
   "./app/ui/win31.css",
   "./app/ui/retro-desktop.css",
+  "./app/ui/wallpaper/retro-desk-wallpaper-comp.jpg",
+  "./app/ui/wallpaper/retro-desk-wallpaper-2comp.jpg",
   "./app/i18n.js",
   "./app/storage.js",
   "./app/stations.js",

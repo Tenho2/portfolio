@@ -708,7 +708,7 @@ are recorded here so the next build does not repeat the discovery.
       the compact Add-session nearby list. ABS and ABC are both recognised;
       live explicit operator names remain authoritative. Tests: power parsing, connector classification,
       OR/AND semantics, sort order, operator-list search/preservation, filtered
-      map/list/status, no-match state and i18n keys. `sw.js` is v91.
+      map/list/status, no-match state and i18n keys. `sw.js` is v92.
 
 - [ ] **Win 3.1-style desktop default handedness.**
       Default the Win 3.1-style desktop to left-handed when no explicit
