@@ -1,21 +1,48 @@
 # Where we left off
 
-Written at the end of the 2026-10-22 session. Durable engineering knowledge
+Written at the end of the 2026-10-27 session. Durable engineering knowledge
 belongs in [README.md](README.md); this file is the part that goes stale.
 
 ## State
 
 |                |                                                                              |
 | -------------- | ---------------------------------------------------------------------------- |
-| HEAD           | `e8671e4` — commit and push are the user's job (see ground rules below)      |
-| Working tree   | **dirty on purpose**: the 2026-10-22 layout/settings batch is uncommitted    |
-| Service worker | `v76`                                                                        |
+| HEAD           | `585f67f` — commit and push are the user's job (see ground rules below)      |
+| Working tree   | documentation-only changes are uncommitted                                   |
+| Service worker | `v92`                                                                        |
 | Build stamp    | `2026-10-22`                                                                 |
-| Tests          | 2133 assertions, 0 failures, across 31 suites (`npm run check`)              |
+| Tests          | all suites pass, 0 failures (`npm run check`); exact total not recorded      |
 | Database       | migrations `15-vehicle-baseline` and `16-vehicle-seasonal-baseline` required |
 
-The assertion total is the sum of the per-suite counts; `tools/test-i18n-markup.mjs`
-reports by group rather than printing a number, so it is not in that figure.
+## 2026-10-27: retro window manager, station discovery, wallpaper
+
+- **Retro desktop window manager.** `retro-desktop` now has a generated taskbar,
+  Start menu, per-view title bars, one foreground window and a real
+  minimize/restore/close lifecycle. Closing a dirty Add/Favourites/Settings
+  window asks through `askConfirm`; minimised windows keep their forms. Hot Dog
+  is one shared `retroHotDog` key for `win31` and `retro-desktop`, and the Start
+  menu has a direct theme toggle. Handedness comes from the existing
+  `data-nav-align` setting. See `test-retro-window-manager.mjs` and
+  `test-retro-window-lifecycle.mjs`.
+- **Nested-window cleanup.** The outer `.view` is the only window frame; inner
+  `.panel` elements are flat content groups. Dialogs remain windows.
+- **Nearby pins on the Add-session map.** `numberedPin()` and
+  `drawNumberedPins()` are shared by the Stations and session maps. Session-map
+  marker clicks go through `useNearbyPlace()`; user dot, bounds and cleanup are
+  handled together. See `test-phase4.mjs`.
+- **Station filtering and sorting.** Power radios, connector checkboxes,
+  operator search/checkboxes and distance/power/operator sorting. The raw
+  `stationAll` is separate from `stationFiltered` and the visible page.
+  `extractOperator()` recovers brands from messy names and generic operator
+  fields. See `test-station-filters.mjs`.
+- **Retro wallpaper.** The compressed
+  `app/ui/wallpaper/retro-desk-wallpaper-comp.jpg` is the body background with
+  `cover`/`center bottom`/`pixelated`; Hot Dog removes it for the solid red
+  desktop. Content images and canvases reset to `auto` rendering. Both
+  compressed wallpapers are in the `v92` cache; the alternate is explicitly
+  cache-only. See `test-retro-wallpaper.mjs`.
+- **Filter UI reaches HUD as well.** The shared station panel and
+  `tools/hud-body.html` both carry the filter controls.
 
 ## 2026-10-22: archive, contrast, seasonal baselines, scanline levels, Win 3.1
 
@@ -151,9 +178,9 @@ shared design system plus independent UI themes.
 
 ## Layouts & the generator
 
-- **Seven active pages**, all generated: `classic`, `focus`, `modern`, `hud`,
-  `brutal`, `editorial`, `win31`. `wide` and `glass` are archived in `archive/`
-  and are not built.
+- **Eight active pages**, all generated: `classic`, `focus`, `modern`, `hud`,
+  `brutal`, `editorial`, `win31`, `retro-desktop`. `wide` and `glass` are
+  archived in `archive/` and are not built.
 - `app/shell.mjs` holds `LAYOUTS` and `linkLinesFor(layout)`; `tools/emit-pages.mjs`
   writes every page. Never hand-edit a generated `ev-tracker-*.html`.
 - The chosen layout is a **global device key** (`layout`), written by the picker.
@@ -163,7 +190,7 @@ shared design system plus independent UI themes.
 - Shared markup lives in `ev-tracker.html`; the **HUD overrides its body** from
   `tools/hud-body.html` (`BODY_OVERRIDE` in `emit-pages.mjs`). A change that
   should appear on the HUD goes in `hud-body.html`, not `ev-tracker.html`.
-- `app/ui/base.css` is the shared base for the four experimental themes; a theme
+- `app/ui/base.css` is the shared base for the five experimental themes; a theme
   file must not depend on `app/app.css`.
 - `tools/test-layouts.mjs` treats the two families differently: the **shared-markup
   pages** must be byte-identical to each other, while the **experimental pages**
@@ -216,12 +243,37 @@ wholesale.
   shared-car rows. Verify before starting; it may have moved.
 - **Human eyes on the new themes.** The warning-button inks, scanline levels and
   Windows 3.1 palette were judged by code and contrast maths, not on a device.
+- **Visual review of the retro desktop.** Check the wallpaper against Hot Dog,
+  the taskbar/Start menu at both handedness settings, and the flat inner panels.
+  Automated tests cannot judge whether the wallpaper crop looks right.
+- **Station filtering against live data.** The pure filters are tested, but the
+  operator extraction patterns should be checked against real Digitraffic and
+  Overpass rows from several Finnish/Nordic regions.
+- **Win 3.1-style handedness default.** The remaining backlog question is whether
+  `retro-desktop` should default to left-handed when no preference is stored.
 
 ## Traps worth knowing
 
 - **Generated pages.** Edit `ev-tracker.html` (shared) or `tools/hud-body.html`
   (HUD), then `node tools/emit-pages.mjs`. `test-layouts.mjs` also runs the
   generator and asserts it is a no-op, so an unstable generator fails the suite.
+- **Retro chrome is generated, not hand-written.** The taskbar and Start menu
+  come from `bodyExtrasFor()` in `app/shell.mjs`; title bars are created only at
+  runtime on the retro page. Do not add a separate retro HTML body.
+- **`isRetroLayout()` is not `isRetroDesktop()`.** The former includes `win31`
+  for the shared Hot Dog preference; taskbar/window behaviour must use the
+  latter.
+- **Hot Dog owns the retro desktop background.** The wallpaper is on the body;
+  `body.hotdog[data-layout="retro-desktop"]` must keep `background-image: none`.
+- **Session and station pins share one factory.** `numberedPin()` /
+  `drawNumberedPins()` are the only marker creators; only the click handler and
+  slot key differ. Do not fork the visual marker again.
+- **Station filters have three lists.** `stationAll` is raw, `stationFiltered`
+  is after filters/sort, and `stationResults` is the visible page. Status,
+  `stationMore`, detail lookup and map pins must all read the filtered result.
+- **`test-sw-bump.mjs` knows two kinds of app references.** CSS-referenced
+  assets (the active wallpaper) are allowed through stylesheet text; the
+  unreferenced alternate wallpaper is explicitly in `CACHE_ONLY_ASSETS`.
 - **Layout memory only redirects `classic`.** `layoutRedirectTarget()` refuses
   every other current layout, so a direct link to any layout page is honoured
   (otherwise that page becomes unreachable by URL). The preference is written by

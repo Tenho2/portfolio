@@ -2,7 +2,7 @@
 
 **Project:** EV Multi-Tracker / portfolio  
 **Version:** 1.0.0  
-**Generated:** 2026-10-25  
+**Generated:** 2026-10-27  
 **Scope:** static browser application, its CDN runtime libraries, and the npm development toolchain.
 
 The application itself has no npm runtime dependencies. It is plain HTML, CSS and JavaScript served as static files.
@@ -214,4 +214,5 @@ These are network services, not bundled software. Their availability and terms a
 
 - The Supabase CDN URL uses the floating major tag `@2`; the exact resolved version can change without a repository change. Pin an exact version before relying on this SBOM for reproducible builds.
 - `package-lock.json` remains the authoritative npm dependency lock.
+- The retro desktop wallpapers under `app/ui/wallpaper/` are project assets, not third-party dependencies. The two compressed JPGs are cached by the service worker for offline use.
 - This inventory was generated from `package-lock.json`; regenerate it when dependencies change.

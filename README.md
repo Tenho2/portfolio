@@ -15,6 +15,7 @@ Personal projects. No build step: `index.html` is the home page and the
 | `ev-tracker.html`         | The tracker in the classic layout. See "The layout pages".                      |
 | `ev-tracker-*.html`       | The same app in the other active layouts. Generated, never hand-edited.         |
 | `app/`                    | Shared by every layout: logic, design system, i18n, storage.                    |
+| `app/ui/wallpaper/`       | Retro desktop wallpaper assets; compressed copies are cached offline.           |
 | `archive/`                | Frozen copies of retired layouts (Wide, Glass). Not built or served.            |
 | `sw.js`                   | Service worker. Caches the app shell; Supabase and map tiles stay network-only. |
 | `manifest.json`, `icons/` | PWA install metadata.                                                           |
@@ -111,6 +112,23 @@ to the page therefore brings it under test automatically.
 : Every `data-i18n*` key in the markup has English text. A missing one renders
 : as a blank element with no error anywhere.
 
+`tools/test-station-filters.mjs`
+: Power, connector and operator filtering, sorting, extraction of operator
+: brands from messy station names, and the filter-to-list/map wiring.
+
+`tools/test-retro-window-manager.mjs`
+: The retro desktop window lifecycle contract: title bars, minimize/restore,
+: close/discard confirmation, shared Hot Dog state, handedness order and the
+: taskbar/Start-menu structure.
+
+`tools/test-retro-window-lifecycle.mjs`
+: Boots the generated retro page in jsdom and drives the real window controls,
+: including taskbar minimize/restore, dirty close cancellation and confirmation.
+
+`tools/test-retro-wallpaper.mjs`
+: The compressed wallpaper, Hot Dog removal, content `image-rendering` reset,
+: and service-worker cache entries.
+
 `tools/check-inline-js.mjs`
 : Compiles every inline `<script>` block (currently `index.html`), because an
 : inline block has no file for `node --check` to look at. External modules are
@@ -193,20 +211,21 @@ the boundary between modules, which is how `LANGS is not defined` and then
 The split is complete. Nothing is generated into `dist/`; the pages are plain
 files that a static host can serve as they are.
 
-| File                     | Lines  | Contents                             |
-| ------------------------ | ------ | ------------------------------------ |
-| `ev-tracker.html`        | 1,951  | markup, classic layout               |
-| `app/app.js`             | 14,179 | application logic                    |
-| `app/app.css`            | 2,935  | the shared design system             |
-| `app/layout-classic.css` | 17     | the classic navigation shell         |
-| `app/layout-focus.css`   | 149    | the focus navigation shell           |
-| `app/layout-modern.css`  | 148    | the modern navigation shell          |
-| `app/i18n.js`            | 2,762  | translations for all four languages  |
-| `app/storage.js`         | 202    | per-account local storage keys       |
-| `app/shell.mjs`          | 112    | how the layout pages are assembled   |
-| `app/ui/base.css`        | 1,428  | shared base for the experimental UIs |
-| `app/ui/hud.css`         | 555    | the HUD cockpit theme                |
-| `app/ui/win31.css`       | 471    | the Windows 3.1 theme                |
+| File                       | Lines  | Contents                                 |
+| -------------------------- | ------ | ---------------------------------------- |
+| `ev-tracker.html`          | 2,157  | markup, classic layout                   |
+| `app/app.js`               | 15,911 | application logic                        |
+| `app/app.css`              | 3,037  | the shared design system                 |
+| `app/layout-classic.css`   | 16     | the classic navigation shell             |
+| `app/layout-focus.css`     | 149    | the focus navigation shell               |
+| `app/layout-modern.css`    | 148    | the modern navigation shell              |
+| `app/i18n.js`              | 2,973  | translations for all four languages      |
+| `app/storage.js`           | 211    | per-account local storage keys           |
+| `app/shell.mjs`            | 156    | how the layout pages are assembled       |
+| `app/ui/base.css`          | 1,531  | shared base for the experimental UIs     |
+| `app/ui/hud.css`           | 559    | the HUD cockpit theme                    |
+| `app/ui/win31.css`         | 625    | the Windows 3.1 theme                    |
+| `app/ui/retro-desktop.css` | 964    | the windowed retro desktop and wallpaper |
 
 Classic `<script src>` rather than ES modules on purpose: it keeps the page
 working from `file://` with no build step, and each file gets its own scope, so
@@ -228,8 +247,9 @@ load-time error instead of a separate scope — is a separate change and needs
 
 ### The layout pages
 
-There are seven active layouts: `classic` (`ev-tracker.html`), `focus`, `modern`,
-and the experimental UIs `hud`, `brutal`, `editorial` and `win31` (Windows 3.1).
+There are eight active layouts: `classic` (`ev-tracker.html`), `focus`, `modern`,
+and the experimental UIs `hud`, `brutal`, `editorial`, `win31` (Windows 3.1) and
+`retro-desktop` (the windowed Windows 3.1-style desktop).
 `wide` and `glass` are archived under `archive/` and are not built or offered in
 the switcher.
 
@@ -237,6 +257,14 @@ the switcher.
 a sticky strip of icons below 820 px and a single bar below 560 px. `focus` is a
 warm dashboard rail with a dark cockpit variant; `modern` is a warm, slim-header
 phone layout.
+
+`retro-desktop` is the same Win 3.1 visual language but with an actual desktop
+model: one foreground `.view` window, a generated taskbar and Start menu,
+minimize/restore and close controls, a dirty-window confirmation, a shared Hot
+Dog preference, handedness-aware taskbar ordering and a compressed wallpaper.
+The wallpaper is `app/ui/wallpaper/retro-desk-wallpaper-comp.jpg`; Hot Dog
+removes it so the solid red desktop remains. Taskbar/Start-menu markup is
+generated by `app/shell.mjs` and is only present on the retro page.
 
 **The three shared layouts are the same application, not three builds.** Identical
 markup, the same `app/app.js`, the same storage keys and the same account; only
@@ -353,6 +381,22 @@ A 10 km search in a city centre returns hundreds. The nearest five are shown and
 the rest sit behind a button that states the remaining count — a wall of rows
 buries the one you came for. The count in the status line is the true total, not
 the number on screen.
+
+### Filtering and sorting
+
+The station results can be filtered by minimum power, connector type and
+operator, then sorted by distance, power or operator. Power thresholds are
+radio buttons; connector and operator selections are checkboxes with OR within
+each group and AND between groups. The visible list, numbered map pins, status
+line and “show more” count all read from the same filtered result set.
+
+Operator data from the APIs is inconsistent. `extractOperator()` uses the
+explicit operator when it is meaningful, recognises known brands inside company
+strings, and falls back to the station name for brands such as ABC, ABS,
+K-Lataus, Virta, Recharge, Ionity, Helen, Fortum and others. The operator
+checkbox list is built dynamically from the current results and its search box
+filters that list, not the station rows. Unknown or generic operators are kept
+under an “Unknown operator” group.
 
 ### Overpass is still unreliable, and treated that way
 
@@ -598,10 +642,10 @@ changing the app.
   payer picker and the breakdown chart. Older charges with no payer are counted
   separately rather than guessed at.
 - **The `focus` layout.** Shipped, along with `modern`, `hud`, `brutal`,
-  `editorial` and `win31`. `classic`, `focus` and `modern` share `app/app.css`;
-  the four experimental UIs load `app/ui/base.css` plus their own theme. Wide and
-  Glass are archived rather than deleted, so the keeper question now concerns
-  HUD/Brutal/Editorial/Win31 only — see `HANDOVER.md`.
+  `editorial`, `win31` and `retro-desktop`. `classic`, `focus` and `modern` share
+  `app/app.css`; the five experimental UIs load `app/ui/base.css` plus their own
+  theme. Wide and Glass are archived rather than deleted, so the keeper question
+  now concerns HUD/Brutal/Editorial/Win31/Retro only — see `HANDOVER.md`.
 
 ### Known bugs
 
@@ -709,6 +753,12 @@ are recorded here so the next build does not repeat the discovery.
       live explicit operator names remain authoritative. Tests: power parsing, connector classification,
       OR/AND semantics, sort order, operator-list search/preservation, filtered
       map/list/status, no-match state and i18n keys. `sw.js` is v92.
+
+- [x] **Retro desktop wallpaper.** Implemented 2026-10-27 with the compressed
+      `retro-desk-wallpaper-comp.jpg`, a solid-color Hot Dog override, content
+      image-rendering resets for maps/photos/charts, and both compressed
+      wallpapers in the `v92` offline shell. Covered by
+      `tools/test-retro-wallpaper.mjs`.
 
 - [ ] **Win 3.1-style desktop default handedness.**
       Default the Win 3.1-style desktop to left-handed when no explicit
