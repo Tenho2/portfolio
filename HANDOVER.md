@@ -9,7 +9,7 @@ belongs in [README.md](README.md); this file is the part that goes stale.
 | -------------- | ---------------------------------------------------------------------------- |
 | HEAD           | `585f67f` — commit and push are the user's job (see ground rules below)      |
 | Working tree   | code and documentation changes are uncommitted                               |
-| Service worker | `v93`                                                                        |
+| Service worker | `v94`                                                                        |
 | Build stamp    | `2026-10-27`                                                                 |
 | Tests          | all suites pass, 0 failures (`npm run check`); exact total not recorded      |
 | Database       | migrations `15-vehicle-baseline` and `16-vehicle-seasonal-baseline` required |
@@ -40,12 +40,13 @@ belongs in [README.md](README.md); this file is the part that goes stale.
   `extractOperator()` recovers brands from messy names and generic operator
   fields. See `test-station-filters.mjs`.
 - **Retro wallpaper.** The compressed
-  `app/ui/wallpaper/retro-desk-wallpaper-comp.jpg` is the body background with
-  `cover`/`center bottom`/`pixelated`; Hot Dog removes it for the solid red
-  desktop. The body has `min-height: 100vh` / `100dvh`, so the background still
-  covers the screen when every window is closed. Content images and canvases
-  reset to `auto` rendering. Both compressed wallpapers are in the `v93` cache;
-  the alternate is explicitly cache-only. See `test-retro-wallpaper.mjs`.
+  `app/ui/wallpaper/retro-desk-wallpaper-comp.jpg` is a fixed viewport
+  pseudo-element (`body::before`) with `cover`/`center bottom`/`pixelated`; Hot
+  Dog hides the layer for the solid red desktop. The body also has
+  `min-height: 100vh` / `100dvh`. The fixed layer means a tall mobile window
+  cannot resize or drag the scene down. Content images and canvases reset to
+  `auto` rendering. Both compressed wallpapers are in the `v94` cache; the
+  alternate is explicitly cache-only. See `test-retro-wallpaper.mjs`.
 - **Filter UI reaches HUD as well.** The shared station panel and
   `tools/hud-body.html` both carry the filter controls.
 
@@ -275,8 +276,9 @@ wholesale.
   layout default, but `applyNavAlign()` writes only an explicit left/right to
   storage; otherwise visiting retro-desktop would leak left alignment into
   every other layout.
-- **Hot Dog owns the retro desktop background.** The wallpaper is on the body;
-  `body.hotdog[data-layout="retro-desktop"]` must keep `background-image: none`.
+- **Hot Dog owns the retro desktop background.** The wallpaper is on the fixed
+  `body[data-layout="retro-desktop"]::before` layer; Hot Dog must hide that layer
+  (`display: none`) and keep the body's solid colour.
 - **Session and station pins share one factory.** `numberedPin()` /
   `drawNumberedPins()` are the only marker creators; only the click handler and
   slot key differ. Do not fork the visual marker again.

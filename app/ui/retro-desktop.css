@@ -67,12 +67,28 @@ body {
 
 body[data-layout="retro-desktop"] {
   /* The desktop has no content of its own when every window is closed. Without
-     a minimum height the body collapses to the taskbar, and cover sizing crops
-     the wallpaper to one strip. Keep the body at least one viewport tall so the
-     background always has the whole screen to cover. dvh follows mobile browser
-     chrome where supported; vh is the fallback. */
+     a minimum height the body collapses to the taskbar. Keep it at least one
+     viewport tall so the empty desktop behaves like a desktop; dvh follows
+     mobile browser chrome where supported, vh is the fallback. */
   min-height: 100vh;
   min-height: 100dvh;
+  background-color: var(--win-teal);
+}
+
+/* The wallpaper belongs to the viewport, not to the document.
+ *
+ * As a body background, cover was sized against the full body height. On a
+ * phone an open window easily makes the body taller than the screen, so the
+ * landscape/horizon slid down out of the initial view. A fixed pseudo-element
+ * keeps the image the same size while the page scrolls and while windows open
+ * and close. z-index -1 puts it behind the content; the body's teal remains the
+ * fallback colour. */
+body[data-layout="retro-desktop"]::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
   background-color: var(--win-teal);
   background-image: url("wallpaper/retro-desk-wallpaper-comp.jpg");
   background-position: center bottom;
@@ -515,6 +531,11 @@ body.hotdog[data-layout="retro-desktop"] {
   --bevel-in:
     inset 2px 2px 0 #800000, inset -2px -2px 0 #fff,
     inset 4px 4px 0 #ff0000, inset -4px -4px 0 #ffff80;
+}
+
+/* Hot Dog is flat colour: the fixed wallpaper layer must disappear with it. */
+body.hotdog[data-layout="retro-desktop"]::before {
+  display: none;
 }
 
 body.hotdog[data-layout="retro-desktop"] .sheet-box > h3,

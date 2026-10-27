@@ -1,9 +1,10 @@
 /**
  * Retro desktop wallpaper contract.
  *
- * The wallpaper is a body background, not a window background. Hot Dog must
- * remove it so the flat red desktop remains, and both compressed files must be
- * in the offline shell (the second is cache-only until a selector exists).
+ * The wallpaper is a fixed viewport layer, not a body or window background, so
+ * a tall mobile window cannot resize or drag the scene down. Hot Dog must hide
+ * it so the flat red desktop remains, and both compressed files must be in the
+ * offline shell (the second is cache-only until a selector exists).
  */
 import { existsSync, readFileSync } from "node:fs";
 
@@ -23,23 +24,32 @@ function group(name, fn) {
   console.log(`${failures.length - before ? "FAIL" : "ok  "}  ${name}`);
 }
 
-const baseRule = (() => {
-  const m = /body\[data-layout="retro-desktop"\]\s*\{([^}]*background-image[^}]*)\}/.exec(css);
+const bodyRule = (() => {
+  const m = /body\[data-layout="retro-desktop"\]\s*\{([^}]*)\}/.exec(css);
   return m ? m[1] : "";
 })();
-const hotdogAt = css.indexOf('body.hotdog[data-layout="retro-desktop"]');
+const layerRule = (() => {
+  const m = /body\[data-layout="retro-desktop"\]::before\s*\{([^}]*)\}/.exec(css);
+  return m ? m[1] : "";
+})();
+const hotdogAt = css.indexOf('body.hotdog[data-layout="retro-desktop"]::before');
 const hotdog = hotdogAt >= 0 ? css.slice(hotdogAt, css.indexOf("}", hotdogAt)) : "";
 
-group("the compressed wallpaper is the body desktop background", () => {
+group("the compressed wallpaper is a fixed desktop layer", () => {
   ok("the active compressed file exists", existsSync("app/ui/wallpaper/retro-desk-wallpaper-comp.jpg"));
   ok("the alternate compressed file exists", existsSync("app/ui/wallpaper/retro-desk-wallpaper-2comp.jpg"));
-  ok("the CSS references the compressed active file", /background-image:\s*url\("wallpaper\/retro-desk-wallpaper-comp\.jpg"\)/.test(baseRule));
-  ok("it uses cover sizing", /background-size:\s*cover/.test(baseRule));
-  ok("it anchors at center bottom", /background-position:\s*center bottom/.test(baseRule));
-  ok("it does not repeat", /background-repeat:\s*no-repeat/.test(baseRule));
-  ok("the wallpaper is pixelated", /image-rendering:\s*pixelated/.test(baseRule));
-  ok("the body keeps viewport height when the desktop is empty", /min-height:\s*100vh/.test(baseRule));
-  ok("dynamic viewport height is used where supported", /min-height:\s*100dvh/.test(baseRule));
+  ok("the CSS references the compressed active file", /background-image:\s*url\("wallpaper\/retro-desk-wallpaper-comp\.jpg"\)/.test(layerRule));
+  ok("it uses cover sizing", /background-size:\s*cover/.test(layerRule));
+  ok("it anchors at center bottom", /background-position:\s*center bottom/.test(layerRule));
+  ok("it does not repeat", /background-repeat:\s*no-repeat/.test(layerRule));
+  ok("the wallpaper is pixelated", /image-rendering:\s*pixelated/.test(layerRule));
+  ok("it is fixed to the viewport", /position:\s*fixed/.test(layerRule));
+  ok("it fills the viewport", /inset:\s*0/.test(layerRule));
+  ok("it sits behind the desktop content", /z-index:\s*-1/.test(layerRule));
+  ok("it does not intercept input", /pointer-events:\s*none/.test(layerRule));
+  ok("the body keeps viewport height when the desktop is empty", /min-height:\s*100vh/.test(bodyRule));
+  ok("dynamic viewport height is used where supported", /min-height:\s*100dvh/.test(bodyRule));
+  ok("the body itself no longer scales the image", !/background-image/.test(bodyRule));
 });
 
 group("content images stay sharp while the wallpaper is pixelated", () => {
@@ -53,11 +63,14 @@ group("content images stay sharp while the wallpaper is pixelated", () => {
   );
 });
 
-group("Hot Dog removes the wallpaper", () => {
-  ok("the Hot Dog block exists", hotdogAt >= 0);
-  ok("the override comes after the wallpaper rule", hotdogAt > css.indexOf(baseRule));
-  ok("it removes the image", /background-image:\s*none/.test(hotdog));
-  ok("it restores the solid Hot Dog colour", /background-color:\s*var\(--win-teal\)/.test(hotdog));
+group("Hot Dog hides the wallpaper layer", () => {
+  ok("the Hot Dog layer override exists", hotdogAt >= 0);
+  ok("the override comes after the wallpaper layer", hotdogAt > css.indexOf(layerRule));
+  ok("it hides the fixed layer", /display:\s*none/.test(hotdog));
+  ok(
+    "the body still paints the solid Hot Dog colour",
+    /body\.hotdog\[data-layout="retro-desktop"\]\s*\{[^}]*background-color:\s*var\(--win-teal\)/.test(css),
+  );
 });
 
 group("both compressed wallpapers are cached offline", () => {
@@ -78,7 +91,7 @@ group("both compressed wallpapers are cached offline", () => {
 });
 
 group("the service worker version is current", () => {
-  ok("sw.js is v93", /const VERSION = "v93"/.test(sw));
+  ok("sw.js is v94", /const VERSION = "v94"/.test(sw));
 });
 
 console.log(`\n${pass} passed, ${failures.length} failed`);

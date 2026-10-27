@@ -217,7 +217,7 @@ group("the new chrome strings exist in all three languages", () => {
 });
 
 group("the service worker is bumped for the window manager", () => {
-  ok("sw.js is v93", /const VERSION = "v93"/.test(sw));
+  ok("sw.js is v94", /const VERSION = "v94"/.test(sw));
 });
 
 console.log(`\n${pass} passed, ${failures.length} failed`);
