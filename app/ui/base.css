@@ -1475,3 +1475,57 @@ body:not(.need-auth) #authView {
 .password-box h3 {
   margin: 0 0 0.25rem;
 }
+
+
+/* ---------- station filters ---------- */
+.station-filters {
+  margin: 0.75rem 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius, var(--r, 0px));
+}
+
+.station-filter-title {
+  padding: 0 0.25rem;
+  font-weight: 600;
+}
+
+.station-filter-row {
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin: 0.35rem 0;
+}
+
+.station-filter-row > .lbl {
+  flex: 0 0 auto;
+}
+
+.station-filter-sort {
+  flex: 0 1 14rem;
+  margin-bottom: 0;
+}
+
+.station-operator-details summary {
+  margin: 0.35rem 0;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.station-operator-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.25rem 0.75rem;
+  max-height: 12rem;
+  margin-top: 0.35rem;
+  overflow-y: auto;
+}
+
+.station-operator-list .chk {
+  min-width: 0;
+}
+
+.station-operator-list .chk span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

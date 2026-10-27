@@ -681,9 +681,14 @@ are recorded here so the next build does not repeat the discovery.
       overlay, marker clicks reusing `useNearbyPlace()`, bounds including the
       user/selected pin/results, and cleanup on reset and new searches.
 
-- [ ] **Priority 2: station filtering, sorting and operator selection.**
-      Add power, connector and operator filters plus sorting to the Stations
-      view. Findings and intended design: keep `stationAll` raw and add
+- [x] **Priority 2: station filtering, sorting and operator selection.**
+      Implemented 2026-10-27. The Stations view now has power radios, connector
+      checkboxes, distance/power/operator sorting and a dynamic operator search
+      with checkboxes. `extractOperator()` recovers brands from names when the
+      API operator is blank/generic. `applyStationFilters()` drives the visible
+      page, map pins, status counts and no-match state together. Covered by
+      `tools/test-station-filters.mjs`.
+      Original findings and design: keep `stationAll` raw and add
       `stationFiltered`; `stationMore`, status counts, detail lookup and map
       pins must all use the filtered result. Power is a display string today
       (`"50 kW"`) and OpenStreetMap socket labels can carry their own rating
@@ -700,11 +705,10 @@ are recorded here so the next build does not repeat the discovery.
       Filter state is session-only; preserve still-valid operator selections on
       a new search. No-match state must clear old pins/list and close a detail
       panel whose station disappeared. Scope assumed: Stations view only, not
-      the compact Add-session nearby list. Open question: "ABS" may mean "ABC";
-      use live operator names. Tests: power parsing, connector classification,
+      the compact Add-session nearby list. ABS and ABC are both recognised;
+      live explicit operator names remain authoritative. Tests: power parsing, connector classification,
       OR/AND semantics, sort order, operator-list search/preservation, filtered
-      map/list/status, no-match state and i18n keys. Bump `sw.js` above
-      `v90` when implemented.
+      map/list/status, no-match state and i18n keys. `sw.js` is v91.
 
 - [ ] **Win 3.1-style desktop default handedness.**
       Default the Win 3.1-style desktop to left-handed when no explicit

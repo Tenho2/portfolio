@@ -1326,6 +1326,116 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                   ><span data-i18n="cam.find"></span>
                 </button>
               </div>
+    <fieldset class="station-filters" id="stationFilters">
+                <legend class="station-filter-title" data-i18n="st.filters"></legend>
+                <div
+                  class="row station-filter-row"
+                  role="radiogroup"
+                  aria-labelledby="stationPowerLabel"
+                >
+                  <span class="lbl" id="stationPowerLabel" data-i18n="st.power"></span>
+                  <label class="chk"
+                    ><input
+                      type="radio"
+                      name="stationPower"
+                      id="stationPowerAny"
+                      value="0"
+                      aria-label="Any power"
+                      data-i18n-aria="st.powerAny"
+                      checked
+                    /><span data-i18n="st.powerAny"></span
+                  ></label>
+                  <label class="chk"
+                    ><input
+                      type="radio"
+                      name="stationPower"
+                      id="stationPower22"
+                      value="22"
+                      aria-label="22 kW or more"
+                      data-i18n-aria="st.power22"
+                    /><span data-i18n="st.power22"></span
+                  ></label>
+                  <label class="chk"
+                    ><input
+                      type="radio"
+                      name="stationPower"
+                      id="stationPower50"
+                      value="50"
+                      aria-label="50 kW or more"
+                      data-i18n-aria="st.power50"
+                    /><span data-i18n="st.power50"></span
+                  ></label>
+                </div>
+                <div
+                  class="row station-filter-row"
+                  role="group"
+                  aria-labelledby="stationConnectorLabel"
+                >
+                  <span class="lbl" id="stationConnectorLabel" data-i18n="st.connectors"></span>
+                  <label class="chk"
+                    ><input
+                      type="checkbox"
+                      id="stationConnectorCcs"
+                      value="ccs"
+                      aria-label="CCS"
+                      data-i18n-aria="st.connectorCcs"
+                    /><span data-i18n="st.connectorCcs"></span
+                  ></label>
+                  <label class="chk"
+                    ><input
+                      type="checkbox"
+                      id="stationConnectorChademo"
+                      value="chademo"
+                      aria-label="CHAdeMO"
+                      data-i18n-aria="st.connectorChademo"
+                    /><span data-i18n="st.connectorChademo"></span
+                  ></label>
+                  <label class="chk"
+                    ><input
+                      type="checkbox"
+                      id="stationConnectorType2"
+                      value="type2"
+                      aria-label="Type 2"
+                      data-i18n-aria="st.connectorType2"
+                    /><span data-i18n="st.connectorType2"></span
+                  ></label>
+                </div>
+                <div class="row station-filter-row">
+                  <div class="f station-filter-sort">
+                    <label for="stationSort" data-i18n="st.sort"></label>
+                    <select id="stationSort">
+                      <option value="distance" data-i18n="st.sortDistance"></option>
+                      <option value="power" data-i18n="st.sortPower"></option>
+                      <option value="operator" data-i18n="st.sortOperator"></option>
+                    </select>
+                  </div>
+                  <button
+                    type="button"
+                    class="btn sm ghost"
+                    id="stationFilterClear"
+                    data-i18n="st.clearFilters"
+                  ></button>
+                </div>
+                <details class="station-operator-details">
+                  <summary>
+                    <span id="stationOperatorLabel" data-i18n="st.operators"></span>
+                    <span class="hint" id="stationOperatorCount"></span>
+                  </summary>
+                  <label class="sr-only" for="stationOperatorSearch" data-i18n="st.operatorSearch"></label>
+                  <input
+                    type="search"
+                    id="stationOperatorSearch"
+                    data-i18n-ph="st.operatorSearch"
+                    autocomplete="off"
+                  />
+                  <div
+                    class="row station-operator-list"
+                    id="stationOperatorList"
+                    role="group"
+                    aria-labelledby="stationOperatorLabel"
+                  ></div>
+                </details>
+              </fieldset>
               <div class="hint" role="status" aria-live="polite" id="stationStat"></div>
               <div class="hint" role="status" aria-live="polite" id="cameraStat"></div>
               <div class="camera-grid" id="cameraList"></div>

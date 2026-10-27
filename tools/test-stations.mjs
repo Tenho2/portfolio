@@ -653,12 +653,14 @@ await group("an empty result clears what was on the map", () => {
      `if (!stationResults.length)`, and matching that one would pass without
      ever reaching the map. */
   const search = app.slice(app.indexOf("function runStationSearch"), app.indexOf("function findStationsNearMe"));
-  ok("the station path clears its pins", /drawStationPins\(\[\]\)/.test(search));
-  /* Window widened from 600 to 1400: the fix-quality report sits between the
-     guard and the pin clear, so this assertion broke on an unrelated edit. A
-     window that tight is a test that fails for reasons that have nothing to do
-     with what it checks. */
-  ok("and it is on the empty branch", /if \(!stationResults\.length\)[\s\S]{0,1400}?drawStationPins\(\[\]\)/.test(search));
+  const mapHelper = app.slice(
+    app.indexOf("function drawStationMapResults"),
+    app.indexOf("function applyStationFilters"),
+  );
+  ok("the station path redraws through the map helper", /drawStationMapResults\(\)/.test(search));
+  /* The helper receives an empty visible list and replaces the old pins. */
+  ok("the map helper draws the current (possibly empty) pins", /drawStationPins\(/.test(mapHelper));
+  ok("and it is on the empty branch", /if \(!stationAll\.length\)[\s\S]{0,1400}?drawStationMapResults\(\)/.test(search));
   const cams = app.slice(app.indexOf("function loadCameras"), app.indexOf("function drawCameraPins"));
   ok("and so does the camera path", /if \(!cameraResults\.length\)[\s\S]{0,1400}?drawCameraPins\(\[\]\)/.test(cams));
 });
@@ -825,9 +827,10 @@ await group("only a handful of results are shown at once", () => {
   const n = Number(decl.match(/=\s*(\d+)/)[1]);
   ok("and it is small enough to read above the fold", n > 0 && n <= 10);
   ok("the full list is kept separately, so paging needs no re-query", /var stationAll = \[\]/.test(app));
-  ok("and the visible list is a slice of it", /stationResults = stationAll\.slice/.test(app) || /res\.rows\.slice/.test(app));
+  ok("the filtered list is kept separately", /var stationFiltered = \[\]/.test(app));
+  ok("and the visible list is a slice of the filtered list", /stationResults = stationFiltered\.slice/.test(app));
   ok("the show-more button is wired", /\$\("stationMore"\)\.addEventListener/.test(app));
-  ok("the count shown is the true total, not the visible count", /var n = stationAll\.length/.test(app));
+  ok("the count shown is the true total, not the visible count", /n: stationAll\.length/.test(app));
 });
 
 await group("the search reports its own failures", () => {
@@ -862,7 +865,8 @@ await group("the map shows the driver where they are", () => {
   );
   ok(
     "the charger search places it",
-    /drawStationPins\(stationSlice\(stationResults\)\);[\s\S]{0,200}drawUserLocation\(slot, lat, lng\)/.test(app),
+    /drawStationMapResults\(\)/.test(app) &&
+      /function drawStationMapResults[\s\S]{0,900}?drawUserLocation\(slot, lat, lng\)/.test(app),
   );
   ok(
     "the camera search places it too",
@@ -883,7 +887,8 @@ await group("the map shows the driver where they are", () => {
      blank canvas. */
   ok(
     "it is placed even when no chargers are found",
-    /drawStationPins\(\[\]\);[\s\S]{0,700}drawUserLocation\(slot, lat, lng\)/.test(app),
+    /if \(!stationAll\.length\)[\s\S]{0,1300}?drawStationMapResults\(\)/.test(app) &&
+      /function drawStationMapResults[\s\S]{0,900}?drawUserLocation\(slot, lat, lng\)/.test(app),
   );
 });
 

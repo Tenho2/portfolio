@@ -62,6 +62,7 @@
             syncNavButtonNames();
             syncRetroChromeLabels();
             render();
+            renderStationOperatorOptions();
             syncCents();
             syncHints();
           } catch (e) {
@@ -10946,7 +10947,17 @@ var STATION_PAGE = 10;
         /* The full ranked answer, kept so "show more" can page through it
            without re-querying. `stationResults` is only what is on screen. */
         var stationAll = [];
+        var stationFiltered = [];
         var stationResults = [];
+        var stationPage = STATION_NEAREST;
+        var stationSearchCached = false;
+        var stationFilters = {
+          power: 0,
+          connectors: {},
+          operators: {},
+          operatorSearch: "",
+          sort: "distance",
+        };
 var stationCentre = null;
           var stationOpen = null;
           /* Bumped by every search and every camera load. A response whose token
@@ -10991,6 +11002,314 @@ var stationCentre = null;
           return list.slice(0, STATION_NEAREST);
         }
 
+        /* ---------- station filters ---------- */
+        var STATION_OPERATOR_PATTERNS = [
+          ["ABC", /\babc\b/i],
+          ["ABS", /\babs\b/i],
+          ["K-Lataus", /k[\s-]?lataus/i],
+          ["Virta", /\bvirta\b/i],
+          ["Recharge", /\brecharge\b/i],
+          ["Ionity", /\bionity\b/i],
+          ["Helen", /\bhelen\b/i],
+          ["Fortum", /\bfortum\b|charge\s*&\s*drive/i],
+          ["Plugit", /\bplugit\b/i],
+          ["Lidl", /\blidl\b/i],
+          ["St1", /\bst\s*1\b/i],
+          ["Neste", /\bneste\b/i],
+          ["E.ON", /\be\.?\s*on\b/i],
+          ["Tesla", /\btesla\b|supercharger/i],
+          ["Kempower", /\bkempower\b/i],
+          ["Powerdot", /\bpowerdot\b/i],
+          ["Circle K", /\bcircle\s*k\b/i],
+          ["Shell", /\bshell\b/i],
+          ["OKQ8", /\bokq8\b/i],
+        ];
+        var STATION_GENERIC_OPERATOR =
+          /^(?:unknown|unknown operator|n\/?a|none|null|-+|charging station|charging|charger|charging point|charging hub|ev charging|public|public charging(?: station| point| hub)?|lataus|latausasema|latauspiste|laddning|laddstation|laddplats|operaattori|palveluntarjoaja|tuntematon|okänd|okand|okänd operatör)$/i;
+
+        /**
+         * The operator users can actually filter on. API rows often leave the
+         * operator blank or put a generic string there while the brand is in
+         * the name ("ABC Lataus Tampere", "K-Lataus Pirkkala", etc.).
+         */
+        function knownOperator(text) {
+          for (var i = 0; i < STATION_OPERATOR_PATTERNS.length; i++)
+            if (STATION_OPERATOR_PATTERNS[i][1].test(String(text || "")))
+              return STATION_OPERATOR_PATTERNS[i][0];
+          return "";
+        }
+
+        function extractOperator(row) {
+          var explicit =
+            row && row.operator ? String(row.operator).trim() : "";
+          var branded = knownOperator(explicit);
+          if (branded) return branded;
+          if (explicit && !STATION_GENERIC_OPERATOR.test(explicit))
+            return explicit;
+          return knownOperator(row && row.name);
+        }
+
+        /** Highest known power in kW, from the summary or per-socket labels. */
+        function stationPowerKw(row) {
+          if (!row) return null;
+          var best = 0;
+          var found = false;
+          function take(text) {
+            var m = /(\d+(?:[.,]\d+)?)\s*kW/i.exec(String(text || ""));
+            if (!m) return;
+            var value = parseFloat(m[1].replace(",", "."));
+            if (!isNum(value)) return;
+            found = true;
+            if (value > best) best = value;
+          }
+          take(row.power);
+          var plugs = Array.isArray(row.plugs) ? row.plugs : [];
+          for (var i = 0; i < plugs.length; i++) take(plugs[i]);
+          var poles = Array.isArray(row.poles) ? row.poles : [];
+          for (var k = 0; k < poles.length; k++) {
+            if (!isNum(poles[k] && poles[k].watts)) continue;
+            found = true;
+            var kw = +poles[k].watts / 1000;
+            if (kw > best) best = kw;
+          }
+          return found ? best : null;
+        }
+
+        /** Canonical connector keys from the display labels on a station row. */
+        function stationConnectors(row) {
+          var out = {};
+          var labels = row && Array.isArray(row.plugs) ? row.plugs : [];
+          for (var i = 0; i < labels.length; i++) {
+            var label = String(labels[i] || "").toLowerCase();
+            if (/chademo/.test(label)) out.chademo = 1;
+            if (/ccs|combo/.test(label)) out.ccs = 1;
+            else if (/type\s*2|type2/.test(label)) out.type2 = 1;
+          }
+          return out;
+        }
+
+        function stationOperatorKey(row) {
+          return extractOperator(row) || "";
+        }
+
+        function stationFiltersActive() {
+          if (stationFilters.power > 0) return true;
+          for (var c in stationFilters.connectors)
+            if (stationFilters.connectors[c]) return true;
+          for (var o in stationFilters.operators)
+            if (stationFilters.operators[o]) return true;
+          return false;
+        }
+
+        function stationMatchesFilters(row) {
+          if (stationFilters.power > 0) {
+            var kw = stationPowerKw(row);
+            if (kw === null || kw < stationFilters.power) return false;
+          }
+          var connectors = stationConnectors(row);
+          var wantsConnector = false;
+          var hasConnector = false;
+          for (var c in stationFilters.connectors) {
+            if (!stationFilters.connectors[c]) continue;
+            wantsConnector = true;
+            if (connectors[c]) hasConnector = true;
+          }
+          if (wantsConnector && !hasConnector) return false;
+
+          var selectedOperators = false;
+          var hasOperator = false;
+          var op = stationOperatorKey(row);
+          for (var o in stationFilters.operators) {
+            if (!stationFilters.operators[o]) continue;
+            selectedOperators = true;
+            if (o === op) hasOperator = true;
+          }
+          if (selectedOperators && !hasOperator) return false;
+          return true;
+        }
+
+        function sortStationRows(rows, mode) {
+          var out = rows.slice();
+          if (mode === "power")
+            out.sort(function (a, b) {
+              var ap = stationPowerKw(a);
+              var bp = stationPowerKw(b);
+              if (ap === null) ap = -1;
+              if (bp === null) bp = -1;
+              return bp - ap || a.dist - b.dist;
+            });
+          else if (mode === "operator")
+            out.sort(function (a, b) {
+              var ao = stationOperatorKey(a);
+              var bo = stationOperatorKey(b);
+              return (
+                ao.localeCompare(bo, undefined, { sensitivity: "base" }) ||
+                a.dist - b.dist
+              );
+            });
+          else
+            out.sort(function (a, b) {
+              return a.dist - b.dist;
+            });
+          return out;
+        }
+
+        /** Fill the operator checkbox list from the current raw results. */
+        function renderStationOperatorOptions() {
+          var box = $("stationOperatorList");
+          if (!box) return;
+          var counts = {};
+          for (var i = 0; i < stationAll.length; i++) {
+            var key = stationOperatorKey(stationAll[i]);
+            counts[key] = (counts[key] || 0) + 1;
+          }
+          for (var selected in stationFilters.operators)
+            if (!counts[selected]) delete stationFilters.operators[selected];
+
+          var query = stationFilters.operatorSearch.toLowerCase();
+          var names = Object.keys(counts).filter(function (name) {
+            return (
+              !query ||
+              (name || TXT("st.unknownOperator"))
+                .toLowerCase()
+                .indexOf(query) >= 0
+            );
+          });
+          names.sort(function (a, b) {
+            if (!a) return 1;
+            if (!b) return -1;
+            return a.localeCompare(b, undefined, { sensitivity: "base" });
+          });
+          var html = [];
+          for (var n = 0; n < names.length; n++) {
+            var op = names[n];
+            html.push(
+              '<label class="chk"><input type="checkbox" data-station-operator="' +
+                esc(op) +
+                '"' +
+                (stationFilters.operators[op] ? " checked" : "") +
+                " /><span>" +
+                esc(op || TXT("st.unknownOperator")) +
+                " (" +
+                counts[op] +
+                ")</span></label>",
+            );
+          }
+          box.innerHTML = html.join("");
+          var count = $("stationOperatorCount");
+          if (count) count.textContent = " (" + names.length + ")";
+        }
+
+        function drawStationMapResults() {
+          var lat = stationCentre && isNum(stationCentre.lat) ? stationCentre.lat : null;
+          var lng = stationCentre && isNum(stationCentre.lng) ? stationCentre.lng : null;
+          loadLeaflet(function () {
+            var slot = getMap("stationMap");
+            if (!slot || !slot.map) return;
+            try {
+              drawStationPins(stationSlice(stationResults));
+              if (lat !== null && lng !== null) drawUserLocation(slot, lat, lng);
+              var pts = [];
+              if (lat !== null && lng !== null) pts.push([lat, lng]);
+              for (var i = 0; i < slot.stationPins.length; i++) {
+                var ll = slot.stationPins[i].getLatLng();
+                pts.push([ll.lat, ll.lng]);
+              }
+              if (pts.length > 1)
+                slot.map.fitBounds(L.latLngBounds(pts), {
+                  padding: [30, 30],
+                  maxZoom: 15,
+                });
+              else if (pts.length) slot.map.setView(pts[0], 13);
+            } catch (e) {}
+          });
+        }
+
+        function applyStationFilters(resetPage) {
+          if (resetPage !== false) stationPage = STATION_NEAREST;
+          var rows = [];
+          for (var i = 0; i < stationAll.length; i++)
+            if (stationMatchesFilters(stationAll[i])) rows.push(stationAll[i]);
+          stationFiltered = sortStationRows(rows, stationFilters.sort);
+          stationResults = stationFiltered.slice(0, stationPage);
+
+          if (stationOpen) {
+            var stillVisible = false;
+            for (var s = 0; s < stationFiltered.length; s++)
+              if (stationFiltered[s].id === stationOpen) stillVisible = true;
+            if (!stillVisible) {
+              stationOpen = null;
+              stationCameraToken++;
+              var detail = $("stationDetail");
+              if (detail) {
+                detail.hidden = true;
+                detail.innerHTML = "";
+              }
+            }
+          }
+
+          renderStations();
+          if (!stationAll.length) {
+            setStationStatus("");
+            return;
+          }
+          if (stationFiltersActive()) {
+            setStationStatus(
+              stationFiltered.length
+                ? TXT("st.filteredCount", {
+                    n: stationFiltered.length,
+                    total: stationAll.length,
+                  })
+                : TXT("st.noMatches"),
+            );
+          } else {
+            setStationStatus(
+              fixNote(
+                TXT(
+                  stationSearchCached ? "st.foundCached" : "st.found",
+                  { n: stationAll.length, r: STATION_RADIUS_M / 1000 },
+                ),
+                stationSearchCached ? "st.foundRoughCached" : "st.foundRough",
+                stationFixM,
+              ),
+            );
+          }
+          drawStationMapResults();
+        }
+
+        function readStationFilterControls() {
+          var power = document.querySelector('input[name="stationPower"]:checked');
+          stationFilters.power = power ? num(power.value) : 0;
+          stationFilters.connectors = {};
+          var conns = [
+            ["stationConnectorCcs", "ccs"],
+            ["stationConnectorChademo", "chademo"],
+            ["stationConnectorType2", "type2"],
+          ];
+          for (var i = 0; i < conns.length; i++) {
+            var el = $(conns[i][0]);
+            if (el && el.checked) stationFilters.connectors[conns[i][1]] = 1;
+          }
+          var sort = $("stationSort");
+          stationFilters.sort = sort ? sort.value : "distance";
+        }
+
+        function resetStationFilterControls() {
+          if ($("stationPowerAny")) $("stationPowerAny").checked = true;
+          if ($("stationConnectorCcs")) $("stationConnectorCcs").checked = false;
+          if ($("stationConnectorChademo"))
+            $("stationConnectorChademo").checked = false;
+          if ($("stationConnectorType2"))
+            $("stationConnectorType2").checked = false;
+          if ($("stationSort")) $("stationSort").value = "distance";
+          if ($("stationOperatorSearch")) $("stationOperatorSearch").value = "";
+          stationFilters.power = 0;
+          stationFilters.connectors = {};
+          stationFilters.operators = {};
+          stationFilters.operatorSearch = "";
+          stationFilters.sort = "distance";
+        }
+
         function renderStations() {
           var box = $("stationList");
           if (!box) return;
@@ -10999,6 +11318,8 @@ var stationCentre = null;
           parkDetail();
           if (!stationResults.length) {
             box.innerHTML = "";
+            var emptyMore = $("stationMore");
+            if (emptyMore) emptyMore.hidden = true;
             return;
           }
 var shown = stationResults;
@@ -11006,6 +11327,7 @@ var shown = stationResults;
           for (var i = 0; i < shown.length; i++) {
             var s = shown[i];
             var bits = [];
+            var operator = extractOperator(s);
             if (s.power) bits.push(esc(s.power));
             if (s.plugs && s.plugs.length) bits.push(esc(s.plugs.join(", ")));
             /* One row per station. The pole count is a single number here
@@ -11024,7 +11346,7 @@ out.push(
                 esc(i + 1) +
                 ". " +
                 esc(s.name || TXT("st.unnamed")) +
-                (s.operator ? ' <span class="station-meta">' + esc(s.operator) + "</span>" : "") +
+                (operator ? ' <span class="station-meta">' + esc(operator) + "</span>" : "") +
                 "</button>" +
                 (bits.length ? '<div class="station-meta">' + bits.join(" · ") + "</div>" : "") +
                 (s.address ? '<div class="station-meta">' + esc(s.address) + "</div>" : "") +
@@ -11038,7 +11360,7 @@ out.push(
                 "</button></div></li>",
             );
           }
-var rest = stationAll.length - shown.length;
+var rest = stationFiltered.length - shown.length;
           box.innerHTML = '<ul class="station-list">' + out.join("") + "</ul>";
           /* The rest is never hidden behind a scroll: it is a button, so the
              count is stated and the user chooses to see it. */
@@ -11304,12 +11626,21 @@ function runStationSearch(lat, lng) {
               /* Both lists are replaced, not appended to: a second search from a
                  different place must not leave the old results behind. */
               stationAll = res.rows;
-              stationResults = res.rows.slice(0, STATION_NEAREST);
+              stationSearchCached = !!res.cached;
               stationCentre = { lat: lat, lng: lng };
               var box = $("stationMapBox");
               if (box) box.hidden = false;
-              var list = $("stationList");
-              if (!stationResults.length) {
+              renderStationOperatorOptions();
+              if (!stationAll.length) {
+                stationFiltered = [];
+                stationResults = [];
+                stationOpen = null;
+                stationCameraToken++;
+                var emptyDetail = $("stationDetail");
+                if (emptyDetail) {
+                  emptyDetail.hidden = true;
+                  emptyDetail.innerHTML = "";
+                }
                 /* The fix note matters MORE here than on a successful search.
                    "No stations within 10 km" from a fix that was 400 m out is
                    indistinguishable from a street with no chargers, and that is
@@ -11321,61 +11652,11 @@ function runStationSearch(lat, lng) {
                     stationFixM,
                   ),
                 );
-                if (list) list.innerHTML = "";
-                var more = $("stationMore");
-                if (more) more.hidden = true;
-                /* The previous search's pins are still on the map. Leaving them
-                   there puts a confident green marker next to the words "no
-                   stations", which is worse than an empty map. */
-                drawStationPins([]);
-                /* The map still opens, with the driver's own dot centred. A
-                   blank canvas beside "no stations" reads as a broken search,
-                   and knowing where you are is useful even with nothing found. */
-                loadLeaflet(function () {
-                  var slot = getMap("stationMap");
-                  if (!slot || !slot.map) return;
-                  try {
-                    drawUserLocation(slot, lat, lng);
-                    slot.map.setView([lat, lng], 13);
-                  } catch (e) {}
-                });
+                renderStations();
+                drawStationMapResults();
                 return;
               }
-              /* The true total, not the five on screen. Saying "5 stations" when the search
-                 found 84 would be a different lie from the one the map tells. */
-              var n = stationAll.length;
-              setStationStatus(
-                fixNote(
-                  TXT(res.cached ? "st.foundCached" : "st.found", {
-                    n: n,
-                    r: STATION_RADIUS_M / 1000,
-                  }),
-                  res.cached ? "st.foundRoughCached" : "st.foundRough",
-                  stationFixM,
-                ),
-              );
-              renderStations();
-              loadLeaflet(function () {
-                var slot = getMap("stationMap");
-                if (!slot || !slot.map) return;
-                try {
-                  drawStationPins(stationSlice(stationResults));
-                  /* The driver's own position, shown next to the chargers and
-                     framed with them so both are visible at once. */
-                  drawUserLocation(slot, lat, lng);
-                  var pts = [[lat, lng]];
-                  for (var pi = 0; pi < slot.stationPins.length; pi++) {
-                    var ll = slot.stationPins[pi].getLatLng();
-                    pts.push([ll.lat, ll.lng]);
-                  }
-                  if (pts.length > 1)
-                    slot.map.fitBounds(L.latLngBounds(pts), {
-                      padding: [30, 30],
-                      maxZoom: 15,
-                    });
-                  else slot.map.setView([lat, lng], 13);
-                } catch (e) {}
-              });
+              applyStationFilters(true);
             })
             .catch(function (err) {
               if (mine !== stationToken) return;
@@ -13871,12 +14152,50 @@ function detachVehicle(id) {
           /* Ten more each time, from the full ranked list, and never past its
              end. The button hides itself in renderStations once everything is
              showing, so it cannot be clicked into an empty state. */
-          if (stationResults.length >= stationAll.length) return;
+          if (stationResults.length >= stationFiltered.length) return;
           var next = stationResults.length + STATION_PAGE;
-          stationResults = stationAll.slice(0, next);
+          stationPage = next;
+          stationResults = stationFiltered.slice(0, next);
           renderStations();
-          drawStationPins(stationSlice(stationResults));
+          drawStationMapResults();
         });
+        var stationFilterInputs = [
+          "stationPowerAny",
+          "stationPower22",
+          "stationPower50",
+          "stationConnectorCcs",
+          "stationConnectorChademo",
+          "stationConnectorType2",
+          "stationSort",
+        ];
+        for (var sf = 0; sf < stationFilterInputs.length; sf++) {
+          var sfEl = $(stationFilterInputs[sf]);
+          if (sfEl)
+            sfEl.addEventListener("change", function () {
+              readStationFilterControls();
+              applyStationFilters(true);
+            });
+        }
+        if ($("stationOperatorSearch"))
+          $("stationOperatorSearch").addEventListener("input", function () {
+            stationFilters.operatorSearch = this.value.trim();
+            renderStationOperatorOptions();
+          });
+        if ($("stationOperatorList"))
+          $("stationOperatorList").addEventListener("change", function (e) {
+            var t = e.target;
+            if (!t || !t.hasAttribute("data-station-operator")) return;
+            var op = t.getAttribute("data-station-operator");
+            if (t.checked) stationFilters.operators[op] = 1;
+            else delete stationFilters.operators[op];
+            applyStationFilters(true);
+          });
+        if ($("stationFilterClear"))
+          $("stationFilterClear").addEventListener("click", function () {
+            resetStationFilterControls();
+            renderStationOperatorOptions();
+            applyStationFilters(true);
+          });
         /* Enter in the address field searches, like the button. */
         $("stationAddr").addEventListener("keydown", function (e) {
           if (e.key === "Enter") {
