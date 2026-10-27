@@ -271,7 +271,7 @@ group("operator options are dynamic, searchable and preserve selections", () => 
 });
 
 group("the service worker is bumped for the filter UI", () => {
-  ok("sw.js is v92", /const VERSION = "v92"/.test(sw));
+  ok("sw.js is v93", /const VERSION = "v93"/.test(sw));
 });
 
 console.log(`\n${pass} passed, ${failures.length} failed`);

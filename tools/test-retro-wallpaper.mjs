@@ -38,6 +38,8 @@ group("the compressed wallpaper is the body desktop background", () => {
   ok("it anchors at center bottom", /background-position:\s*center bottom/.test(baseRule));
   ok("it does not repeat", /background-repeat:\s*no-repeat/.test(baseRule));
   ok("the wallpaper is pixelated", /image-rendering:\s*pixelated/.test(baseRule));
+  ok("the body keeps viewport height when the desktop is empty", /min-height:\s*100vh/.test(baseRule));
+  ok("dynamic viewport height is used where supported", /min-height:\s*100dvh/.test(baseRule));
 });
 
 group("content images stay sharp while the wallpaper is pixelated", () => {
@@ -76,7 +78,7 @@ group("both compressed wallpapers are cached offline", () => {
 });
 
 group("the service worker version is current", () => {
-  ok("sw.js is v92", /const VERSION = "v92"/.test(sw));
+  ok("sw.js is v93", /const VERSION = "v93"/.test(sw));
 });
 
 console.log(`\n${pass} passed, ${failures.length} failed`);

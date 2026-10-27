@@ -52,7 +52,11 @@
       "retro.discardDraft": "Discard unsaved changes in this window?",
       "retro.discardDraftTitle": "Unsaved changes",
       "retro.discardDraftOk": "Discard changes",
-      "retro.toggleTheme": "Toggle theme",
+      "retro.hotdogTitle": "Hot Dog Stand",
+      "retro.hotdogPrompt":
+        "Do you want to toggle the 'Hot Dog Stand' theme?\n\nOriginally introduced in Windows 3.1 to help users with visual impairments, its eye-searing high-contrast red and yellow colors made it a legendary (and infamous) retro tech meme.",
+      "retro.hotdogOn": "Use Hot Dog Stand",
+      "retro.hotdogOff": "Return to normal",
       db: "Local storage · {n} session(s) · {v} vehicle(s)",
       "dash.lead":
         "Totals for the selected vehicle. All counters start at zero.",
@@ -945,7 +949,11 @@
         "Hylätäänkö tämän ikkunan tallentamattomat muutokset?",
       "retro.discardDraftTitle": "Tallentamattomia muutoksia",
       "retro.discardDraftOk": "Hylkää muutokset",
-      "retro.toggleTheme": "Vaihda teema",
+      "retro.hotdogTitle": "Hot Dog Stand",
+      "retro.hotdogPrompt":
+        "Haluatko vaihtaa 'Hot Dog Stand' -teemaan?\n\nSe tuotiin alun perin Windows 3.1:een auttamaan heikkonäköisiä käyttäjiä. Sen silmiä polttavat, erittäin kontrastiset punaiset ja keltaiset värit tekivät siitä legendaarisen (ja pahamaineisen) retroteknologiamemin.",
+      "retro.hotdogOn": "Ota Hot Dog Stand käyttöön",
+      "retro.hotdogOff": "Palaa normaaliin",
       db: "Selaintila · {n} latausta · {v} ajoneuvoa",
       "dash.lead":
         "Valitun ajoneuvon summat. Kaikki laskurit alkavat nollasta.",
@@ -1847,7 +1855,11 @@
         "Kasta de osparade ändringarna i det här fönstret?",
       "retro.discardDraftTitle": "Osparade ändringar",
       "retro.discardDraftOk": "Kasta ändringarna",
-      "retro.toggleTheme": "Växla tema",
+      "retro.hotdogTitle": "Hot Dog Stand",
+      "retro.hotdogPrompt":
+        "Vill du byta till 'Hot Dog Stand'-temat?\n\nDet introducerades ursprungligen i Windows 3.1 för att hjälpa användare med nedsatt syn. Dess ögonbrännande högkontrastfärger i rött och gult gjorde det till en legendarisk (och ökänd) retroteknikmeme.",
+      "retro.hotdogOn": "Använd Hot Dog Stand",
+      "retro.hotdogOff": "Återgå till normalt",
       db: "Lokalt lagring · {n} session(er) · {v} fordon",
       "dash.lead": "Summor för valt fordon. Alla räknare börjar på noll.",
       "dash.pick": "Välj fordon",

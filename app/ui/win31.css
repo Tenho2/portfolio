@@ -65,6 +65,13 @@ body {
   -webkit-font-smoothing: none;
 }
 
+/* Hot Dog is now a retro-desktop clock Easter egg, not a Win31 control. The
+   header toggle and the shared Settings theme field would both be back doors. */
+body[data-layout="win31"] #themeBtn,
+body[data-layout="win31"] #themeField {
+  display: none;
+}
+
 /* ---------- windows ---------- */
 
 .panel,

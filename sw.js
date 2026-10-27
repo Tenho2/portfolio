@@ -30,10 +30,11 @@
  * list is served stale and nothing complains - so tools/test-sw-bump.mjs
  * asserts that every shell file was touched, and that the version moved with it.
  *
- * Last bumped: 2026-10-27, for the retro desktop wallpapers.
+ * Last bumped: 2026-10-27, for the clock Easter egg, wallpaper fill and
+ * retro-desktop handedness.
  */
 
-const VERSION = "v92";
+const VERSION = "v93";
 const CACHE = `ev-tracker-shell-${VERSION}`;
 
 const SHELL = [

@@ -7919,16 +7919,35 @@ function retryNow() {
         }
         /** Apply a theme chosen in Settings, reusing the existing toggle. */
         function applyThemeSel(want) {
+          /* Hot Dog is a clock-only Easter egg on both retro layouts. The
+             shared theme field is hidden there, and this guard keeps a
+             programmatic change from becoming a second route. */
+          if (isRetroLayout()) return;
           var isDark = darkThemeOn();
           if ((want === "dark") !== isDark) $("themeBtn").click();
         }
+        /** The handedness a layout should use for a given stored value.
+         *
+         * Only an explicit "left" or "right" counts as a user choice. A missing
+         * or invalid value falls back to the layout default: retro-desktop is
+         * left-handed (Start on the left), every other layout stays
+         * right-handed. Pure so the boot contract can be tested without a DOM.
+         */
+        function navAlignFor(want, layout) {
+          if (want === "left" || want === "right") return want;
+          return layout === "retro-desktop" ? "left" : "right";
+        }
         /** Apply the navigation handedness, a global device preference like the
             theme. Right-handed is the default; the value only has an effect in
-            the focus layout's mobile bottom bar, where it chooses which edge the
-            icons cluster against. */
+            the focus layout's mobile bottom bar and the retro taskbar.
+         *
+         * An inferred layout default is applied but NOT stored. Persisting it
+         * would turn a visit to retro-desktop into an explicit left-handed
+         * preference, which would then leak into every other layout. */
         function applyNavAlign(want) {
-          var v = want === "left" ? "left" : "right";
+          var v = navAlignFor(want, currentLayout());
           document.body.setAttribute("data-nav-align", v);
+          if (want !== "left" && want !== "right") return;
           try {
             localStorage.setItem(K.na, v);
           } catch (e) {
@@ -12340,16 +12359,7 @@ function hasKey(key) {
             }
           }
           syncRetroTaskbar();
-          syncRetroThemeMenu();
           updateRetroClock();
-        }
-
-        /** Reflect the shared Hot Dog state on the Start-menu command. */
-        function syncRetroThemeMenu() {
-          if (!retroChromeReady) return;
-          var item = retroChrome.menu.querySelector("[data-retro-theme]");
-          if (!item) return;
-          item.setAttribute("aria-pressed", hotdogOn() ? "true" : "false");
         }
 
         /** Rebuild the taskbar buttons that represent open windows. */
@@ -12427,7 +12437,10 @@ function hasKey(key) {
           retroChrome.clock.textContent = time;
           retroChrome.clock.dateTime = now.toISOString();
           retroChrome.clock.title = full;
-          retroChrome.clock.setAttribute("aria-label", full);
+          if (retroChrome.clockBtn) {
+            retroChrome.clockBtn.title = full;
+            retroChrome.clockBtn.setAttribute("aria-label", full);
+          }
         }
 
         /**
@@ -12711,14 +12724,16 @@ function hasKey(key) {
           if (!isRetroDesktop()) return;
           var taskbar = $("retro-taskbar");
           var windows = $("retro-task-windows");
-          var clock = $("retro-clock");
+          var clockBtn = $("retro-clock");
+          var clock = $("retro-clock-time");
           var startBtn = $("retro-start-btn");
           var menu = $("retro-start-menu");
-          if (!taskbar || !windows || !clock || !startBtn || !menu) return;
+          if (!taskbar || !windows || !clockBtn || !clock || !startBtn || !menu) return;
           retroChrome = {
             taskbar: taskbar,
             windows: windows,
             clock: clock,
+            clockBtn: clockBtn,
             startBtn: startBtn,
             menu: menu,
             views: {},
@@ -12726,6 +12741,12 @@ function hasKey(key) {
           retroChromeReady = true;
           ensureRetroWindowChrome();
           syncRetroChromeLabels();
+
+          /* The clock is the only Hot Dog route. It asks before changing the
+             theme, and the same yes/no toggles the state off again. */
+          clockBtn.addEventListener("click", function () {
+            askHotdog();
+          });
 
           startBtn.addEventListener("click", function () {
             if (menu.hidden) openRetroStartMenu();
@@ -12738,12 +12759,6 @@ function hasKey(key) {
             if (target.closest("[data-retro-sync]")) {
               closeRetroStartMenu(false);
               openSyncPanel(startBtn);
-              return;
-            }
-            if (target.closest("[data-retro-theme]")) {
-              closeRetroStartMenu(false);
-              toggleHotdog();
-              startBtn.focus();
               return;
             }
             /* The shared data-go delegate performs the navigation after this
@@ -15465,7 +15480,22 @@ $("syncBadge").addEventListener("click", function () {
         function hotdogOn() {
           return document.body.classList.contains("hotdog");
         }
-        /** All retro window layouts share this one device preference. */
+        /** Ask before the clock changes the hidden theme. */
+        function askHotdog() {
+          return askConfirm(TXT("retro.hotdogPrompt"), {
+            heading: "retro.hotdogTitle",
+            ok: hotdogOn() ? "retro.hotdogOff" : "retro.hotdogOn",
+            cancel: "confirm.cancel",
+          }).then(function (yes) {
+            if (yes) toggleHotdog();
+          });
+        }
+        /** All retro window layouts share this one device preference.
+         *
+         * The only UI route is the retro-desktop clock. The Start menu, the
+         * Settings theme field and the Win31 header button are deliberately not
+         * wired to this function.
+         */
         function toggleHotdog() {
           var on = document.body.classList.toggle("hotdog");
           try {
@@ -15474,7 +15504,6 @@ $("syncBadge").addEventListener("click", function () {
             /* the scheme applies now; only the remembered choice is lost */
           }
           syncThemeButton();
-          syncRetroThemeMenu();
           renderChart();
         }
         /** The effective dark/hot-dog state for the theme controls. */
@@ -15610,12 +15639,9 @@ $("syncBadge").addEventListener("click", function () {
             toggleRedMode();
             return;
           }
-          /* Win31 and retro-desktop share Hot Dog; other layouts use the
-             ordinary global dark mode. */
-          if (isRetroLayout()) {
-            toggleHotdog();
-            return;
-          }
+          /* Hot Dog is clock-only. The retro header buttons are hidden, and
+             this guard prevents a synthetic click from becoming a back door. */
+          if (isRetroLayout()) return;
           var d = document.body.classList.toggle("dark");
           setThemeIcon(d ? "🌙" : "☀️");
           try {

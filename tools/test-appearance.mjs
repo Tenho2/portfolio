@@ -144,8 +144,14 @@ group("retro layouts share one Hot Dog preference", () => {
   const S = loadStorage(fakeStorage());
   is("the key is global", S.keysFor("user-a").hotdog, S.keysFor(null).hotdog);
   is("and named retroHotDog", S.keysFor(null).hotdog, "retroHotDog");
-  ok("the header button toggles it on both layouts", /if \(isRetroLayout\(\)\)[\s\S]{0,120}?toggleHotdog\(\)/.test(app));
-  ok("the Settings selector sees the effective state", /function applyThemeSel[\s\S]{0,160}?darkThemeOn\(\)/.test(app));
+  ok(
+    "the header button is no longer a Hot Dog route",
+    /if \(isRetroLayout\(\)\) return;[\s\S]{0,160}?var d = document\.body\.classList\.toggle\("dark"\)/.test(app),
+  );
+  ok(
+    "the Settings selector is no longer a Hot Dog route",
+    /function applyThemeSel[\s\S]{0,400}?if \(isRetroLayout\(\)\) return;/.test(app),
+  );
 });
 
 group("appearance preferences are independent body classes", () => {

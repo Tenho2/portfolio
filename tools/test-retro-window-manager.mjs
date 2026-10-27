@@ -6,6 +6,7 @@ const css = readFileSync("app/ui/retro-desktop.css", "utf8");
 const page = readFileSync("ev-tracker-retro-desktop.html", "utf8");
 const shared = readFileSync("ev-tracker.html", "utf8");
 const win31 = readFileSync("ev-tracker-win31.html", "utf8");
+const win31Css = readFileSync("app/ui/win31.css", "utf8");
 const shell = readFileSync("app/shell.mjs", "utf8");
 const emit = readFileSync("tools/emit-pages.mjs", "utf8");
 const i18n = readFileSync("app/i18n.js", "utf8");
@@ -45,6 +46,7 @@ group("the retro page owns the taskbar and Start menu", () => {
     "retro-taskbar",
     "retro-task-windows",
     "retro-clock",
+    "retro-clock-time",
     "retro-start-btn",
     "retro-start-menu",
   ])
@@ -57,9 +59,20 @@ group("the retro page owns the taskbar and Start menu", () => {
   ok("the Start menu has Add session", /data-go="add-session"/.test(page));
   ok("the Start menu has Settings", /data-go="settings"/.test(page));
   ok("the Start menu has Sync", /data-retro-sync/.test(page));
-  ok("the Start menu has a theme toggle", /data-retro-theme/.test(page));
-  ok("the theme toggle starts unpressed", /data-retro-theme[^>]*aria-pressed="false"/.test(page));
+  ok("the Start menu has no Hot Dog route", !/data-retro-theme/.test(page));
+  ok("the clock is a native button", /id="retro-clock"[^>]*type="button"/.test(page));
+  ok("the clock contains the live time", /id="retro-clock-time"/.test(page));
   ok("the Start menu starts hidden", /id="retro-start-menu"[^>]*hidden/.test(page));
+  ok(
+    "retro hides the shared theme field",
+    /body\[data-layout="retro-desktop"\] #themeField\s*\{[^}]*display:\s*none/.test(css),
+  );
+  ok(
+    "win31 hides its header theme button and theme field",
+    /body\[data-layout="win31"\] #themeBtn,[\s\S]{0,120}?#themeField\s*\{[^}]*display:\s*none/.test(
+      win31Css,
+    ),
+  );
 });
 
 group("the generator injects retro chrome only", () => {
@@ -125,13 +138,29 @@ group("lifecycle hooks preserve and refresh the right state", () => {
 group("the window manager reuses routing and modal behavior", () => {
   ok("Start menu view items use the shared delegated data-go route", /data-go="dashboard"/.test(page) && /data-go="add-session"/.test(page) && /data-go="settings"/.test(page));
   ok("Sync uses the existing panel opener", /openSyncPanel\(startBtn\)/.test(fnBody(app, "initRetroChrome")));
-  ok("the theme command toggles Hot Dog", /data-retro-theme[\s\S]{0,240}?toggleHotdog\(\)/.test(fnBody(app, "initRetroChrome")));
-  ok("the theme command reports its pressed state", /function syncRetroThemeMenu\(\)/.test(app) && /aria-pressed", hotdogOn\(\) \? "true" : "false"/.test(app));
+  ok("the clock click asks the Hot Dog dialog", /clockBtn\.addEventListener\("click"[\s\S]{0,120}?askHotdog\(\)/.test(fnBody(app, "initRetroChrome")));
+  ok("no Start-menu theme route remains", !/data-retro-theme|syncRetroThemeMenu/.test(app));
   ok("outside clicks close the Start menu", /!menu\.contains\(target\)/.test(fnBody(app, "initRetroChrome")));
   ok("Escape closes the Start menu", /e\.key !== "Escape"/.test(fnBody(app, "initRetroChrome")));
   ok("taskbar buttons toggle through one delegated handler", /data-retro-task-toggle/.test(fnBody(app, "initRetroChrome")));
   ok("the taskbar is inert under a modal", /retroBar = \$\("retro-taskbar"\)[\s\S]{0,260}?\[app, side, foot, retroBar, retroMenu\]\.forEach/.test(app));
   ok("the clock is updated from the active language", /function updateRetroClock\(\)/.test(app) && /currentLang/.test(fnBody(app, "updateRetroClock")));
+});
+
+group("Hot Dog is a clock-only Easter egg", () => {
+  const ask = fnBody(app, "askHotdog");
+  ok("the clock uses the shared confirmation dialog", /askConfirm\(TXT\("retro\.hotdogPrompt"\)/.test(ask));
+  ok("the dialog has a heading and confirm labels", /retro\.hotdogTitle/.test(ask) && /retro\.hotdogOn/.test(ask) && /retro\.hotdogOff/.test(ask));
+  ok("the theme changes only after confirmation", /if \(yes\) toggleHotdog\(\)/.test(ask));
+  ok("the Settings selector cannot toggle it on retro layouts", /function applyThemeSel[\s\S]{0,400}?if \(isRetroLayout\(\)\) return;/.test(app));
+  ok("the header button cannot toggle it on retro layouts", /if \(isRetroLayout\(\)\) return;[\s\S]{0,160}?var d = document\.body\.classList\.toggle\("dark"\)/.test(app));
+  ok("the shared storage key still remembers the choice", /localStorage\.setItem\(K\.hotdog, on \? "on" : "off"\)/.test(app));
+  ok(
+    "the exact history text is translated",
+    i18n.includes(
+      "Do you want to toggle the 'Hot Dog Stand' theme?\\n\\nOriginally introduced in Windows 3.1 to help users with visual impairments, its eye-searing high-contrast red and yellow colors made it a legendary (and infamous) retro tech meme.",
+    ),
+  );
 });
 
 group("the CSS hides modern chrome only on retro", () => {
@@ -178,14 +207,17 @@ group("the new chrome strings exist in all three languages", () => {
     "retro.discardDraft",
     "retro.discardDraftTitle",
     "retro.discardDraftOk",
-    "retro.toggleTheme",
+    "retro.hotdogTitle",
+    "retro.hotdogPrompt",
+    "retro.hotdogOn",
+    "retro.hotdogOff",
   ];
   for (const key of keys)
     ok(`${key} is translated in all three packs`, (i18n.match(new RegExp(`"${key.replace(/\./g, "\\.")}"`, "g")) || []).length === 3);
 });
 
 group("the service worker is bumped for the window manager", () => {
-  ok("sw.js is v92", /const VERSION = "v92"/.test(sw));
+  ok("sw.js is v93", /const VERSION = "v93"/.test(sw));
 });
 
 console.log(`\n${pass} passed, ${failures.length} failed`);

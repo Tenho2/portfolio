@@ -78,18 +78,42 @@ await group("the window chrome boots on the retro page", () => {
   ok("the dashboard button is pressed", taskFor("dashboard").getAttribute("aria-pressed") === "true");
 });
 
-await group("the Start-menu theme command toggles Hot Dog", async () => {
-  const theme = doc.querySelector("#retro-start-menu [data-retro-theme]");
-  ok("the theme command exists", !!theme);
+await group("the retro desktop boots left-handed without saving a preference", () => {
+  ok("the taskbar uses the left-handed order", doc.body.getAttribute("data-nav-align") === "left");
+  ok("the inferred default was not persisted", window.localStorage.getItem("navAlign") === null);
+});
+
+await group("the taskbar clock is the only Hot Dog route", async () => {
+  const clock = doc.getElementById("retro-clock");
+  ok("the clock is a button", clock && clock.tagName === "BUTTON");
   ok("Hot Dog starts off", !doc.body.classList.contains("hotdog"));
-  theme.click();
+
+  clock.click();
   await wait();
-  ok("the command turns Hot Dog on", doc.body.classList.contains("hotdog"));
-  ok("the command reports pressed", theme.getAttribute("aria-pressed") === "true");
-  theme.click();
+  ok("clicking the clock opens the app confirmation", doc.getElementById("confirmSheet").classList.contains("on"));
+  const prompt = doc.getElementById("confirmBody").textContent;
+  ok("the prompt asks to toggle the theme", /Do you want to toggle the 'Hot Dog Stand' theme\?/.test(prompt));
+  ok("the prompt explains the history", /Originally introduced in Windows 3\.1/.test(prompt));
+  ok("the prompt mentions the retro meme", /retro tech meme/.test(prompt));
+
+  doc.getElementById("confirmCancel").click();
   await wait();
-  ok("the command turns Hot Dog off", !doc.body.classList.contains("hotdog"));
-  ok("the command reports unpressed", theme.getAttribute("aria-pressed") === "false");
+  ok("cancel leaves Hot Dog off", !doc.body.classList.contains("hotdog"));
+  ok("cancel leaves no saved choice", window.localStorage.getItem("retroHotDog") === null);
+
+  clock.click();
+  await wait();
+  doc.getElementById("confirmOk").click();
+  await wait();
+  ok("accepting turns Hot Dog on", doc.body.classList.contains("hotdog"));
+  ok("accepting saves the on choice", window.localStorage.getItem("retroHotDog") === "on");
+
+  clock.click();
+  await wait();
+  doc.getElementById("confirmOk").click();
+  await wait();
+  ok("accepting again turns Hot Dog off", !doc.body.classList.contains("hotdog"));
+  ok("accepting again saves the off choice", window.localStorage.getItem("retroHotDog") === "off");
 });
 
 await group("opening another window minimizes the foreground, not the old form", async () => {

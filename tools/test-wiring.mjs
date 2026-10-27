@@ -148,6 +148,7 @@ group("every id the script looks up exists in the markup", () => {
     "retro-taskbar",
     "retro-task-windows",
     "retro-clock",
+    "retro-clock-time",
     "retro-start-btn",
     "retro-start-menu",
   ];

@@ -8,9 +8,9 @@ belongs in [README.md](README.md); this file is the part that goes stale.
 |                |                                                                              |
 | -------------- | ---------------------------------------------------------------------------- |
 | HEAD           | `585f67f` — commit and push are the user's job (see ground rules below)      |
-| Working tree   | documentation-only changes are uncommitted                                   |
-| Service worker | `v92`                                                                        |
-| Build stamp    | `2026-10-22`                                                                 |
+| Working tree   | code and documentation changes are uncommitted                               |
+| Service worker | `v93`                                                                        |
+| Build stamp    | `2026-10-27`                                                                 |
 | Tests          | all suites pass, 0 failures (`npm run check`); exact total not recorded      |
 | Database       | migrations `15-vehicle-baseline` and `16-vehicle-seasonal-baseline` required |
 
@@ -20,10 +20,14 @@ belongs in [README.md](README.md); this file is the part that goes stale.
   Start menu, per-view title bars, one foreground window and a real
   minimize/restore/close lifecycle. Closing a dirty Add/Favourites/Settings
   window asks through `askConfirm`; minimised windows keep their forms. Hot Dog
-  is one shared `retroHotDog` key for `win31` and `retro-desktop`, and the Start
-  menu has a direct theme toggle. Handedness comes from the existing
-  `data-nav-align` setting. See `test-retro-window-manager.mjs` and
-  `test-retro-window-lifecycle.mjs`.
+  is one shared `retroHotDog` key for `win31` and `retro-desktop`, but its only
+  control is now the retro-desktop clock: clicking the clock asks through
+  `askConfirm`, while the Start-menu item, the Settings theme field and Win31's
+  header toggle are removed or hidden. Handedness comes from the existing
+  `data-nav-align` setting; with no stored preference, `retro-desktop` defaults
+  to left and every other layout stays right. See
+  `test-retro-window-manager.mjs`, `test-retro-window-lifecycle.mjs` and
+  `test-nav-align.mjs`.
 - **Nested-window cleanup.** The outer `.view` is the only window frame; inner
   `.panel` elements are flat content groups. Dialogs remain windows.
 - **Nearby pins on the Add-session map.** `numberedPin()` and
@@ -38,9 +42,10 @@ belongs in [README.md](README.md); this file is the part that goes stale.
 - **Retro wallpaper.** The compressed
   `app/ui/wallpaper/retro-desk-wallpaper-comp.jpg` is the body background with
   `cover`/`center bottom`/`pixelated`; Hot Dog removes it for the solid red
-  desktop. Content images and canvases reset to `auto` rendering. Both
-  compressed wallpapers are in the `v92` cache; the alternate is explicitly
-  cache-only. See `test-retro-wallpaper.mjs`.
+  desktop. The body has `min-height: 100vh` / `100dvh`, so the background still
+  covers the screen when every window is closed. Content images and canvases
+  reset to `auto` rendering. Both compressed wallpapers are in the `v93` cache;
+  the alternate is explicitly cache-only. See `test-retro-wallpaper.mjs`.
 - **Filter UI reaches HUD as well.** The shared station panel and
   `tools/hud-body.html` both carry the filter controls.
 
@@ -249,8 +254,8 @@ wholesale.
 - **Station filtering against live data.** The pure filters are tested, but the
   operator extraction patterns should be checked against real Digitraffic and
   Overpass rows from several Finnish/Nordic regions.
-- **Win 3.1-style handedness default.** The remaining backlog question is whether
-  `retro-desktop` should default to left-handed when no preference is stored.
+- **Hot Dog is now a discoverability question, not a bug.** Confirm on a device
+  that the clock looks clickable enough to find without advertising the secret.
 
 ## Traps worth knowing
 
@@ -263,6 +268,13 @@ wholesale.
 - **`isRetroLayout()` is not `isRetroDesktop()`.** The former includes `win31`
   for the shared Hot Dog preference; taskbar/window behaviour must use the
   latter.
+- **Hot Dog has exactly one control.** It is the retro-desktop clock. The Start
+  menu has no theme item, the shared `#themeField` is hidden on both retro
+  layouts, and `#themeBtn` is hidden on Win31. Do not wire any of them back.
+- **An inferred handedness is not a preference.** `navAlignFor()` returns the
+  layout default, but `applyNavAlign()` writes only an explicit left/right to
+  storage; otherwise visiting retro-desktop would leak left alignment into
+  every other layout.
 - **Hot Dog owns the retro desktop background.** The wallpaper is on the body;
   `body.hotdog[data-layout="retro-desktop"]` must keep `background-image: none`.
 - **Session and station pins share one factory.** `numberedPin()` /

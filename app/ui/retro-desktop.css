@@ -66,12 +66,30 @@ body {
 }
 
 body[data-layout="retro-desktop"] {
+  /* The desktop has no content of its own when every window is closed. Without
+     a minimum height the body collapses to the taskbar, and cover sizing crops
+     the wallpaper to one strip. Keep the body at least one viewport tall so the
+     background always has the whole screen to cover. dvh follows mobile browser
+     chrome where supported; vh is the fallback. */
+  min-height: 100vh;
+  min-height: 100dvh;
   background-color: var(--win-teal);
   background-image: url("wallpaper/retro-desk-wallpaper-comp.jpg");
   background-position: center bottom;
   background-repeat: no-repeat;
   background-size: cover;
   image-rendering: pixelated;
+}
+
+/* Hot Dog is a clock-only Easter egg. The shared Appearance theme field would
+   otherwise expose it as "Dark" on this layout. */
+body[data-layout="retro-desktop"] #themeField {
+  display: none;
+}
+
+/* The clock dialog uses a blank line between the question and the history. */
+body[data-layout="retro-desktop"] #confirmBody {
+  white-space: pre-line;
 }
 
 /* Keep the wallpaper sharp without pixelating maps, photos or the chart. */
@@ -840,12 +858,17 @@ body[data-layout="retro-desktop"] .retro-clock {
   order: 1;
   min-width: 3.6rem;
   padding: 0 4px;
+  border: 0;
   border-right: 1px solid var(--win-gray-dark);
+  border-radius: 0;
+  background: transparent;
   color: var(--text);
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: bold;
   font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  appearance: none;
 }
 
 /* Handedness comes from the existing Appearance setting. Right-handed is the
@@ -916,7 +939,8 @@ body[data-layout="retro-desktop"] .retro-start-btn:hover {
 body[data-layout="retro-desktop"] .retro-window-controls button:focus-visible,
 body[data-layout="retro-desktop"] .retro-task-window:focus-visible,
 body[data-layout="retro-desktop"] .retro-start-btn:focus-visible,
-body[data-layout="retro-desktop"] .retro-menu-item:focus-visible {
+body[data-layout="retro-desktop"] .retro-menu-item:focus-visible,
+body[data-layout="retro-desktop"] .retro-clock:focus-visible {
   outline: 1px dotted var(--win-black);
   outline-offset: -3px;
 }
