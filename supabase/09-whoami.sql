@@ -1,4 +1,4 @@
--- EV Multi-Tracker: an identity probe for authenticated requests.
+-- ChargeDesk 3.11: an identity probe for authenticated requests.
 --
 -- Run this in the Supabase SQL editor. Idempotent.
 --

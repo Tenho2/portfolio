@@ -1,4 +1,4 @@
--- EV Multi-Tracker: shared vehicles (multiple drivers, one car)
+-- ChargeDesk 3.11: shared vehicles (multiple drivers, one car)
 -- Run this ONCE in the Supabase SQL editor: Dashboard -> SQL Editor -> New query.
 -- The anon key in the app cannot create tables or policies, so this step is manual.
 

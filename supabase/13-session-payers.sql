@@ -1,4 +1,4 @@
--- EV Multi-Tracker: who paid for a charge, and a private address book.
+-- ChargeDesk 3.11: who paid for a charge, and a private address book.
 --
 -- Run after 12-vehicle-capacity.sql.
 --

@@ -1,7 +1,7 @@
 /**
  * Syntax-check the inline <script> blocks in the HTML pages.
  *
- * The EV tracker keeps all of its JavaScript inline, so there is no .js file for
+ * ChargeDesk 3.11 keeps all of its JavaScript inline, so there is no .js file for
  * eslint or `node --check` to look at. This compiles each inline block with
  * vm.Script, which catches the mistakes that matter when editing a large single
  * file: an unbalanced brace, a stray template literal, a missing paren.

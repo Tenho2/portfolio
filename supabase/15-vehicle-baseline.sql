@@ -1,4 +1,4 @@
--- EV Multi-Tracker: a baseline consumption figure per vehicle.
+-- ChargeDesk 3.11: a baseline consumption figure per vehicle.
 -- Run this in the Supabase SQL editor AFTER 14-session-winter.sql.
 -- Dashboard -> SQL Editor -> New query -> paste -> Run.
 --

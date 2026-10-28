@@ -1,4 +1,4 @@
-/* EV Multi-Tracker service worker.
+/* ChargeDesk 3.11 service worker.
  * Caching policy, in one rule:
  *
  *   same-origin, cacheable  -> cache-first (the app shell is versioned)
@@ -30,11 +30,11 @@
  * list is served stale and nothing complains - so tools/test-sw-bump.mjs
  * asserts that every shell file was touched, and that the version moved with it.
  *
- * Last bumped: 2026-10-28, for the managed Edit Session window.
+ * Last bumped: 2026-10-28, for the ChargeDesk 3.11 rebrand.
  */
 
-const VERSION = "v96";
-const CACHE = `ev-tracker-shell-${VERSION}`;
+const VERSION = "v97";
+const CACHE = `chargedesk-shell-${VERSION}`;
 
 const SHELL = [
   "./",
@@ -91,7 +91,10 @@ self.addEventListener("activate", (event) => {
       await Promise.all(
         names
           .filter(
-            (name) => name.startsWith("ev-tracker-shell-") && name !== CACHE,
+            (name) =>
+              (name.startsWith("chargedesk-shell-") ||
+                name.startsWith("ev-tracker-shell-")) &&
+              name !== CACHE,
           )
           .map((name) => caches.delete(name)),
       );

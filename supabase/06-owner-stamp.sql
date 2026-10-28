@@ -1,4 +1,4 @@
--- EV Multi-Tracker: the database decides who owns a row
+-- ChargeDesk 3.11: the database decides who owns a row
 -- Run this in the Supabase SQL editor AFTER 04-roles.sql and 05-trash.sql.
 -- Dashboard -> SQL Editor -> New query -> paste -> Run.
 --

@@ -1,7 +1,7 @@
 {
-  "name": "EV Multi-Tracker",
-  "short_name": "EV Tracker",
-  "description": "Track charging sessions, energy and cost for multiple electric vehicles.",
+  "name": "ChargeDesk 3.11",
+  "short_name": "ChargeDesk",
+  "description": "ChargeDesk 3.11 tracks charging sessions, energy and cost for multiple electric vehicles.",
   "id": "./ev-tracker.html",
   "start_url": "./ev-tracker.html",
   "scope": "./",
@@ -52,7 +52,7 @@
   ],
   "shortcuts": [
     {
-      "name": "Open EV Multi-Tracker",
+      "name": "Open ChargeDesk 3.11",
       "short_name": "Open",
       "url": "./ev-tracker.html",
       "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]

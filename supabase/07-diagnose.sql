@@ -1,4 +1,4 @@
--- EV Multi-Tracker: read-only diagnosis for "42501 new row violates row-level
+-- ChargeDesk 3.11: read-only diagnosis for "42501 new row violates row-level
 -- security policy for table vehicles".
 --
 -- It changes nothing: no DDL, no DML, no grants. Only SELECTs. Safe to run as

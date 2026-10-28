@@ -1,8 +1,8 @@
 # Software Bill of Materials
 
-**Project:** EV Multi-Tracker / portfolio  
+**Project:** ChargeDesk 3.11 / portfolio  
 **Version:** 1.0.0  
-**Generated:** 2026-10-27  
+**Generated:** 2026-10-28  
 **Scope:** static browser application, its CDN runtime libraries, and the npm development toolchain.
 
 The application itself has no npm runtime dependencies. It is plain HTML, CSS and JavaScript served as static files.

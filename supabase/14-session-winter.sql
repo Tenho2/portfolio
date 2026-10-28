@@ -1,4 +1,4 @@
--- EV Multi-Tracker: winter / summer season per charging session.
+-- ChargeDesk 3.11: winter / summer season per charging session.
 -- Run this in the Supabase SQL editor AFTER 13-session-payers.sql.
 -- Dashboard -> SQL Editor -> New query -> paste -> Run.
 --

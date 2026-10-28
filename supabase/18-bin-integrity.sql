@@ -1,4 +1,4 @@
--- EV Multi-Tracker: bin and ownership integrity
+-- ChargeDesk 3.11: bin and ownership integrity
 -- Run this in the Supabase SQL editor AFTER 17-invite-at-usernames.sql.
 --
 -- What it fixes

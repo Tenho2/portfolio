@@ -1,4 +1,4 @@
-/* EV Tracker application logic, extracted from ev-tracker.html so the
+/* ChargeDesk 3.11 application logic, extracted from ev-tracker.html so the
    two layout pages share one copy. Load order is enforced by
    tools/test-wiring.mjs:
      app/i18n.js     -> window.EV_I18N
@@ -1688,7 +1688,7 @@ var DIAG_MAX = 60;
          */
         function diagnosticsReport() {
           var lines = [];
-          lines.push("EV Tracker diagnostics");
+          lines.push("ChargeDesk 3.11 diagnostics");
           lines.push("generated: " + new Date().toISOString());
           lines.push("build: " + buildStamp());
             /* The service worker version, not just the build date. buildStamp() is
@@ -14891,7 +14891,7 @@ $("exJson").addEventListener("click", function () {
         });
         $("backup").addEventListener("click", function () {
           download(
-            "ev-backup-" + now().y + pad(now().m) + pad(now().d) + ".json",
+            "chargedesk-backup-" + now().y + pad(now().m) + pad(now().d) + ".json",
             JSON.stringify(
               {
                 v: 1,

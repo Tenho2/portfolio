@@ -1,4 +1,4 @@
-"""Dependency-free PNG icon generator for EV Multi-Tracker.
+"""Dependency-free PNG icon generator for ChargeDesk 3.11.
 
 Writes true RGBA PNGs using only zlib from the standard library. Shapes are
 rasterised with 4x4 supersampling for clean antialiased edges.

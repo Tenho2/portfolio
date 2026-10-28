@@ -1,4 +1,4 @@
--- EV Multi-Tracker: sharing roles and owner approval
+-- ChargeDesk 3.11: sharing roles and owner approval
 -- Run this in the Supabase SQL editor AFTER 01-schema.sql and
 -- 03-share-codes.sql, both of which are in this folder. The order matters:
 -- this one replaces the policies they created.

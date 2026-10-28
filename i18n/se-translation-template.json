@@ -1,6 +1,6 @@
 {
   "_readme": [
-    "Northern Sami (Davvisamagiella) translation template for EV Multi-Tracker.",
+    "Northern Sami (Davvisamagiella) translation template for ChargeDesk 3.11.",
     "",
     "HOW TO USE",
     "  1. Fill in the \"se\" field for every key with natural Northern Sami.",
@@ -67,9 +67,9 @@
       "se": ""
     },
     "brand": {
-      "en": "EV Multi-Tracker",
-      "fi": "Sähköautojen latausloki",
-      "sv": "Laddningslogg för elbilar",
+      "en": "ChargeDesk 3.11",
+      "fi": "ChargeDesk 3.11",
+      "sv": "ChargeDesk 3.11",
       "se": ""
     },
     "nav.dashboard": {
@@ -1045,9 +1045,9 @@
       "se": ""
     },
     "foot": {
-      "en": "EV Multi-Tracker · data stays in this browser",
-      "fi": "Sähköautojen latausloki · tiedot pysyvät tässä selaimessa",
-      "sv": "Laddningslogg för elbilar · data stannar i den här webbläsaren",
+      "en": "ChargeDesk 3.11 · data stays in this browser",
+      "fi": "ChargeDesk 3.11 · tiedot pysyvät tässä selaimessa",
+      "sv": "ChargeDesk 3.11 · data stannar i den här webbläsaren",
       "se": ""
     },
     "ph.vehname": {

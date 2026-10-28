@@ -85,7 +85,7 @@ group("non-English text survived", () => {
   /* Sampled from each language block. If the encoding is damaged these are the
      first things to go, and they are all but invisible in a diff. */
   const samples = [
-    ["Finnish", "Sähköautojen latausloki"],
+    ["Finnish", "Latausloki"],
     ["Finnish", "Asetukset"],
     ["Finnish", "Roskakori"],
     ["Swedish", "Papperskorg"],

@@ -1,4 +1,4 @@
--- EV Multi-Tracker: seasonal baseline consumption per vehicle.
+-- ChargeDesk 3.11: seasonal baseline consumption per vehicle.
 -- Run this in the Supabase SQL editor AFTER 15-vehicle-baseline.sql.
 -- Dashboard -> SQL Editor -> New query -> paste -> Run.
 --

@@ -5,14 +5,14 @@
 > backlog.
 
 Personal projects. No build step: `index.html` is the home page and the
-`ev-tracker-*.html` pages are the tracker in its different layouts.
+`ev-tracker-*.html` pages are ChargeDesk 3.11 in its different layouts.
 
 ## Layout
 
 | Path                      | What it is                                                                      |
 | ------------------------- | ------------------------------------------------------------------------------- |
 | `index.html`              | Home page. Served at the domain root, so it has to stay here.                   |
-| `ev-tracker.html`         | The tracker in the classic layout. See "The layout pages".                      |
+| `ev-tracker.html`         | ChargeDesk 3.11 in the classic layout. See "The layout pages".                  |
 | `ev-tracker-*.html`       | The same app in the other active layouts. Generated, never hand-edited.         |
 | `app/`                    | Shared by every layout: logic, design system, i18n, storage.                    |
 | `app/ui/wallpaper/`       | Retro desktop wallpaper assets; compressed copies are cached offline.           |
@@ -23,7 +23,7 @@ Personal projects. No build step: `index.html` is the home page and the
 | `supabase/`               | Database migrations. Not run automatically — see below.                         |
 | `tools/`                  | Test harnesses, the page generator and the syntax checks.                       |
 
-The tracker pages at the root reference each other by relative path and
+The ChargeDesk pages at the root reference each other by relative path and
 `index.html` has to be at the branch root for GitHub Pages, so they stay flat.
 
 ## Development
@@ -135,6 +135,10 @@ to the page therefore brings it under test automatically.
 : Layout-specific handedness defaults and the rule that an inferred default is
 : never persisted as an explicit user choice.
 
+`tools/test-brand.mjs`
+: The ChargeDesk 3.11 name across the manifest, page metadata, i18n brands,
+: package metadata, icons and service-worker cache prefix.
+
 `tools/check-inline-js.mjs`
 : Compiles every inline `<script>` block (currently `index.html`), because an
 : inline block has no file for `node --check` to look at. External modules are
@@ -219,7 +223,7 @@ files that a static host can serve as they are.
 
 | File                       | Lines  | Contents                                 |
 | -------------------------- | ------ | ---------------------------------------- |
-| `ev-tracker.html`          | 2,173  | markup, classic layout                   |
+| `ev-tracker.html`          | 2,173  | ChargeDesk 3.11 markup, classic layout   |
 | `app/app.js`               | 16,063 | application logic                        |
 | `app/app.css`              | 3,037  | the shared design system                 |
 | `app/layout-classic.css`   | 16     | the classic navigation shell             |
@@ -769,13 +773,13 @@ are recorded here so the next build does not repeat the discovery.
       the compact Add-session nearby list. ABS and ABC are both recognised;
       live explicit operator names remain authoritative. Tests: power parsing, connector classification,
       OR/AND semantics, sort order, operator-list search/preservation, filtered
-      map/list/status, no-match state and i18n keys. `sw.js` is v96.
+      map/list/status, no-match state and i18n keys. `sw.js` is v97.
 
 - [x] **Retro desktop wallpaper.** Implemented 2026-10-27 with the compressed
       `retro-desk-wallpaper-comp.jpg`, a solid-color Hot Dog override, content
       image-rendering resets for maps/photos/charts, full-viewport body height
       when every window is closed, a fixed viewport wallpaper layer for tall
-      mobile windows, and both compressed wallpapers in the `v96` offline shell.
+      mobile windows, and both compressed wallpapers in the `v97` offline shell.
       Portrait phones use `retro-desk-wallpaper-2comp.jpg` so the car and
       charger stay in the narrow crop. Covered by
       `tools/test-retro-wallpaper.mjs`.

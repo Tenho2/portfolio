@@ -1,4 +1,4 @@
--- EV Multi-Tracker: leaving a car that was shared with you.
+-- ChargeDesk 3.11: leaving a car that was shared with you.
 -- Run this in the Supabase SQL editor AFTER 04-roles.sql.
 -- Dashboard -> SQL Editor -> New query -> paste -> Run.
 --

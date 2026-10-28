@@ -1,4 +1,4 @@
--- EV Multi-Tracker: shareable vehicle codes
+-- ChargeDesk 3.11: shareable vehicle codes
 -- Run this in the SQL editor AFTER 01-schema.sql.
 -- Everything here is idempotent.
 --

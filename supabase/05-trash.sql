@@ -1,4 +1,4 @@
--- EV Multi-Tracker: the bin (recoverable deletes)
+-- ChargeDesk 3.11: the bin (recoverable deletes)
 -- Run this in the Supabase SQL editor AFTER 04-roles.sql.
 -- Dashboard -> SQL Editor -> New query -> paste -> Run.
 --

@@ -1,4 +1,4 @@
-/* EV Tracker — experimental UI base.
+/* ChargeDesk 3.11 — experimental UI base.
  *
  * A self-contained stylesheet for the four layouts under app/ui/. It shares
  * nothing with app/app.css: every class app/app.js emits is defined here, and

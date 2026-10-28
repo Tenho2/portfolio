@@ -1,4 +1,4 @@
--- EV Multi-Tracker: usable battery capacity per vehicle.
+-- ChargeDesk 3.11: usable battery capacity per vehicle.
 -- Run this in the Supabase SQL editor AFTER 06-owner-stamp.sql.
 -- Dashboard -> SQL Editor -> New query -> paste -> Run.
 --
