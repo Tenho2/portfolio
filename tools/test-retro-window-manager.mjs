@@ -75,6 +75,17 @@ group("the retro page owns the taskbar and Start menu", () => {
   );
 });
 
+group("the retro desktop boots to an empty desktop", () => {
+  const boot = fnBody(app, "initialView");
+  ok("boot uses the initial-view helper", /initialView\(\);/.test(app));
+  ok("retro without a hash clears the current view", /isRetroDesktop\(\) && !start/.test(boot) && /view = ""/.test(boot));
+  ok("it clears the shared Dashboard .on class", /classList\.remove\("on"\)/.test(boot));
+  ok("it empties the taskbar", /syncRetroTaskbar\(\)/.test(boot));
+  ok("a hash still opens its target", /go\(document\.getElementById\(start\) \? start : "dashboard"\)/.test(boot));
+  ok("other layouts still fall back to Dashboard", /: "dashboard"/.test(boot));
+  ok("the old unconditional Dashboard boot is gone", !/var start = location\.hash\.slice\(1\);\s*go\(document\.getElementById\(start\)/.test(app));
+});
+
 group("the generator injects retro chrome only", () => {
   ok("shell exports bodyExtrasFor", /export function bodyExtrasFor\(layout\)/.test(shell));
   ok("only retro gets extras", /if \(layout !== "retro-desktop"\) return \[\]/.test(shell));
@@ -217,7 +228,7 @@ group("the new chrome strings exist in all three languages", () => {
 });
 
 group("the service worker is bumped for the window manager", () => {
-  ok("sw.js is v94", /const VERSION = "v94"/.test(sw));
+  ok("sw.js is v95", /const VERSION = "v95"/.test(sw));
 });
 
 console.log(`\n${pass} passed, ${failures.length} failed`);

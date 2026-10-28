@@ -9,8 +9,8 @@ belongs in [README.md](README.md); this file is the part that goes stale.
 | -------------- | ---------------------------------------------------------------------------- |
 | HEAD           | `585f67f` — commit and push are the user's job (see ground rules below)      |
 | Working tree   | code and documentation changes are uncommitted                               |
-| Service worker | `v94`                                                                        |
-| Build stamp    | `2026-10-27`                                                                 |
+| Service worker | `v95`                                                                        |
+| Build stamp    | `2026-10-28`                                                                 |
 | Tests          | all suites pass, 0 failures (`npm run check`); exact total not recorded      |
 | Database       | migrations `15-vehicle-baseline` and `16-vehicle-seasonal-baseline` required |
 
@@ -23,11 +23,16 @@ belongs in [README.md](README.md); this file is the part that goes stale.
   is one shared `retroHotDog` key for `win31` and `retro-desktop`, but its only
   control is now the retro-desktop clock: clicking the clock asks through
   `askConfirm`, while the Start-menu item, the Settings theme field and Win31's
-  header toggle are removed or hidden. Handedness comes from the existing
+  header toggle are removed or hidden. The layout now boots with no window
+  open; `initialView()` skips the Dashboard fallback unless there is a hash,
+  while other layouts keep theirs. Handedness comes from the existing
   `data-nav-align` setting; with no stored preference, `retro-desktop` defaults
   to left and every other layout stays right. See
-  `test-retro-window-manager.mjs`, `test-retro-window-lifecycle.mjs` and
-  `test-nav-align.mjs`.
+  `test-retro-window-manager.mjs`, `test-retro-window-lifecycle.mjs`,
+  `test-nav-align.mjs` and `test-retro-wallpaper.mjs`.
+- **Hot Dog dialog copy.** The Finnish prompt now reads naturally: it asks
+  whether to take the theme into use and describes it as a piece of PC history,
+  rather than literally translating the English toggle wording.
 - **Nested-window cleanup.** The outer `.view` is the only window frame; inner
   `.panel` elements are flat content groups. Dialogs remain windows.
 - **Nearby pins on the Add-session map.** `numberedPin()` and
@@ -44,9 +49,10 @@ belongs in [README.md](README.md); this file is the part that goes stale.
   pseudo-element (`body::before`) with `cover`/`center bottom`/`pixelated`; Hot
   Dog hides the layer for the solid red desktop. The body also has
   `min-height: 100vh` / `100dvh`. The fixed layer means a tall mobile window
-  cannot resize or drag the scene down. Content images and canvases reset to
-  `auto` rendering. Both compressed wallpapers are in the `v94` cache; the
-  alternate is explicitly cache-only. See `test-retro-wallpaper.mjs`.
+  cannot resize or drag the scene down. Portrait phones switch to
+  `retro-desk-wallpaper-2comp.jpg` and anchor toward the car; both compressed
+  wallpapers are in the `v95` cache. Content images and canvases reset to `auto` rendering. See
+  `test-retro-wallpaper.mjs`.
 - **Filter UI reaches HUD as well.** The shared station panel and
   `tools/hud-body.html` both carry the filter controls.
 
@@ -285,9 +291,9 @@ wholesale.
 - **Station filters have three lists.** `stationAll` is raw, `stationFiltered`
   is after filters/sort, and `stationResults` is the visible page. Status,
   `stationMore`, detail lookup and map pins must all read the filtered result.
-- **`test-sw-bump.mjs` knows two kinds of app references.** CSS-referenced
-  assets (the active wallpaper) are allowed through stylesheet text; the
-  unreferenced alternate wallpaper is explicitly in `CACHE_ONLY_ASSETS`.
+- **`test-sw-bump.mjs` knows CSS-referenced assets.** Both wallpapers are
+  referenced from `retro-desktop.css` (one base, one portrait), so a new asset
+  must be referenced before it counts as shell content.
 - **Layout memory only redirects `classic`.** `layoutRedirectTarget()` refuses
   every other current layout, so a direct link to any layout page is honoured
   (otherwise that page becomes unreachable by URL). The preference is written by

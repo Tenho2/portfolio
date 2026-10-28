@@ -73,9 +73,8 @@ await group("the window chrome boots on the retro page", () => {
   ok("every title bar has minimize and close", doc.querySelectorAll("[data-retro-window-titlebar]").length === 7 &&
     doc.querySelectorAll("[data-retro-window-minimize]").length === 7 &&
     doc.querySelectorAll("[data-retro-window-close]").length === 7);
-  ok("the dashboard starts foreground", onViews().join(",") === "dashboard");
-  ok("the dashboard has a taskbar button", !!taskFor("dashboard"));
-  ok("the dashboard button is pressed", taskFor("dashboard").getAttribute("aria-pressed") === "true");
+  ok("no window starts open", onViews().length === 0);
+  ok("the taskbar starts empty", taskButtons().length === 0);
 });
 
 await group("the retro desktop boots left-handed without saving a preference", () => {
@@ -116,13 +115,12 @@ await group("the taskbar clock is the only Hot Dog route", async () => {
   ok("accepting again saves the off choice", window.localStorage.getItem("retroHotDog") === "off");
 });
 
-await group("opening another window minimizes the foreground, not the old form", async () => {
+await group("the first opened window starts from an empty desktop", async () => {
   doc.querySelector('#retro-start-menu [data-go="add-session"]').click();
   await wait();
   ok("add-session is foreground", onViews().join(",") === "add-session");
-  ok("dashboard is still open", !!taskFor("dashboard"));
-  ok("dashboard is no longer pressed", taskFor("dashboard").getAttribute("aria-pressed") === "false");
-  ok("there are two taskbar buttons", taskButtons().length === 2);
+  ok("only add-session has a taskbar button", taskButtons().length === 1);
+  ok("the add-session button is pressed", taskFor("add-session").getAttribute("aria-pressed") === "true");
 });
 
 await group("minimize preserves the form and the taskbar button", async () => {
@@ -158,8 +156,8 @@ await group("confirmed close removes the button and resets the instance", async 
   await wait();
   ok("the window is closed", onViews().length === 0);
   ok("its taskbar button is gone", !taskFor("add-session"));
+  ok("the taskbar is empty again", taskButtons().length === 0);
   ok("the form was reset", doc.getElementById("location").value === "");
-  ok("the dashboard button remains", !!taskFor("dashboard"));
 });
 
 await group("a clean window closes without a prompt", async () => {

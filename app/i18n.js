@@ -951,7 +951,7 @@
       "retro.discardDraftOk": "Hylkää muutokset",
       "retro.hotdogTitle": "Hot Dog Stand",
       "retro.hotdogPrompt":
-        "Haluatko vaihtaa 'Hot Dog Stand' -teemaan?\n\nSe tuotiin alun perin Windows 3.1:een auttamaan heikkonäköisiä käyttäjiä. Sen silmiä polttavat, erittäin kontrastiset punaiset ja keltaiset värit tekivät siitä legendaarisen (ja pahamaineisen) retroteknologiamemin.",
+        "Haluatko ottaa käyttöön 'Hot Dog Stand' -teeman?\n\nTämä teema esiteltiin alun perin Windows 3.1:ssä heikkonäköisten apuvälineeksi. Sen silmiäsärkevän räikeä punakeltainen värimaailma teki siitä kuitenkin legendaarisen (ja pahamaineisen) palasen PC-historiaa.",
       "retro.hotdogOn": "Ota Hot Dog Stand käyttöön",
       "retro.hotdogOff": "Palaa normaaliin",
       db: "Selaintila · {n} latausta · {v} ajoneuvoa",

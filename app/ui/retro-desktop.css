@@ -97,6 +97,16 @@ body[data-layout="retro-desktop"]::before {
   image-rendering: pixelated;
 }
 
+/* Portrait phones crop a landscape wallpaper to a narrow vertical slice. The
+   alternate puts the car to the right of the charger, so anchor toward the
+   right to keep the car in the crop; the main artwork's centre is open grass. */
+@media (max-width: 820px) and (orientation: portrait) {
+  body[data-layout="retro-desktop"]::before {
+    background-image: url("wallpaper/retro-desk-wallpaper-2comp.jpg");
+    background-position: 75% bottom;
+  }
+}
+
 /* Hot Dog is a clock-only Easter egg. The shared Appearance theme field would
    otherwise expose it as "Dark" on this layout. */
 body[data-layout="retro-desktop"] #themeField {

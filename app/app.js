@@ -12896,6 +12896,28 @@ function hasKey(key) {
           enterView(id);
           window.scrollTo(0, 0);
         }
+        /** Open the initial view.
+         *
+         * A retro desktop starts as a desktop: no window is open until the
+         * user picks one from the taskbar's Start menu. Other layouts still
+         * start on the dashboard, and a hash deep-links on every layout.
+         */
+        function initialView() {
+          var start = location.hash.slice(1);
+          if (isRetroDesktop() && !start) {
+            view = "";
+            retroForeground = null;
+            /* The shared markup marks Dashboard `.on` for the non-desktop
+               layouts. Remove that class so the retro desktop can start with
+               no window open, then let the taskbar reflect zero windows. */
+            var views = document.querySelectorAll(".view");
+            for (var i = 0; i < views.length; i++)
+              views[i].classList.remove("on");
+            syncRetroTaskbar();
+            return;
+          }
+          go(document.getElementById(start) ? start : "dashboard");
+        }
         /* ---------- actions ---------- */
         /**
          * Delete a vehicle and every session that belongs to it.
@@ -15807,8 +15829,7 @@ $("eDelete").addEventListener("click", function () {
         renderFavs();
         stampDefaults();
         initRetroChrome();
-        var start = location.hash.slice(1);
-        go(document.getElementById(start) ? start : "dashboard");
+        initialView();
         watchChartLib();
         window.addEventListener("online", function () {
           /* A phone that slept through a failure re-arms the backoff from the
