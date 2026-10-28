@@ -226,11 +226,11 @@ files that a static host can serve as they are.
 | `ev-tracker.html`          | 2,173  | ChargeDesk 3.11 markup, classic layout   |
 | `app/app.js`               | 16,063 | application logic                        |
 | `app/app.css`              | 3,037  | the shared design system                 |
-| `app/layout-classic.css`   | 16     | the classic navigation shell             |
+| `app/layout-classic.css`   | 17     | the classic navigation shell             |
 | `app/layout-focus.css`     | 149    | the focus navigation shell               |
 | `app/layout-modern.css`    | 148    | the modern navigation shell              |
-| `app/i18n.js`              | 2,973  | translations for all four languages      |
-| `app/storage.js`           | 211    | per-account local storage keys           |
+| `app/i18n.js`              | 2,985  | translations for all four languages      |
+| `app/storage.js`           | 212    | per-account local storage keys           |
 | `app/shell.mjs`            | 156    | how the layout pages are assembled       |
 | `app/ui/base.css`          | 1,531  | shared base for the experimental UIs     |
 | `app/ui/hud.css`           | 559    | the HUD cockpit theme                    |

@@ -1,6 +1,6 @@
 # Where we left off
 
-Written at the end of the 2026-10-27 session. Durable engineering knowledge
+Written at the end of the 2026-10-27/28 session. Durable engineering knowledge
 belongs in [README.md](README.md); this file is the part that goes stale.
 
 ## State
