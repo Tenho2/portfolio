@@ -169,6 +169,18 @@ body[data-layout="retro-desktop"] canvas {
   box-shadow: var(--bevel-out);
 }
 
+/* The edit sheet has real controls; do not draw the decorative title-bar box. */
+body[data-layout="retro-desktop"] #editTitle::after {
+  content: none;
+  display: none;
+}
+
+body[data-layout="retro-desktop"] #editWindowControls {
+  display: flex;
+  flex: none;
+  margin-left: auto;
+}
+
 /* A view already has the only title bar. Panels are flat content groups so
    they do not read as windows nested inside the program window. */
 body[data-layout="retro-desktop"] .view .panel {

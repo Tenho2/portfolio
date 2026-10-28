@@ -16,6 +16,26 @@ const dom = new JSDOM(html, {
 });
 const { window } = dom;
 const doc = window.document;
+/* A minimal local session so the Edit sheet can be opened without auth. */
+window.localStorage.setItem(
+  "ev.v1.local.vehicles",
+  JSON.stringify([{ id: "v-test", name: "Test car", icon: "T", odo: 0 }]),
+);
+window.localStorage.setItem(
+  "ev.v1.local.sessions",
+  JSON.stringify([
+    {
+      id: "s-test",
+      vehicleId: "v-test",
+      date: "2026-10-28",
+      time: "12:00",
+      duration: 3600,
+      energy: 10,
+      cost: 2,
+      location: "Test charger",
+    },
+  ]),
+);
 window.scrollTo = () => {};
 window.matchMedia =
   window.matchMedia ||
@@ -168,6 +188,51 @@ await group("a clean window closes without a prompt", async () => {
   await wait();
   ok("no confirmation appeared", !doc.getElementById("confirmSheet").classList.contains("on"));
   ok("settings is closed", !onViews().includes("settings"));
+});
+
+await group("the Edit Session sheet gets managed retro controls", async () => {
+  doc.querySelector('.side-nav button[data-go="view-data"]').click();
+  await wait();
+  const edit = doc.querySelector('#view-data [data-edit]');
+  ok("the session row offers Edit", !!edit);
+  if (!edit) return;
+  edit.click();
+  await wait();
+  const sheet = doc.getElementById("editSheet");
+  const controls = doc.getElementById("editWindowControls");
+  ok("the Edit sheet opens", sheet.classList.contains("on"));
+  ok("the controls are revealed on retro", controls && !controls.hidden);
+  ok("the minimize button exists", !!doc.querySelector("[data-retro-edit-minimize]"));
+  ok("the minimize button shows a dash", doc.querySelector("[data-retro-edit-minimize]").textContent.trim() === "–");
+  ok("the close button exists", !!doc.querySelector("[data-retro-edit-close]"));
+  ok(
+    "the title text is translated",
+    !!doc.getElementById("editTitleText").textContent.trim() &&
+      !/ed\.title/.test(doc.getElementById("editTitleText").textContent),
+  );
+  ok("the taskbar entry exists", !!taskFor("edit-session"));
+
+  doc.querySelector("[data-retro-edit-minimize]").click();
+  await wait();
+  ok("minimize hides the sheet", !sheet.classList.contains("on"));
+  ok("the edit taskbar entry remains", !!taskFor("edit-session"));
+  ok("the minimized entry is not pressed", taskFor("edit-session").getAttribute("aria-pressed") === "false");
+  ok("the form value survives", doc.getElementById("eLocation").value === "Test charger");
+
+  taskFor("edit-session").click();
+  await wait();
+  ok("the taskbar entry restores the sheet", sheet.classList.contains("on"));
+  ok("the restored entry is pressed", taskFor("edit-session").getAttribute("aria-pressed") === "true");
+
+  doc.querySelector("[data-retro-edit-close]").click();
+  await wait();
+  ok("close hides the sheet", !sheet.classList.contains("on"));
+  ok("close removes the edit taskbar entry", !taskFor("edit-session"));
+
+  doc.getElementById("view-data").querySelector("[data-retro-window-close]").click();
+  await wait();
+  ok("closing View Data leaves an empty desktop", onViews().length === 0);
+  ok("the taskbar is empty again", taskButtons().length === 0);
 });
 
 console.log(`\n${pass} passed, ${failures.length} failed`);

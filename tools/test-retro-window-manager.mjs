@@ -102,6 +102,24 @@ group("the title bar is created for every shared view at runtime", () => {
   ok("the window titles follow the nav labels", /function retroTitleFor\(id\)/.test(app));
 });
 
+group("the Edit Session sheet has real retro window controls", () => {
+  ok("the title text is a span", /id="editTitle"[\s\S]{0,300}?id="editTitleText"[^>]*data-i18n="ed.title"/.test(page));
+  ok("the title controls exist", /data-retro-edit-minimize/.test(page) && /data-retro-edit-close/.test(page));
+  ok("the minimize control shows a dash", /data-retro-edit-minimize[\s\S]{0,100}?[–-]\s*<\/button>/.test(page));
+  ok("the controls are hidden outside retro", /id="editWindowControls"[^>]*hidden/.test(page));
+  ok("the controls sit at the right end of the title bar", /body\[data-layout="retro-desktop"\] #editWindowControls\s*\{[^}]*margin-left:\s*auto/.test(css));
+  ok("retro reveals the controls", /editControls\.hidden = false/.test(app));
+  ok("the decorative title box is suppressed", /body\[data-layout="retro-desktop"\] #editTitle::after\s*\{[^}]*content:\s*none/.test(css));
+  ok("opening the sheet registers the taskbar state", /retroEditState = "normal"/.test(fnBody(app, "openEdit")));
+  ok("closing clears the taskbar state", /retroEditState = null/.test(fnBody(app, "closeEdit")));
+  ok("minimize releases the modal lock", /lockBackground\(false\)/.test(fnBody(app, "minimizeRetroEdit")));
+  ok("restore locks the modal again", /lockBackground\(true\)/.test(fnBody(app, "restoreRetroEdit")));
+  ok("the taskbar handles the edit pseudo-window", /id === RETRO_EDIT_ID/.test(fnBody(app, "toggleRetroTaskbarWindow")));
+  ok("the taskbar includes the edit entry", /RETRO_EDIT_ID/.test(fnBody(app, "syncRetroTaskbar")));
+  ok("the close control calls closeEdit", /data-retro-edit-close[\s\S]{0,140}?closeEdit\(\)/.test(app));
+  ok("sign-out closes the edit sheet", /closeEdit\(\)/.test(fnBody(app, "showApp")));
+});
+
 group("the lifecycle has real open, minimized and closed states", () => {
   ok("state is keyed by view", /var retroWindows = \{\}/.test(app));
   ok("there is one foreground window", /var retroForeground = null/.test(app));
@@ -228,7 +246,7 @@ group("the new chrome strings exist in all three languages", () => {
 });
 
 group("the service worker is bumped for the window manager", () => {
-  ok("sw.js is v95", /const VERSION = "v95"/.test(sw));
+  ok("sw.js is v96", /const VERSION = "v96"/.test(sw));
 });
 
 console.log(`\n${pass} passed, ${failures.length} failed`);

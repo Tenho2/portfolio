@@ -9,7 +9,7 @@ belongs in [README.md](README.md); this file is the part that goes stale.
 | -------------- | ---------------------------------------------------------------------------- |
 | HEAD           | `585f67f` — commit and push are the user's job (see ground rules below)      |
 | Working tree   | code and documentation changes are uncommitted                               |
-| Service worker | `v95`                                                                        |
+| Service worker | `v96`                                                                        |
 | Build stamp    | `2026-10-28`                                                                 |
 | Tests          | all suites pass, 0 failures (`npm run check`); exact total not recorded      |
 | Database       | migrations `15-vehicle-baseline` and `16-vehicle-seasonal-baseline` required |
@@ -51,8 +51,13 @@ belongs in [README.md](README.md); this file is the part that goes stale.
   `min-height: 100vh` / `100dvh`. The fixed layer means a tall mobile window
   cannot resize or drag the scene down. Portrait phones switch to
   `retro-desk-wallpaper-2comp.jpg` and anchor toward the car; both compressed
-  wallpapers are in the `v95` cache. Content images and canvases reset to `auto` rendering. See
-  `test-retro-wallpaper.mjs`.
+  wallpapers are in the `v96` cache. Content images and canvases reset to
+  `auto` rendering. See `test-retro-wallpaper.mjs`.
+- **Edit Session is a managed retro window.** The edit sheet has real minimize
+  and close controls in its title bar. Minimize releases the modal lock and
+  leaves an Edit session taskbar button; restore re-locks it; close and
+  sign-out remove the button. It is deliberately not in `RETRO_VIEW_ORDER`
+  because it is a sheet, not a themed page view.
 - **Filter UI reaches HUD as well.** The shared station panel and
   `tools/hud-body.html` both carry the filter controls.
 

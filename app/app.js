@@ -106,6 +106,9 @@
            has the chrome; every helper below is inert on the other layouts. */
         var retroWindows = {};
         var retroForeground = null;
+        /* The edit session sheet is managed like a window but is not a .view. */
+        var RETRO_EDIT_ID = "edit-session";
+        var retroEditState = null;
         var retroChromeReady = false;
         var retroChrome = null;
         var RETRO_VIEW_ORDER = [
@@ -9366,15 +9369,52 @@ for (var c = 0; c < head.length; c++) {
              signed-in user's amount from the known cost. */
           editLoadPayers(s);
           $("editSheet").classList.add("on");
+          if (isRetroDesktop() && retroChromeReady) {
+            retroEditState = "normal";
+            syncRetroTaskbar();
+          }
           lockBackground(true);
           $("eDate").focus();
         }
         function closeEdit() {
-          if (!$("editSheet").classList.contains("on")) return;
-          $("editSheet").classList.remove("on");
-          lockBackground(false);
+          var sheet = $("editSheet");
+          var wasOpen = !!(sheet && sheet.classList.contains("on"));
+          var wasManaged = isRetroDesktop() && retroEditState !== null;
+          if (!wasOpen && !wasManaged) return;
+          if (sheet) sheet.classList.remove("on");
+          if (wasOpen) lockBackground(false);
+          if (wasManaged) {
+            retroEditState = null;
+            syncRetroTaskbar();
+          }
           editId = null;
           restoreFocus();
+        }
+        function minimizeRetroEdit(restoreFocus) {
+          if (!isRetroDesktop() || retroEditState !== "normal") return;
+          var sheet = $("editSheet");
+          if (!sheet || !sheet.classList.contains("on")) return;
+          sheet.classList.remove("on");
+          lockBackground(false);
+          retroEditState = "minimized";
+          syncRetroTaskbar();
+          if (restoreFocus !== false) {
+            var btn = retroChrome && retroChrome.windows.querySelector(
+              '[data-retro-task-toggle="' + RETRO_EDIT_ID + '"]',
+            );
+            if (btn) btn.focus();
+            else focusRetroTaskbar();
+          }
+        }
+        function restoreRetroEdit() {
+          if (!isRetroDesktop() || retroEditState !== "minimized") return;
+          var sheet = $("editSheet");
+          if (!sheet) return;
+          retroEditState = "normal";
+          sheet.classList.add("on");
+          lockBackground(true);
+          syncRetroTaskbar();
+          if ($("eDate")) $("eDate").focus();
         }
         function saveEdit(e) {
           e.preventDefault();
@@ -12358,8 +12398,29 @@ function hasKey(key) {
               }
             }
           }
+          syncEditWindowLabels();
           syncRetroTaskbar();
           updateRetroClock();
+        }
+
+        /** Keep the Edit sheet's title-bar controls labelled. */
+        function syncEditWindowLabels() {
+          var controls = $("editWindowControls");
+          if (!controls) return;
+          var title = TXT("ed.title");
+          var min = controls.querySelector("[data-retro-edit-minimize]");
+          var close = controls.querySelector("[data-retro-edit-close]");
+          if (min) {
+            min.setAttribute(
+              "aria-label",
+              TXT("retro.minimizeWindow", { v: title }),
+            );
+            min.title = TXT("retro.minimizeWindow", { v: title });
+          }
+          if (close) {
+            close.setAttribute("aria-label", TXT("retro.closeWindow", { v: title }));
+            close.title = TXT("retro.closeWindow", { v: title });
+          }
         }
 
         /** Rebuild the taskbar buttons that represent open windows. */
@@ -12394,6 +12455,34 @@ function hasKey(key) {
             btn.title = TXT(action, { v: title });
           }
           var existing = host.querySelectorAll("[data-retro-task-toggle]");
+          if (retroEditState) {
+            wanted[RETRO_EDIT_ID] = true;
+            var editBtn = host.querySelector(
+              '[data-retro-task-toggle="' + RETRO_EDIT_ID + '"]',
+            );
+            if (!editBtn) {
+              editBtn = document.createElement("button");
+              editBtn.type = "button";
+              editBtn.className = "retro-task-window";
+              editBtn.setAttribute("data-retro-task-toggle", RETRO_EDIT_ID);
+              host.appendChild(editBtn);
+            }
+            var editTitle = TXT("ed.title");
+            editBtn.textContent = editTitle;
+            editBtn.setAttribute(
+              "aria-pressed",
+              retroEditState === "normal" ? "true" : "false",
+            );
+            var editAction =
+              retroEditState === "normal"
+                ? "retro.minimizeWindow"
+                : "retro.restoreWindow";
+            editBtn.setAttribute(
+              "aria-label",
+              TXT(editAction, { v: editTitle }),
+            );
+            editBtn.title = TXT(editAction, { v: editTitle });
+          }
           for (var j = 0; j < existing.length; j++) {
             var key = existing[j].getAttribute("data-retro-task-toggle");
             if (!wanted[key]) existing[j].parentNode.removeChild(existing[j]);
@@ -12569,6 +12658,11 @@ function hasKey(key) {
         }
 
         function toggleRetroTaskbarWindow(id) {
+          if (id === RETRO_EDIT_ID) {
+            if (retroEditState === "minimized") restoreRetroEdit();
+            else if (retroEditState === "normal") minimizeRetroEdit(true);
+            return;
+          }
           var w = retroWindow(id);
           if (!w) return;
           if (w.state === "minimized") activateRetroWindow(id);
@@ -12740,6 +12834,8 @@ function hasKey(key) {
           };
           retroChromeReady = true;
           ensureRetroWindowChrome();
+          var editControls = $("editWindowControls");
+          if (editControls) editControls.hidden = false;
           syncRetroChromeLabels();
 
           /* The clock is the only Hot Dog route. It asks before changing the
@@ -12778,8 +12874,16 @@ function hasKey(key) {
               closeRetroStartMenu(false);
 
             var t =
-              target && target.closest ? target.closest("[data-retro-window-minimize],[data-retro-window-close],[data-retro-task-toggle]") : null;
+              target && target.closest ? target.closest("[data-retro-window-minimize],[data-retro-window-close],[data-retro-task-toggle],[data-retro-edit-minimize],[data-retro-edit-close]") : null;
             if (!t) return;
+            if (t.hasAttribute("data-retro-edit-minimize")) {
+              minimizeRetroEdit(true);
+              return;
+            }
+            if (t.hasAttribute("data-retro-edit-close")) {
+              closeEdit();
+              return;
+            }
             if (t.hasAttribute("data-retro-window-minimize")) {
               var minView = t.closest(".view");
               if (minView) minimizeRetroWindow(minView.id, true);
