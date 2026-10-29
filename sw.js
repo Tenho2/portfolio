@@ -30,10 +30,10 @@
  * list is served stale and nothing complains - so tools/test-sw-bump.mjs
  * asserts that every shell file was touched, and that the version moved with it.
  *
- * Last bumped: 2026-10-29, for the favourite home checkbox.
+ * Last bumped: 2026-10-29, for the Start-menu history shortcut.
  */
 
-const VERSION = "v100";
+const VERSION = "v101";
 const CACHE = `chargedesk-shell-${VERSION}`;
 
 const SHELL = [

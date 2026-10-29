@@ -58,6 +58,8 @@ group("the retro page owns the taskbar and Start menu", () => {
   ok("the Start menu has Dashboard", /data-go="dashboard"/.test(page));
   ok("the Start menu has Add session", /data-go="add-session"/.test(page));
   ok("the Start menu has Settings", /data-go="settings"/.test(page));
+  ok("the Start menu has Charge history", /retro-start-menu[\s\S]{0,1200}?data-go="view-data"/.test(page));
+  ok("the History item has a translated label", /retro-start-menu[\s\S]{0,1200}?data-i18n="retro\.history"/.test(page));
   ok("the Start menu has Sync", /data-retro-sync/.test(page));
   ok("the Start menu has no Hot Dog route", !/data-retro-theme/.test(page));
   ok("the clock is a native button", /id="retro-clock"[^>]*type="button"/.test(page));
@@ -263,7 +265,7 @@ group("the new chrome strings exist in all three languages", () => {
 });
 
 group("the service worker is bumped for the window manager", () => {
-  ok("sw.js is v100", /const VERSION = "v100"/.test(sw));
+  ok("sw.js is v101", /const VERSION = "v101"/.test(sw));
 });
 
 console.log(`\n${pass} passed, ${failures.length} failed`);

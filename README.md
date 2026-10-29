@@ -119,13 +119,14 @@ to the page therefore brings it under test automatically.
 `tools/test-retro-window-manager.mjs`
 : The retro desktop window lifecycle contract: title bars, minimize/restore,
 : close/discard confirmation, the managed Edit Session and Sync sheets,
-: clock-only Hot Dog Easter egg, handedness order and the taskbar/Start-menu
-: structure.
+: the direct Charge-history Start-menu item, clock-only Hot Dog Easter egg,
+: handedness order and the taskbar/Start-menu structure.
 
 `tools/test-retro-window-lifecycle.mjs`
 : Boots the generated retro page in jsdom and drives the real window controls,
 : including taskbar minimize/restore, dirty close cancellation, Edit Session and
-: Sync minimize/restore/close, the clock confirmation and Hot Dog toggling.
+: Sync minimize/restore/close, the Start-menu History shortcut, the clock
+: confirmation and Hot Dog toggling.
 
 `tools/test-retro-wallpaper.mjs`
 : The fixed viewport wallpaper layer, portrait alternate, body viewport height,
@@ -234,9 +235,9 @@ files that a static host can serve as they are.
 | `app/layout-classic.css`   | 17     | the classic navigation shell             |
 | `app/layout-focus.css`     | 149    | the focus navigation shell               |
 | `app/layout-modern.css`    | 148    | the modern navigation shell              |
-| `app/i18n.js`              | 2,991  | translations for all four languages      |
+| `app/i18n.js`              | 2,994  | translations for all four languages      |
 | `app/storage.js`           | 212    | per-account local storage keys           |
-| `app/shell.mjs`            | 156    | how the layout pages are assembled       |
+| `app/shell.mjs`            | 160    | how the layout pages are assembled       |
 | `app/ui/base.css`          | 1,531  | shared base for the experimental UIs     |
 | `app/ui/hud.css`           | 559    | the HUD cockpit theme                    |
 | `app/ui/win31.css`         | 632    | the Windows 3.1 theme                    |
@@ -282,8 +283,9 @@ wallpaper is a fixed viewport layer rather than a body background, so opening a
 tall window cannot push the scene down on mobile. Portrait phones switch to
 `retro-desk-wallpaper-2comp.jpg` and anchor toward its car, keeping that subject
 in the narrow crop. The desktop starts with every window closed; pick a view
-from the Start menu. The Edit Session and Sync sheets are managed like windows:
-they have title-bar minimize/close controls and taskbar entries when minimized. Hot Dog
+from the Start menu, which also has a direct Charge history item. The Edit Session
+and Sync sheets are managed like windows: they have title-bar minimize/close
+controls and taskbar entries when minimized. Hot Dog
 has no Start-menu, Settings or Win31 toggle; only the taskbar clock asks before
 toggling it. The desktop wallpaper is
 `app/ui/wallpaper/retro-desk-wallpaper-comp.jpg`; Hot Dog hides the layer so the
@@ -779,13 +781,13 @@ are recorded here so the next build does not repeat the discovery.
       the compact Add-session nearby list. ABS and ABC are both recognised;
       live explicit operator names remain authoritative. Tests: power parsing, connector classification,
       OR/AND semantics, sort order, operator-list search/preservation, filtered
-      map/list/status, no-match state and i18n keys. `sw.js` is v100.
+      map/list/status, no-match state and i18n keys. `sw.js` is v101.
 
 - [x] **Retro desktop wallpaper.** Implemented 2026-10-27 with the compressed
       `retro-desk-wallpaper-comp.jpg`, a solid-color Hot Dog override, content
       image-rendering resets for maps/photos/charts, full-viewport body height
       when every window is closed, a fixed viewport wallpaper layer for tall
-      mobile windows, and both compressed wallpapers in the `v100` offline shell.
+      mobile windows, and both compressed wallpapers in the `v101` offline shell.
       Portrait phones use `retro-desk-wallpaper-2comp.jpg` so the car and
       charger stay in the narrow crop. Covered by
       `tools/test-retro-wallpaper.mjs`.

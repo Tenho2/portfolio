@@ -190,6 +190,16 @@ await group("a clean window closes without a prompt", async () => {
   ok("settings is closed", !onViews().includes("settings"));
 });
 
+await group("History opens directly from the Start menu", async () => {
+  doc.querySelector('#retro-start-menu [data-go="view-data"]').click();
+  await wait();
+  ok("history is foreground", onViews().join(",") === "view-data");
+  ok("history has a taskbar button", !!taskFor("view-data"));
+  doc.getElementById("view-data").querySelector("[data-retro-window-close]").click();
+  await wait();
+  ok("history closes back to the empty desktop", onViews().length === 0 && taskButtons().length === 0);
+});
+
 await group("the Edit Session sheet gets managed retro controls", async () => {
   doc.querySelector('.side-nav button[data-go="view-data"]').click();
   await wait();
