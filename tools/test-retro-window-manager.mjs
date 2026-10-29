@@ -107,7 +107,7 @@ group("the Edit Session sheet has real retro window controls", () => {
   ok("the title controls exist", /data-retro-edit-minimize/.test(page) && /data-retro-edit-close/.test(page));
   ok("the minimize control shows a dash", /data-retro-edit-minimize[\s\S]{0,100}?[–-]\s*<\/button>/.test(page));
   ok("the controls are hidden outside retro", /id="editWindowControls"[^>]*hidden/.test(page));
-  ok("the controls sit at the right end of the title bar", /body\[data-layout="retro-desktop"\] #editWindowControls\s*\{[^}]*margin-left:\s*auto/.test(css));
+  ok("the controls sit at the right end of the title bar", /body\[data-layout="retro-desktop"\] #editWindowControls,[\s\S]{0,100}?#syncWindowControls\s*\{[^}]*margin-left:\s*auto/.test(css));
   ok("retro reveals the controls", /editControls\.hidden = false/.test(app));
   ok("the decorative title box is suppressed", /body\[data-layout="retro-desktop"\] #editTitle::after\s*\{[^}]*content:\s*none/.test(css));
   ok("opening the sheet registers the taskbar state", /retroEditState = "normal"/.test(fnBody(app, "openEdit")));
@@ -118,6 +118,23 @@ group("the Edit Session sheet has real retro window controls", () => {
   ok("the taskbar includes the edit entry", /RETRO_EDIT_ID/.test(fnBody(app, "syncRetroTaskbar")));
   ok("the close control calls closeEdit", /data-retro-edit-close[\s\S]{0,140}?closeEdit\(\)/.test(app));
   ok("sign-out closes the edit sheet", /closeEdit\(\)/.test(fnBody(app, "showApp")));
+});
+
+group("the Sync sheet has real retro window controls", () => {
+  ok("the title text is a span", /id="syncPanelTitle"[\s\S]{0,300}?id="syncTitleText"[^>]*data-i18n="sync.title"/.test(page));
+  ok("the title controls exist", /data-retro-sync-minimize/.test(page) && /data-retro-sync-close/.test(page));
+  ok("the minimize control shows a dash", /data-retro-sync-minimize[\s\S]{0,100}?[–-]\s*<\/button>/.test(page));
+  ok("the controls are hidden outside retro", /id="syncWindowControls"[^>]*hidden/.test(page));
+  ok("retro reveals the sync controls", /syncControls\.hidden = false/.test(app));
+  ok("the decorative title box is suppressed", /body\[data-layout="retro-desktop"\] #syncPanelTitle::after\s*\{[^}]*content:\s*none/.test(css));
+  ok("opening registers the taskbar state", /retroSyncState = "normal"/.test(fnBody(app, "openSyncPanel")));
+  ok("closing clears the taskbar state", /retroSyncState = null/.test(fnBody(app, "closeSyncPanel")));
+  ok("minimize releases the modal lock", /lockBackground\(false\)/.test(fnBody(app, "minimizeRetroSync")));
+  ok("restore locks the modal again", /lockBackground\(true\)/.test(fnBody(app, "restoreRetroSync")));
+  ok("the taskbar handles the sync pseudo-window", /id === RETRO_SYNC_ID/.test(fnBody(app, "toggleRetroTaskbarWindow")));
+  ok("the taskbar includes the sync entry", /RETRO_SYNC_ID/.test(fnBody(app, "syncRetroTaskbar")));
+  ok("the top close control calls closeSyncPanel", /data-retro-sync-close[\s\S]{0,140}?closeSyncPanel\(\)/.test(app));
+  ok("sign-out closes the sync sheet", /closeSyncPanel\(\)/.test(fnBody(app, "showApp")));
 });
 
 group("the lifecycle has real open, minimized and closed states", () => {
@@ -246,7 +263,7 @@ group("the new chrome strings exist in all three languages", () => {
 });
 
 group("the service worker is bumped for the window manager", () => {
-  ok("sw.js is v98", /const VERSION = "v98"/.test(sw));
+  ok("sw.js is v99", /const VERSION = "v99"/.test(sw));
 });
 
 console.log(`\n${pass} passed, ${failures.length} failed`);

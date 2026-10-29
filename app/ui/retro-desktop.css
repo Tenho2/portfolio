@@ -175,10 +175,17 @@ body[data-layout="retro-desktop"] #editTitle::after {
   display: none;
 }
 
-body[data-layout="retro-desktop"] #editWindowControls {
+body[data-layout="retro-desktop"] #editWindowControls,
+body[data-layout="retro-desktop"] #syncWindowControls {
   display: flex;
   flex: none;
   margin-left: auto;
+}
+
+/* The sync sheet has real controls too; suppress the decorative box. */
+body[data-layout="retro-desktop"] #syncPanelTitle::after {
+  content: none;
+  display: none;
 }
 
 /* A view already has the only title bar. Panels are flat content groups so

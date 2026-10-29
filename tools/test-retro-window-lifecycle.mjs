@@ -235,6 +235,37 @@ await group("the Edit Session sheet gets managed retro controls", async () => {
   ok("the taskbar is empty again", taskButtons().length === 0);
 });
 
+await group("the Sync sheet gets managed retro controls", async () => {
+  doc.querySelector('#retro-start-menu [data-retro-sync]').click();
+  await wait();
+  const panel = doc.getElementById("syncPanel");
+  const controls = doc.getElementById("syncWindowControls");
+  ok("the Sync sheet opens", panel.classList.contains("on"));
+  ok("the controls are revealed on retro", controls && !controls.hidden);
+  ok("the minimize button exists", !!doc.querySelector("[data-retro-sync-minimize]"));
+  ok("the minimize button shows a dash", doc.querySelector("[data-retro-sync-minimize]").textContent.trim() === "–");
+  ok("the close button exists", !!doc.querySelector("[data-retro-sync-close]"));
+  ok("the title text is translated", !!doc.getElementById("syncTitleText").textContent.trim());
+  ok("the sync taskbar entry exists", !!taskFor("sync-panel"));
+
+  doc.querySelector("[data-retro-sync-minimize]").click();
+  await wait();
+  ok("minimize hides the sheet", !panel.classList.contains("on"));
+  ok("the sync taskbar entry remains", !!taskFor("sync-panel"));
+  ok("the minimized entry is not pressed", taskFor("sync-panel").getAttribute("aria-pressed") === "false");
+
+  taskFor("sync-panel").click();
+  await wait();
+  ok("the taskbar entry restores the sheet", panel.classList.contains("on"));
+  ok("the restored entry is pressed", taskFor("sync-panel").getAttribute("aria-pressed") === "true");
+
+  doc.querySelector("[data-retro-sync-close]").click();
+  await wait();
+  ok("close hides the sheet", !panel.classList.contains("on"));
+  ok("close removes the sync taskbar entry", !taskFor("sync-panel"));
+  ok("the desktop is empty again", onViews().length === 0 && taskButtons().length === 0);
+});
+
 console.log(`\n${pass} passed, ${failures.length} failed`);
 window.close();
 if (failures.length) {

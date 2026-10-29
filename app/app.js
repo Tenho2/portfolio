@@ -109,6 +109,8 @@
         /* The edit session sheet is managed like a window but is not a .view. */
         var RETRO_EDIT_ID = "edit-session";
         var retroEditState = null;
+        var RETRO_SYNC_ID = "sync-panel";
+        var retroSyncState = null;
         var retroChromeReady = false;
         var retroChrome = null;
         var RETRO_VIEW_ORDER = [
@@ -978,6 +980,10 @@ for (var a = 0; a < vi.length; a++) {
                 trigger && trigger.isConnected ? trigger : null;
             }
             p.classList.add("on");
+            if (isRetroDesktop() && retroChromeReady) {
+              retroSyncState = "normal";
+              syncRetroTaskbar();
+            }
             lockBackground(true);
             setSyncBadgesExpanded(true);
             var c = $("syncCloseBtn");
@@ -985,11 +991,17 @@ for (var a = 0; a < vi.length; a++) {
           }
           function closeSyncPanel() {
             var p = $("syncPanel");
-            if (!p || !p.classList.contains("on")) return;
-            p.classList.remove("on");
+            var wasOpen = !!(p && p.classList.contains("on"));
+            var wasManaged = isRetroDesktop() && retroSyncState !== null;
+            if (!wasOpen && !wasManaged) return;
+            if (p) p.classList.remove("on");
             /* The badge is inside the header, which lockBackground makes inert,
                so focus cannot simply go back to it while it is still inert. */
-            lockBackground(false);
+            if (wasOpen) lockBackground(false);
+            if (wasManaged) {
+              retroSyncState = null;
+              syncRetroTaskbar();
+            }
             setSyncBadgesExpanded(false);
             var back = syncPanelTrigger;
             syncPanelTrigger = null;
@@ -1002,6 +1014,35 @@ for (var a = 0; a < vi.length; a++) {
               });
               if (vis.length) vis[vis.length - 1].focus();
             }
+          }
+          function minimizeRetroSync(restoreFocus) {
+            if (!isRetroDesktop() || retroSyncState !== "normal") return;
+            var p = $("syncPanel");
+            if (!p || !p.classList.contains("on")) return;
+            p.classList.remove("on");
+            lockBackground(false);
+            retroSyncState = "minimized";
+            setSyncBadgesExpanded(false);
+            syncRetroTaskbar();
+            if (restoreFocus !== false) {
+              var btn = retroChrome && retroChrome.windows.querySelector(
+                '[data-retro-task-toggle="' + RETRO_SYNC_ID + '"]',
+              );
+              if (btn) btn.focus();
+              else focusRetroTaskbar();
+            }
+          }
+          function restoreRetroSync() {
+            if (!isRetroDesktop() || retroSyncState !== "minimized") return;
+            var p = $("syncPanel");
+            if (!p) return;
+            retroSyncState = "normal";
+            p.classList.add("on");
+            lockBackground(true);
+            setSyncBadgesExpanded(true);
+            syncRetroTaskbar();
+            var c = $("syncCloseBtn");
+            if (c) c.focus();
           }
         /* camelCase -> snake_case, matching the SQL schema.
    user_id is stamped from the signed-in account on every write, so the column
@@ -12401,6 +12442,7 @@ function hasKey(key) {
             }
           }
           syncEditWindowLabels();
+          syncSyncWindowLabels();
           syncRetroTaskbar();
           updateRetroClock();
         }
@@ -12412,6 +12454,26 @@ function hasKey(key) {
           var title = TXT("ed.title");
           var min = controls.querySelector("[data-retro-edit-minimize]");
           var close = controls.querySelector("[data-retro-edit-close]");
+          if (min) {
+            min.setAttribute(
+              "aria-label",
+              TXT("retro.minimizeWindow", { v: title }),
+            );
+            min.title = TXT("retro.minimizeWindow", { v: title });
+          }
+          if (close) {
+            close.setAttribute("aria-label", TXT("retro.closeWindow", { v: title }));
+            close.title = TXT("retro.closeWindow", { v: title });
+          }
+        }
+
+        /** Keep the Sync sheet's title-bar controls labelled. */
+        function syncSyncWindowLabels() {
+          var controls = $("syncWindowControls");
+          if (!controls) return;
+          var title = TXT("sync.title");
+          var min = controls.querySelector("[data-retro-sync-minimize]");
+          var close = controls.querySelector("[data-retro-sync-close]");
           if (min) {
             min.setAttribute(
               "aria-label",
@@ -12484,6 +12546,34 @@ function hasKey(key) {
               TXT(editAction, { v: editTitle }),
             );
             editBtn.title = TXT(editAction, { v: editTitle });
+          }
+          if (retroSyncState) {
+            wanted[RETRO_SYNC_ID] = true;
+            var syncBtn = host.querySelector(
+              '[data-retro-task-toggle="' + RETRO_SYNC_ID + '"]',
+            );
+            if (!syncBtn) {
+              syncBtn = document.createElement("button");
+              syncBtn.type = "button";
+              syncBtn.className = "retro-task-window";
+              syncBtn.setAttribute("data-retro-task-toggle", RETRO_SYNC_ID);
+              host.appendChild(syncBtn);
+            }
+            var syncTitle = TXT("sync.title");
+            syncBtn.textContent = syncTitle;
+            syncBtn.setAttribute(
+              "aria-pressed",
+              retroSyncState === "normal" ? "true" : "false",
+            );
+            var syncAction =
+              retroSyncState === "normal"
+                ? "retro.minimizeWindow"
+                : "retro.restoreWindow";
+            syncBtn.setAttribute(
+              "aria-label",
+              TXT(syncAction, { v: syncTitle }),
+            );
+            syncBtn.title = TXT(syncAction, { v: syncTitle });
           }
           for (var j = 0; j < existing.length; j++) {
             var key = existing[j].getAttribute("data-retro-task-toggle");
@@ -12665,6 +12755,11 @@ function hasKey(key) {
             else if (retroEditState === "normal") minimizeRetroEdit(true);
             return;
           }
+          if (id === RETRO_SYNC_ID) {
+            if (retroSyncState === "minimized") restoreRetroSync();
+            else if (retroSyncState === "normal") minimizeRetroSync(true);
+            return;
+          }
           var w = retroWindow(id);
           if (!w) return;
           if (w.state === "minimized") activateRetroWindow(id);
@@ -12838,6 +12933,8 @@ function hasKey(key) {
           ensureRetroWindowChrome();
           var editControls = $("editWindowControls");
           if (editControls) editControls.hidden = false;
+          var syncControls = $("syncWindowControls");
+          if (syncControls) syncControls.hidden = false;
           syncRetroChromeLabels();
 
           /* The clock is the only Hot Dog route. It asks before changing the
@@ -12876,7 +12973,7 @@ function hasKey(key) {
               closeRetroStartMenu(false);
 
             var t =
-              target && target.closest ? target.closest("[data-retro-window-minimize],[data-retro-window-close],[data-retro-task-toggle],[data-retro-edit-minimize],[data-retro-edit-close]") : null;
+              target && target.closest ? target.closest("[data-retro-window-minimize],[data-retro-window-close],[data-retro-task-toggle],[data-retro-edit-minimize],[data-retro-edit-close],[data-retro-sync-minimize],[data-retro-sync-close]") : null;
             if (!t) return;
             if (t.hasAttribute("data-retro-edit-minimize")) {
               minimizeRetroEdit(true);
@@ -12884,6 +12981,14 @@ function hasKey(key) {
             }
             if (t.hasAttribute("data-retro-edit-close")) {
               closeEdit();
+              return;
+            }
+            if (t.hasAttribute("data-retro-sync-minimize")) {
+              minimizeRetroSync(true);
+              return;
+            }
+            if (t.hasAttribute("data-retro-sync-close")) {
+              closeSyncPanel();
               return;
             }
             if (t.hasAttribute("data-retro-window-minimize")) {

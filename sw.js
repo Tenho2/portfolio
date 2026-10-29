@@ -30,10 +30,10 @@
  * list is served stale and nothing complains - so tools/test-sw-bump.mjs
  * asserts that every shell file was touched, and that the version moved with it.
  *
- * Last bumped: 2026-10-29, for the retro-desktop default layout.
+ * Last bumped: 2026-10-29, for the managed Sync window.
  */
 
-const VERSION = "v98";
+const VERSION = "v99";
 const CACHE = `chargedesk-shell-${VERSION}`;
 
 const SHELL = [
