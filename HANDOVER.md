@@ -9,7 +9,7 @@ belongs in [README.md](README.md); this file is the part that goes stale.
 | -------------- | ---------------------------------------------------------------------------- |
 | HEAD           | `585f67f` — commit and push are the user's job (see ground rules below)      |
 | Working tree   | code and documentation changes are uncommitted                               |
-| Service worker | `v99`                                                                        |
+| Service worker | `v100`                                                                       |
 | Build stamp    | `2026-10-29`                                                                 |
 | Tests          | all suites pass, 0 failures (`npm run check`); exact total not recorded      |
 | Database       | migrations `15-vehicle-baseline` and `16-vehicle-seasonal-baseline` required |
@@ -51,7 +51,7 @@ belongs in [README.md](README.md); this file is the part that goes stale.
   `min-height: 100vh` / `100dvh`. The fixed layer means a tall mobile window
   cannot resize or drag the scene down. Portrait phones switch to
   `retro-desk-wallpaper-2comp.jpg` and anchor toward the car; both compressed
-  wallpapers are in the `v99` cache. Content images and canvases reset to
+  wallpapers are in the `v100` cache. Content images and canvases reset to
   `auto` rendering. See `test-retro-wallpaper.mjs`.
 - **Rebrand to ChargeDesk 3.11.** The PWA name, page titles, meta descriptions,
   Apple/PWA labels, i18n brand strings, diagnostics header, icon titles, archive
@@ -60,6 +60,11 @@ belongs in [README.md](README.md); this file is the part that goes stale.
   names stay unchanged for URL, data and module compatibility. "Etsi laturi"
   remains the Finnish station-search label; it means "Find charger", not the
   product title.
+- **Favourite home checkbox.** The favourite form now has "Use as home location".
+  It writes the existing `locDefaults.loc` default-place state rather than a
+  per-favourite flag, refreshes the Settings picker, clears the default when the
+  current home is unchecked, and marks the saved row with the existing Home tag.
+  Covered by `test-favourite-home.mjs`.
 - **Edit Session and Sync are managed retro windows.** Both sheets have real
   minimize and close controls in their title bars. Minimize releases the modal
   lock and leaves a taskbar button; restore re-locks it; close and sign-out

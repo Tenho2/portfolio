@@ -599,6 +599,8 @@
       "fav.price": "Price per kWh (€)",
       "fav.priceHint":
         "Leave empty to use the default price. A favourite price is applied automatically when you pick the place.",
+      "fav.home": "Use as home location",
+      "fav.homeHint": "Sets the default place used by Near me and the session form.",
       "im.target": "Import into vehicle",
       "im.targetLead":
         "Rows that name a vehicle in the file keep that vehicle. Rows without one are imported here.",
@@ -1504,6 +1506,8 @@
       "fav.price": "Hinta per kWh (€)",
       "fav.priceHint":
         "Jätä tyhjäksi, jos haluat käyttää oletushintaa. Suosikin hinta otetaan käyttöön automaattisesti, kun valitset paikan.",
+      "fav.home": "Käytä kotipaikkana",
+      "fav.homeHint": "Asettaa oletuspaikan, jota Lähelläni ja latauslomake käyttävät.",
       "im.target": "Tuo ajoneuvoon",
       "im.targetLead":
         "Rivit, joissa tiedostossa on ajoneuvon nimi, säilyttävät sen. Rivit ilman nimeä tuodaan tähän ajoneuvoon.",
@@ -2409,6 +2413,8 @@
       "fav.price": "Pris per kWh (€)",
       "fav.priceHint":
         "Lämna tomt för att använda standardpriset. Ett favoritpris tillämpas automatiskt när du väljer platsen.",
+      "fav.home": "Använd som hemplats",
+      "fav.homeHint": "Anger standardplatsen som Nära mig och sessionsformuläret använder.",
       "im.target": "Importera till fordon",
       "im.targetLead":
         "Rader som anger ett fordon i filen behåller det. Rader utan namn importeras hit.",

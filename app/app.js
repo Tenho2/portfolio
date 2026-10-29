@@ -5099,10 +5099,20 @@ shareTarget = null;
               if (sf) sf.reset();
               /* The favourite form has no <form> element of its own, so its
                  inputs are cleared by id. */
-              var favIds = ["fName", "fAddr", "fLat", "fLng", "fPrice"];
+              var favIds = [
+                "fName",
+                "fAddr",
+                "fLat",
+                "fLng",
+                "fPrice",
+                "fPriceCents",
+                "fHome",
+              ];
               for (var fi = 0; fi < favIds.length; fi++) {
                 var fEl = $(favIds[fi]);
-                if (fEl) fEl.value = "";
+                if (!fEl) continue;
+                if (fEl.type === "checkbox") fEl.checked = false;
+                else fEl.value = "";
               }
               clearPin("sessMap");
               clearPin("map");
@@ -8329,6 +8339,9 @@ if (!yes) return false;
               '<span aria-hidden="true" style="font-size:1.2rem">📍</span>' +
               '<span class="nm">' +
               esc(f.name) +
+              (locDefaults.loc === f.id
+                ? ' <span class="tag t-home">' + TXT("tag.home") + "</span>"
+                : "") +
               (fp === null
                 ? ""
                 : ' <span class="fav-price">💶 ' +
@@ -9712,6 +9725,8 @@ closeEdit();
             $("fPrice").value = fp === null ? "" : fp.toFixed(2);
             syncFavCents();
           }
+          if ($("fHome"))
+            $("fHome").checked = !!locDefaults.loc && locDefaults.loc === f.id;
           editFav = f.id || null;
           syncFavSaveLabel();
           if (isNum(f.lat) && isNum(f.lng))
@@ -9726,6 +9741,7 @@ closeEdit();
           if ($("fPrice")) $("fPrice").value = "";
           if ($("fPriceCents")) $("fPriceCents").value = "";
           if ($("fPriceMirror")) $("fPriceMirror").textContent = "";
+          if ($("fHome")) $("fHome").checked = false;
           editFav = null;
           syncFavSaveLabel();
           $("geoStat").textContent = TXT("fav.findHint");
@@ -9733,6 +9749,7 @@ closeEdit();
         }
         function saveFavourite() {
           var f = readFavForm();
+          var makeHome = !!($("fHome") && $("fHome").checked);
           if (!f.name) {
             toast(TXT("toast.favName"));
             $("fName").focus();
@@ -9770,6 +9787,14 @@ closeEdit();
             }
           }
           saveFavs();
+          if (makeHome) {
+            locDefaults.loc = f.id;
+            saveLocDefaults();
+          } else if (locDefaults.loc === f.id) {
+            locDefaults.loc = null;
+            saveLocDefaults();
+          }
+          renderLocDefaults();
           renderFavs();
           /* Reset to a fresh entry. Leaving the form in edit mode after a save is
              what left the button reading "Update favourite" for the next, new
@@ -12667,10 +12692,18 @@ function hasKey(key) {
               "fLng",
               "fPrice",
               "fPriceCents",
+              "fHome",
             ];
             for (var fi = 0; fi < favIds.length; fi++) {
               var fel = $(favIds[fi]);
-              parts.push(favIds[fi], fel ? String(fel.value) : "");
+              parts.push(
+                favIds[fi],
+                fel
+                  ? fel.type === "checkbox"
+                    ? !!fel.checked
+                    : String(fel.value)
+                  : "",
+              );
             }
             parts.push("editFav", editFav || "");
             return JSON.stringify(parts);
