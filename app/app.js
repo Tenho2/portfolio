@@ -289,9 +289,10 @@
          * Where the canonical start page should send this boot, or null to stay.
          *
          * Only `classic` (ev-tracker.html, the manifest's start_url) redirects.
-         * Opening a layout page directly is a deliberate act and is honoured;
-         * otherwise every link would bounce back to whatever was chosen last,
-         * and a section of the app would be unreachable by URL.
+         * A first-time visitor with no remembered layout lands on the retro
+         * desktop. A stored choice, including classic, is respected. Direct
+         * links to the other layout pages are deliberate acts and are honoured;
+         * otherwise every link would bounce back to whatever was chosen last.
          *
          * Kept pure so the redirect contract can be tested without a browser.
          * @param {string} current the layout of the page being booted
@@ -301,7 +302,8 @@
         function layoutRedirectTarget(current, stored) {
           stored = normaliseStoredLayout(stored);
           if (current !== "classic") return null;
-          if (!stored || stored === "classic") return null;
+          if (!stored) return layoutFileFor("retro-desktop");
+          if (stored === "classic") return null;
           return layoutFileFor(stored);
         }
         /** Remember the chosen layout. A device preference, like the theme. */

@@ -91,7 +91,7 @@ function fakeStorage() {
   };
 }
 
-group("the start page redirects to the remembered layout, and only there", () => {
+group("the start page redirects to the remembered layout, or retro for a new user", () => {
   /* The manifest's start_url is ev-tracker.html, whose layout is classic. */
   is("classic remembers the HUD", layoutRedirectTarget("classic", "hud"), "ev-tracker-hud.html");
   is("classic remembers focus", layoutRedirectTarget("classic", "focus"), "ev-tracker-focus.html");
@@ -101,7 +101,16 @@ group("the start page redirects to the remembered layout, and only there", () =>
      users land on the surviving experimental UI. */
   is("wide falls back to classic, with no redirect", layoutRedirectTarget("classic", "wide"), null);
   is("glass falls back to the HUD", layoutRedirectTarget("classic", "glass"), "ev-tracker-hud.html");
-  is("classic with no memory stays put", layoutRedirectTarget("classic", null), null);
+  is(
+    "a new visitor lands on retro desktop",
+    layoutRedirectTarget("classic", null),
+    "ev-tracker-retro-desktop.html",
+  );
+  is(
+    "an empty preference also lands on retro desktop",
+    layoutRedirectTarget("classic", ""),
+    "ev-tracker-retro-desktop.html",
+  );
   is("classic with classic stored stays put", layoutRedirectTarget("classic", "classic"), null);
   /* A direct link to a layout page is a deliberate act. It must not bounce to
      whatever was chosen last, or that page becomes unreachable by URL. */
@@ -109,7 +118,7 @@ group("the start page redirects to the remembered layout, and only there", () =>
   is("focus is not redirected to the HUD", layoutRedirectTarget("focus", "hud"), null);
   /* A stale or hand-edited value must not navigate anywhere. */
   is("an unknown stored layout is ignored", layoutRedirectTarget("classic", "nonsense"), null);
-  is("an empty stored layout is ignored", layoutRedirectTarget("classic", ""), null);
+  /* An empty value is the same as never having chosen; it is covered above. */
 });
 
 group("the redirect is wired at boot without losing the view", () => {

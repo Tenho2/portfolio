@@ -224,7 +224,7 @@ files that a static host can serve as they are.
 | File                       | Lines  | Contents                                 |
 | -------------------------- | ------ | ---------------------------------------- |
 | `ev-tracker.html`          | 2,173  | ChargeDesk 3.11 markup, classic layout   |
-| `app/app.js`               | 16,063 | application logic                        |
+| `app/app.js`               | 16,065 | application logic                        |
 | `app/app.css`              | 3,037  | the shared design system                 |
 | `app/layout-classic.css`   | 17     | the classic navigation shell             |
 | `app/layout-focus.css`     | 149    | the focus navigation shell               |
@@ -309,8 +309,9 @@ fragment, so switching from the middle of the log lands you in the log.
 The chosen layout **is remembered** as a device preference. `ev-tracker.html` is
 the manifest's `start_url`, so it is the page a home-screen launch hits; on boot
 it redirects to the stored layout (carrying the hash) and skips the rest of its
-own boot. Opening any layout page directly is still honoured — a link to
-`ev-tracker-hud.html` stays on the HUD rather than bouncing back — and only a
+own boot. A first-time visitor with no stored preference lands on
+`retro-desktop`. Opening another layout page directly is still honoured: a link
+to `ev-tracker-hud.html` stays on the HUD rather than bouncing back. Only a
 change made through the picker updates the preference. The redirect is
 `location.replace`, so Back does not shuttle between the start page and the
 layout the user actually wanted.
@@ -773,13 +774,13 @@ are recorded here so the next build does not repeat the discovery.
       the compact Add-session nearby list. ABS and ABC are both recognised;
       live explicit operator names remain authoritative. Tests: power parsing, connector classification,
       OR/AND semantics, sort order, operator-list search/preservation, filtered
-      map/list/status, no-match state and i18n keys. `sw.js` is v97.
+      map/list/status, no-match state and i18n keys. `sw.js` is v98.
 
 - [x] **Retro desktop wallpaper.** Implemented 2026-10-27 with the compressed
       `retro-desk-wallpaper-comp.jpg`, a solid-color Hot Dog override, content
       image-rendering resets for maps/photos/charts, full-viewport body height
       when every window is closed, a fixed viewport wallpaper layer for tall
-      mobile windows, and both compressed wallpapers in the `v97` offline shell.
+      mobile windows, and both compressed wallpapers in the `v98` offline shell.
       Portrait phones use `retro-desk-wallpaper-2comp.jpg` so the car and
       charger stay in the narrow crop. Covered by
       `tools/test-retro-wallpaper.mjs`.

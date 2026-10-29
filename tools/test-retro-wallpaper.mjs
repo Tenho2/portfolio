@@ -98,7 +98,7 @@ group("both compressed wallpapers are cached offline", () => {
 });
 
 group("the service worker version is current", () => {
-  ok("sw.js is v97", /const VERSION = "v97"/.test(sw));
+  ok("sw.js is v98", /const VERSION = "v98"/.test(sw));
 });
 
 console.log(`\n${pass} passed, ${failures.length} failed`);

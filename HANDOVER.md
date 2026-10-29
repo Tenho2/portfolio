@@ -1,6 +1,6 @@
 # Where we left off
 
-Written at the end of the 2026-10-27/28 session. Durable engineering knowledge
+Written at the end of the 2026-10-27/28/29 session. Durable engineering knowledge
 belongs in [README.md](README.md); this file is the part that goes stale.
 
 ## State
@@ -9,8 +9,8 @@ belongs in [README.md](README.md); this file is the part that goes stale.
 | -------------- | ---------------------------------------------------------------------------- |
 | HEAD           | `585f67f` — commit and push are the user's job (see ground rules below)      |
 | Working tree   | code and documentation changes are uncommitted                               |
-| Service worker | `v97`                                                                        |
-| Build stamp    | `2026-10-28`                                                                 |
+| Service worker | `v98`                                                                        |
+| Build stamp    | `2026-10-29`                                                                 |
 | Tests          | all suites pass, 0 failures (`npm run check`); exact total not recorded      |
 | Database       | migrations `15-vehicle-baseline` and `16-vehicle-seasonal-baseline` required |
 
@@ -51,7 +51,7 @@ belongs in [README.md](README.md); this file is the part that goes stale.
   `min-height: 100vh` / `100dvh`. The fixed layer means a tall mobile window
   cannot resize or drag the scene down. Portrait phones switch to
   `retro-desk-wallpaper-2comp.jpg` and anchor toward the car; both compressed
-  wallpapers are in the `v97` cache. Content images and canvases reset to
+  wallpapers are in the `v98` cache. Content images and canvases reset to
   `auto` rendering. See `test-retro-wallpaper.mjs`.
 - **Rebrand to ChargeDesk 3.11.** The PWA name, page titles, meta descriptions,
   Apple/PWA labels, i18n brand strings, diagnostics header, icon titles, archive
@@ -127,9 +127,10 @@ reversed one deliberate design decision.
   remembered" decision, because the manifest `start_url` is always
   `ev-tracker.html`, so an installed PWA launched back into classic. The picker
   stores the choice; the canonical start page redirects to it with
-  `location.replace` + hash and skips its own boot. Direct links to a layout page
-  are honoured and do not rewrite the preference. `tools/test-guard.mjs` was
-  updated: the picker is now _expected_ to remember.
+  `location.replace` + hash and skips its own boot. A first-time visitor with no
+  stored preference lands on `retro-desktop`. Direct links to non-classic layout
+  pages are honoured and do not rewrite the preference. `tools/test-guard.mjs`
+  was updated: the picker is now _expected_ to remember.
 - **Appearance is restored in one place.** `bootClasses()` + `restoreAppearance()`
   toggle `dark`, `red-mode` and `show-scanlines` independently with
   `classList.toggle`. Assigning `className` is what would wipe one preference
@@ -208,9 +209,10 @@ shared design system plus independent UI themes.
 - `app/shell.mjs` holds `LAYOUTS` and `linkLinesFor(layout)`; `tools/emit-pages.mjs`
   writes every page. Never hand-edit a generated `ev-tracker-*.html`.
 - The chosen layout is a **global device key** (`layout`), written by the picker.
-  `ev-tracker.html` (the manifest `start_url`) redirects to it at boot; any other
+  `ev-tracker.html` (the manifest `start_url`) redirects to it at boot; with no
+  stored preference it sends a first-time visitor to `retro-desktop`. Any other
   page boots as itself. See `layoutRedirectTarget()` / `restoreLayout()`.
-  `RETIRED_LAYOUTS` maps archived names: `wide → classic`, `glass → hud`.
+  `RETIRED_LAYOUTS` maps archived names: `wide -> classic`, `glass -> hud`.
 - Shared markup lives in `ev-tracker.html`; the **HUD overrides its body** from
   `tools/hud-body.html` (`BODY_OVERRIDE` in `emit-pages.mjs`). A change that
   should appear on the HUD goes in `hud-body.html`, not `ev-tracker.html`.
@@ -307,9 +309,10 @@ wholesale.
   referenced from `retro-desktop.css` (one base, one portrait), so a new asset
   must be referenced before it counts as shell content.
 - **Layout memory only redirects `classic`.** `layoutRedirectTarget()` refuses
-  every other current layout, so a direct link to any layout page is honoured
-  (otherwise that page becomes unreachable by URL). The preference is written by
-  the picker, not by every page load. `location.replace` keeps Back sane.
+  every other current layout, so a direct link to any layout page is honoured.
+  The classic start page sends a new visitor to `retro-desktop`; a stored
+  `classic` preference keeps it on classic. The preference is written by the
+  picker, not by every page load. `location.replace` keeps Back sane.
 - **Appearance classes are independent.** `restoreAppearance()` uses
   `classList.toggle` once per class. Never assign `className` there: it drops
   `dark`, `red-mode` or `show-scanlines` while setting another, and the loss is
