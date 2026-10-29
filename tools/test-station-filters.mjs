@@ -12,6 +12,7 @@ import { appSource, fnSource } from "./app-source.mjs";
 
 const app = appSource();
 const html = readFileSync("ev-tracker.html", "utf8");
+const hud = readFileSync("tools/hud-body.html", "utf8");
 const i18n = readFileSync("app/i18n.js", "utf8");
 const sw = readFileSync("sw.js", "utf8");
 
@@ -42,7 +43,7 @@ const isNum = (v) => v !== null && v !== undefined && v !== "" && isFinite(+v);
 
 function filterApi() {
   const state = {
-    power: 0,
+    power: "any",
     connectors: {},
     operators: {},
     operatorSearch: "",
@@ -57,12 +58,13 @@ function filterApi() {
       fnSource("knownOperator"),
       fnSource("extractOperator"),
       fnSource("stationPowerKw"),
+      fnSource("stationPowerMatches"),
       fnSource("stationConnectors"),
       fnSource("stationOperatorKey"),
       fnSource("stationFiltersActive"),
       fnSource("stationMatchesFilters"),
       fnSource("sortStationRows"),
-      "return { extractOperator, stationPowerKw, stationConnectors, stationOperatorKey, stationFiltersActive, stationMatchesFilters, sortStationRows };",
+      "return { extractOperator, stationPowerKw, stationPowerMatches, stationConnectors, stationOperatorKey, stationFiltersActive, stationMatchesFilters, sortStationRows };",
     ].join("\n"),
   );
   return { state, api: factory(isNum, state) };
@@ -162,10 +164,10 @@ group("filters use OR within groups and AND between groups", () => {
     row({ id: "d", name: "Unknown", power: "", plugs: [], dist: 10 }),
   ];
 
-  state.power = 50;
-  is("power threshold excludes 22 kW", rows.filter(api.stationMatchesFilters).length, 2);
+  state.power = "min50";
+  is("the 50+ tier excludes 22 kW", rows.filter(api.stationMatchesFilters).length, 2);
 
-  state.power = 0;
+  state.power = "any";
   state.connectors = { ccs: 1, chademo: 1 };
   is("connector selections are ORed", rows.filter(api.stationMatchesFilters).length, 3);
 
@@ -175,17 +177,34 @@ group("filters use OR within groups and AND between groups", () => {
 
   state.connectors = { ccs: 1 };
   state.operators = { Virta: 1 };
-  state.power = 50;
+  state.power = "min50";
   is(
     "groups are ANDed",
     rows.filter(api.stationMatchesFilters).map((r) => r.id).join(","),
     "a",
   );
 
-  state.power = 0;
+  state.power = "any";
   state.connectors = {};
   state.operators = {};
   is("no filters pass everything", rows.filter(api.stationMatchesFilters).length, 4);
+});
+
+group("power tiers include their exact boundaries", () => {
+  const { api } = filterApi();
+  const rows = [11, 22, 49, 50, 149, 150].map((kw) =>
+    row({ id: String(kw), power: kw + " kW" }),
+  );
+  const ids = (mode) =>
+    rows
+      .filter((r) => api.stationPowerMatches(r, mode))
+      .map((r) => r.id)
+      .join(",");
+  is("max22 includes exactly 22 kW", ids("max22"), "11,22");
+  is("min50 includes exactly 50 kW", ids("min50"), "50,149,150");
+  is("min150 includes exactly 150 kW", ids("min150"), "150");
+  is("unknown power never matches a tier", api.stationPowerMatches(row({}), "min50"), false);
+  is("any passes unknown power", api.stationPowerMatches(row({}), "any"), true);
 });
 
 group("sorting covers distance, power and operator", () => {
@@ -208,6 +227,7 @@ group("the filter UI is present and wired to the filtered result set", () => {
     "stationPowerAny",
     "stationPower22",
     "stationPower50",
+    "stationPower150",
     "stationConnectorCcs",
     "stationConnectorChademo",
     "stationConnectorType2",
@@ -224,6 +244,7 @@ group("the filter UI is present and wired to the filtered result set", () => {
     "st.powerAny",
     "st.power22",
     "st.power50",
+    "st.power150",
     "st.connectors",
     "st.connectorCcs",
     "st.connectorChademo",
@@ -256,6 +277,30 @@ group("the filter UI is present and wired to the filtered result set", () => {
   ok("show more pages the filtered list", /stationFiltered\.slice/.test(more ? more[0] : ""));
   ok("the rendered total is the filtered total", /stationFiltered\.length - shown\.length/.test(fnSource("renderStations")));
   ok("rows show the extracted operator", /extractOperator\(s\)/.test(fnSource("renderStations")));
+  ok(
+    "the matcher delegates to the power helper",
+    /stationPowerMatches\(row, stationFilters\.power\)/.test(fnSource("stationMatchesFilters")),
+  );
+  ok(
+    "the controls store the selected mode",
+    /stationFilters\.power = power \? power\.value : "any"/.test(fnSource("readStationFilterControls")),
+  );
+  is(
+    "Type 2 is the recognised term in every language",
+    (i18n.match(/"st\.connectorType2": "Type 2"/g) || []).length,
+    3,
+  );
+  ok("no legacy Finnish Tyyppi 2 remains", !/"st\.connectorType2": "Tyyppi 2"/.test(i18n));
+  ok("no legacy Swedish Typ 2 remains", !/"st\.connectorType2": "Typ 2"/.test(i18n));
+  for (const [name, doc] of [
+    ["shared", html],
+    ["HUD", hud],
+  ])
+    ok(
+      name + ": operators come before sort",
+      doc.indexOf('id="stationOperatorLabel"') >= 0 &&
+        doc.indexOf('id="stationOperatorLabel"') < doc.indexOf('id="stationSort"'),
+    );
 });
 
 group("operator options are dynamic, searchable and preserve selections", () => {
@@ -271,7 +316,7 @@ group("operator options are dynamic, searchable and preserve selections", () => 
 });
 
 group("the service worker is bumped for the filter UI", () => {
-  ok("sw.js is v101", /const VERSION = "v101"/.test(sw));
+  ok("sw.js is v103", /const VERSION = "v103"/.test(sw));
 });
 
 console.log(`\n${pass} passed, ${failures.length} failed`);

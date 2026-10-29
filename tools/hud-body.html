@@ -1284,7 +1284,7 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                       type="radio"
                       name="stationPower"
                       id="stationPowerAny"
-                      value="0"
+                      value="any"
                       aria-label="Any power"
                       data-i18n-aria="st.powerAny"
                       checked
@@ -1295,8 +1295,8 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                       type="radio"
                       name="stationPower"
                       id="stationPower22"
-                      value="22"
-                      aria-label="22 kW or more"
+                      value="max22"
+                      aria-label="Max 22 kW"
                       data-i18n-aria="st.power22"
                     /><span data-i18n="st.power22"></span
                   ></label>
@@ -1305,10 +1305,20 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                       type="radio"
                       name="stationPower"
                       id="stationPower50"
-                      value="50"
-                      aria-label="50 kW or more"
+                      value="min50"
+                      aria-label="50+ kW"
                       data-i18n-aria="st.power50"
                     /><span data-i18n="st.power50"></span
+                  ></label>
+                  <label class="chk"
+                    ><input
+                      type="radio"
+                      name="stationPower"
+                      id="stationPower150"
+                      value="min150"
+                      aria-label="150+ kW"
+                      data-i18n-aria="st.power150"
+                    /><span data-i18n="st.power150"></span
                   ></label>
                 </div>
                 <div
@@ -1345,22 +1355,6 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                     /><span data-i18n="st.connectorType2"></span
                   ></label>
                 </div>
-                <div class="row station-filter-row">
-                  <div class="f station-filter-sort">
-                    <label for="stationSort" data-i18n="st.sort"></label>
-                    <select id="stationSort">
-                      <option value="distance" data-i18n="st.sortDistance"></option>
-                      <option value="power" data-i18n="st.sortPower"></option>
-                      <option value="operator" data-i18n="st.sortOperator"></option>
-                    </select>
-                  </div>
-                  <button
-                    type="button"
-                    class="btn sm ghost"
-                    id="stationFilterClear"
-                    data-i18n="st.clearFilters"
-                  ></button>
-                </div>
                 <details class="station-operator-details">
                   <summary>
                     <span id="stationOperatorLabel" data-i18n="st.operators"></span>
@@ -1380,6 +1374,22 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
                     aria-labelledby="stationOperatorLabel"
                   ></div>
                 </details>
+                <div class="row station-filter-row">
+                  <div class="f station-filter-sort">
+                    <label for="stationSort" data-i18n="st.sort"></label>
+                    <select id="stationSort">
+                      <option value="distance" data-i18n="st.sortDistance"></option>
+                      <option value="power" data-i18n="st.sortPower"></option>
+                      <option value="operator" data-i18n="st.sortOperator"></option>
+                    </select>
+                  </div>
+                  <button
+                    type="button"
+                    class="btn sm ghost"
+                    id="stationFilterClear"
+                    data-i18n="st.clearFilters"
+                  ></button>
+                </div>
               </fieldset>
               <div class="hint" role="status" aria-live="polite" id="stationStat"></div>
               <div class="hint" role="status" aria-live="polite" id="cameraStat"></div>

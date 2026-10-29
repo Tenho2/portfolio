@@ -200,6 +200,19 @@ await group("History opens directly from the Start menu", async () => {
   ok("history closes back to the empty desktop", onViews().length === 0 && taskButtons().length === 0);
 });
 
+await group("Find charger opens directly from the Start menu", async () => {
+  doc.querySelector('#retro-start-menu [data-go="stations"]').click();
+  await wait();
+  ok("stations is foreground", onViews().join(",") === "stations");
+  ok("stations has a taskbar button", !!taskFor("stations"));
+  doc.getElementById("stations").querySelector("[data-retro-window-close]").click();
+  await wait();
+  ok(
+    "stations closes back to the empty desktop",
+    onViews().length === 0 && taskButtons().length === 0,
+  );
+});
+
 await group("the Edit Session sheet gets managed retro controls", async () => {
   doc.querySelector('.side-nav button[data-go="view-data"]').click();
   await wait();

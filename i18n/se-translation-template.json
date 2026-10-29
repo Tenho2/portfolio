@@ -973,9 +973,9 @@
       "se": ""
     },
     "ed.fav": {
-      "en": "Saved as favourite location",
-      "fi": "Tallennettu suosikkipaikaksi",
-      "sv": "Sparad som favoritplats",
+      "en": "Save to favourites",
+      "fi": "Tallenna suosikkeihin",
+      "sv": "Spara som favorit",
       "se": ""
     },
     "ed.save": {

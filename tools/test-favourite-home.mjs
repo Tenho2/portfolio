@@ -10,6 +10,7 @@ import { fnSource } from "./app-source.mjs";
 const shared = readFileSync("ev-tracker.html", "utf8");
 const hud = readFileSync("tools/hud-body.html", "utf8");
 const i18n = readFileSync("app/i18n.js", "utf8");
+const template = readFileSync("i18n/se-translation-template.json", "utf8");
 
 let pass = 0;
 const failures = [];
@@ -34,6 +35,18 @@ group("the shared and HUD favourite forms offer a home checkbox", () => {
   }
   for (const key of ["fav.home", "fav.homeHint"])
     ok(`${key} is translated three times`, (i18n.match(new RegExp(`"${key.replace(/\./g, "\\.")}"`, "g")) || []).length === 3);
+});
+
+group("the favourite checkbox label is an action in every language", () => {
+  ok("English is imperative", /"ed\.fav": "Save to favourites"/.test(i18n));
+  ok("Finnish is imperative", /"ed\.fav": "Tallenna suosikkeihin"/.test(i18n));
+  ok("Swedish is imperative", /"ed\.fav": "Spara som favorit"/.test(i18n));
+  ok("English has no past tense", !/Saved as favourite location/.test(i18n));
+  ok("Finnish has no past tense", !/Tallennettu suosikkipaikaksi/.test(i18n));
+  ok("Swedish has no past tense", !/Sparad som favoritplats/.test(i18n));
+  ok("template English matches", /"en": "Save to favourites"/.test(template));
+  ok("template Finnish matches", /"fi": "Tallenna suosikkeihin"/.test(template));
+  ok("template Swedish matches", /"sv": "Spara som favorit"/.test(template));
 });
 
 group("the form follows the existing default-place state", () => {

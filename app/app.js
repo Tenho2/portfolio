@@ -11079,7 +11079,7 @@ var STATION_PAGE = 10;
         var stationPage = STATION_NEAREST;
         var stationSearchCached = false;
         var stationFilters = {
-          power: 0,
+          power: "any",
           connectors: {},
           operators: {},
           operatorSearch: "",
@@ -11202,6 +11202,17 @@ var stationCentre = null;
           return found ? best : null;
         }
 
+        /** Whether a station row passes the selected power tier. */
+        function stationPowerMatches(row, mode) {
+          if (!mode || mode === "any") return true;
+          var kw = stationPowerKw(row);
+          if (kw === null) return false;
+          if (mode === "max22") return kw <= 22;
+          if (mode === "min50") return kw >= 50;
+          if (mode === "min150") return kw >= 150;
+          return true;
+        }
+
         /** Canonical connector keys from the display labels on a station row. */
         function stationConnectors(row) {
           var out = {};
@@ -11220,7 +11231,7 @@ var stationCentre = null;
         }
 
         function stationFiltersActive() {
-          if (stationFilters.power > 0) return true;
+          if (stationFilters.power && stationFilters.power !== "any") return true;
           for (var c in stationFilters.connectors)
             if (stationFilters.connectors[c]) return true;
           for (var o in stationFilters.operators)
@@ -11229,10 +11240,7 @@ var stationCentre = null;
         }
 
         function stationMatchesFilters(row) {
-          if (stationFilters.power > 0) {
-            var kw = stationPowerKw(row);
-            if (kw === null || kw < stationFilters.power) return false;
-          }
+          if (!stationPowerMatches(row, stationFilters.power)) return false;
           var connectors = stationConnectors(row);
           var wantsConnector = false;
           var hasConnector = false;
@@ -11406,7 +11414,7 @@ var stationCentre = null;
 
         function readStationFilterControls() {
           var power = document.querySelector('input[name="stationPower"]:checked');
-          stationFilters.power = power ? num(power.value) : 0;
+          stationFilters.power = power ? power.value : "any";
           stationFilters.connectors = {};
           var conns = [
             ["stationConnectorCcs", "ccs"],
@@ -11430,7 +11438,7 @@ var stationCentre = null;
             $("stationConnectorType2").checked = false;
           if ($("stationSort")) $("stationSort").value = "distance";
           if ($("stationOperatorSearch")) $("stationOperatorSearch").value = "";
-          stationFilters.power = 0;
+          stationFilters.power = "any";
           stationFilters.connectors = {};
           stationFilters.operators = {};
           stationFilters.operatorSearch = "";
@@ -14444,6 +14452,7 @@ function detachVehicle(id) {
           "stationPowerAny",
           "stationPower22",
           "stationPower50",
+          "stationPower150",
           "stationConnectorCcs",
           "stationConnectorChademo",
           "stationConnectorType2",

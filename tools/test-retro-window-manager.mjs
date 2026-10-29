@@ -55,13 +55,27 @@ group("the retro page owns the taskbar and Start menu", () => {
   ok("win31 has no retro chrome", !win31.includes("retro-taskbar") && !win31.includes("retro-start-menu"));
   ok("the chrome is before the script block", page.indexOf('id="retro-taskbar"') < page.indexOf("scripts:begin"));
   ok("the chrome is after the shared main content", page.indexOf('id="retro-taskbar"') > page.indexOf("</main>"));
-  ok("the Start menu has Dashboard", /data-go="dashboard"/.test(page));
-  ok("the Start menu has Add session", /data-go="add-session"/.test(page));
-  ok("the Start menu has Settings", /data-go="settings"/.test(page));
-  ok("the Start menu has Charge history", /retro-start-menu[\s\S]{0,1200}?data-go="view-data"/.test(page));
-  ok("the History item has a translated label", /retro-start-menu[\s\S]{0,1200}?data-i18n="retro\.history"/.test(page));
-  ok("the Start menu has Sync", /data-retro-sync/.test(page));
-  ok("the Start menu has no Hot Dog route", !/data-retro-theme/.test(page));
+  const menu = page.match(/<nav id="retro-start-menu"[\s\S]*?<\/nav>/);
+  const menuText = menu ? menu[0] : "";
+  const menuOrder = ["dashboard", "add-session", "view-data", "stations", "settings"];
+  const menuPositions = menuOrder.map((id) => menuText.indexOf('data-go="' + id + '"'));
+  ok("the Start menu has Dashboard", menuPositions[0] >= 0);
+  ok("the Start menu has Add session", menuPositions[1] >= 0);
+  ok("the Start menu has Charge history", menuPositions[2] >= 0);
+  ok("the Start menu has Find charger", menuPositions[3] >= 0);
+  ok("the Start menu has Settings", menuPositions[4] >= 0);
+  ok(
+    "the menu order is Dashboard, Add session, Charge history, Find charger, Settings",
+    menuPositions.every((p, i) => p >= 0 && (i === 0 || p > menuPositions[i - 1])),
+  );
+  ok("Sync stays after Settings", menuText.indexOf("data-retro-sync") > menuPositions[4]);
+  ok("the History item has a translated label", /data-i18n="retro\.history"/.test(menuText));
+  ok(
+    "the Find charger item is label-only",
+    /data-go="stations">\s*<span data-i18n="st\.findCharger">Find charger<\/span>\s*<\/button>/.test(menuText),
+  );
+  ok("the Start menu is icon-free", !/<svg|class="ic"/.test(menuText));
+  ok("the Start menu has no Hot Dog route", !/data-retro-theme/.test(menuText));
   ok("the clock is a native button", /id="retro-clock"[^>]*type="button"/.test(page));
   ok("the clock contains the live time", /id="retro-clock-time"/.test(page));
   ok("the Start menu starts hidden", /id="retro-start-menu"[^>]*hidden/.test(page));
@@ -184,7 +198,14 @@ group("lifecycle hooks preserve and refresh the right state", () => {
 });
 
 group("the window manager reuses routing and modal behavior", () => {
-  ok("Start menu view items use the shared delegated data-go route", /data-go="dashboard"/.test(page) && /data-go="add-session"/.test(page) && /data-go="settings"/.test(page));
+  ok(
+    "Start menu view items use the shared delegated data-go route",
+    /data-go="dashboard"/.test(page) &&
+      /data-go="add-session"/.test(page) &&
+      /data-go="view-data"/.test(page) &&
+      /data-go="stations"/.test(page) &&
+      /data-go="settings"/.test(page),
+  );
   ok("Sync uses the existing panel opener", /openSyncPanel\(startBtn\)/.test(fnBody(app, "initRetroChrome")));
   ok("the clock click asks the Hot Dog dialog", /clockBtn\.addEventListener\("click"[\s\S]{0,120}?askHotdog\(\)/.test(fnBody(app, "initRetroChrome")));
   ok("no Start-menu theme route remains", !/data-retro-theme|syncRetroThemeMenu/.test(app));
@@ -265,7 +286,7 @@ group("the new chrome strings exist in all three languages", () => {
 });
 
 group("the service worker is bumped for the window manager", () => {
-  ok("sw.js is v101", /const VERSION = "v101"/.test(sw));
+  ok("sw.js is v103", /const VERSION = "v103"/.test(sw));
 });
 
 console.log(`\n${pass} passed, ${failures.length} failed`);

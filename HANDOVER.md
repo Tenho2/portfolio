@@ -9,7 +9,7 @@ belongs in [README.md](README.md); this file is the part that goes stale.
 | -------------- | ---------------------------------------------------------------------------- |
 | HEAD           | `585f67f` — commit and push are the user's job (see ground rules below)      |
 | Working tree   | code and documentation changes are uncommitted                               |
-| Service worker | `v101`                                                                       |
+| Service worker | `v103`                                                                       |
 | Build stamp    | `2026-10-29`                                                                 |
 | Tests          | all suites pass, 0 failures (`npm run check`); exact total not recorded      |
 | Database       | migrations `15-vehicle-baseline` and `16-vehicle-seasonal-baseline` required |
@@ -39,11 +39,12 @@ belongs in [README.md](README.md); this file is the part that goes stale.
   `drawNumberedPins()` are shared by the Stations and session maps. Session-map
   marker clicks go through `useNearbyPlace()`; user dot, bounds and cleanup are
   handled together. See `test-phase4.mjs`.
-- **Station filtering and sorting.** Power radios, connector checkboxes,
-  operator search/checkboxes and distance/power/operator sorting. The raw
-  `stationAll` is separate from `stationFiltered` and the visible page.
-  `extractOperator()` recovers brands from messy names and generic operator
-  fields. See `test-station-filters.mjs`.
+- **Station filtering and sorting.** Power tiers (up to 22 kW, 50+ kW and
+  150+ kW), connector checkboxes, operator search/checkboxes and
+  distance/power/operator sorting. The 50+ and 150+ tiers include their exact
+  boundary values. The raw `stationAll` is separate from `stationFiltered` and
+  the visible page. `extractOperator()` recovers brands from messy names and
+  generic operator fields. See `test-station-filters.mjs`.
 - **Retro wallpaper.** The compressed
   `app/ui/wallpaper/retro-desk-wallpaper-comp.jpg` is a fixed viewport
   pseudo-element (`body::before`) with `cover`/`center bottom`/`pixelated`; Hot
@@ -51,7 +52,7 @@ belongs in [README.md](README.md); this file is the part that goes stale.
   `min-height: 100vh` / `100dvh`. The fixed layer means a tall mobile window
   cannot resize or drag the scene down. Portrait phones switch to
   `retro-desk-wallpaper-2comp.jpg` and anchor toward the car; both compressed
-  wallpapers are in the `v101` cache. Content images and canvases reset to
+  wallpapers are in the `v103` cache. Content images and canvases reset to
   `auto` rendering. See `test-retro-wallpaper.mjs`.
 - **Rebrand to ChargeDesk 3.11.** The PWA name, page titles, meta descriptions,
   Apple/PWA labels, i18n brand strings, diagnostics header, icon titles, archive
@@ -64,10 +65,14 @@ belongs in [README.md](README.md); this file is the part that goes stale.
   It writes the existing `locDefaults.loc` default-place state rather than a
   per-favourite flag, refreshes the Settings picker, clears the default when the
   current home is unchecked, and marks the saved row with the existing Home tag.
-  Covered by `test-favourite-home.mjs`.
-- **Start-menu history shortcut.** Charge history is a direct Start-menu item
-  using the shared `data-go="view-data"` route and a document icon. It opens the
-  same managed history window as the Dashboard button.
+  Its `ed.fav` checkbox label is imperative in all three languages ("Save to
+  favourites", "Tallenna suosikkeihin", "Spara som favorit"). Covered by
+  `test-favourite-home.mjs`.
+- **Start-menu order and shortcuts.** The icon-free Start menu is Dashboard,
+  Add session, Charge history, Find charger, Settings, then Sync. Charge history
+  uses `data-go="view-data"` and Find charger uses `data-go="stations"`; both
+  open the same managed windows as their Dashboard counterparts. Sync stays
+  last.
 - **Edit Session and Sync are managed retro windows.** Both sheets have real
   minimize and close controls in their title bars. Minimize releases the modal
   lock and leaves a taskbar button; restore re-locks it; close and sign-out
