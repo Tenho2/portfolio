@@ -30,10 +30,10 @@
  * list is served stale and nothing complains - so tools/test-sw-bump.mjs
  * asserts that every shell file was touched, and that the version moved with it.
  *
- * Last bumped: 2026-10-30, for the reactive payer split.
+ * Last bumped: 2026-10-31, for the favourite lookup, retro scrolling, payer chart and terminology fixes.
  */
 
-const VERSION = "v104";
+const VERSION = "v105";
 const CACHE = `chargedesk-shell-${VERSION}`;
 
 const SHELL = [

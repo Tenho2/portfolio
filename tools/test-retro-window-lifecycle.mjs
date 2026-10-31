@@ -33,6 +33,7 @@ window.localStorage.setItem(
       energy: 10,
       cost: 2,
       location: "Test charger",
+      payers: [{ name: "Me", share: 1 }],
     },
   ]),
 );
@@ -195,6 +196,18 @@ await group("History opens directly from the Start menu", async () => {
   await wait();
   ok("history is foreground", onViews().join(",") === "view-data");
   ok("history has a taskbar button", !!taskFor("view-data"));
+  ok(
+    "the payer chart renders with the history",
+    !doc.getElementById("payerBoxChart").hidden,
+  );
+  ok(
+    "the payer chart has a donut",
+    !!doc.querySelector("#payerBoxChart .donut"),
+  );
+  ok(
+    "the payer breakdown control is offered",
+    !doc.getElementById("payerBreakdownRow").hidden,
+  );
   doc.getElementById("view-data").querySelector("[data-retro-window-close]").click();
   await wait();
   ok("history closes back to the empty desktop", onViews().length === 0 && taskButtons().length === 0);

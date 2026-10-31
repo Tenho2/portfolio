@@ -18,6 +18,9 @@ function ok(label, condition) {
   if (condition) pass++;
   else failures.push(label);
 }
+function is(label, actual, expected) {
+  ok(label, Object.is(actual, expected));
+}
 function group(name, fn) {
   const before = failures.length;
   fn();
@@ -47,6 +50,34 @@ group("the favourite checkbox label is an action in every language", () => {
   ok("template English matches", /"en": "Save to favourites"/.test(template));
   ok("template Finnish matches", /"fi": "Tallenna suosikkeihin"/.test(template));
   ok("template Swedish matches", /"sv": "Spara som favorit"/.test(template));
+});
+
+group("a favourite text search is text-only and keeps its pin", () => {
+  const geocode = fnSource("geocode");
+  is(
+    "it never asks for the device position",
+    /navigator\.geolocation|geoReference/.test(geocode),
+    false,
+  );
+  is("it uses the text lookup", /nomUrl\(q, 10/.test(geocode), true);
+  is("it saves the found place", /saveFavourite\(\)/.test(geocode), true);
+  is(
+    "the pin is restored after the save resets the form",
+    geocode.indexOf("saveFavourite()") < geocode.lastIndexOf('showPin("map"'),
+    true,
+  );
+  const ref = fnSource("favGeoReference");
+  is(
+    "the reference comes from the form fields",
+    /fLat/.test(ref) && /fLng/.test(ref),
+    true,
+  );
+  is("and never from the device", /geolocation/.test(ref), false);
+  is(
+    "clearing the form still clears the pin",
+    /clearPin\("map"\)/.test(fnSource("clearFavForm")),
+    true,
+  );
 });
 
 group("the form follows the existing default-place state", () => {

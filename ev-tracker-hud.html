@@ -1636,197 +1636,199 @@ date,time,duration,location,energy,socStart,socEnd,mileage,cost,vehicle,notes,fa
             </span>
           </span>
         </h3>
-        <p class="mini" id="editFor"></p>
-        <form id="editForm" novalidate>
-          <fieldset class="row">
-            <legend class="sr-only" data-i18n="grp.when"></legend>
-            <div class="f">
-              <label for="eDate" data-i18n="as.date"></label
-              ><input type="date" id="eDate" required aria-required="true" />
-            </div>
-            <div class="f">
-              <label for="eTime" data-i18n="as.startTime"></label
-              ><input
-                type="time"
-                id="eTime"
-                step="1"
-                required
-                aria-required="true"
-              />
-            </div>
-          </fieldset>
-          <fieldset class="row">
-            <legend class="sr-only" data-i18n="grp.duration"></legend>
-            <div class="f">
-              <label for="eDuration" data-i18n="as.dur"></label
-              ><input
-                type="time"
-                id="eDuration"
-                step="1"
-                required
-                aria-required="true"
-                aria-describedby="eDurHint"
-              />
-              <div class="hint" id="eDurHint" data-i18n="as.durHint"></div>
-            </div>
-            <div class="f">
-              <label for="eMileage" data-i18n="as.mileage"></label
-              ><input
-                type="number"
-                id="eMileage"
-                min="0"
-                step="0.1"
-              />
-            </div>
-          </fieldset>
-          <div class="f">
-            <label for="eLocation" data-i18n="as.location"></label
-            ><input
-              type="text"
-              id="eLocation"
-              list="favOptions"
-              required
-              aria-required="true"
-            />
-          </div>
-          <div class="row">
-            <div class="f">
-              <label for="eEnergy" data-i18n="as.energy"></label
-              ><input
-                type="number"
-                id="eEnergy"
-                min="0"
-                step="0.01"
-                required
-                aria-required="true"
-              />
-            </div>
-            <div class="f">
-              <label for="eCost" data-i18n="ed.cost"></label
-              ><input
-                type="number"
-                id="eCost"
-                min="0"
-                step="0.01"
-                data-i18n-ph="ph.auto"
-              />
-            </div>
-          </div>
-          <div class="f">
-            <label for="ePriceCents" data-i18n="as.price"></label>
-            <div class="addrow" style="margin: 0; max-width: 320px">
-              <input
-                type="number"
-                id="ePriceCents"
-                min="0"
-                max="99"
-                step="1"
-                inputmode="numeric"
-                aria-describedby="ePriceHint"
-                data-i18n-aria="aria.cents"
-              />
-              <span
-                class="unit"
-                aria-hidden="true"
-                data-i18n="as.centsUnit"
-              ></span>
-            </div>
-            <div class="hint" id="ePriceHint" data-i18n="as.priceHint1"></div>
-          </div>
-          <fieldset class="row" id="ePayerBox">
-            <legend data-i18n="grp.payers"></legend>
-            <div class="f">
-              <span class="lbl" data-i18n="as.paidBy"></span>
-              <div id="ePayerRows"></div>
-              <div class="addrow">
-                <button type="button" class="btn sm ghost" id="ePayerAdd">
-                  <span aria-hidden="true">+</span>
-                  <span data-i18n="as.addPayer"></span>
-                </button>
+        <div class="sheet-body">
+          <p class="mini" id="editFor"></p>
+          <form id="editForm" novalidate>
+            <fieldset class="row">
+              <legend class="sr-only" data-i18n="grp.when"></legend>
+              <div class="f">
+                <label for="eDate" data-i18n="as.date"></label
+                ><input type="date" id="eDate" required aria-required="true" />
               </div>
-              <div class="chk" id="ePayerExcludeWrap" hidden>
-                <input type="checkbox" id="ePayerExclude" /><label
-                  for="ePayerExclude"
-                  data-i18n="as.excludeMe"
-                ></label>
+              <div class="f">
+                <label for="eTime" data-i18n="as.startTime"></label
+                ><input
+                  type="time"
+                  id="eTime"
+                  step="1"
+                  required
+                  aria-required="true"
+                />
               </div>
-              <div class="hint" id="ePayerHint"></div>
-            </div>
-          </fieldset>
-          <fieldset class="row">
-            <legend class="sr-only" data-i18n="grp.soc"></legend>
+            </fieldset>
+            <fieldset class="row">
+              <legend class="sr-only" data-i18n="grp.duration"></legend>
+              <div class="f">
+                <label for="eDuration" data-i18n="as.dur"></label
+                ><input
+                  type="time"
+                  id="eDuration"
+                  step="1"
+                  required
+                  aria-required="true"
+                  aria-describedby="eDurHint"
+                />
+                <div class="hint" id="eDurHint" data-i18n="as.durHint"></div>
+              </div>
+              <div class="f">
+                <label for="eMileage" data-i18n="as.mileage"></label
+                ><input
+                  type="number"
+                  id="eMileage"
+                  min="0"
+                  step="0.1"
+                />
+              </div>
+            </fieldset>
             <div class="f">
-              <label for="eSocStart" data-i18n="as.socStart"></label
+              <label for="eLocation" data-i18n="as.location"></label
               ><input
-                type="number"
-                id="eSocStart"
-                min="0"
-                max="100"
-                step="1"
-                data-i18n-ph="ph.soc"
+                type="text"
+                id="eLocation"
+                list="favOptions"
+                required
+                aria-required="true"
               />
             </div>
-            <div class="f">
-              <label for="eSocEnd" data-i18n="as.socEnd"></label
-              ><input
-                type="number"
-                id="eSocEnd"
-                min="0"
-                max="100"
-                step="1"
-                data-i18n-ph="ph.soc"
-              />
+            <div class="row">
+              <div class="f">
+                <label for="eEnergy" data-i18n="as.energy"></label
+                ><input
+                  type="number"
+                  id="eEnergy"
+                  min="0"
+                  step="0.01"
+                  required
+                  aria-required="true"
+                />
+              </div>
+              <div class="f">
+                <label for="eCost" data-i18n="ed.cost"></label
+                ><input
+                  type="number"
+                  id="eCost"
+                  min="0"
+                  step="0.01"
+                  data-i18n-ph="ph.auto"
+                />
+              </div>
             </div>
-          </fieldset>
-          <div class="f">
-            <label for="eNotes" data-i18n="as.notes"></label
-            ><textarea id="eNotes" rows="3"></textarea>
-          </div>
-          <div class="chk">
-            <input type="checkbox" id="eFast" /><label
-              for="eFast"
-              data-i18n="as.fast"
-            ></label>
-          </div>
-          <div class="chk">
-            <input type="checkbox" id="eHome" /><label
-              for="eHome"
-              data-i18n="as.home"
-            ></label>
-          </div>
-          <div class="chk">
-            <input type="checkbox" id="eFav" /><label
-              for="eFav"
-              data-i18n="ed.fav"
-            ></label>
-          </div>
-          <div class="chk">
-            <input type="checkbox" id="eWinter" /><label
-              for="eWinter"
-              data-i18n="as.winter"
-            ></label>
-          </div>
-          <div class="addrow" style="margin-top: 1.25rem">
-            <button
-              class="btn"
-              type="submit"
-              id="eSave"
-              data-i18n="ed.save"
-            ></button>
-            <button
-              class="btn ghost"
-              type="button"
-              id="eCancel"
-              data-i18n="ed.cancel"
-            ></button>
-            <button
-              class="btn dgr"
-              type="button"
-              id="eDelete"
-              data-i18n="ed.del"
-            ></button>
-          </div>
-        </form>
+            <div class="f">
+              <label for="ePriceCents" data-i18n="as.price"></label>
+              <div class="addrow" style="margin: 0; max-width: 320px">
+                <input
+                  type="number"
+                  id="ePriceCents"
+                  min="0"
+                  max="99"
+                  step="1"
+                  inputmode="numeric"
+                  aria-describedby="ePriceHint"
+                  data-i18n-aria="aria.cents"
+                />
+                <span
+                  class="unit"
+                  aria-hidden="true"
+                  data-i18n="as.centsUnit"
+                ></span>
+              </div>
+              <div class="hint" id="ePriceHint" data-i18n="as.priceHint1"></div>
+            </div>
+            <fieldset class="row" id="ePayerBox">
+              <legend data-i18n="grp.payers"></legend>
+              <div class="f">
+                <span class="lbl" data-i18n="as.paidBy"></span>
+                <div id="ePayerRows"></div>
+                <div class="addrow">
+                  <button type="button" class="btn sm ghost" id="ePayerAdd">
+                    <span aria-hidden="true">+</span>
+                    <span data-i18n="as.addPayer"></span>
+                  </button>
+                </div>
+                <div class="chk" id="ePayerExcludeWrap" hidden>
+                  <input type="checkbox" id="ePayerExclude" /><label
+                    for="ePayerExclude"
+                    data-i18n="as.excludeMe"
+                  ></label>
+                </div>
+                <div class="hint" id="ePayerHint"></div>
+              </div>
+            </fieldset>
+            <fieldset class="row">
+              <legend class="sr-only" data-i18n="grp.soc"></legend>
+              <div class="f">
+                <label for="eSocStart" data-i18n="as.socStart"></label
+                ><input
+                  type="number"
+                  id="eSocStart"
+                  min="0"
+                  max="100"
+                  step="1"
+                  data-i18n-ph="ph.soc"
+                />
+              </div>
+              <div class="f">
+                <label for="eSocEnd" data-i18n="as.socEnd"></label
+                ><input
+                  type="number"
+                  id="eSocEnd"
+                  min="0"
+                  max="100"
+                  step="1"
+                  data-i18n-ph="ph.soc"
+                />
+              </div>
+            </fieldset>
+            <div class="f">
+              <label for="eNotes" data-i18n="as.notes"></label
+              ><textarea id="eNotes" rows="3"></textarea>
+            </div>
+            <div class="chk">
+              <input type="checkbox" id="eFast" /><label
+                for="eFast"
+                data-i18n="as.fast"
+              ></label>
+            </div>
+            <div class="chk">
+              <input type="checkbox" id="eHome" /><label
+                for="eHome"
+                data-i18n="as.home"
+              ></label>
+            </div>
+            <div class="chk">
+              <input type="checkbox" id="eFav" /><label
+                for="eFav"
+                data-i18n="ed.fav"
+              ></label>
+            </div>
+            <div class="chk">
+              <input type="checkbox" id="eWinter" /><label
+                for="eWinter"
+                data-i18n="as.winter"
+              ></label>
+            </div>
+            <div class="addrow" style="margin-top: 1.25rem">
+              <button
+                class="btn"
+                type="submit"
+                id="eSave"
+                data-i18n="ed.save"
+              ></button>
+              <button
+                class="btn ghost"
+                type="button"
+                id="eCancel"
+                data-i18n="ed.cancel"
+              ></button>
+              <button
+                class="btn dgr"
+                type="button"
+                id="eDelete"
+                data-i18n="ed.del"
+              ></button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
 

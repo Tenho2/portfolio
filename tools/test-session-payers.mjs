@@ -846,6 +846,32 @@ group("a new cost reaches the payer input", () => {
   is("the rows are redrawn each time", built.renders, 2);
 });
 
+group("pulled payer rows return with their sessions", () => {
+  const map = new Function(
+    `${fnSource("num")}${fnSource("normPayer")}${fnSource("payerRowsBySession")}; return payerRowsBySession;`,
+  )();
+  const bySession = map([
+    { session_id: "s1", name: "Anna", share: "0.5", account_id: "a1" },
+    { session_id: "s1", name: "Bo", share: 0.5 },
+    { session_id: "s2", name: " ", share: 1 },
+  ]);
+  is("two payers on s1", bySession.s1.length, 2);
+  near("the first share", bySession.s1[0].share, 0.5, 0.0001);
+  is("the account id is carried", bySession.s1[0].accountId, "a1");
+  is("a session with only a blank name is not listed", bySession.s2, undefined);
+});
+
+group("the pull restores payer splits", () => {
+  const pull = fnSource("syncPull");
+  ok("it fetches session_payers", /from\("session_payers"\)/.test(pull));
+  ok("it maps payer rows by session", /payerRowsBySession\(/.test(pull));
+  ok("it attaches payers to pulled sessions", /ps\.payers\s*=/.test(pull));
+  ok(
+    "a dirty local split is not overwritten",
+    /syncDirty\.sessions\[ps\.id\]/.test(pull),
+  );
+});
+
 console.log(`\n${pass} passed, ${failures.length} failed`);
 for (const f of failures) console.log(`  FAIL ${f}`);
 process.exit(failures.length ? 1 : 0);

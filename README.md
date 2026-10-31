@@ -230,8 +230,8 @@ files that a static host can serve as they are.
 
 | File                       | Lines  | Contents                                 |
 | -------------------------- | ------ | ---------------------------------------- |
-| `ev-tracker.html`          | 2,202  | ChargeDesk 3.11 markup, classic layout   |
-| `app/app.js`               | 16,227 | application logic                        |
+| `ev-tracker.html`          | 2,204  | ChargeDesk 3.11 markup, classic layout   |
+| `app/app.js`               | 16,256 | application logic                        |
 | `app/app.css`              | 3,037  | the shared design system                 |
 | `app/layout-classic.css`   | 17     | the classic navigation shell             |
 | `app/layout-focus.css`     | 149    | the focus navigation shell               |
@@ -242,7 +242,7 @@ files that a static host can serve as they are.
 | `app/ui/base.css`          | 1,531  | shared base for the experimental UIs     |
 | `app/ui/hud.css`           | 559    | the HUD cockpit theme                    |
 | `app/ui/win31.css`         | 632    | the Windows 3.1 theme                    |
-| `app/ui/retro-desktop.css` | 1,038  | the windowed retro desktop and wallpaper |
+| `app/ui/retro-desktop.css` | 1,060  | the windowed retro desktop and wallpaper |
 
 Classic `<script src>` rather than ES modules on purpose: it keeps the page
 working from `file://` with no build step, and each file gets its own scope, so
@@ -666,13 +666,21 @@ changing the app.
 
 ### Done since the last review
 
-- **Mobile-readable charge log.** One DOM styled two ways: `data-label` cells and
+- **Mobile-readable charge history.** One DOM styled two ways: `data-label` cells and
   a card layout below ~700px, with the desktop table left intact.
 - **Shared-charge payer split.** `13-session-payers.sql`, per-session splits, the
   payer picker and the breakdown chart. Older charges with no payer are counted
   separately rather than guessed at. Editing the energy, price or total
   re-balances the automatic payer rows immediately; a manually typed amount is
-  preserved.
+  preserved. Payer rows are pulled back with their sessions, so the chart
+  survives a refresh and appears on another device.
+- **Favourite map lookup.** A text search uses Nominatim only and never asks for
+  the device position. A successful lookup keeps its map pin after the
+  automatic save.
+- **Retro Edit Session scrolling.** The title bar stays fixed and only the form
+  body scrolls.
+- **Charge history naming.** The nav label, page heading, export text and
+  Start-menu item use one term in every language.
 - **The `focus` layout.** Shipped, along with `modern`, `hud`, `brutal`,
   `editorial`, `win31` and `retro-desktop`. `classic`, `focus` and `modern` share
   `app/app.css`; the five experimental UIs load `app/ui/base.css` plus their own
@@ -785,13 +793,13 @@ are recorded here so the next build does not repeat the discovery.
       the compact Add-session nearby list. ABS and ABC are both recognised;
       live explicit operator names remain authoritative. Tests: power parsing, connector classification,
       OR/AND semantics, sort order, operator-list search/preservation, filtered
-      map/list/status, no-match state and i18n keys. `sw.js` is v104.
+      map/list/status, no-match state and i18n keys. `sw.js` is v105.
 
 - [x] **Retro desktop wallpaper.** Implemented 2026-10-27 with the compressed
       `retro-desk-wallpaper-comp.jpg`, a solid-color Hot Dog override, content
       image-rendering resets for maps/photos/charts, full-viewport body height
       when every window is closed, a fixed viewport wallpaper layer for tall
-      mobile windows, and both compressed wallpapers in the `v104` offline shell.
+      mobile windows, and both compressed wallpapers in the `v105` offline shell.
       Portrait phones use `retro-desk-wallpaper-2comp.jpg` so the car and
       charger stay in the narrow crop. Covered by
       `tools/test-retro-wallpaper.mjs`.

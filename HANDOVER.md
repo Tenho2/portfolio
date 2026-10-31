@@ -9,7 +9,7 @@ belongs in [README.md](README.md); this file is the part that goes stale.
 | -------------- | ---------------------------------------------------------------------------- |
 | HEAD           | `585f67f` — commit and push are the user's job (see ground rules below)      |
 | Working tree   | code and documentation changes are uncommitted                               |
-| Service worker | `v104`                                                                       |
+| Service worker | `v105`                                                                       |
 | Build stamp    | `2026-10-29`                                                                 |
 | Tests          | all suites pass, 0 failures (`npm run check`); exact total not recorded      |
 | Database       | migrations `15-vehicle-baseline` and `16-vehicle-seasonal-baseline` required |
@@ -52,7 +52,7 @@ belongs in [README.md](README.md); this file is the part that goes stale.
   `min-height: 100vh` / `100dvh`. The fixed layer means a tall mobile window
   cannot resize or drag the scene down. Portrait phones switch to
   `retro-desk-wallpaper-2comp.jpg` and anchor toward the car; both compressed
-  wallpapers are in the `v104` cache. Content images and canvases reset to
+  wallpapers are in the `v105` cache. Content images and canvases reset to
   `auto` rendering. See `test-retro-wallpaper.mjs`.
 - **Rebrand to ChargeDesk 3.11.** The PWA name, page titles, meta descriptions,
   Apple/PWA labels, i18n brand strings, diagnostics header, icon titles, archive
@@ -80,6 +80,20 @@ belongs in [README.md](README.md); this file is the part that goes stale.
   they are sheets, not themed page views.
 - **Filter UI reaches HUD as well.** The shared station panel and
   `tools/hud-body.html` both carry the filter controls.
+- **Favourite text lookup.** `geocode()` uses `favGeoReference()`, which reads
+  only the form's own `fLat`/`fLng`, so a text search never calls
+  `navigator.geolocation`. After the automatic save, the pin is restored because
+  `clearFavForm()` clears the map marker. See `test-favourite-home.mjs`.
+- **Edit Session scrolling.** The Edit sheet's `h3` stays a direct child of
+  `.sheet-box`; `#editFor` and the form live in a `.sheet-body` wrapper. On the
+  retro desktop the box is a flex column with `overflow: hidden`, and only the
+  body scrolls.
+- **Payer splits survive a pull.** `syncPull()` fetches `session_payers` with
+  the sessions and attaches `payers` by session id. A dirty or stalled local
+  split is kept over the server copy. The History chart now renders after a
+  refresh. See `test-session-payers.mjs`.
+- **Charge history naming.** `nav.log`, `set.exportLead` and the Start-menu item
+  use the same term in every language; the old Finnish `Latausloki` is gone.
 
 ## 2026-10-22: archive, contrast, seasonal baselines, scanline levels, Win 3.1
 

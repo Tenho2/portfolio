@@ -524,6 +524,25 @@ tbody tr:hover {
   border: 0;
 }
 
+/* The edit sheet is a real window: its title bar stays put and only the form
+   body scrolls. The shared sheet scrolls as a whole, which moved the retro
+   title bar off the top when the form was long. */
+body[data-layout="retro-desktop"] #editSheet .sheet-box {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - var(--retro-taskbar-h) - 32px);
+  overflow: hidden;
+}
+
+body[data-layout="retro-desktop"] #editSheet .sheet-box > h3 {
+  flex: 0 0 auto;
+}
+
+body[data-layout="retro-desktop"] #editSheet .sheet-body {
+  min-height: 0;
+  overflow-y: auto;
+}
+
 /* ---------- dark variant: Hot Dog Stand ----------
    Windows 3.1's infamous colour scheme, hidden behind the header's Hot Dog
    toggle. It is deliberately scoped to this layout so the normal retro desktop
@@ -703,6 +722,9 @@ body.hotdog[data-layout="retro-desktop"] table {
     padding-bottom: 4.5rem;
   }
   body[data-layout="retro-desktop"] .sheet .sheet-box {
+    max-height: calc(90vh - 4.5rem);
+  }
+  body[data-layout="retro-desktop"] #editSheet .sheet-box {
     max-height: calc(90vh - 4.5rem);
   }
 

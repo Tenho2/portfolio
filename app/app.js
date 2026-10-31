@@ -3511,22 +3511,34 @@ var vres = null;
               .then(function (r) {
                 vres = r;
                 if (vres && vres.error) throw vres.error;
-                return timed(
-                  authClient
-                    .from("sessions")
-                    .select("*")
-                    .order("date", { ascending: false }),
-                );
+                return Promise.all([
+                  timed(
+                    authClient
+                      .from("sessions")
+                      .select("*")
+                      .order("date", { ascending: false }),
+                  ),
+                  timed(
+                    authClient
+                      .from("session_payers")
+                      .select("*")
+                      .order("created_at", { ascending: true }),
+                  ),
+                ]);
               })
-            .then(function (sres) {
+            .then(function (both) {
+              var sres = both[0],
+                pres = both[1];
               if (sres && sres.error) throw sres.error;
+              if (pres && pres.error) throw pres.error;
               /* The account this response belongs to must still be the loaded
                account. Everything below mutates the shared arrays and then
                save()s them under the current storage prefix, so this one
                comparison is what stops a result crossing accounts. */
               if (!acctLive(gen)) return false;
               var vrows = (vres && vres.data) || [],
-                srows = (sres && sres.data) || [];
+                srows = (sres && sres.data) || [],
+                prows = (pres && pres.data) || [];
               /* Merge rather than replace. A row that only exists on this
                  device, because its write failed or it was made offline, must
                  survive the pull; replacing the arrays wholesale destroyed it
@@ -3547,12 +3559,24 @@ var vres = null;
               var pulledSessions = [];
               var knownS = {};
               var liveSessions = {};
+              var localPayers = {};
+              for (var lp = 0; lp < sessions.length; lp++)
+                if (sessions[lp])
+                  localPayers[sessions[lp].id] = payerListOf(sessions[lp]);
+              var pulledPayers = payerRowsBySession(prows);
               for (var j = 0; j < srows.length; j++) {
                 if (syncDeleted.sessions && syncDeleted.sessions[srows[j].id])
                   continue;
                 /* drop sessions whose vehicle was deleted server-side */
                 if (!vehById(srows[j].vehicle_id, pulledVehicles)) continue;
                 var ps = rowSession(srows[j]);
+                /* A split that has not reached the server is newer than the
+                   server's copy, so a dirty or stalled session keeps its local
+                   payers. Everyone else gets the pulled split back. */
+                ps.payers =
+                  syncDirty.sessions[ps.id] || syncStalled.sessions[ps.id]
+                    ? localPayers[ps.id] || []
+                    : pulledPayers[ps.id] || [];
                 pulledSessions.push(ps);
                 knownS[ps.id] = 1;
                 if (!ps.deletedAt) liveSessions[ps.id] = 1;
@@ -5869,6 +5893,23 @@ function say(msg) {
           for (var i = 0; i < s.payers.length; i++) {
             var p = normPayer(s.payers[i]);
             if (p) out.push(p);
+          }
+          return out;
+        }
+
+        /** Map pulled session_payers rows to their session id, normalised. */
+        function payerRowsBySession(rows) {
+          var out = {};
+          for (var i = 0; i < (rows || []).length; i++) {
+            var r = rows[i];
+            if (!r || !r.session_id) continue;
+            var p = normPayer({
+              name: r.name,
+              share: r.share,
+              accountId: r.account_id,
+            });
+            if (!p) continue;
+            (out[r.session_id] || (out[r.session_id] = [])).push(p);
           }
           return out;
         }
@@ -10363,30 +10404,14 @@ slot.map.on("click", function (e) {
          * something that fires on every keystroke.
          */
         /**
-         * A reference point for the address lookup: the pin already on the form,
-         * or a current fix, so a bare street name resolves to the nearest one.
-         * Calls back with null when neither is available; the lookup still runs.
+         * A bias point for the address lookup from the form only: the pin already
+         * on the form, never the device position. A text search must not trigger
+         * the geolocation permission prompt.
          */
-        function geoReference(cb) {
+        function favGeoReference() {
           var la = parseFloat($("fLat").value),
             lo = parseFloat($("fLng").value);
-          if (isNum(la) && isNum(lo)) {
-            cb({ lat: la, lng: lo });
-            return;
-          }
-          if (!navigator.geolocation) {
-            cb(null);
-            return;
-          }
-          navigator.geolocation.getCurrentPosition(
-            function (p) {
-              cb({ lat: p.coords.latitude, lng: p.coords.longitude });
-            },
-            function () {
-              cb(null);
-            },
-            { enableHighAccuracy: false, timeout: 6000, maximumAge: 300000 },
-          );
+          return isNum(la) && isNum(lo) ? { lat: la, lng: lo } : null;
         }
 
         function geocode() {
@@ -10401,56 +10426,60 @@ slot.map.on("click", function (e) {
             return;
           }
           $("geoStat").textContent = TXT("toast.looking", { q: q });
-          /* A known point biases the search and breaks ties: with a house number
-             the most specific hit wins, otherwise the nearest occurrence of the
-             street does, so a bare street name does not land in another town. */
-          geoReference(function (ref) {
-            fetch(nomUrl(q, 10, ref))
-              .then(function (r) {
-                if (!r.ok) throw new Error("http " + r.status);
-                return r.json();
-              })
-              .then(function (res) {
-                var hit =
-                  ref && !looksLikeHouseNumber(q)
-                    ? pickNearestHit(res, ref, q)
-                    : pickBestHit(res, q);
-                if (!hit) {
-                  $("geoStat").textContent = TXT("toast.noMatch", { q: q });
-                  return;
-                }
-                var short = shortAddress(hit);
-                var lat = parseFloat(hit.lat),
-                  lng = parseFloat(hit.lon);
-                $("fLat").value = lat.toFixed(5);
-                $("fLng").value = lng.toFixed(5);
-                if (!$("fName").value.trim())
-                  $("fName").value = hit.name || short || q;
-                if (short) $("fAddr").value = short;
-                showPin("map", lat, lng, hit.name || short, favPinDragged);
-                /* A successful lookup now stores the place straight away. Finding
-                   an address used to only fill the form, which read as "nothing
-                   happened" on the saved list until Save was pressed as well. */
-                /* Looking up a different address in the same form means a new
-                   place, not a silent overwrite of the one being edited. */
-                var beingEdited = editFav ? favById(editFav) : null;
-                if (beingEdited) {
-                  var wasAddr = (beingEdited.address || "").toLowerCase();
-                  if (
-                    wasAddr &&
-                    ($("fAddr").value || "").toLowerCase() !== wasAddr
-                  )
-                    editFav = null;
-                }
-                saveFavourite();
-                $("geoStat").textContent = TXT("toast.found", {
-                  v: short,
-                });
-              })
-              .catch(function () {
-                $("geoStat").textContent = TXT("toast.geoFail");
+          /* A known point on the form biases the search and breaks ties: with a
+             house number the most specific hit wins, otherwise the nearest
+             occurrence of the street does, so a bare street name does not land
+             in another town. The device position is deliberately NOT used here:
+             a text search must never ask for the geolocation permission. */
+          var ref = favGeoReference();
+          fetch(nomUrl(q, 10, ref))
+            .then(function (r) {
+              if (!r.ok) throw new Error("http " + r.status);
+              return r.json();
+            })
+            .then(function (res) {
+              var hit =
+                ref && !looksLikeHouseNumber(q)
+                  ? pickNearestHit(res, ref, q)
+                  : pickBestHit(res, q);
+              if (!hit) {
+                $("geoStat").textContent = TXT("toast.noMatch", { q: q });
+                return;
+              }
+              var short = shortAddress(hit);
+              var lat = parseFloat(hit.lat),
+                lng = parseFloat(hit.lon);
+              $("fLat").value = lat.toFixed(5);
+              $("fLng").value = lng.toFixed(5);
+              if (!$("fName").value.trim())
+                $("fName").value = hit.name || short || q;
+              if (short) $("fAddr").value = short;
+              showPin("map", lat, lng, hit.name || short, favPinDragged);
+              /* A successful lookup now stores the place straight away. Finding
+                 an address used to only fill the form, which read as "nothing
+                 happened" on the saved list until Save was pressed as well. */
+              /* Looking up a different address in the same form means a new
+                 place, not a silent overwrite of the one being edited. */
+              var beingEdited = editFav ? favById(editFav) : null;
+              if (beingEdited) {
+                var wasAddr = (beingEdited.address || "").toLowerCase();
+                if (
+                  wasAddr &&
+                  ($("fAddr").value || "").toLowerCase() !== wasAddr
+                )
+                  editFav = null;
+              }
+              saveFavourite();
+              /* Saving resets the form and removes its pin. Put the pin for the
+                 place that was just saved back on the map. */
+              showPin("map", lat, lng, hit.name || short, favPinDragged);
+              $("geoStat").textContent = TXT("toast.found", {
+                v: short,
               });
-          });
+            })
+            .catch(function () {
+              $("geoStat").textContent = TXT("toast.geoFail");
+            });
         }
         function favPinDragged(lat, lng) {
           $("fLat").value = lat.toFixed(5);

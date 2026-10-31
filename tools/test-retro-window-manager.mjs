@@ -5,6 +5,7 @@ const app = readFileSync("app/app.js", "utf8");
 const css = readFileSync("app/ui/retro-desktop.css", "utf8");
 const page = readFileSync("ev-tracker-retro-desktop.html", "utf8");
 const shared = readFileSync("ev-tracker.html", "utf8");
+const hud = readFileSync("tools/hud-body.html", "utf8");
 const win31 = readFileSync("ev-tracker-win31.html", "utf8");
 const win31Css = readFileSync("app/ui/win31.css", "utf8");
 const shell = readFileSync("app/shell.mjs", "utf8");
@@ -285,8 +286,49 @@ group("the new chrome strings exist in all three languages", () => {
     ok(`${key} is translated in all three packs`, (i18n.match(new RegExp(`"${key.replace(/\./g, "\\.")}"`, "g")) || []).length === 3);
 });
 
+group("the edit sheet keeps its title bar fixed while the body scrolls", () => {
+  for (const [name, doc] of [
+    ["shared", shared],
+    ["HUD", hud],
+    ["retro page", page],
+  ]) {
+    const sheet = doc.slice(
+      doc.indexOf('id="editSheet"'),
+      doc.indexOf('id="payBreakSheet"'),
+    );
+    ok(name + ": the edit sheet has a scroll body", /class="sheet-body"/.test(sheet));
+    ok(
+      name + ": the title stays outside the scroll body",
+      sheet.indexOf('id="editTitle"') >= 0 &&
+        sheet.indexOf('id="editTitle"') < sheet.indexOf('class="sheet-body"'),
+    );
+    ok(
+      name + ": the form is inside the scroll body",
+      /class="sheet-body"[\s\S]*?id="editForm"/.test(sheet),
+    );
+  }
+  ok(
+    "the box is a flex column",
+    /body\[data-layout="retro-desktop"\] #editSheet \.sheet-box \{[^}]*display:\s*flex[^}]*flex-direction:\s*column/.test(
+      css,
+    ),
+  );
+  ok(
+    "the box clips instead of scrolling",
+    /body\[data-layout="retro-desktop"\] #editSheet \.sheet-box \{[^}]*overflow:\s*hidden/.test(
+      css,
+    ),
+  );
+  ok(
+    "only the body scrolls",
+    /body\[data-layout="retro-desktop"\] #editSheet \.sheet-body \{[^}]*overflow-y:\s*auto/.test(
+      css,
+    ),
+  );
+});
+
 group("the service worker is bumped for the window manager", () => {
-  ok("sw.js is v104", /const VERSION = "v104"/.test(sw));
+  ok("sw.js is v105", /const VERSION = "v105"/.test(sw));
 });
 
 console.log(`\n${pass} passed, ${failures.length} failed`);

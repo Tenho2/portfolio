@@ -85,9 +85,9 @@
       "se": ""
     },
     "nav.log": {
-      "en": "Charge log",
-      "fi": "Latausloki",
-      "sv": "Laddningslogg",
+      "en": "Charge history",
+      "fi": "Lataushistoria",
+      "sv": "Laddningshistorik",
       "se": ""
     },
     "nav.fav": {
@@ -697,9 +697,9 @@
       "se": ""
     },
     "set.exportLead": {
-      "en": "Download the charge log as a file. The scope decides which vehicle the file covers.",
-      "fi": "Lataa latausloki tiedostoksi. Rajaus määrää, minkä ajoneuvon tiedot viedään.",
-      "sv": "Ladda ner laddningsloggen som en fil. Omfattningen avgör vilket fordon filen gäller.",
+      "en": "Download the charge history as a file. The scope decides which vehicle the file covers.",
+      "fi": "Lataa lataushistoria tiedostoksi. Rajaus määrää, minkä ajoneuvon tiedot viedään.",
+      "sv": "Ladda ner laddningshistoriken som en fil. Omfattningen avgör vilket fordon filen gäller.",
       "se": ""
     },
     "set.scope": {

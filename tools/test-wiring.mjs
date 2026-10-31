@@ -85,7 +85,7 @@ group("non-English text survived", () => {
   /* Sampled from each language block. If the encoding is damaged these are the
      first things to go, and they are all but invisible in a diff. */
   const samples = [
-    ["Finnish", "Latausloki"],
+    ["Finnish", "Lataushistoria"],
     ["Finnish", "Asetukset"],
     ["Finnish", "Roskakori"],
     ["Swedish", "Papperskorg"],
@@ -109,6 +109,26 @@ group("non-English text survived", () => {
     is(`${lang}: ${s}`, where ? where.name : "missing from every shipped file",
       where ? where.name : "missing from every shipped file");
   }
+});
+
+group("the charge history has one name in every language", () => {
+  const dict = readFileSync("app/i18n.js", "utf8");
+  is(
+    "Finnish nav uses Lataushistoria",
+    /"nav\.log": "Lataushistoria"/.test(dict),
+    true,
+  );
+  is(
+    "the old Latausloki label is gone",
+    /"nav\.log": "Latausloki"/.test(dict),
+    false,
+  );
+  const template = readFileSync("i18n/se-translation-template.json", "utf8");
+  is(
+    "the SE template carries the same Finnish term",
+    /"fi": "Lataushistoria"/.test(template),
+    true,
+  );
 });
 
 group("line endings are consistent", () => {
