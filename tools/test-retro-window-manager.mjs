@@ -245,6 +245,28 @@ group("the CSS hides modern chrome only on retro", () => {
   ok("the taskbar is hidden while signed out", /body\.need-auth\[data-layout="retro-desktop"\] #retro-taskbar/.test(css));
 });
 
+group("the retro window keeps a readable desktop width", () => {
+  ok(
+    "the width is a token",
+    /body\[data-layout="retro-desktop"\]\s*\{[^}]*--retro-window-w:\s*40rem/.test(
+      css,
+    ),
+  );
+  const view = /body\[data-layout="retro-desktop"\] \.view\s*\{([^}]*)\}/.exec(css);
+  const rule = view ? view[1] : "";
+  ok("the window fills its container", /width:\s*100%/.test(rule));
+  ok(
+    "the window stops growing on a desktop",
+    /max-width:\s*var\(--retro-window-w\)/.test(rule),
+  );
+  ok(
+    "the phone layout does not remove the cap",
+    !/@media \(max-width: 820px\)[\s\S]{0,2500}?\.view\s*\{[^}]*max-width:\s*none/.test(
+      css,
+    ),
+  );
+});
+
 group("the outer view is the only window; panels are flat content", () => {
   ok("panels have no raised bevel", /body\[data-layout="retro-desktop"\] \.view \.panel\s*\{[^}]*box-shadow:\s*none/.test(css));
   ok("panels have no window background", /body\[data-layout="retro-desktop"\] \.view \.panel\s*\{[^}]*background:\s*transparent/.test(css));
@@ -328,7 +350,7 @@ group("the edit sheet keeps its title bar fixed while the body scrolls", () => {
 });
 
 group("the service worker is bumped for the window manager", () => {
-  ok("sw.js is v105", /const VERSION = "v105"/.test(sw));
+  ok("sw.js is v106", /const VERSION = "v106"/.test(sw));
 });
 
 console.log(`\n${pass} passed, ${failures.length} failed`);

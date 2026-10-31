@@ -768,6 +768,7 @@ body.hotdog[data-layout="retro-desktop"] table {
    replaced by a taskbar, a Start menu and one foreground window at a time. */
 body[data-layout="retro-desktop"] {
   --retro-taskbar-h: 44px;
+  --retro-window-w: 40rem;
 }
 
 body[data-layout="retro-desktop"] .top,
@@ -786,6 +787,9 @@ body[data-layout="retro-desktop"] .wrap {
 /* The view itself is the program window. Panels remain groups inside it. */
 body[data-layout="retro-desktop"] .view {
   position: relative;
+  width: 100%;
+  max-width: var(--retro-window-w);
+  margin-right: auto;
   background: var(--win-gray);
   box-shadow: var(--bevel-out);
   padding: 4px;

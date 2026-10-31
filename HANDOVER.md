@@ -9,7 +9,7 @@ belongs in [README.md](README.md); this file is the part that goes stale.
 | -------------- | ---------------------------------------------------------------------------- |
 | HEAD           | `585f67f` — commit and push are the user's job (see ground rules below)      |
 | Working tree   | code and documentation changes are uncommitted                               |
-| Service worker | `v105`                                                                       |
+| Service worker | `v106`                                                                       |
 | Build stamp    | `2026-10-29`                                                                 |
 | Tests          | all suites pass, 0 failures (`npm run check`); exact total not recorded      |
 | Database       | migrations `15-vehicle-baseline` and `16-vehicle-seasonal-baseline` required |
@@ -52,7 +52,7 @@ belongs in [README.md](README.md); this file is the part that goes stale.
   `min-height: 100vh` / `100dvh`. The fixed layer means a tall mobile window
   cannot resize or drag the scene down. Portrait phones switch to
   `retro-desk-wallpaper-2comp.jpg` and anchor toward the car; both compressed
-  wallpapers are in the `v105` cache. Content images and canvases reset to
+  wallpapers are in the `v106` cache. Content images and canvases reset to
   `auto` rendering. See `test-retro-wallpaper.mjs`.
 - **Rebrand to ChargeDesk 3.11.** The PWA name, page titles, meta descriptions,
   Apple/PWA labels, i18n brand strings, diagnostics header, icon titles, archive
@@ -88,6 +88,10 @@ belongs in [README.md](README.md); this file is the part that goes stale.
   `.sheet-box`; `#editFor` and the form live in a `.sheet-body` wrapper. On the
   retro desktop the box is a flex column with `overflow: hidden`, and only the
   body scrolls.
+- **Retro window width.** Program windows (the shared `.view` elements) use
+  `width: 100%` and `max-width: var(--retro-window-w)`, with the token set to
+  `40rem`. The window stays full-width on phones and stops stretching on a
+  monitor. See `test-retro-window-manager.mjs`.
 - **Payer splits survive a pull.** `syncPull()` fetches `session_payers` with
   the sessions and attaches `payers` by session id. A dirty or stalled local
   split is kept over the server copy. The History chart now renders after a
