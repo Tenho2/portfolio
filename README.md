@@ -679,7 +679,7 @@ changing the app.
   automatic save.
 - **Retro Edit Session scrolling.** The title bar stays fixed and only the form
   body scrolls.
-- **Retro window width.** Program windows use `width: 100%` with a `40rem`
+- **Retro window width.** Program windows use `width: 100%` with a `50rem`
   cap, so forms stop stretching on a monitor while the window still fills a
   phone.
 - **Charge history naming.** The nav label, page heading, export text and
@@ -796,13 +796,13 @@ are recorded here so the next build does not repeat the discovery.
       the compact Add-session nearby list. ABS and ABC are both recognised;
       live explicit operator names remain authoritative. Tests: power parsing, connector classification,
       OR/AND semantics, sort order, operator-list search/preservation, filtered
-      map/list/status, no-match state and i18n keys. `sw.js` is v106.
+      map/list/status, no-match state and i18n keys. `sw.js` is v107.
 
 - [x] **Retro desktop wallpaper.** Implemented 2026-10-27 with the compressed
       `retro-desk-wallpaper-comp.jpg`, a solid-color Hot Dog override, content
       image-rendering resets for maps/photos/charts, full-viewport body height
       when every window is closed, a fixed viewport wallpaper layer for tall
-      mobile windows, and both compressed wallpapers in the `v106` offline shell.
+      mobile windows, and both compressed wallpapers in the `v107` offline shell.
       Portrait phones use `retro-desk-wallpaper-2comp.jpg` so the car and
       charger stay in the narrow crop. Covered by
       `tools/test-retro-wallpaper.mjs`.

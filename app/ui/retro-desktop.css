@@ -768,7 +768,7 @@ body.hotdog[data-layout="retro-desktop"] table {
    replaced by a taskbar, a Start menu and one foreground window at a time. */
 body[data-layout="retro-desktop"] {
   --retro-taskbar-h: 44px;
-  --retro-window-w: 40rem;
+  --retro-window-w: 50rem;
 }
 
 body[data-layout="retro-desktop"] .top,

@@ -248,7 +248,7 @@ group("the CSS hides modern chrome only on retro", () => {
 group("the retro window keeps a readable desktop width", () => {
   ok(
     "the width is a token",
-    /body\[data-layout="retro-desktop"\]\s*\{[^}]*--retro-window-w:\s*40rem/.test(
+    /body\[data-layout="retro-desktop"\]\s*\{[^}]*--retro-window-w:\s*50rem/.test(
       css,
     ),
   );
@@ -350,7 +350,7 @@ group("the edit sheet keeps its title bar fixed while the body scrolls", () => {
 });
 
 group("the service worker is bumped for the window manager", () => {
-  ok("sw.js is v106", /const VERSION = "v106"/.test(sw));
+  ok("sw.js is v107", /const VERSION = "v107"/.test(sw));
 });
 
 console.log(`\n${pass} passed, ${failures.length} failed`);

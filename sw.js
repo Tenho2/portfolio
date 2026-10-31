@@ -30,10 +30,10 @@
  * list is served stale and nothing complains - so tools/test-sw-bump.mjs
  * asserts that every shell file was touched, and that the version moved with it.
  *
- * Last bumped: 2026-10-31, for the retro window width cap.
+ * Last bumped: 2026-10-31, for the wider retro window.
  */
 
-const VERSION = "v106";
+const VERSION = "v107";
 const CACHE = `chargedesk-shell-${VERSION}`;
 
 const SHELL = [
