@@ -9,7 +9,7 @@ belongs in [README.md](README.md); this file is the part that goes stale.
 | -------------- | ---------------------------------------------------------------------------- |
 | HEAD           | `585f67f` — commit and push are the user's job (see ground rules below)      |
 | Working tree   | code and documentation changes are uncommitted                               |
-| Service worker | `v103`                                                                       |
+| Service worker | `v104`                                                                       |
 | Build stamp    | `2026-10-29`                                                                 |
 | Tests          | all suites pass, 0 failures (`npm run check`); exact total not recorded      |
 | Database       | migrations `15-vehicle-baseline` and `16-vehicle-seasonal-baseline` required |
@@ -52,7 +52,7 @@ belongs in [README.md](README.md); this file is the part that goes stale.
   `min-height: 100vh` / `100dvh`. The fixed layer means a tall mobile window
   cannot resize or drag the scene down. Portrait phones switch to
   `retro-desk-wallpaper-2comp.jpg` and anchor toward the car; both compressed
-  wallpapers are in the `v103` cache. Content images and canvases reset to
+  wallpapers are in the `v104` cache. Content images and canvases reset to
   `auto` rendering. See `test-retro-wallpaper.mjs`.
 - **Rebrand to ChargeDesk 3.11.** The PWA name, page titles, meta descriptions,
   Apple/PWA labels, i18n brand strings, diagnostics header, icon titles, archive
@@ -425,5 +425,8 @@ wholesale.
 - `session_payers` (migration `13`) records who paid what on a charge. It **copies
   the payer's name** rather than referencing a friends row, so a split survives
   the payer leaving.
+- The session form re-balances its automatic payer rows whenever energy, price
+  or total changes the cost. The edit sheet does the same for its automatic
+  rows. Amounts the user typed stay put.
 - Dashboard analytics now include seasonal (winter/summer) figures and SOH, in
   addition to the energy/distance/cost/time/efficiency/speed tiles.

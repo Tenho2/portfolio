@@ -231,7 +231,7 @@ files that a static host can serve as they are.
 | File                       | Lines  | Contents                                 |
 | -------------------------- | ------ | ---------------------------------------- |
 | `ev-tracker.html`          | 2,202  | ChargeDesk 3.11 markup, classic layout   |
-| `app/app.js`               | 16,212 | application logic                        |
+| `app/app.js`               | 16,227 | application logic                        |
 | `app/app.css`              | 3,037  | the shared design system                 |
 | `app/layout-classic.css`   | 17     | the classic navigation shell             |
 | `app/layout-focus.css`     | 149    | the focus navigation shell               |
@@ -670,7 +670,9 @@ changing the app.
   a card layout below ~700px, with the desktop table left intact.
 - **Shared-charge payer split.** `13-session-payers.sql`, per-session splits, the
   payer picker and the breakdown chart. Older charges with no payer are counted
-  separately rather than guessed at.
+  separately rather than guessed at. Editing the energy, price or total
+  re-balances the automatic payer rows immediately; a manually typed amount is
+  preserved.
 - **The `focus` layout.** Shipped, along with `modern`, `hud`, `brutal`,
   `editorial`, `win31` and `retro-desktop`. `classic`, `focus` and `modern` share
   `app/app.css`; the five experimental UIs load `app/ui/base.css` plus their own
@@ -783,13 +785,13 @@ are recorded here so the next build does not repeat the discovery.
       the compact Add-session nearby list. ABS and ABC are both recognised;
       live explicit operator names remain authoritative. Tests: power parsing, connector classification,
       OR/AND semantics, sort order, operator-list search/preservation, filtered
-      map/list/status, no-match state and i18n keys. `sw.js` is v103.
+      map/list/status, no-match state and i18n keys. `sw.js` is v104.
 
 - [x] **Retro desktop wallpaper.** Implemented 2026-10-27 with the compressed
       `retro-desk-wallpaper-comp.jpg`, a solid-color Hot Dog override, content
       image-rendering resets for maps/photos/charts, full-viewport body height
       when every window is closed, a fixed viewport wallpaper layer for tall
-      mobile windows, and both compressed wallpapers in the `v103` offline shell.
+      mobile windows, and both compressed wallpapers in the `v104` offline shell.
       Portrait phones use `retro-desk-wallpaper-2comp.jpg` so the car and
       charger stay in the narrow crop. Covered by
       `tools/test-retro-wallpaper.mjs`.

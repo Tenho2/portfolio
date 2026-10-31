@@ -808,6 +808,44 @@ group("saving the edit sheet persists the split", () => {
   ok("typed names still join the address book", /resolvePayerName\(s\.payers\[py\]\.name\)/.test(commit));
 });
 
+group("the split follows a changing session cost", () => {
+  for (const fn of ["recalcFromCost", "recalcFromPrice", "recalcFromEnergy"])
+    ok(fn + " refreshes the split", /syncPayerAmountsToCost\(\)/.test(fnSource(fn)));
+  const sync = fnSource("syncPayerAmountsToCost");
+  ok("it re-balances the automatic rows", /redistributeEvenly\(\)/.test(sync));
+  ok("and redraws them", /renderPayers\(\)/.test(sync));
+
+  const editSync = fnSource("syncEditPayerAmountsToCost");
+  ok(
+    "the edit sheet re-balances its automatic rows",
+    /editRedistributeEvenly\(\)/.test(editSync),
+  );
+  ok("and redraws them", /renderEditPayers\(\)/.test(editSync));
+  for (const fn of ["editPriceCents", "editCostToPrice"])
+    ok(fn + " refreshes the edit split", /syncEditPayerAmountsToCost\(\)/.test(fnSource(fn)));
+});
+
+group("a new cost reaches the payer input", () => {
+  const built = new Function(`
+    var payerDraft = [{ name: "Me", amount: "5.00", auto: true }];
+    var cost = { value: "20.00" };
+    var renders = 0;
+    function $(id){ return id === "cost" ? cost : null; }
+    function renderPayers(){ renders++; }
+    ${fnSource("num")}
+    ${fnSource("redistributeEvenly")}
+    ${fnSource("syncPayerAmountsToCost")}
+    syncPayerAmountsToCost();
+    var first = payerDraft[0].amount;
+    cost.value = "30.00";
+    syncPayerAmountsToCost();
+    return { first: first, second: payerDraft[0].amount, renders: renders };
+  `)();
+  near("the original amount is replaced", num(built.first), 20, 0.001);
+  near("the new cost is used", num(built.second), 30, 0.001);
+  is("the rows are redrawn each time", built.renders, 2);
+});
+
 console.log(`\n${pass} passed, ${failures.length} failed`);
 for (const f of failures) console.log(`  FAIL ${f}`);
 process.exit(failures.length ? 1 : 0);

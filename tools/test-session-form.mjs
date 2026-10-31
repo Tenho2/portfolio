@@ -81,6 +81,8 @@ function makeForm(startPrice) {
        refreshes it. */
     var hintCalls = 0;
     function syncHints(){ hintCalls++; }
+    var payerSyncCalls = 0;
+    function syncPayerAmountsToCost(){ payerSyncCalls++; }
     ${fnSource("num")}
     ${fnSource("isNum")}
     ${fnSource("setPriceCents")}
@@ -106,6 +108,7 @@ function makeForm(startPrice) {
       price: function(){ return price; },
       writes: function(){ return __count(); },
       hints: function(){ return hintCalls; },
+      payerSyncs: function(){ return payerSyncCalls; },
     };
   `;
   const build = new Function("__fields", "__price", "__wrote", "__count", src);
@@ -135,12 +138,14 @@ function makeEditForm(startPrice) {
     var price = __price;
     var fields = __fields;
     function $(id){ return fields[id]; }
+    var payerSyncCalls = 0;
+    function syncEditPayerAmountsToCost(){ payerSyncCalls++; }
     ${fnSource("num")}
     ${fnSource("isNum")}
     ${fnSource("editUnitCents")}
     ${fnSource("editPriceCents")}
     ${fnSource("editCostToPrice")}
-    return { editPriceCents, editCostToPrice };
+    return { editPriceCents, editCostToPrice, payerSyncs: function(){ return payerSyncCalls; } };
   `;
   const api = new Function("__price", "__fields", src)(startPrice || 0, els);
   return { els, api };
@@ -191,6 +196,30 @@ group("every path refreshes the hint", () => {
   P(f, "40");
   f.api.recalcFromPrice();
   is("one per edit", f.api.hints(), 3);
+});
+
+group("every cost path refreshes the split", () => {
+  const f = makeForm(0.32);
+  E(f, "50");
+  f.api.recalcFromEnergy();
+  is("energy refresh", f.api.payerSyncs(), 1);
+  C(f, "16.00");
+  f.api.recalcFromCost();
+  is("total refresh", f.api.payerSyncs(), 2);
+  P(f, "40");
+  f.api.recalcFromPrice();
+  is("price refresh", f.api.payerSyncs(), 3);
+});
+
+group("the edit sheet refreshes the split on cost edits", () => {
+  const f = makeEditForm(0.32);
+  EE(f, "50");
+  EP(f, "40");
+  f.api.editPriceCents();
+  is("energy/price refresh", f.api.payerSyncs(), 1);
+  EC(f, "21.00");
+  f.api.editCostToPrice();
+  is("cost refresh", f.api.payerSyncs(), 2);
 });
 
 /* ---------- the bill case: cost + price -> energy ---------- */

@@ -6066,6 +6066,12 @@ function say(msg) {
           }
         }
 
+        /** Keep the automatic payer rows in step with a changed session cost. */
+        function syncPayerAmountsToCost() {
+          redistributeEvenly();
+          renderPayers();
+        }
+
         function renderPayers() {
           var box = $("payerRows");
           if (!box) return;
@@ -6346,6 +6352,12 @@ function say(msg) {
             editPayerDraft[autos[j]].amount = String(amount);
             running += amount;
           }
+        }
+
+        /** The edit sheet's equivalent: only its automatic rows follow the cost. */
+        function syncEditPayerAmountsToCost() {
+          editRedistributeEvenly();
+          renderEditPayers();
         }
 
         function editSyncPayerHint() {
@@ -14558,18 +14570,18 @@ function detachVehicle(id) {
         function editPriceCents() {
           var cents = editUnitCents();
           var energy = $("eEnergy") ? num($("eEnergy").value) : 0;
-          if (cents === null || !(energy > 0)) return;
-          if ($("eCost"))
+          if (cents !== null && energy > 0 && $("eCost"))
             $("eCost").value = ((energy * cents) / 100).toFixed(2);
+          syncEditPayerAmountsToCost();
         }
         function editCostToPrice() {
           var raw = $("eCost") ? $("eCost").value : "",
             energy = $("eEnergy") ? num($("eEnergy").value) : 0;
-          if (raw === "" || !isNum(raw) || !(energy > 0)) return;
-          if ($("ePriceCents"))
+          if (raw !== "" && isNum(raw) && energy > 0 && $("ePriceCents"))
             $("ePriceCents").value = String(
               Math.max(0, Math.min(99, Math.round((num(raw) / energy) * 100))),
             );
+          syncEditPayerAmountsToCost();
         }
         if ($("ePriceCents")) {
           $("ePriceCents").addEventListener("input", editPriceCents);
@@ -14847,6 +14859,7 @@ function detachVehicle(id) {
             priceAuto = true;
           }
           syncHints();
+          syncPayerAmountsToCost();
           calcLock = false;
         }
         function recalcFromPrice() {
@@ -14860,6 +14873,7 @@ function detachVehicle(id) {
             costAuto = true;
           }
           syncHints();
+          syncPayerAmountsToCost();
           calcLock = false;
         }
         function recalcFromEnergy() {
@@ -14888,6 +14902,7 @@ function detachVehicle(id) {
             costAuto = true;
           }
           syncHints();
+          syncPayerAmountsToCost();
           calcLock = false;
         }
         function syncHints() {

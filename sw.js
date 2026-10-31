@@ -30,10 +30,10 @@
  * list is served stale and nothing complains - so tools/test-sw-bump.mjs
  * asserts that every shell file was touched, and that the version moved with it.
  *
- * Last bumped: 2026-10-30, for the station filter tiers and Start-menu shortcut.
+ * Last bumped: 2026-10-30, for the reactive payer split.
  */
 
-const VERSION = "v103";
+const VERSION = "v104";
 const CACHE = `chargedesk-shell-${VERSION}`;
 
 const SHELL = [
